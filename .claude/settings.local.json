@@ -12,7 +12,14 @@
       "Bash(brew install:*)",
       "Bash(/Users/admin/Library/Android/sdk/platform-tools/adb -s emulator-5556 shell wm size)",
       "Bash(/Users/admin/Library/Android/sdk/platform-tools/adb -s emulator-5556 shell uiautomator dump /sdcard/ui.xml)",
-      "Bash(/Users/admin/Library/Android/sdk/platform-tools/adb -s emulator-5556 shell cat /sdcard/ui.xml)"
+      "Bash(/Users/admin/Library/Android/sdk/platform-tools/adb -s emulator-5556 shell cat /sdcard/ui.xml)",
+      "Bash(npx tsc:*)",
+      "Bash(command -v apktool)",
+      "Bash(command -v jadx)",
+      "Bash(mkdir -p /tmp/apk_analysis)",
+      "Read(//tmp/**)",
+      "Bash(rm -rf *)",
+      "Bash(unzip -o /Users/admin/Downloads/com.truckast.sync.105.apk -d raw)"
     ]
   }
 }

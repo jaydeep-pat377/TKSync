@@ -1,0 +1,82 @@
+{
+  "app": {
+    "name": "TKSync",
+    "tagline": "Ticket Tracking System",
+    "poweredBy": "\u00a9 2026 Truckast"
+  },
+  "companyLogin": {
+    "badge": "Company Login",
+    "title": "Connect Company",
+    "subtitle": "Enter your company code to get started",
+    "companyCode": "Company Code",
+    "companyCodePlaceholder": "Enter company code",
+    "serverUrl": "Server URL",
+    "serverUrlPlaceholder": "https://yourserver.com (optional)",
+    "connect": "Connect",
+    "alreadyConnected": "Already connected?",
+    "driverLogin": "Driver Login"
+  },
+  "driverLogin": {
+    "badge": "Driver Login",
+    "title": "Driver Sign In",
+    "subtitle": "Enter your truck and driver credentials",
+    "truckNumber": "Vehicle ID",
+    "truckNumberPlaceholder": "Enter vehicle ID",
+    "driverPin": "Employee ID",
+    "driverPinPlaceholder": "Enter employee ID",
+    "signIn": "Sign In",
+    "switchCompany": "Wrong company?",
+    "companyLogin": "Switch Company"
+  },
+  "login": {
+    "welcomeBack": "Welcome Back",
+    "welcomeSub": "Sign in to your account to continue",
+    "companyCode": "Company Code",
+    "companyCodePlaceholder": "Enter company code",
+    "username": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign In"
+  },
+  "dashboard": {
+    "ticketTracking": "Ticket Tracking",
+    "ticket": "TICKET",
+    "order": "ORDER",
+    "active": "ACTIVE",
+    "onAccount": "ON ACCOUNT",
+    "deliveryProgress": "Delivery Progress",
+    "jobDetails": "Job Details",
+    "mixDetails": "Mix Details",
+    "lastSyncedAt": "Last synced at {{time}}",
+    "syncNow": "Sync Now"
+  },
+  "timeline": {
+    "ticketed": "TICKETED",
+    "loading": "LOADING",
+    "toJob": "TO JOB",
+    "onJob": "ON JOB",
+    "pouring": "POURING",
+    "washing": "WASHING",
+    "toPlant": "TO PLANT",
+    "atPlant": "AT PLANT"
+  },
+  "jobInfo": {
+    "customer": "CUSTOMER",
+    "project": "PROJECT",
+    "job": "JOB"
+  },
+  "mixInfo": {
+    "mixId": "MIXID",
+    "description": "DESCRIPTION",
+    "usage": "USAGE",
+    "slump": "SLUMP"
+  },
+  "actions": {
+    "notes": "Notes",
+    "tag": "Tag",
+    "edit": "Edit",
+    "truck": "Truck",
+    "qr": "QR"
+  }
+}

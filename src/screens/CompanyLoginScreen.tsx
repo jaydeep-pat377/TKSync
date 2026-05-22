@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -9,28 +9,47 @@ import {
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useTranslation} from 'react-i18next';
 import {Colors} from '../constants/colors';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-export default function LoginScreen({navigation}: Props) {
+export default function CompanyLoginScreen({navigation}: Props) {
   const [companyCode, setCompanyCode] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const {t} = useTranslation();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const isTablet = width > 600;
   const isLandscape = width > height;
 
-  const handleLogin = () => {
-    navigation.replace('Dashboard');
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  const handleConnect = () => {
+    navigation.navigate('DriverLogin');
   };
 
   return (
@@ -41,7 +60,6 @@ export default function LoginScreen({navigation}: Props) {
         barStyle="light-content"
       />
 
-      {/* Background layers */}
       <View style={styles.bgTop} />
       <View style={styles.bgBottom} />
 
@@ -55,16 +73,17 @@ export default function LoginScreen({navigation}: Props) {
             isLandscape && styles.innerContentLandscape,
           ]}>
           {/* Branding */}
-          <View
+          <Animated.View
             style={[
               styles.brandingSection,
               isLandscape && isTablet && styles.brandingSectionLandscape,
+              {opacity: fadeAnim},
             ]}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoOuter}>
-                <View style={styles.logoInner}>
+              <View style={[styles.logoOuter, isTablet && styles.logoOuterTablet]}>
+                <View style={[styles.logoInner, isTablet && styles.logoInnerTablet]}>
                   <MaterialIcons
-                    name="local-shipping"
+                    name="sync"
                     size={isTablet ? 40 : 32}
                     color={Colors.textOnPrimary}
                   />
@@ -72,40 +91,79 @@ export default function LoginScreen({navigation}: Props) {
               </View>
             </View>
             <Text style={[styles.appName, isTablet && styles.appNameTablet]}>
-              TKSync
+              {t('app.name')}
             </Text>
-            <Text style={styles.appTagline}>Ticket Tracking System</Text>
-            <View style={styles.versionBadge}>
-              <Text style={styles.versionText}>v1.20.0</Text>
-            </View>
-          </View>
+            <Text style={[styles.appTagline, isTablet && styles.appTaglineTablet]}>
+              {t('app.tagline')}
+            </Text>
+          </Animated.View>
 
           {/* Form Card */}
-          <View
+          <Animated.View
             style={[
               styles.formWrapper,
               isLandscape && isTablet && styles.formWrapperLandscape,
+              {
+                opacity: fadeAnim,
+                transform: [{translateY: slideAnim}],
+              },
             ]}>
             <View style={[styles.formCard, isTablet && styles.formCardTablet]}>
-              <Text style={styles.welcomeText}>Welcome Back</Text>
-              <Text style={styles.welcomeSub}>
-                Sign in to your account to continue
+              {/* Login type indicator */}
+              <View style={styles.loginTypeBadge}>
+                <MaterialIcons
+                  name="business"
+                  size={14}
+                  color={Colors.primary}
+                />
+                <Text style={styles.loginTypeText}>
+                  {t('companyLogin.badge')}
+                </Text>
+              </View>
+
+              <Text
+                style={[
+                  styles.welcomeText,
+                  isTablet && styles.welcomeTextTablet,
+                ]}>
+                {t('companyLogin.title')}
+              </Text>
+              <Text
+                style={[
+                  styles.welcomeSub,
+                  isTablet && styles.welcomeSubTablet,
+                ]}>
+                {t('companyLogin.subtitle')}
               </Text>
 
               {/* Company Code */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Company Code</Text>
-                <View style={styles.inputRow}>
-                  <View style={styles.inputIconBox}>
+                <Text
+                  style={[
+                    styles.fieldLabel,
+                    isTablet && styles.fieldLabelTablet,
+                  ]}>
+                  {t('companyLogin.companyCode')}
+                </Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    isTablet && styles.inputRowTablet,
+                  ]}>
+                  <View
+                    style={[
+                      styles.inputIconBox,
+                      isTablet && styles.inputIconBoxTablet,
+                    ]}>
                     <MaterialIcons
-                      name="business"
-                      size={20}
+                      name="vpn-key"
+                      size={isTablet ? 24 : 20}
                       color={Colors.primaryLight}
                     />
                   </View>
                   <TextInput
-                    style={styles.input}
-                    placeholder="Enter company code"
+                    style={[styles.input, isTablet && styles.inputTablet]}
+                    placeholder={t('companyLogin.companyCodePlaceholder')}
                     placeholderTextColor={Colors.textPlaceholder}
                     value={companyCode}
                     onChangeText={setCompanyCode}
@@ -114,69 +172,26 @@ export default function LoginScreen({navigation}: Props) {
                 </View>
               </View>
 
-              {/* Username */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Username</Text>
-                <View style={styles.inputRow}>
-                  <View style={styles.inputIconBox}>
-                    <MaterialIcons
-                      name="person"
-                      size={20}
-                      color={Colors.primaryLight}
-                    />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your username"
-                    placeholderTextColor={Colors.textPlaceholder}
-                    value={username}
-                    onChangeText={setUsername}
-                    autoCapitalize="none"
-                  />
-                </View>
-              </View>
 
-              {/* Password */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Password</Text>
-                <View style={styles.inputRow}>
-                  <View style={styles.inputIconBox}>
-                    <MaterialIcons
-                      name="lock"
-                      size={20}
-                      color={Colors.primaryLight}
-                    />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your password"
-                    placeholderTextColor={Colors.textPlaceholder}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                    activeOpacity={0.6}>
-                    <MaterialIcons
-                      name={showPassword ? 'visibility' : 'visibility-off'}
-                      size={20}
-                      color={Colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
 
-              {/* Login Button */}
+              {/* Connect Button */}
               <TouchableOpacity
-                style={styles.loginButton}
-                onPress={handleLogin}
+                style={[
+                  styles.connectButton,
+                  isTablet && styles.connectButtonTablet,
+                ]}
+                onPress={handleConnect}
                 activeOpacity={0.85}>
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text
+                  style={[
+                    styles.connectButtonText,
+                    isTablet && styles.connectButtonTextTablet,
+                  ]}>
+                  {t('companyLogin.connect')}
+                </Text>
                 <MaterialIcons
                   name="arrow-forward"
-                  size={20}
+                  size={isTablet ? 24 : 20}
                   color={Colors.textOnPrimary}
                 />
               </TouchableOpacity>
@@ -184,11 +199,11 @@ export default function LoginScreen({navigation}: Props) {
               {/* Footer */}
               <View style={styles.footer}>
                 <View style={styles.footerDivider} />
-                <Text style={styles.footerText}>Powered by TKSync</Text>
+                <Text style={styles.footerText}>{t('app.poweredBy')}</Text>
                 <View style={styles.footerDivider} />
               </View>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -218,9 +233,7 @@ const styles = StyleSheet.create({
     height: '50%',
     backgroundColor: Colors.primaryDark,
   },
-  content: {
-    flex: 1,
-  },
+  content: {flex: 1},
   innerContent: {
     flex: 1,
     alignItems: 'center',
@@ -233,20 +246,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 40,
   },
-
-  // Branding
-  brandingSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  brandingSectionLandscape: {
-    marginBottom: 0,
-    flex: 1,
-    maxWidth: 320,
-  },
-  logoContainer: {
-    marginBottom: 16,
-  },
+  brandingSection: {alignItems: 'center', marginBottom: 32},
+  brandingSectionLandscape: {marginBottom: 0, flex: 1, maxWidth: 320},
+  logoContainer: {marginBottom: 16},
   logoOuter: {
     width: 88,
     height: 88,
@@ -257,6 +259,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.overlay25,
   },
+  logoOuterTablet: {width: 100, height: 100, borderRadius: 32},
   logoInner: {
     width: 64,
     height: 64,
@@ -270,43 +273,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
+  logoInnerTablet: {width: 72, height: 72, borderRadius: 22},
   appName: {
     fontSize: 32,
     fontWeight: '800',
     color: Colors.textOnPrimary,
     letterSpacing: 2,
   },
-  appNameTablet: {
-    fontSize: 38,
-  },
+  appNameTablet: {fontSize: 38},
   appTagline: {
     fontSize: 14,
     color: Colors.textOnDark70,
     marginTop: 4,
     letterSpacing: 0.5,
   },
-  versionBadge: {
-    marginTop: 12,
-    backgroundColor: Colors.textOnDark12,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  versionText: {
-    color: Colors.textOnDark60,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  // Form
-  formWrapper: {
-    width: '100%',
-    maxWidth: 480,
-  },
-  formWrapperLandscape: {
-    flex: 1,
-    maxWidth: 460,
-  },
+  appTaglineTablet: {fontSize: 17},
+  formWrapper: {width: '100%', maxWidth: 480},
+  formWrapperLandscape: {flex: 1, maxWidth: 460},
   formCard: {
     backgroundColor: Colors.white,
     borderRadius: 24,
@@ -318,9 +301,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 30,
   },
-  formCardTablet: {
-    paddingHorizontal: 36,
-    paddingVertical: 40,
+  formCardTablet: {paddingHorizontal: 36, paddingVertical: 40},
+  loginTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primarySurface,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+  },
+  loginTypeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: 0.3,
   },
   welcomeText: {
     fontSize: 26,
@@ -328,14 +327,10 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     marginBottom: 4,
   },
-  welcomeSub: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-    marginBottom: 28,
-  },
-  fieldGroup: {
-    marginBottom: 20,
-  },
+  welcomeTextTablet: {fontSize: 30},
+  welcomeSub: {fontSize: 14, color: Colors.textTertiary, marginBottom: 24},
+  welcomeSubTablet: {fontSize: 16},
+  fieldGroup: {marginBottom: 18},
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -343,6 +338,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 0.3,
   },
+  fieldLabelTablet: {fontSize: 15, marginBottom: 10},
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -351,6 +347,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.border,
   },
+  inputRowTablet: {borderRadius: 16},
   inputIconBox: {
     width: 44,
     height: 44,
@@ -358,6 +355,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 4,
   },
+  inputIconBoxTablet: {width: 52, height: 52},
   input: {
     flex: 1,
     paddingVertical: 14,
@@ -365,10 +363,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     paddingRight: 14,
   },
-  eyeButton: {
-    padding: 12,
-  },
-  loginButton: {
+  inputTablet: {paddingVertical: 16, fontSize: 17},
+  connectButton: {
     flexDirection: 'row',
     backgroundColor: Colors.primary,
     borderRadius: 14,
@@ -383,26 +379,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  loginButtonText: {
+  connectButtonTablet: {paddingVertical: 18, borderRadius: 16, marginTop: 12},
+  connectButtonText: {
     color: Colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
+  connectButtonTextTablet: {fontSize: 18},
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 18,
+    gap: 4,
+  },
+  switchText: {fontSize: 13, color: Colors.textMuted},
+  switchLink: {fontSize: 13, fontWeight: '700', color: Colors.primary},
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 20,
     gap: 12,
   },
-  footerDivider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  footerText: {
-    color: Colors.textPlaceholder,
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  footerDivider: {flex: 1, height: 1, backgroundColor: Colors.border},
+  footerText: {color: Colors.textPlaceholder, fontSize: 12, fontWeight: '500'},
 });

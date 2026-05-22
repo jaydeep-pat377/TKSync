@@ -1,0 +1,82 @@
+{
+  "app": {
+    "name": "TKSync",
+    "tagline": "Suivi des billets",
+    "poweredBy": "\u00a9 2026 Truckast"
+  },
+  "companyLogin": {
+    "badge": "Connexion entreprise",
+    "title": "Connecter l'entreprise",
+    "subtitle": "Entrez votre code entreprise pour commencer",
+    "companyCode": "Code entreprise",
+    "companyCodePlaceholder": "Entrez le code entreprise",
+    "serverUrl": "URL du serveur",
+    "serverUrlPlaceholder": "https://votreserveur.com (optionnel)",
+    "connect": "Connecter",
+    "alreadyConnected": "D\u00e9j\u00e0 connect\u00e9 ?",
+    "driverLogin": "Connexion chauffeur"
+  },
+  "driverLogin": {
+    "badge": "Connexion chauffeur",
+    "title": "Connexion chauffeur",
+    "subtitle": "Entrez vos identifiants camion et chauffeur",
+    "truckNumber": "ID v\u00e9hicule",
+    "truckNumberPlaceholder": "Entrez l'ID v\u00e9hicule",
+    "driverPin": "ID employ\u00e9",
+    "driverPinPlaceholder": "Entrez l'ID employ\u00e9",
+    "signIn": "Se connecter",
+    "switchCompany": "Mauvaise entreprise ?",
+    "companyLogin": "Changer d'entreprise"
+  },
+  "login": {
+    "welcomeBack": "Bon retour",
+    "welcomeSub": "Connectez-vous \u00e0 votre compte pour continuer",
+    "companyCode": "Code entreprise",
+    "companyCodePlaceholder": "Entrez le code entreprise",
+    "username": "Nom d'utilisateur",
+    "usernamePlaceholder": "Entrez votre nom d'utilisateur",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Entrez votre mot de passe",
+    "signIn": "Se connecter"
+  },
+  "dashboard": {
+    "ticketTracking": "Suivi des billets",
+    "ticket": "BILLET",
+    "order": "COMMANDE",
+    "active": "ACTIF",
+    "onAccount": "SUR COMPTE",
+    "deliveryProgress": "Progression de livraison",
+    "jobDetails": "D\u00e9tails du travail",
+    "mixDetails": "D\u00e9tails du m\u00e9lange",
+    "lastSyncedAt": "Derni\u00e8re sync \u00e0 {{time}}",
+    "syncNow": "Synchroniser"
+  },
+  "timeline": {
+    "ticketed": "BILLET\u00c9",
+    "loading": "CHARGEMENT",
+    "toJob": "VERS CHANTIER",
+    "onJob": "SUR CHANTIER",
+    "pouring": "COULAGE",
+    "washing": "LAVAGE",
+    "toPlant": "VERS USINE",
+    "atPlant": "\u00c0 L'USINE"
+  },
+  "jobInfo": {
+    "customer": "CLIENT",
+    "project": "PROJET",
+    "job": "TRAVAIL"
+  },
+  "mixInfo": {
+    "mixId": "ID M\u00c9LANGE",
+    "description": "DESCRIPTION",
+    "usage": "UTILISATION",
+    "slump": "AFFAISSEMENT"
+  },
+  "actions": {
+    "notes": "Notes",
+    "tag": "\u00c9tiquette",
+    "edit": "Modifier",
+    "truck": "Camion",
+    "qr": "QR"
+  }
+}
