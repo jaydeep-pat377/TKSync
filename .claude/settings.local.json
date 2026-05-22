@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(kill -9 75628 80305)",
+      "Bash(ls:*)",
+      "Bash(lsof -ti:8081,8082)",
+      "Bash(xargs kill:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(pod install:*)",
+      "Bash(npx react-native:*)",
+      "Bash(brew install:*)",
+      "Bash(/Users/admin/Library/Android/sdk/platform-tools/adb -s emulator-5556 shell wm size)",
+      "Bash(/Users/admin/Library/Android/sdk/platform-tools/adb -s emulator-5556 shell uiautomator dump /sdcard/ui.xml)",
+      "Bash(/Users/admin/Library/Android/sdk/platform-tools/adb -s emulator-5556 shell cat /sdcard/ui.xml)"
+    ]
+  }
+}
