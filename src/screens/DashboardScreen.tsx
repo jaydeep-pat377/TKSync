@@ -18,6 +18,8 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../contexts/ThemeContext';
+import {Colors} from '../constants/colors';
+import {common} from '../constants/commonStyles';
 import DateTimePicker from '../components/DateTimePicker';
 
 const TICKETS = ['26209538', '31369591', '31369583'];
@@ -195,7 +197,7 @@ export default function DashboardScreen({navigation}: Props) {
       borderRadius: 18,
       padding: 18,
       elevation: 3,
-      shadowColor: '#000',
+      shadowColor: Colors.shadowColor,
       shadowOffset: {width: 0, height: 2},
       shadowOpacity: isDark ? 0.2 : 0.08,
       shadowRadius: 8,
@@ -216,7 +218,7 @@ export default function DashboardScreen({navigation}: Props) {
                 <Skeleton width={100} height={11} radius={5} />
               </View>
             </View>
-            <View style={{flexDirection: 'row', gap: 8}}>
+            <View style={common.rowGap8}>
               <Skeleton width={36} height={36} radius={10} />
               <Skeleton width={36} height={36} radius={10} />
               <Skeleton width={36} height={36} radius={10} />
@@ -230,7 +232,7 @@ export default function DashboardScreen({navigation}: Props) {
         </View>
         <View style={{padding: 16, gap: 14}}>
           <Skeleton width="100%" height={86} radius={18} />
-          <View style={{flexDirection: 'row', gap: 8}}>
+          <View style={common.rowGap8}>
             <Skeleton width={85} height={30} radius={15} />
             <Skeleton width={115} height={30} radius={15} />
             <Skeleton width={55} height={30} radius={15} />
@@ -399,7 +401,7 @@ export default function DashboardScreen({navigation}: Props) {
                 <View style={[styles.rowIcon, {backgroundColor: c.surface}]}>
                   <MaterialIcons name={item.icon as any} size={16} color={c.textTertiary} />
                 </View>
-                <View style={{flex: 1}}>
+                <View style={common.flex1}>
                   <Text style={[styles.rowLabel, {color: c.textMuted}]}>{t(item.labelKey)}</Text>
                   <Text style={[styles.rowValue, {color: c.textPrimary}]} numberOfLines={2}>{item.value}</Text>
                 </View>
@@ -417,7 +419,7 @@ export default function DashboardScreen({navigation}: Props) {
             </View>
             {MIX_INFO.map((item, i) => (
               <View key={item.labelKey} style={[styles.row, i < MIX_INFO.length - 1 && {borderBottomWidth: 1, borderBottomColor: c.primaryMuted}]}>
-                <View style={{flex: 1}}>
+                <View style={common.flex1}>
                   <Text style={[styles.rowLabel, {color: c.primary}]}>{t(item.labelKey)}</Text>
                   {item.isHighlight ? (
                     <View style={[styles.slumpPill, {backgroundColor: c.warningSurface, borderColor: c.warningBorder}]}>
@@ -501,7 +503,7 @@ export default function DashboardScreen({navigation}: Props) {
               <View style={[styles.ddAvatar, {backgroundColor: c.primarySurface}]}>
                 <MaterialIcons name="person" size={18} color={c.primary} />
               </View>
-              <View style={{flex: 1}}>
+              <View style={common.flex1}>
                 <Text style={[styles.ddName, {color: c.textPrimary}]}>Driver 772</Text>
                 <Text style={[styles.ddSub, {color: c.textMuted}]}>ACME Ready-Mix</Text>
               </View>
@@ -744,7 +746,7 @@ const styles = StyleSheet.create({
   barFill: {position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 4},
   dotPos: {position: 'absolute', top: -7, marginLeft: -10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center'},
   dot: {width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 2.5},
-  dotActive: {width: 24, height: 24, borderRadius: 12, borderWidth: 3, elevation: 4, shadowColor: '#458b00', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.35, shadowRadius: 5},
+  dotActive: {width: 24, height: 24, borderRadius: 12, borderWidth: 3, elevation: 4, shadowColor: Colors.primary, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.35, shadowRadius: 5},
   barLabels: {flexDirection: 'row', justifyContent: 'space-between', marginTop: 12},
   barLabelItem: {alignItems: 'center'},
   barLabelName: {fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textAlign: 'center'},
@@ -764,14 +766,14 @@ const styles = StyleSheet.create({
   syncBtn: {flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, borderWidth: 1},
 
   // Bottom bar
-  bottomBar: {flexDirection: 'row', paddingTop: 6, justifyContent: 'space-around', alignItems: 'center', elevation: 12, shadowColor: '#000', shadowOffset: {width: 0, height: -6}, shadowOpacity: 0.1, shadowRadius: 12},
+  bottomBar: {flexDirection: 'row', paddingTop: 6, justifyContent: 'space-around', alignItems: 'center', elevation: 12, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: -6}, shadowOpacity: 0.1, shadowRadius: 12},
   bottomItem: {alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 16, position: 'relative'},
   bottomActiveBar: {position: 'absolute', top: -6, width: 32, height: 4, borderRadius: 2},
   bottomIconBg: {width: 48, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 14},
 
   // Dropdown
   dropdownOverlay: {position: 'absolute', top: 0, left: 0, right: 0, bottom: 0},
-  dropdown: {position: 'absolute', width: 240, borderRadius: 16, borderWidth: 1, elevation: 12, shadowColor: '#000', shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.15, shadowRadius: 20, overflow: 'hidden'},
+  dropdown: {position: 'absolute', minWidth: 200, maxWidth: 260, borderRadius: 16, borderWidth: 1, elevation: 12, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.15, shadowRadius: 20, overflow: 'hidden'},
   ddHeader: {flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1},
   ddAvatar: {width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
   ddName: {fontSize: 14, fontWeight: '700'},

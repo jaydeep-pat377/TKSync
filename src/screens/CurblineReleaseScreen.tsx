@@ -128,7 +128,7 @@ const s = StyleSheet.create({
 
   infoSection: {paddingHorizontal: 24, paddingVertical: 20},
   infoRow: {flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 14, gap: 16},
-  infoLabel: {fontSize: 14, fontWeight: '800', width: 120},
+  infoLabel: {fontSize: 14, fontWeight: '800', minWidth: 90, maxWidth: 130},
   infoValue: {fontSize: 14, fontWeight: '500', flex: 1},
 
   divider: {height: 1, marginHorizontal: 20},

@@ -203,16 +203,16 @@ const s = StyleSheet.create({
   // Table
   tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5},
   tableHeader: {borderBottomWidth: 1.5, paddingBottom: 8},
-  colCode: {width: 80},
+  colCode: {minWidth: 60, maxWidth: 85},
   colDesc: {flex: 1},
-  colQty: {width: 55, textAlign: 'right'},
-  colUnit: {width: 45, textAlign: 'right'},
+  colQty: {minWidth: 40, maxWidth: 60, textAlign: 'right'},
+  colUnit: {minWidth: 35, maxWidth: 50, textAlign: 'right'},
   thText: {fontSize: 13, fontWeight: '800'},
   tdText: {fontSize: 13, fontWeight: '500'},
 
   // Input rows
   inputRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12},
-  inputLabel: {fontSize: 13, fontWeight: '800', width: 140},
+  inputLabel: {fontSize: 13, fontWeight: '800', minWidth: 100, maxWidth: 150},
   inputLine: {flex: 1, borderBottomWidth: 1, paddingVertical: 6, fontSize: 14},
 
   // Terms

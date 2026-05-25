@@ -16,6 +16,8 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import {Colors} from '../constants/colors';
+import {common} from '../constants/commonStyles';
 import DateTimePicker from '../components/DateTimePicker';
 
 type Props = {navigation: NativeStackNavigationProp<any>};
@@ -167,7 +169,7 @@ function LineInput({width: w, placeholder, value, onPress, editable, keyboardTyp
   const {c} = useTheme();
   const input = (
     <TextInput
-      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary, width: w || 120}]}
+      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary}, w ? {width: w} : {flex: 1, maxWidth: 160}]}
       placeholderTextColor={c.textMuted}
       placeholder={placeholder || ''}
       value={value}
@@ -308,14 +310,14 @@ function ReasonListModal({
               <MaterialIcons name="close" size={20} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
-          <ScrollView style={{maxHeight: 400}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingVertical: 8}}>
+          <ScrollView style={{maxHeight: '60%'}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingVertical: 8}}>
             {items.map(opt => (
               <TouchableOpacity
                 key={opt}
-                style={{paddingVertical: 16, alignItems: 'center'}}
+                style={common.modalOptionRow}
                 activeOpacity={0.6}
                 onPress={() => { onSelect(opt); onClose(); }}>
-                <Text style={{fontSize: 16, fontWeight: '800', color: c.textPrimary}}>{opt}</Text>
+                <Text style={[st.modalOptionText, {color: c.textPrimary}]}>{opt}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -347,26 +349,26 @@ function ProductsModal({visible, onClose}: {visible: boolean; onClose: () => voi
         <View
           style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor, maxHeight: '80%'}]}
           onStartShouldSetResponder={() => true}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding: 20}}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={st.tabBody}>
             {/* Table Header */}
-            <View style={{flexDirection: 'row', marginBottom: 12}}>
-              <Text style={{width: 80, fontSize: 13, fontWeight: '900', color: c.textPrimary}}>CODE</Text>
-              <Text style={{flex: 1, fontSize: 13, fontWeight: '900', color: c.textPrimary}}>DESCRIPTION</Text>
-              <Text style={{width: 50, fontSize: 13, fontWeight: '900', color: c.textPrimary, textAlign: 'right'}}>QTY</Text>
-              <Text style={{width: 45, fontSize: 13, fontWeight: '900', color: c.textPrimary, textAlign: 'right'}}>UNIT</Text>
+            <View style={st.tableHeader}>
+              <Text style={[st.tableCellCode, {fontWeight: '900', color: c.textPrimary}]}>CODE</Text>
+              <Text style={[st.tableCellDesc, {fontWeight: '900', color: c.textPrimary}]}>DESCRIPTION</Text>
+              <Text style={[st.tableCellQty, {fontWeight: '900', color: c.textPrimary}]}>QTY</Text>
+              <Text style={[st.tableCellUnit, {fontWeight: '900', color: c.textPrimary}]}>UNIT</Text>
             </View>
             {/* Table Rows */}
             {PRODUCTS_DATA.map(item => (
-              <View key={item.code} style={{flexDirection: 'row', paddingVertical: 8}}>
-                <Text style={{width: 80, fontSize: 13, fontWeight: '500', color: c.textPrimary}}>{item.code}</Text>
-                <Text style={{flex: 1, fontSize: 13, fontWeight: '500', color: c.textPrimary}}>{item.description}</Text>
-                <Text style={{width: 50, fontSize: 13, fontWeight: '500', color: c.textPrimary, textAlign: 'right'}}>{item.qty}</Text>
-                <Text style={{width: 45, fontSize: 13, fontWeight: '500', color: c.textPrimary, textAlign: 'right'}}>{item.unit}</Text>
+              <View key={item.code} style={common.tableRow}>
+                <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}]}>{item.code}</Text>
+                <Text style={[st.tableCellDesc, {fontWeight: '500', color: c.textPrimary}]}>{item.description}</Text>
+                <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}]}>{item.qty}</Text>
+                <Text style={[st.tableCellUnit, {fontWeight: '500', color: c.textPrimary}]}>{item.unit}</Text>
               </View>
             ))}
           </ScrollView>
-          <TouchableOpacity style={{paddingVertical: 16, alignItems: 'center', borderTopWidth: 0.5, borderTopColor: c.border}} activeOpacity={0.6} onPress={onClose}>
-            <Text style={{fontSize: 15, fontWeight: '700', color: c.primary}}>CLOSE</Text>
+          <TouchableOpacity style={[common.modalOptionRow, {borderTopWidth: 0.5, borderTopColor: c.border}]} activeOpacity={0.6} onPress={onClose}>
+            <Text style={[st.modalCloseText, {color: c.primary}]}>CLOSE</Text>
           </TouchableOpacity>
         </View>
       </Pressable>
@@ -462,7 +464,7 @@ function SlumpPickerModal({
             <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
               <MaterialIcons name="straighten" size={20} color={c.textOnPrimary} />
             </View>
-            <View style={{flex: 1}}>
+            <View style={common.flex1}>
               <Text style={[sm.headerTitle, {color: c.textPrimary}]}>Slump From Plant</Text>
               <Text style={[sm.headerSub, {color: c.textMuted}]}>Select or enter slump value (mm)</Text>
             </View>
@@ -616,14 +618,14 @@ function PlantTab() {
         <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
       </Field>
       <Field label="WATER ADDED(FULL)">
-        <View style={{flexDirection: 'row', flex: 1, gap: 12}}>
-          <View style={{flex: 1, gap: 6}}>
+        <View style={common.rowFlex1Gap12}>
+          <View style={common.flex1Gap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
             <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
           </View>
-          <View style={{flex: 1, gap: 6}}>
+          <View style={common.flex1Gap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+            <View style={common.rowCenterGap8}>
               <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
               <MoreBtn onPress={() => setReasonModalVisible(true)} />
             </View>
@@ -650,8 +652,8 @@ function PlantTab() {
       <Field label={'NITROGEN ADDED\n(IF NOT ON TICKET)'}><Check checked={nitrogenAdded} onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
       <Field label={'FIBERS ADDED\n(IF NOT ON TICKET)'}><Check checked={fibersAdded} onPress={() => setFibersAdded(!fibersAdded)} /></Field>
       <Field label="TRUCK RENTAL">
-        <View style={{flexDirection: 'row', gap: 12}}>
-          <View style={{gap: 6}}>
+        <View style={common.rowGap12}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>START</Text>
             <TimePicker
               label="Select"
@@ -659,7 +661,7 @@ function PlantTab() {
               onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
             />
           </View>
-          <View style={{gap: 6}}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>END</Text>
             <TimePicker
               label="Select"
@@ -768,21 +770,21 @@ function JobsiteTab() {
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
       <Field label="FULL LOAD">
-        <View style={{flexDirection: 'row', alignItems: 'flex-end', gap: 8}}>
-          <View style={{gap: 6}}>
+        <View style={common.rowEndGap8}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
             <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
           </View>
-          <View style={{gap: 6}}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+            <View style={common.rowCenterGap6}>
               <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
               <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
             </View>
           </View>
-          <View style={{gap: 6}}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+            <View style={common.rowCenterGap6}>
               <LineInput width={60} placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
               <MoreBtn onPress={() => setMmModalField('fullLoad')} />
             </View>
@@ -790,14 +792,14 @@ function JobsiteTab() {
         </View>
       </Field>
       <Field label="Customer Requested Water">
-        <View style={{flexDirection: 'row', alignItems: 'flex-end', gap: 8}}>
-          <View style={{gap: 6}}>
+        <View style={common.rowEndGap8}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
             <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
           </View>
-          <View style={{gap: 6}}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+            <View style={common.rowCenterGap6}>
               <LineInput width={60} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
               <MoreBtn onPress={() => setMmModalField('custWater')} />
             </View>
@@ -805,14 +807,14 @@ function JobsiteTab() {
         </View>
       </Field>
       <Field label="Maintenance Water">
-        <View style={{flexDirection: 'row', alignItems: 'flex-end', gap: 8}}>
-          <View style={{gap: 6}}>
+        <View style={common.rowEndGap8}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
             <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
           </View>
-          <View style={{gap: 6}}>
+          <View style={common.colGap6}>
             <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+            <View style={common.rowCenterGap6}>
               <LineInput width={60} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
               <MoreBtn onPress={() => setMmModalField('maintWater')} />
             </View>
@@ -867,8 +869,8 @@ function JobsiteTab() {
       />
 
       <Field label="INTERNAL JOBSITE NOTES" wide>
-        <View style={{flexDirection: 'row', gap: 8, alignItems: 'flex-start', width: '100%'}}>
-          <View style={{flex: 1}}>
+        <View style={common.rowStartFullW}>
+          <View style={common.flex1}>
             <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
           </View>
           <MoreBtn onPress={() => setJobsiteNotesModal(true)} />
@@ -1013,7 +1015,7 @@ function SelectionModal({
             <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
               <MaterialIcons name={headerIcon as any} size={20} color={c.textOnPrimary} />
             </View>
-            <View style={{flex: 1}}>
+            <View style={common.flex1}>
               <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
               <Text style={[sm.headerSub, {color: c.textMuted}]}>{subtitle}</Text>
             </View>
@@ -1090,7 +1092,7 @@ const sm = StyleSheet.create({
   headerIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
   headerTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
   headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
   scroll: {flexGrow: 0},
   scrollContent: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8},
   item: {flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
@@ -1101,7 +1103,7 @@ const sm = StyleSheet.create({
   footerBtn: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12},
   footerBtnText: {fontSize: 14, fontWeight: '700'},
   cancelBtn: {borderWidth: 1.5},
-  confirmBtn: {elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.15, shadowRadius: 4},
+  confirmBtn: {elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.15, shadowRadius: 4},
 });
 
 // ─── RETURNED TAB ───
@@ -1173,7 +1175,7 @@ function ReturnedTab() {
       {/* Disposal Method */}
       <Field label="DISPOSAL METHOD">
         <TouchableOpacity
-          style={[st.selectorBtn, {flex: 0, width: 220, backgroundColor: isDisposalValid ? c.primarySurface : c.surface, borderColor: isDisposalValid ? c.primary : c.border}]}
+          style={[st.selectorBtn, common.selectorCompact, {backgroundColor: isDisposalValid ? c.primarySurface : c.surface, borderColor: isDisposalValid ? c.primary : c.border}]}
           activeOpacity={0.6}
           onPress={() => setDisposalModal(true)}>
           {isDisposalValid && (
@@ -1191,7 +1193,7 @@ function ReturnedTab() {
       {/* Reason for Return */}
       <Field label="REASON FOR RETURN">
         <TouchableOpacity
-          style={[st.selectorBtn, {flex: 0, width: 220, backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
+          style={[st.selectorBtn, common.selectorCompact, {backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
           activeOpacity={0.6}
           onPress={() => setReasonModal(true)}>
           {isReasonValid && (
@@ -1259,7 +1261,7 @@ function TimeAdjustTab() {
           <View style={[tt.headerIconWrap, {backgroundColor: c.primarySurface}]}>
             <MaterialIcons name="schedule" size={20} color={c.primary} />
           </View>
-          <View style={{flex: 1}}>
+          <View style={common.flex1}>
             <Text style={[tt.headerTitle, {color: c.textPrimary}]}>Delivery Timeline</Text>
             <Text style={[tt.headerSub, {color: c.textMuted}]}>
               {allFilled ? 'All timestamps recorded' : `${filledCount} of ${TIME_EVENTS.length} completed`}
@@ -1305,7 +1307,7 @@ function TimeAdjustTab() {
               <View style={[tt.iconWrap, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
                 <MaterialIcons name={event.icon as any} size={16} color={hasValue ? c.primary : c.textTertiary} />
               </View>
-              <View style={{flex: 1}}>
+              <View style={common.flex1}>
                 <Text style={[tt.label, {color: c.textPrimary}]}>{event.key}</Text>
                 <Text style={[tt.value, {color: hasValue ? c.primary : c.textMuted}]}>
                   {hasValue ? formatPickerTime(selectedTimes[event.key]) : 'Not set'}
@@ -1441,8 +1443,7 @@ function CodTab() {
       {/* Payment Type Selector */}
       <Field label="PAYMENT">
         <TouchableOpacity
-          style={[cod.selectorBtn, {
-            flex: 0, width: 220,
+          style={[cod.selectorBtn, common.selectorCompact, {
             backgroundColor: paymentType ? c.primarySurface : c.white,
             borderColor: paymentType ? c.primary : c.border,
           }]}
@@ -1556,7 +1557,7 @@ function CodTab() {
               <View style={[cod.modalHeaderIcon, {backgroundColor: c.primary}]}>
                 <MaterialIcons name="payments" size={20} color={c.textOnPrimary} />
               </View>
-              <View style={{flex: 1}}>
+              <View style={common.flex1}>
                 <Text style={[cod.modalTitle, {color: c.textPrimary}]}>Payment Type</Text>
                 <Text style={[cod.modalSubtitle, {color: c.textMuted}]}>Select a payment method</Text>
               </View>
@@ -1618,7 +1619,7 @@ const cod = StyleSheet.create({
   selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: 44, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, gap: 8},
   selectorIcon: {width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
   selectorText: {fontSize: 14, fontWeight: '700', flex: 1},
-  amountWrap: {flexDirection: 'row', alignItems: 'center', width: 140, height: 44, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12},
+  amountWrap: {flexDirection: 'row', alignItems: 'center', minWidth: 120, maxWidth: 180, height: 44, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12},
   amountCurrency: {fontSize: 18, fontWeight: '800', marginRight: 4},
   amountInput: {flex: 1, fontSize: 18, fontWeight: '800', padding: 0, textAlign: 'left'},
   modalCard: {width: '88%', maxWidth: 420, borderRadius: 20, elevation: 16, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.25, shadowRadius: 20, overflow: 'hidden'},
@@ -1626,7 +1627,7 @@ const cod = StyleSheet.create({
   modalHeaderIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
   modalTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
   modalSubtitle: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  modalCloseBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  modalCloseBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
   modalBody: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16},
   modalItem: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
   modalItemIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
@@ -1683,10 +1684,10 @@ export default function NotesScreen({navigation}: Props) {
             return (
               <TouchableOpacity
                 key={tab.key}
-                style={[st.tab, active ? {backgroundColor: c.primary, borderColor: c.primary} : {backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.15)'}]}
+                style={[st.tab, active ? {backgroundColor: c.primary, borderColor: c.primary} : {backgroundColor: c.overlay06, borderColor: c.overlay15}]}
                 activeOpacity={0.7}
                 onPress={() => setActiveTab(i)}>
-                <View style={[st.tabIconWrap, {backgroundColor: active ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}]}>
+                <View style={[st.tabIconWrap, {backgroundColor: active ? c.overlay20 : c.overlay08}]}>
                   <MaterialIcons name={tab.icon as any} size={15} color={active ? c.textOnPrimary : c.textOnDark60} />
                 </View>
                 <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
@@ -1713,7 +1714,7 @@ const st = StyleSheet.create({
   // Header
   header: {paddingHorizontal: 18, paddingBottom: 14},
   headerRow: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14},
-  headerTitle: {color: '#FFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3},
+  headerTitle: {color: Colors.textOnPrimary, fontSize: 16, fontWeight: '800', letterSpacing: 0.3},
   headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
   closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center'},
 
@@ -1732,13 +1733,13 @@ const st = StyleSheet.create({
   tabBody: {padding: 20},
 
   // Save
-  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 12, elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
+  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 12, elevation: 3, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
   saveBtnText: {fontSize: 14, fontWeight: '700'},
 
   // Field
   field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: 14, gap: 10, borderBottomWidth: 0.5},
   fieldWide: {flexDirection: 'column', alignItems: 'flex-start'},
-  fieldLabel: {fontSize: 12, fontWeight: '800', width: 165, letterSpacing: 0.2},
+  fieldLabel: {fontSize: 12, fontWeight: '800', minWidth: 120, maxWidth: 170, letterSpacing: 0.2},
   fieldLabelWide: {width: '100%', marginBottom: 10},
   fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, flex: 1},
 
@@ -1757,11 +1758,11 @@ const st = StyleSheet.create({
   moreBtn: {width: 32, height: 32, borderRadius: 16, borderWidth: 1, justifyContent: 'center', alignItems: 'center'},
 
   // Highlighted input
-  hlInput: {width: 120, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 10, borderWidth: 1.5},
+  hlInput: {minWidth: 90, maxWidth: 140, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 10, borderWidth: 1.5},
   hlInputText: {fontSize: 18, fontWeight: '800'},
 
   // Gray input
-  grayInput: {width: 160, height: 40, borderRadius: 10, borderWidth: 1, justifyContent: 'center', paddingHorizontal: 12},
+  grayInput: {minWidth: 120, maxWidth: 180, height: 40, borderRadius: 10, borderWidth: 1, justifyContent: 'center', paddingHorizontal: 12},
   grayPlaceholder: {fontSize: 13, fontWeight: '500'},
 
   // Line input
@@ -1805,7 +1806,7 @@ const st = StyleSheet.create({
   // (Time adjust styles moved to tt StyleSheet)
 
   // Selection popup
-  popupOverlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'},
+  popupOverlay: {flex: 1, backgroundColor: Colors.overlayModal, justifyContent: 'center', alignItems: 'center'},
   popupCard: {width: '88%', maxWidth: 480, maxHeight: '75%', borderRadius: 16, elevation: 12, shadowOffset: {width: 0, height: 6}, shadowOpacity: 0.2, shadowRadius: 16, overflow: 'hidden'},
   popupHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1},
   popupTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
@@ -1819,7 +1820,17 @@ const st = StyleSheet.create({
   selectorText: {fontSize: 14, fontWeight: '600', flex: 1},
 
   // Numeric input
-  numericInput: {width: 120, height: 42, borderRadius: 10, borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: 12},
+  numericInput: {minWidth: 90, maxWidth: 140, height: 42, borderRadius: 10, borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: 12},
   numericInputText: {fontSize: 18, fontWeight: '800', textAlign: 'center', padding: 0},
 
+  // Modal text
+  modalOptionText: {fontSize: 16, fontWeight: '800'},
+  modalCloseText: {fontSize: 15, fontWeight: '700'},
+
+  // Table
+  tableHeader: {flexDirection: 'row', marginBottom: 12},
+  tableCellCode: {width: 80, fontSize: 13},
+  tableCellDesc: {flex: 1, fontSize: 13},
+  tableCellQty: {width: 50, fontSize: 13, textAlign: 'right'},
+  tableCellUnit: {width: 45, fontSize: 13, textAlign: 'right'},
 });
