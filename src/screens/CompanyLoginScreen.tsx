@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StatusBar,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   useWindowDimensions,
   Animated,
@@ -15,7 +16,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
-import {Colors} from '../constants/colors';
+import {useTheme} from '../contexts/ThemeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -24,6 +25,7 @@ type Props = {
 export default function CompanyLoginScreen({navigation}: Props) {
   const [companyCode, setCompanyCode] = useState('');
   const {t} = useTranslation();
+  const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const isTablet = width > 600;
@@ -53,25 +55,28 @@ export default function CompanyLoginScreen({navigation}: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, {backgroundColor: c.primaryDark}]}>
       <StatusBar
         translucent
         backgroundColor="transparent"
         barStyle="light-content"
       />
 
-      <View style={styles.bgTop} />
-      <View style={styles.bgBottom} />
+      <View style={[styles.bgTop, {backgroundColor: c.primary}]} />
+      <View style={[styles.bgBottom, {backgroundColor: c.primaryDark}]} />
 
       <KeyboardAvoidingView
         style={styles.content}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View
-          style={[
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView
+          contentContainerStyle={[
             styles.innerContent,
             {paddingTop: insets.top + 20},
             isLandscape && styles.innerContentLandscape,
-          ]}>
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}>
           {/* Branding */}
           <Animated.View
             style={[
@@ -80,20 +85,20 @@ export default function CompanyLoginScreen({navigation}: Props) {
               {opacity: fadeAnim},
             ]}>
             <View style={styles.logoContainer}>
-              <View style={[styles.logoOuter, isTablet && styles.logoOuterTablet]}>
-                <View style={[styles.logoInner, isTablet && styles.logoInnerTablet]}>
+              <View style={[styles.logoOuter, isTablet && styles.logoOuterTablet, {backgroundColor: c.overlay15, borderColor: c.overlay25}]}>
+                <View style={[styles.logoInner, isTablet && styles.logoInnerTablet, {backgroundColor: c.primaryLight, shadowColor: c.shadowColor}]}>
                   <MaterialIcons
                     name="sync"
                     size={isTablet ? 40 : 32}
-                    color={Colors.textOnPrimary}
+                    color={c.textOnPrimary}
                   />
                 </View>
               </View>
             </View>
-            <Text style={[styles.appName, isTablet && styles.appNameTablet]}>
+            <Text style={[styles.appName, isTablet && styles.appNameTablet, {color: c.textOnPrimary}]}>
               {t('app.name')}
             </Text>
-            <Text style={[styles.appTagline, isTablet && styles.appTaglineTablet]}>
+            <Text style={[styles.appTagline, isTablet && styles.appTaglineTablet, {color: c.textOnDark70}]}>
               {t('app.tagline')}
             </Text>
           </Animated.View>
@@ -108,15 +113,15 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 transform: [{translateY: slideAnim}],
               },
             ]}>
-            <View style={[styles.formCard, isTablet && styles.formCardTablet]}>
+            <View style={[styles.formCard, isTablet && styles.formCardTablet, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
               {/* Login type indicator */}
-              <View style={styles.loginTypeBadge}>
+              <View style={[styles.loginTypeBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}]}>
                 <MaterialIcons
                   name="business"
                   size={14}
-                  color={Colors.primary}
+                  color={c.primary}
                 />
-                <Text style={styles.loginTypeText}>
+                <Text style={[styles.loginTypeText, {color: c.primary}]}>
                   {t('companyLogin.badge')}
                 </Text>
               </View>
@@ -125,6 +130,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 style={[
                   styles.welcomeText,
                   isTablet && styles.welcomeTextTablet,
+                  {color: c.textPrimary},
                 ]}>
                 {t('companyLogin.title')}
               </Text>
@@ -132,6 +138,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 style={[
                   styles.welcomeSub,
                   isTablet && styles.welcomeSubTablet,
+                  {color: c.textTertiary},
                 ]}>
                 {t('companyLogin.subtitle')}
               </Text>
@@ -142,6 +149,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
                   style={[
                     styles.fieldLabel,
                     isTablet && styles.fieldLabelTablet,
+                    {color: c.textSecondary},
                   ]}>
                   {t('companyLogin.companyCode')}
                 </Text>
@@ -149,6 +157,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
                   style={[
                     styles.inputRow,
                     isTablet && styles.inputRowTablet,
+                    {backgroundColor: c.surface, borderColor: c.border},
                   ]}>
                   <View
                     style={[
@@ -158,13 +167,13 @@ export default function CompanyLoginScreen({navigation}: Props) {
                     <MaterialIcons
                       name="vpn-key"
                       size={isTablet ? 24 : 20}
-                      color={Colors.primaryLight}
+                      color={c.primaryLight}
                     />
                   </View>
                   <TextInput
-                    style={[styles.input, isTablet && styles.inputTablet]}
+                    style={[styles.input, isTablet && styles.inputTablet, {color: c.textPrimary}]}
                     placeholder={t('companyLogin.companyCodePlaceholder')}
-                    placeholderTextColor={Colors.textPlaceholder}
+                    placeholderTextColor={c.textPlaceholder}
                     value={companyCode}
                     onChangeText={setCompanyCode}
                     autoCapitalize="characters"
@@ -179,6 +188,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 style={[
                   styles.connectButton,
                   isTablet && styles.connectButtonTablet,
+                  {backgroundColor: c.primary, shadowColor: c.primary},
                 ]}
                 onPress={handleConnect}
                 activeOpacity={0.85}>
@@ -186,222 +196,76 @@ export default function CompanyLoginScreen({navigation}: Props) {
                   style={[
                     styles.connectButtonText,
                     isTablet && styles.connectButtonTextTablet,
+                    {color: c.textOnPrimary},
                   ]}>
                   {t('companyLogin.connect')}
                 </Text>
                 <MaterialIcons
                   name="arrow-forward"
                   size={isTablet ? 24 : 20}
-                  color={Colors.textOnPrimary}
+                  color={c.textOnPrimary}
                 />
               </TouchableOpacity>
 
               {/* Footer */}
               <View style={styles.footer}>
-                <View style={styles.footerDivider} />
-                <Text style={styles.footerText}>{t('app.poweredBy')}</Text>
-                <View style={styles.footerDivider} />
+                <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
+                <Text style={[styles.footerText, {color: c.textPlaceholder}]}>{t('app.poweredBy')}</Text>
+                <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
               </View>
             </View>
           </Animated.View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.primaryDark,
-  },
-  bgTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-    backgroundColor: Colors.primary,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-  },
-  bgBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
-    backgroundColor: Colors.primaryDark,
-  },
+  container: {flex: 1},
+  bgTop: {position: 'absolute', top: 0, left: 0, right: 0, height: '55%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},
+  bgBottom: {position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%'},
   content: {flex: 1},
-  innerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  innerContentLandscape: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 40,
-  },
+  innerContent: {flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 30},
+  innerContentLandscape: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40},
   brandingSection: {alignItems: 'center', marginBottom: 32},
   brandingSectionLandscape: {marginBottom: 0, flex: 1, maxWidth: 320},
   logoContainer: {marginBottom: 16},
-  logoOuter: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
-    backgroundColor: Colors.overlay15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.overlay25,
-  },
+  logoOuter: {width: 88, height: 88, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 2},
   logoOuterTablet: {width: 100, height: 100, borderRadius: 32},
-  logoInner: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
+  logoInner: {width: 64, height: 64, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
   logoInnerTablet: {width: 72, height: 72, borderRadius: 22},
-  appName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: Colors.textOnPrimary,
-    letterSpacing: 2,
-  },
+  appName: {fontSize: 32, fontWeight: '800', letterSpacing: 2},
   appNameTablet: {fontSize: 38},
-  appTagline: {
-    fontSize: 14,
-    color: Colors.textOnDark70,
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
+  appTagline: {fontSize: 14, marginTop: 4, letterSpacing: 0.5},
   appTaglineTablet: {fontSize: 17},
   formWrapper: {width: '100%', maxWidth: 480},
   formWrapperLandscape: {flex: 1, maxWidth: 460},
-  formCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 24,
-    paddingHorizontal: 28,
-    paddingVertical: 32,
-    elevation: 20,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: {width: 0, height: 10},
-    shadowOpacity: 0.15,
-    shadowRadius: 30,
-  },
+  formCard: {borderRadius: 24, paddingHorizontal: 28, paddingVertical: 32, elevation: 20, shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.15, shadowRadius: 30},
   formCardTablet: {paddingHorizontal: 36, paddingVertical: 40},
-  loginTypeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primarySurface,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    gap: 6,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-  },
-  loginTypeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 0.3,
-  },
-  welcomeText: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 4,
-  },
+  loginTypeBadge: {flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, gap: 6, marginBottom: 16, borderWidth: 1},
+  loginTypeText: {fontSize: 12, fontWeight: '700', letterSpacing: 0.3},
+  welcomeText: {fontSize: 26, fontWeight: '700', marginBottom: 4},
   welcomeTextTablet: {fontSize: 30},
-  welcomeSub: {fontSize: 14, color: Colors.textTertiary, marginBottom: 24},
+  welcomeSub: {fontSize: 14, marginBottom: 24},
   welcomeSubTablet: {fontSize: 16},
   fieldGroup: {marginBottom: 18},
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
+  fieldLabel: {fontSize: 13, fontWeight: '600', marginBottom: 8, letterSpacing: 0.3},
   fieldLabelTablet: {fontSize: 15, marginBottom: 10},
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
+  inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1.5},
   inputRowTablet: {borderRadius: 16},
-  inputIconBox: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 4,
-  },
+  inputIconBox: {width: 44, height: 44, justifyContent: 'center', alignItems: 'center', marginLeft: 4},
   inputIconBoxTablet: {width: 52, height: 52},
-  input: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: Colors.textPrimary,
-    paddingRight: 14,
-  },
+  input: {flex: 1, paddingVertical: 14, fontSize: 15, paddingRight: 14},
   inputTablet: {paddingVertical: 16, fontSize: 17},
-  connectButton: {
-    flexDirection: 'row',
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
-    elevation: 6,
-    shadowColor: Colors.primary,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
+  connectButton: {flexDirection: 'row', borderRadius: 14, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
   connectButtonTablet: {paddingVertical: 18, borderRadius: 16, marginTop: 12},
-  connectButtonText: {
-    color: Colors.textOnPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
+  connectButtonText: {fontSize: 16, fontWeight: '700', letterSpacing: 0.5},
   connectButtonTextTablet: {fontSize: 18},
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 18,
-    gap: 4,
-  },
-  switchText: {fontSize: 13, color: Colors.textMuted},
-  switchLink: {fontSize: 13, fontWeight: '700', color: Colors.primary},
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-    gap: 12,
-  },
-  footerDivider: {flex: 1, height: 1, backgroundColor: Colors.border},
-  footerText: {color: Colors.textPlaceholder, fontSize: 12, fontWeight: '500'},
+  switchRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 18, gap: 4},
+  switchText: {fontSize: 13},
+  switchLink: {fontSize: 13, fontWeight: '700'},
+  footer: {flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 12},
+  footerDivider: {flex: 1, height: 1},
+  footerText: {fontSize: 12, fontWeight: '500'},
 });

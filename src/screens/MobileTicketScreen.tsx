@@ -57,7 +57,7 @@ export default function MobileTicketScreen({navigation}: Props) {
         showsVerticalScrollIndicator={false}>
 
         {/* Ticket Card */}
-        <View style={[styles.ticketCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
+        <View style={[styles.ticketCard, {backgroundColor: c.white, shadowColor: c.shadowColor}, isTablet && {marginHorizontal: 40, maxWidth: 800, alignSelf: 'center', width: '100%'}]}>
 
           {/* Banner */}
           <View style={[styles.banner, {backgroundColor: c.bannerBg}]}>
@@ -146,26 +146,30 @@ export default function MobileTicketScreen({navigation}: Props) {
 
           {/* Charges Table */}
           <View style={[styles.section, {borderBottomColor: c.border}]}>
-            {/* Table Header */}
-            <View style={[styles.tableRow, styles.tableHeader, {borderBottomColor: c.textPrimary}]}>
-              <Text style={[styles.colCode, styles.thText, {color: c.textPrimary}]}>CODE</Text>
-              <Text style={[styles.colDesc, styles.thText, {color: c.textPrimary}]}>DESCRIPTION</Text>
-              <Text style={[styles.colQty, styles.thText, {color: c.textPrimary}]}>QTY</Text>
-              <Text style={[styles.colUnit, styles.thText, {color: c.textPrimary}]}>UNIT</Text>
-              <Text style={[styles.colPrice, styles.thText, {color: c.textPrimary}]}>PRICE</Text>
-              <Text style={[styles.colAmount, styles.thText, {color: c.textPrimary}]}>TICKET{'\n'}AMOUNT</Text>
-            </View>
-            {/* Table Body */}
-            {CHARGES.map((row, i) => (
-              <View key={`${row.code}-${i}`} style={[styles.tableRow, {borderBottomColor: c.borderLight}]}>
-                <Text style={[styles.colCode, styles.tdText, {color: c.textPrimary}]}>{row.code}</Text>
-                <Text style={[styles.colDesc, styles.tdText, {color: c.textPrimary}]}>{row.desc}</Text>
-                <Text style={[styles.colQty, styles.tdText, {color: c.textPrimary}]}>{row.qty}</Text>
-                <Text style={[styles.colUnit, styles.tdText, {color: c.textPrimary}]}>{row.unit}</Text>
-                <Text style={[styles.colPrice, styles.tdText, {color: c.textPrimary}]}>{row.price}</Text>
-                <Text style={[styles.colAmount, styles.tdText, {color: c.textPrimary}]}>{row.amount}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{minWidth: 420}}>
+                {/* Table Header */}
+                <View style={[styles.tableRow, styles.tableHeader, {borderBottomColor: c.textPrimary}]}>
+                  <Text style={[styles.colCode, styles.thText, {color: c.textPrimary}]}>CODE</Text>
+                  <Text style={[styles.colDesc, styles.thText, {color: c.textPrimary}]}>DESCRIPTION</Text>
+                  <Text style={[styles.colQty, styles.thText, {color: c.textPrimary}]}>QTY</Text>
+                  <Text style={[styles.colUnit, styles.thText, {color: c.textPrimary}]}>UNIT</Text>
+                  <Text style={[styles.colPrice, styles.thText, {color: c.textPrimary}]}>PRICE</Text>
+                  <Text style={[styles.colAmount, styles.thText, {color: c.textPrimary}]}>TICKET{'\n'}AMOUNT</Text>
+                </View>
+                {/* Table Body */}
+                {CHARGES.map((row, i) => (
+                  <View key={`${row.code}-${i}`} style={[styles.tableRow, {borderBottomColor: c.borderLight}]}>
+                    <Text style={[styles.colCode, styles.tdText, {color: c.textPrimary}]}>{row.code}</Text>
+                    <Text style={[styles.colDesc, styles.tdText, {color: c.textPrimary}]}>{row.desc}</Text>
+                    <Text style={[styles.colQty, styles.tdText, {color: c.textPrimary}]}>{row.qty}</Text>
+                    <Text style={[styles.colUnit, styles.tdText, {color: c.textPrimary}]}>{row.unit}</Text>
+                    <Text style={[styles.colPrice, styles.tdText, {color: c.textPrimary}]}>{row.price}</Text>
+                    <Text style={[styles.colAmount, styles.tdText, {color: c.textPrimary}]}>{row.amount}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            </ScrollView>
             {/* Totals */}
             <View style={styles.totalsBlock}>
               {[
@@ -235,7 +239,7 @@ const styles = StyleSheet.create({
   metaItem: {flex: 1, alignItems: 'center'},
   metaLabel: {fontSize: 12, fontWeight: '800', letterSpacing: 0.5},
   metaValue: {fontSize: 16, fontWeight: '600', marginTop: 2},
-  closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center'},
+  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center'},
   section: {paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1},
   infoRow: {flexDirection: 'row', paddingVertical: 8},
   infoLabel: {minWidth: 90, maxWidth: 130, fontSize: 13, fontWeight: '800'},

@@ -11,13 +11,14 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Orientation from 'react-native-orientation-locker';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {Colors} from '../constants/colors';
+import {useTheme} from '../contexts/ThemeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 export default function SplashScreen({navigation}: Props) {
+  const {c} = useTheme();
   const {width, height} = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isLandscape = width > height;
@@ -249,7 +250,7 @@ export default function SplashScreen({navigation}: Props) {
   const dotSize = isTablet ? 10 : 7;
 
   return (
-    <Animated.View style={[styles.container, {opacity: screenFade}]}>
+    <Animated.View style={[styles.container, {backgroundColor: c.primaryDark, opacity: screenFade}]}>
       <StatusBar
         translucent
         backgroundColor="transparent"
@@ -257,15 +258,16 @@ export default function SplashScreen({navigation}: Props) {
       />
 
       {/* Base gradient layers */}
-      <View style={styles.bgBase} />
-      <View style={styles.bgTopGradient} />
-      <View style={[styles.bgBottomGradient, {bottom: 0}]} />
+      <View style={[styles.bgBase, {backgroundColor: c.primaryDark}]} />
+      <View style={[styles.bgTopGradient, {backgroundColor: c.primary}]} />
+      <View style={[styles.bgBottomGradient, {backgroundColor: c.primaryDark, bottom: 0}]} />
 
       {/* Animated glow overlay */}
       <Animated.View
         style={[
           styles.glowOverlay,
           {
+            backgroundColor: c.primaryLight,
             opacity: bgGlow.interpolate({
               inputRange: [0, 1],
               outputRange: [0, 0.15],
@@ -293,6 +295,7 @@ export default function SplashScreen({navigation}: Props) {
                   borderRadius: size / 2,
                   marginLeft: -size / 2,
                   marginTop: -size / 2,
+                  borderColor: c.overlay12,
                   opacity: ring.opacity,
                   transform: [{scale: ring.scale}],
                 },
@@ -319,6 +322,9 @@ export default function SplashScreen({navigation}: Props) {
             style={[
               styles.logoOuter,
               {
+                backgroundColor: c.overlay12,
+                borderColor: c.overlay20,
+                shadowColor: c.shadowColor,
                 width: logoSize,
                 height: logoSize,
                 borderRadius: logoSize * 0.3,
@@ -329,6 +335,8 @@ export default function SplashScreen({navigation}: Props) {
               style={[
                 styles.logoInner,
                 {
+                  backgroundColor: c.primaryLight,
+                  shadowColor: c.primaryDark,
                   width: logoInnerSize,
                   height: logoInnerSize,
                   borderRadius: logoInnerSize * 0.28,
@@ -338,7 +346,7 @@ export default function SplashScreen({navigation}: Props) {
                 <MaterialIcons
                   name="local-shipping"
                   size={iconSize}
-                  color={Colors.textOnPrimary}
+                  color={c.textOnPrimary}
                 />
               </Animated.View>
             </View>
@@ -355,6 +363,7 @@ export default function SplashScreen({navigation}: Props) {
             style={[
               styles.appName,
               {
+                color: c.textOnPrimary,
                 fontSize: titleSize,
                 opacity: nameOpacity,
                 transform: [{translateY: nameTranslateY}],
@@ -367,6 +376,7 @@ export default function SplashScreen({navigation}: Props) {
             style={[
               styles.tagline,
               {
+                color: c.textOnDark65,
                 fontSize: taglineSize,
                 opacity: taglineOpacity,
                 transform: [{translateY: taglineTranslateY}],
@@ -380,6 +390,7 @@ export default function SplashScreen({navigation}: Props) {
             style={[
               styles.divider,
               {
+                backgroundColor: c.overlay25,
                 transform: [{scaleX: dividerWidth}],
                 opacity: dividerWidth,
               },
@@ -394,6 +405,7 @@ export default function SplashScreen({navigation}: Props) {
                 style={[
                   styles.dot,
                   {
+                    backgroundColor: c.textOnPrimary,
                     width: dotSize,
                     height: dotSize,
                     borderRadius: dotSize / 2,
@@ -412,10 +424,10 @@ export default function SplashScreen({navigation}: Props) {
             isLandscape && styles.versionContainerLandscape,
             {opacity: versionOpacity},
           ]}>
-          <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>v1.20.0</Text>
+          <View style={[styles.versionBadge, {backgroundColor: c.overlay10, borderColor: c.overlay08}]}>
+            <Text style={[styles.versionText, {color: c.textOnDark60}]}>v1.20.0</Text>
           </View>
-          <Text style={styles.copyrightText}>Powered by TKSync</Text>
+          <Text style={[styles.copyrightText, {color: c.textOnDark35}]}>Powered by TKSync</Text>
         </Animated.View>
       </View>
     </Animated.View>
@@ -423,165 +435,29 @@ export default function SplashScreen({navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.primaryDark,
-  },
-
-  // Background layers
-  bgBase: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: Colors.primaryDark,
-  },
-  bgTopGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    backgroundColor: Colors.primary,
-    borderBottomLeftRadius: 60,
-    borderBottomRightRadius: 60,
-  },
-  bgBottomGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: '45%',
-    backgroundColor: Colors.primaryDark,
-  },
-  glowOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: Colors.primaryLight,
-  },
-
-  // Rings
-  ringsContainer: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ring: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    borderWidth: 1.5,
-    borderColor: Colors.overlay12,
-    backgroundColor: 'transparent',
-  },
-
-  // Content layout
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contentLandscape: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 40,
-  },
-
-  // Logo
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  logoSectionLandscape: {
-    marginBottom: 0,
-  },
-  logoOuter: {
-    backgroundColor: Colors.overlay12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.overlay20,
-    elevation: 20,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-  },
-  logoInner: {
-    backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: Colors.primaryDark,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-  },
-
-  // Text
-  textSection: {
-    alignItems: 'center',
-  },
-  textSectionLandscape: {
-    alignItems: 'flex-start',
-  },
-  appName: {
-    fontWeight: '900',
-    color: Colors.textOnPrimary,
-    letterSpacing: 4,
-  },
-  tagline: {
-    color: Colors.textOnDark65,
-    marginTop: 6,
-    letterSpacing: 1,
-    fontWeight: '500',
-  },
-
-  // Divider
-  divider: {
-    width: 60,
-    height: 2.5,
-    backgroundColor: Colors.overlay25,
-    borderRadius: 2,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-
-  // Loading dots
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  dot: {
-    backgroundColor: Colors.textOnPrimary,
-  },
-
-  // Version
-  versionContainer: {
-    position: 'absolute',
-    bottom: 40,
-    alignItems: 'center',
-  },
-  versionContainerLandscape: {
-    bottom: 20,
-    right: 30,
-    left: undefined,
-  },
-  versionBadge: {
-    backgroundColor: Colors.overlay10,
-    paddingHorizontal: 16,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.overlay08,
-    marginBottom: 8,
-  },
-  versionText: {
-    color: Colors.textOnDark60,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  copyrightText: {
-    color: Colors.textOnDark35,
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.3,
-  },
+  container: {flex: 1},
+  bgBase: {...StyleSheet.absoluteFill},
+  bgTopGradient: {position: 'absolute', top: 0, left: 0, right: 0, height: '60%', borderBottomLeftRadius: 60, borderBottomRightRadius: 60},
+  bgBottomGradient: {position: 'absolute', left: 0, right: 0, height: '45%'},
+  glowOverlay: {...StyleSheet.absoluteFill},
+  ringsContainer: {...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center'},
+  ring: {position: 'absolute', left: '50%', top: '50%', borderWidth: 1.5, backgroundColor: 'transparent'},
+  content: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+  contentLandscape: {flexDirection: 'row', justifyContent: 'center', gap: 40},
+  logoSection: {alignItems: 'center', marginBottom: 28},
+  logoSectionLandscape: {marginBottom: 0},
+  logoOuter: {justifyContent: 'center', alignItems: 'center', borderWidth: 2, elevation: 20, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.35, shadowRadius: 16},
+  logoInner: {justifyContent: 'center', alignItems: 'center', elevation: 10, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.4, shadowRadius: 10},
+  textSection: {alignItems: 'center'},
+  textSectionLandscape: {alignItems: 'flex-start'},
+  appName: {fontWeight: '900', letterSpacing: 4},
+  tagline: {marginTop: 6, letterSpacing: 1, fontWeight: '500'},
+  divider: {width: 60, height: 2.5, borderRadius: 2, marginTop: 20, marginBottom: 20},
+  dotsRow: {flexDirection: 'row', gap: 8, alignItems: 'center'},
+  dot: {},
+  versionContainer: {position: 'absolute', bottom: 40, alignItems: 'center'},
+  versionContainerLandscape: {bottom: 20, right: 30, left: undefined},
+  versionBadge: {paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, borderWidth: 1, marginBottom: 8},
+  versionText: {fontSize: 12, fontWeight: '600', letterSpacing: 0.5},
+  copyrightText: {fontSize: 11, fontWeight: '500', letterSpacing: 0.3},
 });

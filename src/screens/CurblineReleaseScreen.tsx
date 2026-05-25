@@ -124,7 +124,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerTitle: {fontSize: 18, fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
-  closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', position: 'absolute', right: 16},
+  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', position: 'absolute', right: 12},
 
   infoSection: {paddingHorizontal: 24, paddingVertical: 20},
   infoRow: {flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 14, gap: 16},

@@ -816,7 +816,7 @@ const styles = StyleSheet.create({
   etActionLabel: {flex: 1, fontSize: 14, fontWeight: '700'},
 
   // Unified modal close button
-  mCloseBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center'},
+  mCloseBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center'},
   mCloseBtnAbsolute: {position: 'absolute', top: 12, right: 12, zIndex: 10},
   mHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1},
   mHeaderTitle: {fontSize: 20, fontWeight: '900', letterSpacing: 0.5},

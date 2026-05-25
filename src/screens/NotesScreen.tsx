@@ -300,7 +300,7 @@ function ReasonListModal({
   const items = options || REASON_OPTIONS;
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={st.popupOverlay} onPress={onClose}>
+      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={onClose}>
         <View
           style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}
           onStartShouldSetResponder={() => true}>
@@ -345,7 +345,7 @@ function ProductsModal({visible, onClose}: {visible: boolean; onClose: () => voi
   const {c} = useTheme();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={st.popupOverlay} onPress={onClose}>
+      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={onClose}>
         <View
           style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor, maxHeight: '80%'}]}
           onStartShouldSetResponder={() => true}>
@@ -449,7 +449,7 @@ function SlumpPickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={handleCancel}>
-      <Pressable style={st.popupOverlay} onPress={handleCancel}>
+      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={handleCancel}>
         <Animated.View
           style={[sm.card, {
             backgroundColor: c.white,
@@ -608,7 +608,7 @@ function PlantTab() {
   const [truckPickerField, setTruckPickerField] = useState<'start' | 'end' | null>(null);
   const [truckPickerVisible, setTruckPickerVisible] = useState(false);
   return (
-    <View style={[st.tabBody, {backgroundColor: c.primarySurface}]}>
+    <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
       <Field label="SLUMP FROM PLANT">
         <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
@@ -1000,7 +1000,7 @@ function SelectionModal({
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={handleCancel}>
-      <Pressable style={st.popupOverlay} onPress={handleCancel}>
+      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={handleCancel}>
         <Animated.View
           style={[sm.card, {
             backgroundColor: c.white,
@@ -1092,7 +1092,7 @@ const sm = StyleSheet.create({
   headerIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
   headerTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
   headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
   scroll: {flexGrow: 0},
   scrollContent: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8},
   item: {flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
@@ -1543,7 +1543,7 @@ function CodTab() {
 
       {/* Payment Type Modal */}
       <Modal visible={paymentModal} transparent animationType="none" onRequestClose={closeModal}>
-        <Pressable style={st.popupOverlay} onPress={closeModal}>
+        <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={closeModal}>
           <Animated.View
             style={[cod.modalCard, {
               backgroundColor: c.white,
@@ -1627,7 +1627,7 @@ const cod = StyleSheet.create({
   modalHeaderIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
   modalTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
   modalSubtitle: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  modalCloseBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  modalCloseBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
   modalBody: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16},
   modalItem: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
   modalItemIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
@@ -1667,7 +1667,7 @@ export default function NotesScreen({navigation}: Props) {
       <View style={[st.header, {paddingTop: insets.top + 12}]}>
         <View style={st.headerRow}>
           <View>
-            <Text style={st.headerTitle}>ORDER 2605 / TICKET 26209538</Text>
+            <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
             <Text style={[st.headerSub, {color: c.textOnDark60}]}>Delivery Notes & Records</Text>
           </View>
           <TouchableOpacity
@@ -1678,7 +1678,7 @@ export default function NotesScreen({navigation}: Props) {
           </TouchableOpacity>
         </View>
 
-        <View style={st.tabsRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.tabsRow}>
           {TABS.map((tab, i) => {
             const active = activeTab === i;
             return (
@@ -1696,7 +1696,7 @@ export default function NotesScreen({navigation}: Props) {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
 
       <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
@@ -1716,10 +1716,10 @@ const st = StyleSheet.create({
   headerRow: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14},
   headerTitle: {color: Colors.textOnPrimary, fontSize: 16, fontWeight: '800', letterSpacing: 0.3},
   headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center'},
+  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center'},
 
   // Tabs
-  tabsRow: {flexDirection: 'row', gap: 8, paddingVertical: 4},
+  tabsRow: {flexDirection: 'row', gap: 8, paddingVertical: 4, paddingRight: 8},
   tab: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1},
   tabIconWrap: {width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
   tabLabel: {fontSize: 13, fontWeight: '700', letterSpacing: 0.3},
@@ -1727,10 +1727,10 @@ const st = StyleSheet.create({
   // Content
   content: {flex: 1, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden'},
   scroll: {flex: 1},
-  scrollInner: {paddingBottom: 40},
+  scrollInner: {paddingBottom: 40, flexGrow: 1},
 
   // Tab body
-  tabBody: {padding: 20},
+  tabBody: {padding: 20, flex: 1},
 
   // Save
   saveBtn: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 12, elevation: 3, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
@@ -1739,7 +1739,7 @@ const st = StyleSheet.create({
   // Field
   field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: 14, gap: 10, borderBottomWidth: 0.5},
   fieldWide: {flexDirection: 'column', alignItems: 'flex-start'},
-  fieldLabel: {fontSize: 12, fontWeight: '800', minWidth: 120, maxWidth: 170, letterSpacing: 0.2},
+  fieldLabel: {fontSize: 12, fontWeight: '800', minWidth: 100, maxWidth: 170, letterSpacing: 0.2},
   fieldLabelWide: {width: '100%', marginBottom: 10},
   fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, flex: 1},
 
@@ -1755,7 +1755,7 @@ const st = StyleSheet.create({
   unitBadgeText: {fontSize: 12, fontWeight: '700'},
 
   // More
-  moreBtn: {width: 32, height: 32, borderRadius: 16, borderWidth: 1, justifyContent: 'center', alignItems: 'center'},
+  moreBtn: {width: 44, height: 44, borderRadius: 22, borderWidth: 1, justifyContent: 'center', alignItems: 'center'},
 
   // Highlighted input
   hlInput: {minWidth: 90, maxWidth: 140, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 10, borderWidth: 1.5},
@@ -1810,7 +1810,7 @@ const st = StyleSheet.create({
   popupCard: {width: '88%', maxWidth: 480, maxHeight: '75%', borderRadius: 16, elevation: 12, shadowOffset: {width: 0, height: 6}, shadowOpacity: 0.2, shadowRadius: 16, overflow: 'hidden'},
   popupHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1},
   popupTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
-  popupCloseBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center'},
+  popupCloseBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center'},
   popupScroll: {paddingHorizontal: 8},
   popupItem: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 14, borderBottomWidth: 0.5, borderRadius: 8, marginVertical: 2},
   popupItemText: {fontSize: 15, fontWeight: '600', flex: 1},
