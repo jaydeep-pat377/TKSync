@@ -407,105 +407,185 @@ function JobsiteTab() {
 
 // ─── DISPOSAL METHOD OPTIONS ───
 const DISPOSAL_METHODS = [
-  'RESHIPPED IN YARD',
-  'DUMPED IN YARD',
-  'DUMPED AT THIRD PARTY YARD',
-  'MADE BLOCKS',
-  'USED FOR PLANT/SHOP',
-  'RE-ROUTED TO DIFFERENT SITE',
-  'GRANULIZE',
+  {key: 'RESHIPPED IN YARD', icon: 'local-shipping'},
+  {key: 'DUMPED IN YARD', icon: 'terrain'},
+  {key: 'DUMPED AT THIRD PARTY YARD', icon: 'warehouse'},
+  {key: 'MADE BLOCKS', icon: 'view-module'},
+  {key: 'USED FOR PLANT/SHOP', icon: 'factory'},
+  {key: 'RE-ROUTED TO DIFFERENT SITE', icon: 'alt-route'},
+  {key: 'GRANULIZE', icon: 'grain'},
 ];
 
 const RETURN_REASONS = [
-  'CUSTOMER CANCELLED',
-  'OVER ORDERED',
-  'REJECTED - QUALITY',
-  'REJECTED - LATE',
-  'WEATHER',
-  'EQUIPMENT FAILURE',
-  'OTHER',
+  {key: 'REJECTED - AIR OUT OF SPEC', icon: 'air'},
+  {key: 'REJECTED - SLUMP OUT OF SPEC', icon: 'trending-down'},
+  {key: 'REJECTED - TEMPERATURE', icon: 'thermostat'},
+  {key: 'REJECTED - BALLING', icon: 'circle'},
+  {key: 'REJECTED - TIME LIMIT EXCEEDED', icon: 'timer-off'},
+  {key: 'POUR COMPLETE - NOT NEEDED', icon: 'check-circle-outline'},
+  {key: 'OTHER - DRIVER ADD NOTES', icon: 'edit-note'},
 ];
 
-// ─── SELECTION MODAL ───
+// ─── ENHANCED SELECTION MODAL ───
 function SelectionModal({
   visible,
   title,
+  subtitle,
+  headerIcon,
   options,
   selected,
-  onSelect,
+  onSave,
   onClose,
 }: {
   visible: boolean;
   title: string;
-  options: string[];
+  subtitle: string;
+  headerIcon: string;
+  options: {key: string; icon: string}[];
   selected: string;
-  onSelect: (val: string) => void;
+  onSave: (val: string) => void;
   onClose: () => void;
 }) {
   const {c} = useTheme();
+  const [tempSelected, setTempSelected] = useState(selected);
+  const modalScale = useRef(new Animated.Value(0.9)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setTempSelected(selected);
+      modalScale.setValue(0.9);
+      modalOpacity.setValue(0);
+      Animated.parallel([
+        Animated.spring(modalScale, {toValue: 1, friction: 8, tension: 80, useNativeDriver: true}),
+        Animated.timing(modalOpacity, {toValue: 1, duration: 200, useNativeDriver: true}),
+      ]).start();
+    }
+  }, [visible, selected, modalScale, modalOpacity]);
+
+  const animateClose = useCallback((cb?: () => void) => {
+    Animated.parallel([
+      Animated.timing(modalScale, {toValue: 0.9, duration: 150, useNativeDriver: true}),
+      Animated.timing(modalOpacity, {toValue: 0, duration: 150, useNativeDriver: true}),
+    ]).start(() => cb?.());
+  }, [modalScale, modalOpacity]);
+
+  const handleCancel = () => animateClose(onClose);
+  const handleSave = () => animateClose(() => {
+    onSave(tempSelected);
+    onClose();
+  });
+
+  const hasChanged = tempSelected !== selected;
+  const hasTempSelection = tempSelected.length > 0;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={st.popupOverlay} onPress={onClose}>
-        <View style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]} onStartShouldSetResponder={() => true}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleCancel}>
+      <Pressable style={st.popupOverlay} onPress={handleCancel}>
+        <Animated.View
+          style={[sm.card, {
+            backgroundColor: c.white,
+            shadowColor: c.shadowColor,
+            transform: [{scale: modalScale}],
+            opacity: modalOpacity,
+          }]}
+          onStartShouldSetResponder={() => true}>
+
           {/* Header */}
-          <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
-            <Text style={[st.popupTitle, {color: c.textPrimary}]}>{title}</Text>
-            <TouchableOpacity style={[st.popupCloseBtn, {backgroundColor: c.surface}]} onPress={onClose} activeOpacity={0.7}>
+          <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
+            <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
+              <MaterialIcons name={headerIcon as any} size={20} color={c.textOnPrimary} />
+            </View>
+            <View style={{flex: 1}}>
+              <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
+              <Text style={[sm.headerSub, {color: c.textMuted}]}>{subtitle}</Text>
+            </View>
+            <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7}>
               <MaterialIcons name="close" size={20} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Options */}
-          <ScrollView style={st.popupScroll} showsVerticalScrollIndicator={false}>
-            {options.map((opt, i) => {
-              const isSelected = opt === selected;
+          <ScrollView style={sm.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={sm.scrollContent}>
+            {options.map(opt => {
+              const isSelected = opt.key === tempSelected;
               return (
                 <TouchableOpacity
-                  key={opt}
+                  key={opt.key}
                   style={[
-                    st.popupItem,
-                    {borderBottomColor: c.borderLight},
-                    i === options.length - 1 && {borderBottomWidth: 0},
-                    isSelected && {backgroundColor: c.primarySurface},
+                    sm.item,
+                    {borderColor: 'transparent', borderWidth: 1.5},
+                    isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
                   ]}
                   activeOpacity={0.6}
-                  onPress={() => {
-                    onSelect(opt);
-                    onClose();
-                  }}>
+                  onPress={() => setTempSelected(opt.key)}>
+                  <View style={[sm.itemIcon, {backgroundColor: isSelected ? c.primary : c.surface}]}>
+                    <MaterialIcons name={opt.icon as any} size={20} color={isSelected ? c.textOnPrimary : c.textSecondary} />
+                  </View>
                   <Text style={[
-                    st.popupItemText,
+                    sm.itemText,
                     {color: c.textPrimary},
                     isSelected && {color: c.primary, fontWeight: '800'},
                   ]}>
-                    {opt}
+                    {opt.key}
                   </Text>
-                  {isSelected && <MaterialIcons name="check-circle" size={20} color={c.primary} />}
+                  {isSelected ? (
+                    <MaterialIcons name="check-circle" size={22} color={c.primary} />
+                  ) : (
+                    <View style={[sm.itemCircle, {borderColor: c.border}]} />
+                  )}
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
-        </View>
+
+          {/* Footer */}
+          <View style={[sm.footer, {borderTopColor: c.border}]}>
+            <TouchableOpacity
+              style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
+              activeOpacity={0.7}
+              onPress={handleCancel}>
+              <MaterialIcons name="close" size={16} color={c.textSecondary} />
+              <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[sm.footerBtn, sm.confirmBtn, {
+                backgroundColor: hasTempSelection ? c.primary : c.border,
+              }]}
+              activeOpacity={hasTempSelection ? 0.7 : 1}
+              disabled={!hasTempSelection}
+              onPress={handleSave}>
+              <MaterialIcons name="check" size={16} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
+              <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}]}>
+                {hasChanged ? 'Save' : 'Confirm'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
       </Pressable>
     </Modal>
   );
 }
 
-// ─── SELECTOR FIELD ───
-function SelectorField({value, placeholder, onPress}: {value: string; placeholder: string; onPress: () => void}) {
-  const {c} = useTheme();
-  return (
-    <TouchableOpacity
-      style={[st.selectorBtn, {backgroundColor: value ? c.primarySurface : c.surface, borderColor: value ? c.primary : c.border}]}
-      activeOpacity={0.6}
-      onPress={onPress}>
-      <Text style={[st.selectorText, {color: value ? c.primary : c.textMuted}]} numberOfLines={1}>
-        {value || placeholder}
-      </Text>
-      <MaterialIcons name="keyboard-arrow-down" size={20} color={c.textMuted} />
-    </TouchableOpacity>
-  );
-}
+const sm = StyleSheet.create({
+  card: {width: '90%', maxWidth: 460, maxHeight: '80%', borderRadius: 20, elevation: 16, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.25, shadowRadius: 20, overflow: 'hidden'},
+  header: {flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1},
+  headerIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
+  headerTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
+  headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
+  closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  scroll: {flexGrow: 0},
+  scrollContent: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8},
+  item: {flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
+  itemIcon: {width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  itemText: {fontSize: 14, fontWeight: '700', flex: 1, letterSpacing: 0.2},
+  itemCircle: {width: 22, height: 22, borderRadius: 11, borderWidth: 2},
+  footer: {flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1},
+  footerBtn: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12},
+  footerBtnText: {fontSize: 14, fontWeight: '700'},
+  cancelBtn: {borderWidth: 1.5},
+  confirmBtn: {elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.15, shadowRadius: 4},
+});
 
 // ─── RETURNED TAB ───
 function ReturnedTab() {
@@ -543,8 +623,8 @@ function ReturnedTab() {
   };
 
   const isConcreteValid = isValidNumber(concreteVal);
-  const isDisposalValid = DISPOSAL_METHODS.includes(disposalMethod);
-  const isReasonValid = RETURN_REASONS.includes(returnReason);
+  const isDisposalValid = DISPOSAL_METHODS.some(m => m.key === disposalMethod);
+  const isReasonValid = RETURN_REASONS.some(r => r.key === returnReason);
   const isFormValid = isConcreteValid && isDisposalValid && isReasonValid;
 
   const handleSave = () => {
@@ -579,16 +659,15 @@ function ReturnedTab() {
           style={[st.selectorBtn, {backgroundColor: isDisposalValid ? c.primarySurface : c.surface, borderColor: isDisposalValid ? c.primary : c.border}]}
           activeOpacity={0.6}
           onPress={() => setDisposalModal(true)}>
+          {isDisposalValid && (
+            <View style={[{width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
+              <MaterialIcons name={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.icon as any} size={16} color={c.textOnPrimary} />
+            </View>
+          )}
           <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}]} numberOfLines={1}>
             {disposalMethod || 'Select method'}
           </Text>
           <MaterialIcons name="keyboard-arrow-down" size={20} color={isDisposalValid ? c.primary : c.textMuted} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[st.moreBtn, {backgroundColor: c.surface, borderColor: c.border}]}
-          activeOpacity={0.5}
-          onPress={() => setDisposalModal(true)}>
-          <MaterialIcons name="more-horiz" size={16} color={c.primary} />
         </TouchableOpacity>
       </Field>
 
@@ -598,34 +677,37 @@ function ReturnedTab() {
           style={[st.selectorBtn, {backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
           activeOpacity={0.6}
           onPress={() => setReasonModal(true)}>
+          {isReasonValid && (
+            <View style={[{width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
+              <MaterialIcons name={RETURN_REASONS.find(r => r.key === returnReason)?.icon as any} size={16} color={c.textOnPrimary} />
+            </View>
+          )}
           <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}]} numberOfLines={1}>
             {returnReason || 'Select reason'}
           </Text>
           <MaterialIcons name="keyboard-arrow-down" size={20} color={isReasonValid ? c.primary : c.textMuted} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[st.moreBtn, {backgroundColor: c.surface, borderColor: c.border}]}
-          activeOpacity={0.5}
-          onPress={() => setReasonModal(true)}>
-          <MaterialIcons name="more-horiz" size={16} color={c.primary} />
         </TouchableOpacity>
       </Field>
 
       {/* Modals */}
       <SelectionModal
         visible={disposalModal}
-        title="DISPOSAL METHOD"
+        title="Disposal Method"
+        subtitle="Select a disposal method"
+        headerIcon="delete-sweep"
         options={DISPOSAL_METHODS}
         selected={disposalMethod}
-        onSelect={setDisposalMethod}
+        onSave={setDisposalMethod}
         onClose={() => setDisposalModal(false)}
       />
       <SelectionModal
         visible={reasonModal}
-        title="REASON FOR RETURN"
+        title="Reason for Return"
+        subtitle="Select a return reason"
+        headerIcon="assignment-return"
         options={RETURN_REASONS}
         selected={returnReason}
-        onSelect={setReturnReason}
+        onSave={setReturnReason}
         onClose={() => setReasonModal(false)}
       />
     </View>
@@ -762,20 +844,277 @@ const tt = StyleSheet.create({
   editBtn: {width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
 });
 
+// ─── COD PAYMENT TYPES ───
+const PAYMENT_TYPES = [
+  {key: 'prepaid_cc', label: 'PREPAID CREDIT CARD', icon: 'credit-card'},
+  {key: 'cash', label: 'CASH', icon: 'payments'},
+  {key: 'check', label: 'CHECK', icon: 'receipt-long'},
+  {key: 'other', label: 'OTHER', icon: 'more-horiz'},
+];
+
 // ─── COD TAB ───
 function CodTab() {
   const {c} = useTheme();
+  const [paymentType, setPaymentType] = useState('');
+  const [paymentModal, setPaymentModal] = useState(false);
+  const [waitTime, setWaitTime] = useState(0);
+  const [codNotes, setCodNotes] = useState('');
+  const [codAmount, setCodAmount] = useState('');
+  const [notesFocused, setNotesFocused] = useState(false);
+
+  const scaleMinus = useRef(new Animated.Value(1)).current;
+  const scalePlus = useRef(new Animated.Value(1)).current;
+  const modalScale = useRef(new Animated.Value(0.9)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
+
+  const pulse = useCallback((anim: Animated.Value) => {
+    Animated.sequence([
+      Animated.timing(anim, {toValue: 0.85, duration: 80, useNativeDriver: true}),
+      Animated.spring(anim, {toValue: 1, friction: 4, tension: 100, useNativeDriver: true}),
+    ]).start();
+  }, []);
+
+  const openModal = useCallback(() => {
+    setPaymentModal(true);
+    modalScale.setValue(0.9);
+    modalOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(modalScale, {toValue: 1, friction: 8, tension: 80, useNativeDriver: true}),
+      Animated.timing(modalOpacity, {toValue: 1, duration: 200, useNativeDriver: true}),
+    ]).start();
+  }, [modalScale, modalOpacity]);
+
+  const closeModal = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(modalScale, {toValue: 0.9, duration: 150, useNativeDriver: true}),
+      Animated.timing(modalOpacity, {toValue: 0, duration: 150, useNativeDriver: true}),
+    ]).start(() => setPaymentModal(false));
+  }, [modalScale, modalOpacity]);
+
+  const increment = () => {
+    pulse(scalePlus);
+    setWaitTime(prev => prev + 1);
+  };
+
+  const decrement = () => {
+    pulse(scaleMinus);
+    setWaitTime(prev => Math.max(0, prev - 1));
+  };
+
+  const selectedPayment = PAYMENT_TYPES.find(p => p.key === paymentType);
+
+  const handleAmountChange = (text: string) => {
+    let cleaned = text.replace(/[^0-9.]/g, '');
+    const dotIndex = cleaned.indexOf('.');
+    if (dotIndex !== -1) {
+      cleaned = cleaned.substring(0, dotIndex + 1) + cleaned.substring(dotIndex + 1).replace(/\./g, '');
+    }
+    if (cleaned.startsWith('.')) {cleaned = '0' + cleaned;}
+    const parts = cleaned.split('.');
+    if (parts[1] && parts[1].length > 2) {
+      cleaned = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    setCodAmount(cleaned);
+  };
+
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
-      <Field label="PAYMENT"><LineInput width={160} placeholder="Amount" /><MoreBtn /></Field>
-      <Field label="WAIT TIME"><Stepper value="" unit="Min" /></Field>
-      <Field label="COD NOTES" wide>
-        <NoteInput placeholder="Enter COD notes..." />
+
+      {/* Payment Type Selector */}
+      <Field label="PAYMENT">
+        <TouchableOpacity
+          style={[cod.selectorBtn, {
+            backgroundColor: paymentType ? c.primarySurface : c.white,
+            borderColor: paymentType ? c.primary : c.border,
+          }]}
+          activeOpacity={0.6}
+          onPress={openModal}>
+          {selectedPayment && (
+            <View style={[cod.selectorIcon, {backgroundColor: paymentType ? c.primary : c.surface}]}>
+              <MaterialIcons
+                name={selectedPayment.icon as any}
+                size={16}
+                color={paymentType ? c.textOnPrimary : c.textMuted}
+              />
+            </View>
+          )}
+          <Text style={[cod.selectorText, {color: paymentType ? c.primary : c.textMuted}]} numberOfLines={1}>
+            {selectedPayment?.label || 'Select Payment Type'}
+          </Text>
+          <MaterialIcons name="keyboard-arrow-down" size={20} color={paymentType ? c.primary : c.textMuted} />
+        </TouchableOpacity>
       </Field>
+
+      {/* COD Amount */}
+      <Field label="AMOUNT">
+        <View style={[cod.amountWrap, {
+          backgroundColor: codAmount ? c.primarySurface : c.white,
+          borderColor: codAmount ? c.primary : c.border,
+        }]}>
+          <Text style={[cod.amountCurrency, {color: codAmount ? c.primary : c.textMuted}]}>$</Text>
+          <TextInput
+            style={[cod.amountInput, {color: codAmount ? c.primary : c.textPrimary}]}
+            value={codAmount}
+            onChangeText={handleAmountChange}
+            keyboardType="decimal-pad"
+            maxLength={10}
+            selectTextOnFocus
+            placeholder="0.00"
+            placeholderTextColor={c.textMuted}
+          />
+        </View>
+      </Field>
+
+      {/* Wait Time Stepper */}
+      <Field label="WAIT TIME">
+        <View style={st.stepperWrap}>
+          <Animated.View style={{transform: [{scale: scaleMinus}]}}>
+            <TouchableOpacity
+              style={[st.stepBtn, st.stepBtnMinus, {
+                backgroundColor: waitTime > 0 ? c.white : c.surface,
+                borderColor: waitTime > 0 ? c.primary : c.border,
+              }]}
+              activeOpacity={0.7}
+              onPress={decrement}>
+              <MaterialIcons name="remove" size={18} color={waitTime > 0 ? c.primary : c.textMuted} />
+            </TouchableOpacity>
+          </Animated.View>
+          <View style={[st.stepVal, {
+            backgroundColor: waitTime > 0 ? c.primarySurface : c.white,
+            borderColor: waitTime > 0 ? c.primary : c.border,
+          }]}>
+            <Text style={[st.stepValText, {color: waitTime > 0 ? c.primary : c.textPrimary}]}>{waitTime}</Text>
+          </View>
+          <Animated.View style={{transform: [{scale: scalePlus}]}}>
+            <TouchableOpacity
+              style={[st.stepBtn, st.stepBtnPlus, {backgroundColor: c.primary}]}
+              activeOpacity={0.7}
+              onPress={increment}>
+              <MaterialIcons name="add" size={18} color={c.textOnPrimary} />
+            </TouchableOpacity>
+          </Animated.View>
+          <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
+            <Text style={[st.unitBadgeText, {color: c.textSecondary}]}>Min</Text>
+          </View>
+        </View>
+      </Field>
+
+      {/* COD Notes */}
+      <Field label="COD NOTES" wide>
+        <TextInput
+          style={[st.textArea, {
+            borderColor: notesFocused ? c.primary : c.border,
+            color: c.textPrimary,
+            backgroundColor: c.white,
+            borderWidth: notesFocused ? 2 : 1.5,
+            minHeight: 120,
+          }]}
+          multiline
+          numberOfLines={5}
+          value={codNotes}
+          onChangeText={setCodNotes}
+          placeholderTextColor={c.textMuted}
+          placeholder="Enter COD notes here..."
+          onFocus={() => setNotesFocused(true)}
+          onBlur={() => setNotesFocused(false)}
+          textAlignVertical="top"
+        />
+      </Field>
+
+      {/* Payment Type Modal */}
+      <Modal visible={paymentModal} transparent animationType="none" onRequestClose={closeModal}>
+        <Pressable style={st.popupOverlay} onPress={closeModal}>
+          <Animated.View
+            style={[cod.modalCard, {
+              backgroundColor: c.white,
+              shadowColor: c.shadowColor,
+              transform: [{scale: modalScale}],
+              opacity: modalOpacity,
+            }]}
+            onStartShouldSetResponder={() => true}>
+            {/* Modal Header */}
+            <View style={[cod.modalHeader, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
+              <View style={[cod.modalHeaderIcon, {backgroundColor: c.primary}]}>
+                <MaterialIcons name="payments" size={20} color={c.textOnPrimary} />
+              </View>
+              <View style={{flex: 1}}>
+                <Text style={[cod.modalTitle, {color: c.textPrimary}]}>Payment Type</Text>
+                <Text style={[cod.modalSubtitle, {color: c.textMuted}]}>Select a payment method</Text>
+              </View>
+              <TouchableOpacity style={[cod.modalCloseBtn, {backgroundColor: c.white}]} onPress={closeModal} activeOpacity={0.7}>
+                <MaterialIcons name="close" size={20} color={c.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Options */}
+            <View style={cod.modalBody}>
+              {PAYMENT_TYPES.map((opt, i) => {
+                const isSelected = opt.key === paymentType;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[
+                      cod.modalItem,
+                      {borderColor: 'transparent', borderWidth: 1.5},
+                      isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
+                    ]}
+                    activeOpacity={0.6}
+                    onPress={() => {
+                      setPaymentType(opt.key);
+                      closeModal();
+                    }}>
+                    <View style={[cod.modalItemIcon, {
+                      backgroundColor: isSelected ? c.primary : c.surface,
+                    }]}>
+                      <MaterialIcons
+                        name={opt.icon as any}
+                        size={20}
+                        color={isSelected ? c.textOnPrimary : c.textSecondary}
+                      />
+                    </View>
+                    <Text style={[
+                      cod.modalItemText,
+                      {color: c.textPrimary},
+                      isSelected && {color: c.primary, fontWeight: '800'},
+                    ]}>
+                      {opt.label}
+                    </Text>
+                    {isSelected ? (
+                      <MaterialIcons name="check-circle" size={22} color={c.primary} />
+                    ) : (
+                      <View style={[cod.modalItemCircle, {borderColor: c.border}]} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Animated.View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
+
+const cod = StyleSheet.create({
+  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: 44, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, gap: 8},
+  selectorIcon: {width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
+  selectorText: {fontSize: 14, fontWeight: '700', flex: 1},
+  amountWrap: {flexDirection: 'row', alignItems: 'center', width: 140, height: 44, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12},
+  amountCurrency: {fontSize: 18, fontWeight: '800', marginRight: 4},
+  amountInput: {flex: 1, fontSize: 18, fontWeight: '800', padding: 0, textAlign: 'left'},
+  modalCard: {width: '88%', maxWidth: 420, borderRadius: 20, elevation: 16, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.25, shadowRadius: 20, overflow: 'hidden'},
+  modalHeader: {flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1},
+  modalHeaderIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
+  modalTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
+  modalSubtitle: {fontSize: 12, fontWeight: '500', marginTop: 2},
+  modalCloseBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  modalBody: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16},
+  modalItem: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
+  modalItemIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
+  modalItemText: {fontSize: 15, fontWeight: '700', flex: 1, letterSpacing: 0.2},
+  modalItemCircle: {width: 22, height: 22, borderRadius: 11, borderWidth: 2},
+});
 
 // ─── MAIN SCREEN ───
 export default function NotesScreen({navigation}: Props) {
