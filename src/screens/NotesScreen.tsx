@@ -16,8 +16,17 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import DateTimePicker from '../components/DateTimePicker';
 
 type Props = {navigation: NativeStackNavigationProp<any>};
+
+function formatPickerTime(date: Date | undefined): string {
+  if (!date) return '';
+  const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const h = date.getHours();
+  const m = date.getMinutes();
+  return `${mons[date.getMonth()]} ${date.getDate()}, ${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
+}
 
 const TABS = [
   {key: 'plant', label: 'Plant', icon: 'factory'},
@@ -199,15 +208,26 @@ function SubHeader({labels}: {labels: string[]}) {
   );
 }
 
-function TimePicker({label}: {label?: string}) {
+function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPress?: () => void}) {
   const {c} = useTheme();
+  const hasValue = !!value;
+  const displayText = hasValue ? formatPickerTime(value) : (label || 'Select Time');
   return (
-    <TouchableOpacity style={[st.timePick, {backgroundColor: c.white, borderColor: c.border}]} activeOpacity={0.6}>
-      <View style={[st.timePickIcon, {backgroundColor: c.primarySurface}]}>
-        <MaterialIcons name="schedule" size={16} color={c.primary} />
+    <TouchableOpacity
+      style={[
+        st.timePick,
+        {
+          backgroundColor: hasValue ? c.primarySurface : c.white,
+          borderColor: hasValue ? c.primary : c.border,
+        },
+      ]}
+      activeOpacity={0.6}
+      onPress={onPress}>
+      <View style={[st.timePickIcon, {backgroundColor: hasValue ? c.primary : c.primarySurface}]}>
+        <MaterialIcons name="schedule" size={16} color={hasValue ? c.textOnPrimary : c.primary} />
       </View>
-      <Text style={[st.timePickText, {color: c.textMuted}]}>{label || 'Select Time'}</Text>
-      <MaterialIcons name="keyboard-arrow-down" size={18} color={c.textMuted} />
+      <Text style={[st.timePickText, {color: hasValue ? c.primary : c.textMuted}]}>{displayText}</Text>
+      <MaterialIcons name="keyboard-arrow-down" size={18} color={hasValue ? c.primary : c.textMuted} />
     </TouchableOpacity>
   );
 }
@@ -239,6 +259,10 @@ function NoteInput({placeholder, borderColor, bgColor, textColor}: any) {
 // ─── PLANT TAB ───
 function PlantTab() {
   const {c} = useTheme();
+  const [truckStart, setTruckStart] = useState<Date | undefined>();
+  const [truckEnd, setTruckEnd] = useState<Date | undefined>();
+  const [truckPickerField, setTruckPickerField] = useState<'start' | 'end' | null>(null);
+  const [truckPickerVisible, setTruckPickerVisible] = useState(false);
   return (
     <View style={[st.tabBody, {backgroundColor: c.primarySurface}]}>
       <SaveButton />
@@ -275,9 +299,17 @@ function PlantTab() {
       <Field label="TRUCK RENTAL" wide>
         <View style={st.fieldBody}>
           <Text style={[st.inlineLabel, {color: c.textPrimary}]}>START</Text>
-          <TimePicker label="Select" />
+          <TimePicker
+            label="Select"
+            value={truckStart}
+            onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
+          />
           <Text style={[st.inlineLabel, {color: c.textPrimary}]}>END</Text>
-          <TimePicker label="Select" />
+          <TimePicker
+            label="Select"
+            value={truckEnd}
+            onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }}
+          />
         </View>
       </Field>
       <Field label="PLANT NOTES" wide>
@@ -289,6 +321,16 @@ function PlantTab() {
           <Radio selected={false} label="No" />
         </View>
       </Field>
+      <DateTimePicker
+        visible={truckPickerVisible}
+        value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()}
+        onConfirm={(date) => {
+          if (truckPickerField === 'start') {setTruckStart(date);}
+          else if (truckPickerField === 'end') {setTruckEnd(date);}
+          setTruckPickerVisible(false);
+        }}
+        onCancel={() => setTruckPickerVisible(false)}
+      />
     </View>
   );
 }
@@ -591,29 +633,134 @@ function ReturnedTab() {
 }
 
 // ─── TIME ADJUST TAB ───
+const TIME_EVENTS = [
+  {key: 'LEAVE PLANT', icon: 'local-shipping'},
+  {key: 'ARRIVE JOB', icon: 'location-on'},
+  {key: 'START POUR', icon: 'water-drop'},
+  {key: 'WASHING', icon: 'clean-hands'},
+  {key: 'LEAVE JOB', icon: 'route'},
+  {key: 'AT PLANT', icon: 'factory'},
+];
+
 function TimeAdjustTab() {
-  const {c} = useTheme();
-  const times = [
-    ['LEAVE PLANT', 'WASHING'],
-    ['ARRIVE JOB', 'LEAVE JOB'],
-    ['START POUR', 'AT PLANT'],
-  ];
+  const {c, isDark} = useTheme();
+  const [selectedTimes, setSelectedTimes] = useState<{[key: string]: Date}>({});
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerField, setPickerField] = useState<string | null>(null);
+
+  const filledCount = TIME_EVENTS.filter(e => !!selectedTimes[e.key]).length;
+  const allFilled = filledCount === TIME_EVENTS.length;
+
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton />
-      {times.map((row, i) => (
-        <View key={i} style={st.timeRow}>
-          {row.map(label => (
-            <View key={label} style={[st.timeCard, {backgroundColor: c.white, borderColor: c.border}]}>
-              <Text style={[st.timeCardLabel, {color: c.textPrimary}]}>{label}</Text>
-              <TimePicker />
-            </View>
-          ))}
+
+      {/* Header card */}
+      <View style={[tt.headerCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
+        <View style={tt.headerTop}>
+          <View style={[tt.headerIconWrap, {backgroundColor: c.primarySurface}]}>
+            <MaterialIcons name="schedule" size={20} color={c.primary} />
+          </View>
+          <View style={{flex: 1}}>
+            <Text style={[tt.headerTitle, {color: c.textPrimary}]}>Delivery Timeline</Text>
+            <Text style={[tt.headerSub, {color: c.textMuted}]}>
+              {allFilled ? 'All timestamps recorded' : `${filledCount} of ${TIME_EVENTS.length} completed`}
+            </Text>
+          </View>
+          <View style={[tt.countPill, {backgroundColor: allFilled ? c.successSurface : c.surface, borderColor: allFilled ? c.success : c.border}]}>
+            <Text style={[tt.countText, {color: allFilled ? c.successDark : c.textMuted}]}>{filledCount}/{TIME_EVENTS.length}</Text>
+          </View>
         </View>
-      ))}
+        {/* Progress */}
+        <View style={[tt.track, {backgroundColor: c.border}]}>
+          <View style={[tt.fill, {backgroundColor: allFilled ? c.success : c.primary, width: `${(filledCount / TIME_EVENTS.length) * 100}%`}]} />
+        </View>
+      </View>
+
+      {/* Timeline list */}
+      <View style={[tt.listCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
+        {TIME_EVENTS.map((event, i) => {
+          const hasValue = !!selectedTimes[event.key];
+          const isLast = i === TIME_EVENTS.length - 1;
+          return (
+            <TouchableOpacity
+              key={event.key}
+              activeOpacity={0.6}
+              onPress={() => {
+                setPickerField(event.key);
+                setPickerVisible(true);
+              }}
+              style={[tt.row, !isLast && {borderBottomWidth: 1, borderBottomColor: c.borderLight}]}>
+
+              {/* Left: step connector */}
+              <View style={tt.stepCol}>
+                <View style={[tt.dot, {backgroundColor: hasValue ? c.primary : c.border, borderColor: hasValue ? c.primarySurface : c.surface}]}>
+                  {hasValue
+                    ? <MaterialIcons name="check" size={10} color={c.textOnPrimary} />
+                    : <Text style={[tt.dotNum, {color: c.textMuted}]}>{i + 1}</Text>
+                  }
+                </View>
+                {!isLast && <View style={[tt.line, {backgroundColor: selectedTimes[TIME_EVENTS[i + 1]?.key] || hasValue ? c.primaryMuted : c.border}]} />}
+              </View>
+
+              {/* Center: icon + label */}
+              <View style={[tt.iconWrap, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
+                <MaterialIcons name={event.icon as any} size={16} color={hasValue ? c.primary : c.textTertiary} />
+              </View>
+              <View style={{flex: 1}}>
+                <Text style={[tt.label, {color: c.textPrimary}]}>{event.key}</Text>
+                <Text style={[tt.value, {color: hasValue ? c.primary : c.textMuted}]}>
+                  {hasValue ? formatPickerTime(selectedTimes[event.key]) : 'Not set'}
+                </Text>
+              </View>
+
+              {/* Right: action */}
+              <View style={[tt.editBtn, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
+                <MaterialIcons name={hasValue ? 'edit' : 'add'} size={14} color={hasValue ? c.primary : c.textMuted} />
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Save */}
+      <SaveButton disabled={!allFilled} />
+
+      <DateTimePicker
+        visible={pickerVisible}
+        value={pickerField && selectedTimes[pickerField] ? selectedTimes[pickerField] : new Date()}
+        onConfirm={(date) => {
+          if (pickerField) {
+            setSelectedTimes(prev => ({...prev, [pickerField]: date}));
+          }
+          setPickerVisible(false);
+        }}
+        onCancel={() => setPickerVisible(false)}
+      />
     </View>
   );
 }
+
+const tt = StyleSheet.create({
+  headerCard: {borderRadius: 16, padding: 18, marginBottom: 12, elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
+  headerTop: {flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14},
+  headerIconWrap: {width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center'},
+  headerTitle: {fontSize: 17, fontWeight: '800', letterSpacing: 0.2},
+  headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
+  countPill: {paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5},
+  countText: {fontSize: 12, fontWeight: '800'},
+  track: {height: 4, borderRadius: 2, overflow: 'hidden'},
+  fill: {position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2},
+  listCard: {borderRadius: 16, overflow: 'hidden', marginBottom: 16, elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
+  row: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 12},
+  stepCol: {alignItems: 'center', width: 24},
+  dot: {width: 22, height: 22, borderRadius: 11, borderWidth: 2.5, justifyContent: 'center', alignItems: 'center', zIndex: 1},
+  dotNum: {fontSize: 10, fontWeight: '800'},
+  line: {width: 2, flex: 1, marginTop: -1, marginBottom: -14},
+  iconWrap: {width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  label: {fontSize: 13, fontWeight: '700', letterSpacing: 0.2},
+  value: {fontSize: 12, fontWeight: '600', marginTop: 2},
+  editBtn: {width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+});
 
 // ─── COD TAB ───
 function CodTab() {
@@ -795,10 +942,7 @@ const st = StyleSheet.create({
   secTitle: {flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, paddingBottom: 10, marginBottom: 8, marginTop: 12},
   secTitleText: {fontSize: 13, fontWeight: '800', letterSpacing: 0.3},
 
-  // Time adjust
-  timeRow: {flexDirection: 'row', gap: 12, marginBottom: 12},
-  timeCard: {flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, gap: 8},
-  timeCardLabel: {fontSize: 12, fontWeight: '800', letterSpacing: 0.2},
+  // (Time adjust styles moved to tt StyleSheet)
 
   // Selection popup
   popupOverlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'},

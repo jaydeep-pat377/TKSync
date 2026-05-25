@@ -18,6 +18,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../contexts/ThemeContext';
+import DateTimePicker from '../components/DateTimePicker';
 
 const TICKETS = ['26209538', '31369591', '31369583'];
 
@@ -129,6 +130,20 @@ export default function DashboardScreen({navigation}: Props) {
   const [plantsVisible, setPlantsVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [activeBottom, setActiveBottom] = useState(-1);
+  const [editTimes, setEditTimes] = useState<{[key: string]: Date}>(() => {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+    const result: {[key: string]: Date} = {};
+    TIMELINE.forEach(item => {
+      if (item.time !== '--') {
+        const [h, min] = item.time.split(':').map(Number);
+        result[item.labelKey] = new Date(y, m, d, h, min);
+      }
+    });
+    return result;
+  });
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerField, setPickerField] = useState<string | null>(null);
   const {t} = useTranslation();
   const {isDark, toggle, c} = useTheme();
   const insets = useSafeAreaInsets();
@@ -164,6 +179,14 @@ export default function DashboardScreen({navigation}: Props) {
       Animated.timing(menuScale, {toValue: 0, duration: 150, useNativeDriver: true}),
       Animated.timing(menuOpacity, {toValue: 0, duration: 150, useNativeDriver: true}),
     ]).start(() => setMenuVisible(false));
+  };
+
+  const formatEditTime = (date: Date | undefined): string => {
+    if (!date) return '--';
+    const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const h = date.getHours();
+    const m = date.getMinutes();
+    return `${mons[date.getMonth()]} ${date.getDate()}, ${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
   };
 
   const cs = {
@@ -573,30 +596,103 @@ export default function DashboardScreen({navigation}: Props) {
         </Pressable>
       </Modal>
 
-      {/* ─── EDIT ACTIONS MODAL ─── */}
+      {/* ─── EDIT TICKET MODAL ─── */}
       <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>
         <Pressable style={[styles.modalOverlay, {backgroundColor: c.overlayModal}]} onPress={() => setEditVisible(false)}>
           <View style={[styles.editModal, {backgroundColor: c.white, shadowColor: c.shadowColor}]} onStartShouldSetResponder={() => true}>
-            <TouchableOpacity style={[styles.mCloseBtn, styles.mCloseBtnAbsolute, {backgroundColor: c.surface}]} onPress={() => setEditVisible(false)} activeOpacity={0.7}>
-              <MaterialIcons name="close" size={20} color={c.textSecondary} />
-            </TouchableOpacity>
-            {['SIGN & ACCEPT TICKET', 'DISPUTE LOAD', 'SIGN CURBLINE RELEASE'].map((item, i) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.editItem}
-                activeOpacity={0.6}
-                onPress={() => {
-                  setEditVisible(false);
-                  if (item === 'SIGN & ACCEPT TICKET') {navigation.navigate('AcceptTicket');}
-                  if (item === 'DISPUTE LOAD') {navigation.navigate('DisputeTicket');}
-                  if (item === 'SIGN CURBLINE RELEASE') {navigation.navigate('CurblineRelease');}
-                }}>
-                <Text style={[styles.editItemText, {color: c.textPrimary}]}>{item}</Text>
+
+            {/* Header */}
+            <View style={[styles.etHeader, {borderBottomColor: c.border}]}>
+              <View style={[styles.etHeaderIcon, {backgroundColor: c.primarySurface}]}>
+                <MaterialIcons name="edit" size={18} color={c.primary} />
+              </View>
+              <Text style={[styles.etHeaderTitle, {color: c.textPrimary}]}>EDIT TICKET</Text>
+              <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.surface}]} onPress={() => setEditVisible(false)} activeOpacity={0.7}>
+                <MaterialIcons name="close" size={20} color={c.textSecondary} />
               </TouchableOpacity>
-            ))}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              {/* Time Section */}
+              <View style={styles.etSectionHdr}>
+                <MaterialIcons name="schedule" size={16} color={c.primary} />
+                <Text style={[styles.etSectionTitle, {color: c.primary}]}>TIME</Text>
+              </View>
+
+              {TIMELINE.map((item, i) => {
+                const time = editTimes[item.labelKey];
+                return (
+                  <TouchableOpacity
+                    key={item.labelKey}
+                    style={[
+                      styles.etTimeRow,
+                      i < TIMELINE.length - 1 && {borderBottomWidth: 1, borderBottomColor: c.borderLight},
+                    ]}
+                    activeOpacity={0.6}
+                    onPress={() => {
+                      setPickerField(item.labelKey);
+                      setPickerVisible(true);
+                    }}>
+                    <View style={[styles.etTimeIcon, {backgroundColor: item.done ? c.primarySurface : c.surface}]}>
+                      <MaterialIcons name={item.icon as any} size={16} color={item.done ? c.primary : c.textMuted} />
+                    </View>
+                    <Text style={[styles.etTimeLabel, {color: c.textPrimary}]}>{t(item.labelKey)}</Text>
+                    <Text style={[styles.etTimeValue, {color: time ? c.accent : c.textMuted}]}>
+                      {formatEditTime(time)}
+                    </Text>
+                    <MaterialIcons name="chevron-right" size={18} color={c.textMuted} />
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* Divider */}
+              <View style={[styles.etDivider, {backgroundColor: c.border}]} />
+
+              {/* Actions Section */}
+              <View style={styles.etSectionHdr}>
+                <MaterialIcons name="touch-app" size={16} color={c.accent} />
+                <Text style={[styles.etSectionTitle, {color: c.accent}]}>ACTIONS</Text>
+              </View>
+
+              {([
+                {label: 'SIGN & ACCEPT TICKET', icon: 'check-circle', screen: 'AcceptTicket', iconColor: c.success, bg: c.successSurface},
+                {label: 'DISPUTE LOAD', icon: 'report-problem', screen: 'DisputeTicket', iconColor: c.error, bg: c.errorSurface},
+                {label: 'SIGN CURBLINE RELEASE', icon: 'assignment-turned-in', screen: 'CurblineRelease', iconColor: c.warning, bg: c.warningSurface},
+              ] as const).map((item, i) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.etActionRow, i < 2 && {borderBottomWidth: 1, borderBottomColor: c.borderLight}]}
+                  activeOpacity={0.6}
+                  onPress={() => {
+                    setEditVisible(false);
+                    navigation.navigate(item.screen);
+                  }}>
+                  <View style={[styles.etActionIcon, {backgroundColor: item.bg}]}>
+                    <MaterialIcons name={item.icon as any} size={18} color={item.iconColor} />
+                  </View>
+                  <Text style={[styles.etActionLabel, {color: c.textPrimary}]}>{item.label}</Text>
+                  <MaterialIcons name="chevron-right" size={18} color={c.textMuted} />
+                </TouchableOpacity>
+              ))}
+
+              <View style={{height: 16}} />
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
+
+      {/* ─── DATE TIME PICKER ─── */}
+      <DateTimePicker
+        visible={pickerVisible}
+        value={pickerField && editTimes[pickerField] ? editTimes[pickerField] : new Date()}
+        onConfirm={(date) => {
+          if (pickerField) {
+            setEditTimes(prev => ({...prev, [pickerField]: date}));
+          }
+          setPickerVisible(false);
+        }}
+        onCancel={() => setPickerVisible(false)}
+      />
     </View>
   );
 }
@@ -703,10 +799,21 @@ const styles = StyleSheet.create({
   plantsList: {paddingHorizontal: 20},
   plantItem: {paddingVertical: 16, borderBottomWidth: 0.5, alignItems: 'center'},
   plantText: {fontSize: 17, fontWeight: '600', textAlign: 'center'},
-  // Edit actions modal
-  editModal: {width: '70%', maxWidth: 460, borderRadius: 6, elevation: 12, shadowOffset: {width: 0, height: 6}, shadowOpacity: 0.25, shadowRadius: 16, paddingTop: 30},
-  editItem: {paddingVertical: 20, alignItems: 'center'},
-  editItemText: {fontSize: 18, fontWeight: '800', letterSpacing: 0.3},
+  // Edit ticket modal
+  editModal: {width: '92%', maxWidth: 500, maxHeight: '85%', borderRadius: 20, elevation: 16, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.2, shadowRadius: 20, overflow: 'hidden'},
+  etHeader: {flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1},
+  etHeaderIcon: {width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
+  etHeaderTitle: {flex: 1, fontSize: 17, fontWeight: '800', letterSpacing: 0.5},
+  etSectionHdr: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8},
+  etSectionTitle: {fontSize: 12, fontWeight: '800', letterSpacing: 1},
+  etTimeRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 18, gap: 12},
+  etTimeIcon: {width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  etTimeLabel: {flex: 1, fontSize: 13, fontWeight: '700'},
+  etTimeValue: {fontSize: 13, fontWeight: '600'},
+  etDivider: {height: 1, marginHorizontal: 18, marginVertical: 8},
+  etActionRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 18, gap: 12},
+  etActionIcon: {width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  etActionLabel: {flex: 1, fontSize: 14, fontWeight: '700'},
 
   // Unified modal close button
   mCloseBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center'},
