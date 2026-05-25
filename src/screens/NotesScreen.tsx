@@ -869,7 +869,7 @@ const st = StyleSheet.create({
   scrollInner: {paddingBottom: 40},
 
   // Tab body
-  tabBody: {padding: 20, minHeight: 400},
+  tabBody: {padding: 20},
 
   // Save
   saveBtn: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 12, elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import Orientation from 'react-native-orientation-locker';
 import SplashScreen from '../screens/SplashScreen';
 import CompanyLoginScreen from '../screens/CompanyLoginScreen';
 import DriverLoginScreen from '../screens/DriverLoginScreen';
@@ -14,8 +15,17 @@ import CurblineReleaseScreen from '../screens/CurblineReleaseScreen';
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
+  // Auto-lock landscape on every screen except Splash
+  const onNavigationStateChange = useCallback((state: any) => {
+    if (!state) return;
+    const route = state.routes[state.index];
+    if (route.name !== 'Splash') {
+      Orientation.lockToLandscape();
+    }
+  }, []);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer onStateChange={onNavigationStateChange}>
       <Stack.Navigator
         initialRouteName="Splash"
         screenOptions={{headerShown: false, animation: 'none'}}>

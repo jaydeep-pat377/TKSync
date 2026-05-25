@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -19,6 +20,8 @@ type Props = {navigation: NativeStackNavigationProp<any>};
 export default function DisputeTicketScreen({navigation}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
+  const {height} = useWindowDimensions();
+  const sigHeight = Math.min(220, Math.max(120, height * 0.3));
   const [quantity, setQuantity] = useState('6');
   const [reason, setReason] = useState('');
   const [typeName, setTypeName] = useState('');
@@ -108,7 +111,7 @@ export default function DisputeTicketScreen({navigation}: Props) {
             </View>
 
             {/* Signature Pad */}
-            <SignaturePad onSignatureChange={handleSignatureChange} height={220} />
+            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} />
 
             {/* Dispute Button */}
             <TouchableOpacity

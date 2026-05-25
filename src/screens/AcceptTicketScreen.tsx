@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 import SignaturePad from '../components/SignaturePad';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -34,6 +35,8 @@ const TERMS_FR =
 export default function AcceptTicketScreen({navigation}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
+  const {height} = useWindowDimensions();
+  const sigHeight = Math.min(200, Math.max(120, height * 0.3));
   const [email, setEmail] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [typeName, setTypeName] = useState('');
@@ -149,7 +152,7 @@ export default function AcceptTicketScreen({navigation}: Props) {
             </View>
 
             {/* Signature Pad */}
-            <SignaturePad onSignatureChange={handleSignatureChange} height={200} />
+            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} />
 
             {/* Submit Button */}
             <TouchableOpacity

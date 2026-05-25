@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -19,6 +20,8 @@ type Props = {navigation: NativeStackNavigationProp<any>};
 export default function CurblineReleaseScreen({navigation}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
+  const {height} = useWindowDimensions();
+  const sigHeight = Math.min(220, Math.max(120, height * 0.3));
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
 
@@ -90,7 +93,7 @@ export default function CurblineReleaseScreen({navigation}: Props) {
               />
             </View>
 
-            <SignaturePad onSignatureChange={handleSignatureChange} height={220} />
+            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} />
 
             <TouchableOpacity
               style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
