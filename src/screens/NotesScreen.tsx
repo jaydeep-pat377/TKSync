@@ -38,15 +38,16 @@ const TABS = [
 
 // ─── SHARED COMPONENTS ───
 
-function Stepper({value, unit, highlight}: {value: string; unit: string; highlight?: boolean}) {
+function Stepper({value, unit, highlight, onIncrement, onDecrement, onChangeValue}: {value: string; unit: string; highlight?: boolean; onIncrement?: () => void; onDecrement?: () => void; onChangeValue?: (val: string) => void}) {
   const {c} = useTheme();
   const scaleM = useRef(new Animated.Value(1)).current;
   const scaleP = useRef(new Animated.Value(1)).current;
-  const pulse = useCallback((anim: Animated.Value) => {
+  const pulse = useCallback((anim: Animated.Value, cb?: () => void) => {
     Animated.sequence([
       Animated.timing(anim, {toValue: 0.85, duration: 80, useNativeDriver: true}),
       Animated.spring(anim, {toValue: 1, friction: 4, tension: 100, useNativeDriver: true}),
     ]).start();
+    cb?.();
   }, []);
   return (
     <View style={st.stepperWrap}>
@@ -54,18 +55,29 @@ function Stepper({value, unit, highlight}: {value: string; unit: string; highlig
         <TouchableOpacity
           style={[st.stepBtn, st.stepBtnMinus, {backgroundColor: c.surface, borderColor: c.border}]}
           activeOpacity={0.7}
-          onPress={() => pulse(scaleM)}>
+          onPress={() => pulse(scaleM, onDecrement)}>
           <MaterialIcons name="remove" size={18} color={c.textSecondary} />
         </TouchableOpacity>
       </Animated.View>
       <View style={[st.stepVal, {backgroundColor: highlight ? c.highlight : c.white, borderColor: c.border}]}>
-        <Text style={[st.stepValText, {color: c.textPrimary}]}>{value || '—'}</Text>
+        {onChangeValue ? (
+          <TextInput
+            style={[st.stepValText, {color: c.textPrimary, padding: 0, textAlign: 'center', width: '100%', height: '100%'}]}
+            value={value === '0' ? '' : value}
+            placeholder="—"
+            placeholderTextColor={c.textMuted}
+            keyboardType="number-pad"
+            onChangeText={text => onChangeValue(text.replace(/[^0-9]/g, ''))}
+          />
+        ) : (
+          <Text style={[st.stepValText, {color: c.textPrimary}]}>{value || '—'}</Text>
+        )}
       </View>
       <Animated.View style={{transform: [{scale: scaleP}]}}>
         <TouchableOpacity
           style={[st.stepBtn, st.stepBtnPlus, {backgroundColor: c.primary}]}
           activeOpacity={0.7}
-          onPress={() => pulse(scaleP)}>
+          onPress={() => pulse(scaleP, onIncrement)}>
           <MaterialIcons name="add" size={18} color={c.textOnPrimary} />
         </TouchableOpacity>
       </Animated.View>
@@ -88,16 +100,16 @@ function Field({label, children, wide}: {label: string; children: React.ReactNod
   );
 }
 
-function MoreBtn() {
+function MoreBtn({onPress}: {onPress?: () => void}) {
   const {c} = useTheme();
   return (
-    <TouchableOpacity style={[st.moreBtn, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.5}>
+    <TouchableOpacity style={[st.moreBtn, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.5} onPress={onPress}>
       <MaterialIcons name="more-horiz" size={16} color={c.primary} />
     </TouchableOpacity>
   );
 }
 
-function Check({checked, label}: {checked: boolean; label?: string}) {
+function Check({checked, label, onPress}: {checked: boolean; label?: string; onPress?: () => void}) {
   const {c} = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
   const tap = () => {
@@ -105,6 +117,7 @@ function Check({checked, label}: {checked: boolean; label?: string}) {
       Animated.timing(scale, {toValue: 0.8, duration: 60, useNativeDriver: true}),
       Animated.spring(scale, {toValue: 1, friction: 4, tension: 120, useNativeDriver: true}),
     ]).start();
+    onPress?.();
   };
   return (
     <TouchableOpacity style={st.checkTap} activeOpacity={0.7} onPress={tap}>
@@ -120,10 +133,10 @@ function Check({checked, label}: {checked: boolean; label?: string}) {
   );
 }
 
-function Radio({selected, label}: {selected: boolean; label: string}) {
+function Radio({selected, label, onPress}: {selected: boolean; label: string; onPress?: () => void}) {
   const {c} = useTheme();
   return (
-    <TouchableOpacity style={st.radioTap} activeOpacity={0.7}>
+    <TouchableOpacity style={st.radioTap} activeOpacity={0.7} onPress={onPress}>
       <View style={[st.radioCircle, {borderColor: selected ? c.primary : c.border}]}>
         {selected && <View style={[st.radioDot, {backgroundColor: c.primary}]} />}
       </View>
@@ -150,15 +163,24 @@ function GrayInput({placeholder}: {placeholder?: string}) {
   );
 }
 
-function LineInput({width: w, placeholder}: {width?: number; placeholder?: string}) {
+function LineInput({width: w, placeholder, value, onPress, editable, keyboardType, onChangeText}: {width?: number; placeholder?: string; value?: string; onPress?: () => void; editable?: boolean; keyboardType?: 'default' | 'number-pad' | 'numeric'; onChangeText?: (text: string) => void}) {
   const {c} = useTheme();
-  return (
+  const input = (
     <TextInput
       style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary, width: w || 120}]}
       placeholderTextColor={c.textMuted}
       placeholder={placeholder || ''}
+      value={value}
+      editable={editable !== false && !onPress}
+      pointerEvents={onPress ? 'none' : 'auto'}
+      keyboardType={keyboardType}
+      onChangeText={onChangeText}
     />
   );
+  if (onPress) {
+    return <TouchableOpacity activeOpacity={0.7} onPress={onPress}>{input}</TouchableOpacity>;
+  }
+  return input;
 }
 
 function SaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => void}) {
@@ -232,7 +254,7 @@ function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPr
   );
 }
 
-function NoteInput({placeholder, borderColor, bgColor, textColor}: any) {
+function NoteInput({placeholder, borderColor, bgColor, textColor, value, onChangeText}: any) {
   const {c} = useTheme();
   const [focused, setFocused] = useState(false);
   return (
@@ -250,6 +272,8 @@ function NoteInput({placeholder, borderColor, bgColor, textColor}: any) {
       numberOfLines={4}
       placeholderTextColor={c.textMuted}
       placeholder={placeholder || 'Enter notes...'}
+      value={value}
+      onChangeText={onChangeText}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
     />
@@ -257,8 +281,326 @@ function NoteInput({placeholder, borderColor, bgColor, textColor}: any) {
 }
 
 // ─── PLANT TAB ───
+const REASON_OPTIONS = ['NOT ADDED', 'EXCEEDED', 'BRING UP TO'];
+
+function ReasonListModal({
+  visible,
+  onSelect,
+  onClose,
+  options,
+}: {
+  visible: boolean;
+  onSelect: (val: string) => void;
+  onClose: () => void;
+  options?: string[];
+}) {
+  const {c} = useTheme();
+  const items = options || REASON_OPTIONS;
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={st.popupOverlay} onPress={onClose}>
+        <View
+          style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}
+          onStartShouldSetResponder={() => true}>
+          <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
+            <Text style={[st.popupTitle, {color: c.textPrimary}]}>LIST</Text>
+            <TouchableOpacity style={[st.popupCloseBtn, {backgroundColor: c.surface}]} onPress={onClose} activeOpacity={0.7}>
+              <MaterialIcons name="close" size={20} color={c.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{maxHeight: 400}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingVertical: 8}}>
+            {items.map(opt => (
+              <TouchableOpacity
+                key={opt}
+                style={{paddingVertical: 16, alignItems: 'center'}}
+                activeOpacity={0.6}
+                onPress={() => { onSelect(opt); onClose(); }}>
+                <Text style={{fontSize: 16, fontWeight: '800', color: c.textPrimary}}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const PRODUCTS_DATA = [
+  {code: '6217579', description: '45MPA NON-AIR C1/S3 HREXT HVSCM1 FF', qty: '8.60', unit: 'm3'},
+  {code: '13355', description: 'TRUEMASS', qty: '0', unit: '/m'},
+  {code: '15906', description: 'FIBERMAX FIREFIBER - 1.5KG/METER', qty: '0', unit: '/m'},
+  {code: '2590', description: 'EASYFLOW HIGH EXTENDED', qty: '0', unit: '/m'},
+  {code: '12581', description: 'TOARC FEE', qty: '8.60', unit: '/m'},
+  {code: '14301', description: 'FLEX FUEL SURCHARGE', qty: '8.60', unit: '/m'},
+  {code: '15902', description: 'INDUSTRIAL EMISSIONS CHARGE', qty: '8.60', unit: '/m'},
+  {code: '2294', description: 'AFTER HOURS CHARGE', qty: '8.60', unit: '/m'},
+  {code: '2571', description: 'ENVIRONMENTAL CHARGE - M3', qty: '8.60', unit: '/m'},
+  {code: '5843', description: 'FUEL SURCHARGE - CBM /M3', qty: '8.60', unit: '/m'},
+  {code: '9071', description: 'CHUTE WASHOUT', qty: '8.60', unit: '/m'},
+];
+
+function ProductsModal({visible, onClose}: {visible: boolean; onClose: () => void}) {
+  const {c} = useTheme();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={st.popupOverlay} onPress={onClose}>
+        <View
+          style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor, maxHeight: '80%'}]}
+          onStartShouldSetResponder={() => true}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding: 20}}>
+            {/* Table Header */}
+            <View style={{flexDirection: 'row', marginBottom: 12}}>
+              <Text style={{width: 80, fontSize: 13, fontWeight: '900', color: c.textPrimary}}>CODE</Text>
+              <Text style={{flex: 1, fontSize: 13, fontWeight: '900', color: c.textPrimary}}>DESCRIPTION</Text>
+              <Text style={{width: 50, fontSize: 13, fontWeight: '900', color: c.textPrimary, textAlign: 'right'}}>QTY</Text>
+              <Text style={{width: 45, fontSize: 13, fontWeight: '900', color: c.textPrimary, textAlign: 'right'}}>UNIT</Text>
+            </View>
+            {/* Table Rows */}
+            {PRODUCTS_DATA.map(item => (
+              <View key={item.code} style={{flexDirection: 'row', paddingVertical: 8}}>
+                <Text style={{width: 80, fontSize: 13, fontWeight: '500', color: c.textPrimary}}>{item.code}</Text>
+                <Text style={{flex: 1, fontSize: 13, fontWeight: '500', color: c.textPrimary}}>{item.description}</Text>
+                <Text style={{width: 50, fontSize: 13, fontWeight: '500', color: c.textPrimary, textAlign: 'right'}}>{item.qty}</Text>
+                <Text style={{width: 45, fontSize: 13, fontWeight: '500', color: c.textPrimary, textAlign: 'right'}}>{item.unit}</Text>
+              </View>
+            ))}
+          </ScrollView>
+          <TouchableOpacity style={{paddingVertical: 16, alignItems: 'center', borderTopWidth: 0.5, borderTopColor: c.border}} activeOpacity={0.6} onPress={onClose}>
+            <Text style={{fontSize: 15, fontWeight: '700', color: c.primary}}>CLOSE</Text>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const SLUMP_VALUES = ['120', '130', '140', '150', '160', '170', '180', '190', '200', '210', '220', '230'];
+
+function SlumpPickerModal({
+  visible,
+  value,
+  onConfirm,
+  onClose,
+}: {
+  visible: boolean;
+  value: string;
+  onConfirm: (val: string) => void;
+  onClose: () => void;
+}) {
+  const {c} = useTheme();
+  const [tempSelected, setTempSelected] = useState(value);
+  const [customMode, setCustomMode] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+  const modalScale = useRef(new Animated.Value(0.9)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
+  const customInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (visible) {
+      const isPreset = SLUMP_VALUES.includes(value);
+      setTempSelected(value);
+      setCustomMode(!isPreset && value.length > 0);
+      setCustomValue(!isPreset && value.length > 0 ? value : '');
+      modalScale.setValue(0.9);
+      modalOpacity.setValue(0);
+      Animated.parallel([
+        Animated.spring(modalScale, {toValue: 1, friction: 8, tension: 80, useNativeDriver: true}),
+        Animated.timing(modalOpacity, {toValue: 1, duration: 200, useNativeDriver: true}),
+      ]).start();
+    }
+  }, [visible, value, modalScale, modalOpacity]);
+
+  const animateClose = useCallback((cb?: () => void) => {
+    Animated.parallel([
+      Animated.timing(modalScale, {toValue: 0.9, duration: 150, useNativeDriver: true}),
+      Animated.timing(modalOpacity, {toValue: 0, duration: 150, useNativeDriver: true}),
+    ]).start(() => cb?.());
+  }, [modalScale, modalOpacity]);
+
+  const handleCancel = () => animateClose(onClose);
+  const handleConfirm = () => {
+    const finalValue = customMode ? customValue.trim() : tempSelected;
+    if (finalValue.length > 0) {
+      animateClose(() => onConfirm(finalValue));
+    }
+  };
+
+  const handlePresetSelect = (val: string) => {
+    setTempSelected(val);
+    setCustomMode(false);
+    setCustomValue('');
+  };
+
+  const handleCustomToggle = () => {
+    setCustomMode(true);
+    setTempSelected('');
+    setTimeout(() => customInputRef.current?.focus(), 100);
+  };
+
+  const handleCustomChange = (text: string) => {
+    const numeric = text.replace(/[^0-9]/g, '');
+    setCustomValue(numeric);
+  };
+
+  const activeValue = customMode ? customValue.trim() : tempSelected;
+  const canConfirm = activeValue.length > 0;
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleCancel}>
+      <Pressable style={st.popupOverlay} onPress={handleCancel}>
+        <Animated.View
+          style={[sm.card, {
+            backgroundColor: c.white,
+            shadowColor: c.shadowColor,
+            transform: [{scale: modalScale}],
+            opacity: modalOpacity,
+          }]}
+          onStartShouldSetResponder={() => true}>
+
+          {/* Header */}
+          <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
+            <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
+              <MaterialIcons name="straighten" size={20} color={c.textOnPrimary} />
+            </View>
+            <View style={{flex: 1}}>
+              <Text style={[sm.headerTitle, {color: c.textPrimary}]}>Slump From Plant</Text>
+              <Text style={[sm.headerSub, {color: c.textMuted}]}>Select or enter slump value (mm)</Text>
+            </View>
+            <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7}>
+              <MaterialIcons name="close" size={20} color={c.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Preset Grid */}
+          <ScrollView style={sm.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={slumpSt.gridWrap}>
+            <View style={slumpSt.grid}>
+              {SLUMP_VALUES.map(val => {
+                const isSelected = !customMode && tempSelected === val;
+                return (
+                  <TouchableOpacity
+                    key={val}
+                    style={[
+                      slumpSt.gridItem,
+                      {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1.5},
+                      isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
+                    ]}
+                    activeOpacity={0.6}
+                    onPress={() => handlePresetSelect(val)}>
+                    <Text style={[
+                      slumpSt.gridItemText,
+                      {color: c.textPrimary},
+                      isSelected && {color: c.primary, fontWeight: '900'},
+                    ]}>
+                      {val}
+                    </Text>
+                    {isSelected && (
+                      <View style={slumpSt.gridCheck}>
+                        <MaterialIcons name="check-circle" size={18} color={c.primary} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Custom Input Section */}
+            <View style={slumpSt.customSection}>
+              <TouchableOpacity
+                style={[
+                  slumpSt.customToggle,
+                  {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1.5},
+                  customMode && {backgroundColor: c.primarySurface, borderColor: c.primary},
+                ]}
+                activeOpacity={0.6}
+                onPress={handleCustomToggle}>
+                <View style={[slumpSt.customIcon, {backgroundColor: customMode ? c.primary : c.border}]}>
+                  <MaterialIcons name="edit" size={16} color={customMode ? c.textOnPrimary : c.textSecondary} />
+                </View>
+                <Text style={[slumpSt.customLabel, {color: customMode ? c.primary : c.textSecondary}]}>
+                  Custom Value
+                </Text>
+              </TouchableOpacity>
+              {customMode && (
+                <View style={[slumpSt.customInputWrap, {backgroundColor: c.white, borderColor: c.primary}]}>
+                  <TextInput
+                    ref={customInputRef}
+                    style={[slumpSt.customInput, {color: c.textPrimary}]}
+                    value={customValue}
+                    onChangeText={handleCustomChange}
+                    placeholder="Enter value"
+                    placeholderTextColor={c.textMuted}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    autoFocus
+                  />
+                  <Text style={[slumpSt.customUnit, {color: c.textSecondary}]}>mm</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+
+          {/* Footer */}
+          <View style={[sm.footer, {borderTopColor: c.border}]}>
+            <TouchableOpacity
+              style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
+              activeOpacity={0.7}
+              onPress={handleCancel}>
+              <MaterialIcons name="close" size={16} color={c.textSecondary} />
+              <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[sm.footerBtn, sm.confirmBtn, {
+                backgroundColor: canConfirm ? c.primary : c.border,
+              }]}
+              activeOpacity={canConfirm ? 0.7 : 1}
+              disabled={!canConfirm}
+              onPress={handleConfirm}>
+              <MaterialIcons name="check" size={16} color={canConfirm ? c.textOnPrimary : c.textMuted} />
+              <Text style={[sm.footerBtnText, {color: canConfirm ? c.textOnPrimary : c.textMuted}]}>
+                Confirm
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const slumpSt = StyleSheet.create({
+  gridWrap: {paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8},
+  grid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
+  gridItem: {width: '22%', flexGrow: 1, minWidth: 70, maxWidth: 110, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', position: 'relative'},
+  gridItemText: {fontSize: 16, fontWeight: '700'},
+  gridCheck: {position: 'absolute', top: 4, right: 4},
+  customSection: {marginTop: 14, gap: 10},
+  customToggle: {flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, gap: 10},
+  customIcon: {width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
+  customLabel: {fontSize: 14, fontWeight: '700'},
+  customInputWrap: {flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, height: 48},
+  customInput: {flex: 1, fontSize: 18, fontWeight: '700', padding: 0},
+  customUnit: {fontSize: 14, fontWeight: '600', marginLeft: 8},
+});
+
 function PlantTab() {
   const {c} = useTheme();
+  const [slumpFromPlant, setSlumpFromPlant] = useState('20');
+  const [slumpPickerVisible, setSlumpPickerVisible] = useState(false);
+  const [slumpToJob, setSlumpToJob] = useState('140');
+  const [slumpToJobPickerVisible, setSlumpToJobPickerVisible] = useState(false);
+  const [waterLitres, setWaterLitres] = useState(0);
+  const [waterReason, setWaterReason] = useState('');
+  const [reasonModalVisible, setReasonModalVisible] = useState(false);
+  const [productsModalVisible, setProductsModalVisible] = useState(false);
+  const [handAdded, setHandAdded] = useState(false);
+  const [nitrogenAdded, setNitrogenAdded] = useState(false);
+  const [fibersAdded, setFibersAdded] = useState(false);
+  const [loadTested, setLoadTested] = useState<'yes' | 'no' | null>(null);
+  const [loadTemp, setLoadTemp] = useState(0);
+  const [loadAir, setLoadAir] = useState(0);
+  const [loadSlump, setLoadSlump] = useState('');
+  const [loadSlumpPickerVisible, setLoadSlumpPickerVisible] = useState(false);
+  const [loadCylinders, setLoadCylinders] = useState(0);
   const [truckStart, setTruckStart] = useState<Date | undefined>();
   const [truckEnd, setTruckEnd] = useState<Date | undefined>();
   const [truckPickerField, setTruckPickerField] = useState<'start' | 'end' | null>(null);
@@ -267,49 +609,64 @@ function PlantTab() {
     <View style={[st.tabBody, {backgroundColor: c.primarySurface}]}>
       <SaveButton />
       <Field label="SLUMP FROM PLANT">
-        <YellowInput value="20" />
+        <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
+          <YellowInput value={slumpFromPlant} />
+        </TouchableOpacity>
         <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-        <MoreBtn />
+        <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
       </Field>
-      <Field label="WATER ADDED (FULL)" wide>
-        <SubHeader labels={['Litres', 'Reason']} />
-        <View style={st.fieldBody}>
-          <Stepper value="" unit="" />
-          <LineInput placeholder="Reason" />
-          <MoreBtn />
+      <Field label="WATER ADDED(FULL)">
+        <View style={{flexDirection: 'row', flex: 1, gap: 12}}>
+          <View style={{flex: 1, gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
+            <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
+          </View>
+          <View style={{flex: 1, gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+              <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
+              <MoreBtn onPress={() => setReasonModalVisible(true)} />
+            </View>
+          </View>
         </View>
       </Field>
       <Field label="SLUMP TO JOB">
-        <YellowInput value="140" />
+        <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
+          <YellowInput value={slumpToJob} />
+        </TouchableOpacity>
         <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-        <MoreBtn />
+        <MoreBtn onPress={() => setSlumpToJobPickerVisible(true)} />
       </Field>
       <Field label="TEMP AT PLANT">
-        <LineInput width={140} placeholder="Temperature" />
+        <LineInput width={140} placeholder="Temperature" keyboardType="numeric" />
         <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
       </Field>
       <Field label="ADD HAND-ADDED ITEMS?">
-        <Check checked={false} />
-        <TouchableOpacity activeOpacity={0.6}>
+        <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
+        <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
           <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
         </TouchableOpacity>
       </Field>
-      <Field label={'NITROGEN ADDED\n(IF NOT ON TICKET)'}><Check checked={false} /></Field>
-      <Field label={'FIBERS ADDED\n(IF NOT ON TICKET)'}><Check checked={false} /></Field>
-      <Field label="TRUCK RENTAL" wide>
-        <View style={st.fieldBody}>
-          <Text style={[st.inlineLabel, {color: c.textPrimary}]}>START</Text>
-          <TimePicker
-            label="Select"
-            value={truckStart}
-            onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
-          />
-          <Text style={[st.inlineLabel, {color: c.textPrimary}]}>END</Text>
-          <TimePicker
-            label="Select"
-            value={truckEnd}
-            onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }}
-          />
+      <Field label={'NITROGEN ADDED\n(IF NOT ON TICKET)'}><Check checked={nitrogenAdded} onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
+      <Field label={'FIBERS ADDED\n(IF NOT ON TICKET)'}><Check checked={fibersAdded} onPress={() => setFibersAdded(!fibersAdded)} /></Field>
+      <Field label="TRUCK RENTAL">
+        <View style={{flexDirection: 'row', gap: 12}}>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>START</Text>
+            <TimePicker
+              label="Select"
+              value={truckStart}
+              onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
+            />
+          </View>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>END</Text>
+            <TimePicker
+              label="Select"
+              value={truckEnd}
+              onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }}
+            />
+          </View>
         </View>
       </Field>
       <Field label="PLANT NOTES" wide>
@@ -317,10 +674,55 @@ function PlantTab() {
       </Field>
       <Field label="LOAD TESTED">
         <View style={st.radioRow}>
-          <Radio selected={false} label="Yes" />
-          <Radio selected={false} label="No" />
+          <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => setLoadTested('yes')} />
+          <Radio selected={loadTested === 'no'} label="No" onPress={() => setLoadTested('no')} />
         </View>
       </Field>
+      {loadTested === 'yes' && (
+        <>
+          <Field label="TEMP AT PLANT">
+            <Stepper value={String(loadTemp)} unit="C" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
+          </Field>
+          <Field label="AIR">
+            <Stepper value={String(loadAir)} unit="%" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
+          </Field>
+          <Field label="SLUMP">
+            <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
+            <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+            <MoreBtn onPress={() => setLoadSlumpPickerVisible(true)} />
+          </Field>
+          <Field label="CYLINDERS">
+            <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
+          </Field>
+        </>
+      )}
+      <SlumpPickerModal
+        visible={slumpPickerVisible}
+        value={slumpFromPlant}
+        onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }}
+        onClose={() => setSlumpPickerVisible(false)}
+      />
+      <SlumpPickerModal
+        visible={loadSlumpPickerVisible}
+        value={loadSlump}
+        onConfirm={(val) => { setLoadSlump(val); setLoadSlumpPickerVisible(false); }}
+        onClose={() => setLoadSlumpPickerVisible(false)}
+      />
+      <SlumpPickerModal
+        visible={slumpToJobPickerVisible}
+        value={slumpToJob}
+        onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }}
+        onClose={() => setSlumpToJobPickerVisible(false)}
+      />
+      <ReasonListModal
+        visible={reasonModalVisible}
+        onSelect={setWaterReason}
+        onClose={() => setReasonModalVisible(false)}
+      />
+      <ProductsModal
+        visible={productsModalVisible}
+        onClose={() => setProductsModalVisible(false)}
+      />
       <DateTimePicker
         visible={truckPickerVisible}
         value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()}
@@ -338,69 +740,184 @@ function PlantTab() {
 // ─── JOBSITE TAB ───
 function JobsiteTab() {
   const {c} = useTheme();
+  const [fullLoadLitres, setFullLoadLitres] = useState(0);
+  const [fullLoadReason, setFullLoadReason] = useState('');
+  const [fullLoadReasonModal, setFullLoadReasonModal] = useState(false);
+  const [fullLoadMm, setFullLoadMm] = useState('');
+  const [custWaterLitres, setCustWaterLitres] = useState(0);
+  const [custWaterMm, setCustWaterMm] = useState('');
+  const [maintWaterLitres, setMaintWaterLitres] = useState(0);
+  const [maintWaterMm, setMaintWaterMm] = useState('');
+  const [mmModalField, setMmModalField] = useState<'fullLoad' | 'custWater' | 'maintWater' | null>(null);
+  const [addedValues, setAddedValues] = useState<Record<string, string>>({});
+  const [addedModalItem, setAddedModalItem] = useState<string | null>(null);
+  const [washoutArea, setWashoutArea] = useState('');
+  const [washoutModalVisible, setWashoutModalVisible] = useState(false);
+  const [jobsiteNotes, setJobsiteNotes] = useState('');
+  const [jobsiteNotesModal, setJobsiteNotesModal] = useState(false);
+  const [conveyorOrdered, setConveyorOrdered] = useState(false);
+  const [unloadedConveyor, setUnloadedConveyor] = useState(false);
+  const [loadDisputed, setLoadDisputed] = useState(false);
+  const [jobLoadTested, setJobLoadTested] = useState<'yes' | 'no' | null>(null);
+  const [jobLoadTemp, setJobLoadTemp] = useState(0);
+  const [jobLoadAir, setJobLoadAir] = useState(0);
+  const [jobLoadSlump, setJobLoadSlump] = useState('');
+  const [jobLoadSlumpPickerVisible, setJobLoadSlumpPickerVisible] = useState(false);
+  const [jobLoadCylinders, setJobLoadCylinders] = useState(0);
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
-      <Field label="FULL LOAD" wide>
-        <SubHeader labels={['Litres', 'Reason', 'mm']} />
-        <View style={st.fieldBody}>
-          <Stepper value="" unit="" highlight />
-          <LineInput placeholder="Reason" />
-          <MoreBtn />
-          <LineInput width={60} placeholder="mm" />
-          <MoreBtn />
+      <Field label="FULL LOAD">
+        <View style={{flexDirection: 'row', alignItems: 'flex-end', gap: 8}}>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
+            <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
+          </View>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+              <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
+              <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
+            </View>
+          </View>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+              <LineInput width={60} placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
+              <MoreBtn onPress={() => setMmModalField('fullLoad')} />
+            </View>
+          </View>
         </View>
       </Field>
-      <Field label="Customer Requested Water" wide>
-        <SubHeader labels={['Litres', 'mm']} />
-        <View style={st.fieldBody}>
-          <Stepper value="" unit="" />
-          <LineInput width={60} placeholder="mm" />
-          <MoreBtn />
+      <Field label="Customer Requested Water">
+        <View style={{flexDirection: 'row', alignItems: 'flex-end', gap: 8}}>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
+            <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
+          </View>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+              <LineInput width={60} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
+              <MoreBtn onPress={() => setMmModalField('custWater')} />
+            </View>
+          </View>
         </View>
       </Field>
       <Field label="Maintenance Water">
-        <Stepper value="" unit="" />
-        <LineInput width={60} placeholder="mm" />
-        <MoreBtn />
+        <View style={{flexDirection: 'row', alignItems: 'flex-end', gap: 8}}>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
+            <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
+          </View>
+          <View style={{gap: 6}}>
+            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+              <LineInput width={60} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
+              <MoreBtn onPress={() => setMmModalField('maintWater')} />
+            </View>
+          </View>
+        </View>
       </Field>
+      <ReasonListModal
+        visible={fullLoadReasonModal}
+        onSelect={setFullLoadReason}
+        onClose={() => setFullLoadReasonModal(false)}
+      />
+      <SlumpPickerModal
+        visible={mmModalField !== null}
+        value={(mmModalField === 'fullLoad' ? fullLoadMm : mmModalField === 'custWater' ? custWaterMm : maintWaterMm) || ''}
+        onConfirm={(val) => {
+          if (mmModalField === 'fullLoad') setFullLoadMm(val);
+          else if (mmModalField === 'custWater') setCustWaterMm(val);
+          else if (mmModalField === 'maintWater') setMaintWaterMm(val);
+          setMmModalField(null);
+        }}
+        onClose={() => setMmModalField(null)}
+      />
 
       <SectionTitle title="ADDED, NOT ORDERED" icon="playlist-add" />
 
       {['SUPER PLASTICIZER', 'CONVEYOR (IF NOT ON TICKET)', 'COLOR', 'FIBER', 'Other'].map(item => (
         <Field key={item} label={item}>
-          <LineInput width={160} placeholder="Value" />
-          {item !== 'Other' && <MoreBtn />}
+          <LineInput width={160} placeholder="Value" value={addedValues[item] || ''} onPress={item !== 'Other' ? () => setAddedModalItem(item) : undefined} onChangeText={item === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item]: text})) : undefined} />
+          {item !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item)} />}
         </Field>
       ))}
+      <ReasonListModal
+        visible={addedModalItem !== null}
+        options={['NOT ADDED', 'CUSTOMER', 'DRIVER']}
+        onSelect={(val) => { if (addedModalItem) setAddedValues(prev => ({...prev, [addedModalItem]: val})); }}
+        onClose={() => setAddedModalItem(null)}
+      />
 
-      <Field label="CONVEYOR ORDERED NOT USED"><Check checked={false} /></Field>
-      <Field label="UNLOADED OVER CONVEYOR"><Check checked={false} /></Field>
-      <Field label="LOAD DISPUTED"><Check checked={false} /></Field>
+      <Field label="CONVEYOR ORDERED NOT USED"><Check checked={conveyorOrdered} onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
+      <Field label="UNLOADED OVER CONVEYOR"><Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} /></Field>
+      <Field label="LOAD DISPUTED"><Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} /></Field>
 
       <Field label="WASHOUT AREA">
-        <LineInput width={160} placeholder="Area" />
-        <MoreBtn />
+        <LineInput width={160} placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
+        <MoreBtn onPress={() => setWashoutModalVisible(true)} />
       </Field>
+      <ReasonListModal
+        visible={washoutModalVisible}
+        options={['WHEELBARROW', 'DUMPSTER', 'BEHIND CURB LINE', 'STONE PILE ON JOB SITE', 'TRUCK MOUNTED WASHOUT', 'PUMP', 'OTHER']}
+        onSelect={setWashoutArea}
+        onClose={() => setWashoutModalVisible(false)}
+      />
 
       <Field label="INTERNAL JOBSITE NOTES" wide>
         <View style={{flexDirection: 'row', gap: 8, alignItems: 'flex-start', width: '100%'}}>
-          <NoteInput placeholder="Enter jobsite notes..." />
-          <MoreBtn />
+          <View style={{flex: 1}}>
+            <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
+          </View>
+          <MoreBtn onPress={() => setJobsiteNotesModal(true)} />
         </View>
       </Field>
+      <ReasonListModal
+        visible={jobsiteNotesModal}
+        options={[
+          'Uneven Subgrade', 'Wet/Hot/Frozen Subgrade', 'Old Concrete > 2 Hours',
+          'Blessed Surface', 'Surface Rained-on', 'No Curing of Concrete',
+          'Incorrect Amount of Cust. Added Product', 'Not Sampling Between 10 & 90% of Load',
+          'Minimum Sample Size Not 1ft/3 Buckets', 'Slump Test Incorrect',
+          'Air Test Incorrect', 'Cylinder Making Incorrect',
+          'Cylinder Storage Incorrect', 'No Comment',
+        ]}
+        onSelect={(val) => setJobsiteNotes(prev => prev ? prev + '\n' + val : val)}
+        onClose={() => setJobsiteNotesModal(false)}
+      />
 
       <Field label="LOAD TESTED">
         <View style={st.radioRow}>
-          <Radio selected={true} label="Yes" />
-          <Radio selected={false} label="No" />
+          <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => setJobLoadTested('yes')} />
+          <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => setJobLoadTested('no')} />
         </View>
       </Field>
-
-      <Field label="TEMP"><Stepper value="20" unit="°C" /></Field>
-      <Field label="AIR"><Stepper value="6.8" unit="%" /></Field>
-      <Field label="SLUMP"><Stepper value="140" unit="mm" /><MoreBtn /></Field>
-      <Field label="CYLINDERS"><Stepper value="4" unit="" /></Field>
+      {jobLoadTested === 'yes' && (
+        <>
+          <Field label="TEMP AT PLANT">
+            <Stepper value={String(jobLoadTemp)} unit="C" onIncrement={() => setJobLoadTemp(v => v + 1)} onDecrement={() => setJobLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadTemp(parseInt(v) || 0)} />
+          </Field>
+          <Field label="AIR">
+            <Stepper value={String(jobLoadAir)} unit="%" onIncrement={() => setJobLoadAir(v => v + 1)} onDecrement={() => setJobLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadAir(parseInt(v) || 0)} />
+          </Field>
+          <Field label="SLUMP">
+            <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
+            <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+            <MoreBtn onPress={() => setJobLoadSlumpPickerVisible(true)} />
+          </Field>
+          <Field label="CYLINDERS">
+            <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
+          </Field>
+          <SlumpPickerModal
+            visible={jobLoadSlumpPickerVisible}
+            value={jobLoadSlump}
+            onConfirm={(val) => { setJobLoadSlump(val); setJobLoadSlumpPickerVisible(false); }}
+            onClose={() => setJobLoadSlumpPickerVisible(false)}
+          />
+        </>
+      )}
     </View>
   );
 }
@@ -656,7 +1173,7 @@ function ReturnedTab() {
       {/* Disposal Method */}
       <Field label="DISPOSAL METHOD">
         <TouchableOpacity
-          style={[st.selectorBtn, {backgroundColor: isDisposalValid ? c.primarySurface : c.surface, borderColor: isDisposalValid ? c.primary : c.border}]}
+          style={[st.selectorBtn, {flex: 0, width: 220, backgroundColor: isDisposalValid ? c.primarySurface : c.surface, borderColor: isDisposalValid ? c.primary : c.border}]}
           activeOpacity={0.6}
           onPress={() => setDisposalModal(true)}>
           {isDisposalValid && (
@@ -674,7 +1191,7 @@ function ReturnedTab() {
       {/* Reason for Return */}
       <Field label="REASON FOR RETURN">
         <TouchableOpacity
-          style={[st.selectorBtn, {backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
+          style={[st.selectorBtn, {flex: 0, width: 220, backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
           activeOpacity={0.6}
           onPress={() => setReasonModal(true)}>
           {isReasonValid && (
@@ -925,6 +1442,7 @@ function CodTab() {
       <Field label="PAYMENT">
         <TouchableOpacity
           style={[cod.selectorBtn, {
+            flex: 0, width: 220,
             backgroundColor: paymentType ? c.primarySurface : c.white,
             borderColor: paymentType ? c.primary : c.border,
           }]}
@@ -1159,23 +1677,25 @@ export default function NotesScreen({navigation}: Props) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.tabsRow}>
+        <View style={st.tabsRow}>
           {TABS.map((tab, i) => {
             const active = activeTab === i;
             return (
               <TouchableOpacity
                 key={tab.key}
-                style={[st.tab, active && {backgroundColor: c.primary}]}
+                style={[st.tab, active ? {backgroundColor: c.primary, borderColor: c.primary} : {backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.15)'}]}
                 activeOpacity={0.7}
                 onPress={() => setActiveTab(i)}>
-                <MaterialIcons name={tab.icon as any} size={16} color={active ? c.textOnPrimary : c.textOnDark60} />
+                <View style={[st.tabIconWrap, {backgroundColor: active ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}]}>
+                  <MaterialIcons name={tab.icon as any} size={15} color={active ? c.textOnPrimary : c.textOnDark60} />
+                </View>
                 <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
-                  {isTablet ? tab.label : tab.label.substring(0, 5)}
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
 
       <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
@@ -1198,9 +1718,10 @@ const st = StyleSheet.create({
   closeBtn: {width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center'},
 
   // Tabs
-  tabsRow: {flexDirection: 'row', gap: 6},
-  tab: {flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)'},
-  tabLabel: {fontSize: 12, fontWeight: '700', letterSpacing: 0.2},
+  tabsRow: {flexDirection: 'row', gap: 8, paddingVertical: 4},
+  tab: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1},
+  tabIconWrap: {width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
+  tabLabel: {fontSize: 13, fontWeight: '700', letterSpacing: 0.3},
 
   // Content
   content: {flex: 1, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden'},
@@ -1268,9 +1789,9 @@ const st = StyleSheet.create({
   inlineLabel: {fontSize: 12, fontWeight: '800'},
 
   // Time picker
-  timePick: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1},
-  timePickIcon: {width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
-  timePickText: {fontSize: 13, fontWeight: '600', flex: 1},
+  timePick: {flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1},
+  timePickIcon: {width: 24, height: 24, borderRadius: 6, justifyContent: 'center', alignItems: 'center'},
+  timePickText: {fontSize: 12, fontWeight: '600'},
 
   // Sub headers
   subHeaderRow: {flexDirection: 'row', gap: 8, marginBottom: 8},

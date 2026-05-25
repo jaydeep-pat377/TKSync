@@ -275,14 +275,12 @@ export default function DashboardScreen({navigation}: Props) {
           {TICKETS.map((ticket, i) => {
             const active = activeTicket === i;
             return (
-              <TouchableOpacity
+              <View
                 key={ticket}
-                activeOpacity={0.7}
-                style={[styles.tab, {borderColor: c.overlay15, backgroundColor: i === 0 ? c.accent : c.primaryLight}]}
-                onPress={() => setActiveTicket(i)}>
+                style={[styles.tab, {borderColor: c.overlay15, backgroundColor: i === 0 ? c.accent : c.primaryLight}]}>
                 {active && <View style={[styles.tabDot, {backgroundColor: c.textOnPrimary}]} />}
                 <Text style={[styles.tabText, {color: active ? c.textOnPrimary : c.textOnDark70}]}>{ticket}</Text>
-              </TouchableOpacity>
+              </View>
             );
           })}
         </ScrollView>
