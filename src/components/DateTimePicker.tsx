@@ -8,13 +8,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
+  useWindowDimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../contexts/ThemeContext';
+import {ms} from '../utils/responsive';
 
-const ITEM_H = 46;
+// Item height is computed at render time via the hook, not at module level
 const VISIBLE = 5;
-const WHEEL_H = ITEM_H * VISIBLE;
 const MID = Math.floor(VISIBLE / 2);
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -36,25 +40,25 @@ type WheelProps = {
   selected: number;
   onSelect: (index: number) => void;
   width: number;
+  itemH: number;
 };
 
-function Wheel({data, selected, onSelect, width}: WheelProps) {
+function Wheel({data, selected, onSelect, width, itemH}: WheelProps) {
   const {c} = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const fromUser = useRef(false);
   const snapTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const prev = useRef(selected);
+  const wheelH = itemH * VISIBLE;
 
-  // Initial scroll on mount (no animation)
   useEffect(() => {
     const id = setTimeout(() => {
-      scrollRef.current?.scrollTo({y: selected * ITEM_H, animated: false});
+      scrollRef.current?.scrollTo({y: selected * itemH, animated: false});
     }, 50);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Animated scroll when selection changes externally
   useEffect(() => {
     if (fromUser.current) {
       fromUser.current = false;
@@ -62,51 +66,50 @@ function Wheel({data, selected, onSelect, width}: WheelProps) {
       return;
     }
     if (selected !== prev.current) {
-      scrollRef.current?.scrollTo({y: selected * ITEM_H, animated: true});
+      scrollRef.current?.scrollTo({y: selected * itemH, animated: true});
       prev.current = selected;
     }
-  }, [selected]);
+  }, [selected, itemH]);
 
   const snap = useCallback(
     (y: number) => {
-      const i = Math.max(0, Math.min(Math.round(y / ITEM_H), data.length - 1));
-      scrollRef.current?.scrollTo({y: i * ITEM_H, animated: true});
+      const i = Math.max(0, Math.min(Math.round(y / itemH), data.length - 1));
+      scrollRef.current?.scrollTo({y: i * itemH, animated: true});
       if (i !== selected) {
         fromUser.current = true;
         onSelect(i);
       }
     },
-    [data.length, selected, onSelect],
+    [data.length, selected, onSelect, itemH],
   );
 
   return (
-    <View style={{width, height: WHEEL_H, overflow: 'hidden'}}>
-      {/* Selection highlight (behind scroll content) */}
+    <View style={{width, height: wheelH, overflow: 'hidden'}}>
       <View
         style={[
           wS.bar,
-          {top: MID * ITEM_H, borderColor: c.primary, backgroundColor: c.primarySurface},
+          {top: MID * itemH, height: itemH, borderColor: c.primary, backgroundColor: c.primarySurface},
         ]}
       />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        snapToInterval={ITEM_H}
+        snapToInterval={itemH}
         decelerationRate="fast"
         bounces={false}
         nestedScrollEnabled
         onMomentumScrollEnd={e => {
-          clearTimeout(snapTimer.current);
+          if (snapTimer.current) clearTimeout(snapTimer.current);
           snap(e.nativeEvent.contentOffset.y);
         }}
         onScrollEndDrag={e => {
-          clearTimeout(snapTimer.current);
+          if (snapTimer.current) clearTimeout(snapTimer.current);
           const offsetY = e.nativeEvent.contentOffset.y;
           snapTimer.current = setTimeout(() => snap(offsetY), 120);
         }}
         contentContainerStyle={{
-          paddingTop: MID * ITEM_H,
-          paddingBottom: MID * ITEM_H,
+          paddingTop: MID * itemH,
+          paddingBottom: MID * itemH,
         }}>
         {data.map((label, i) => (
           <TouchableOpacity
@@ -115,9 +118,9 @@ function Wheel({data, selected, onSelect, width}: WheelProps) {
             onPress={() => {
               fromUser.current = true;
               onSelect(i);
-              scrollRef.current?.scrollTo({y: i * ITEM_H, animated: true});
+              scrollRef.current?.scrollTo({y: i * itemH, animated: true});
             }}
-            style={wS.item}>
+            style={[wS.item, {height: itemH}]}>
             <Text
               style={[
                 wS.text,
@@ -138,14 +141,13 @@ const wS = StyleSheet.create({
     position: 'absolute',
     left: 4,
     right: 4,
-    height: ITEM_H,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1.5,
     zIndex: 0,
   },
-  item: {height: ITEM_H, justifyContent: 'center', alignItems: 'center'},
-  text: {fontSize: 17, fontWeight: '500'},
-  textSel: {fontSize: 20, fontWeight: '700'},
+  item: {justifyContent: 'center', alignItems: 'center'},
+  text: {fontSize: ms(15), fontWeight: '500'},
+  textSel: {fontSize: ms(17), fontWeight: '700'},
 });
 
 // ────────── Date Time Picker Modal ──────────
@@ -159,8 +161,13 @@ type Props = {
 
 export default function DateTimePicker({visible, value, onConfirm, onCancel}: Props) {
   const {c} = useTheme();
+  const {width: screenW, height: screenH} = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isLandscape = screenW > screenH;
+  const shortDim = Math.min(screenW, screenH);
+
   const fade = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(40)).current;
+  const slide = useRef(new Animated.Value(30)).current;
 
   const [month, setMonth] = useState(value.getMonth());
   const [day, setDay] = useState(value.getDate());
@@ -168,7 +175,6 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
   const [hour, setHour] = useState(value.getHours());
   const [minute, setMinute] = useState(value.getMinutes());
 
-  // Sync internal state when value prop changes
   useEffect(() => {
     setMonth(value.getMonth());
     setDay(value.getDate());
@@ -177,7 +183,6 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
     setMinute(value.getMinutes());
   }, [value]);
 
-  // Entrance animation
   useEffect(() => {
     if (visible) {
       Animated.parallel([
@@ -186,16 +191,13 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
       ]).start();
     } else {
       fade.setValue(0);
-      slide.setValue(40);
+      slide.setValue(30);
     }
   }, [visible, fade, slide]);
 
-  // Clamp day when month/year changes
   const maxDays = daysInMonth(month, year);
   useEffect(() => {
-    if (day > maxDays) {
-      setDay(maxDays);
-    }
+    if (day > maxDays) setDay(maxDays);
   }, [month, year, maxDays, day]);
 
   const dayData = Array.from({length: maxDays}, (_, i) => pad2(i + 1));
@@ -203,17 +205,40 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
   const hourData = Array.from({length: 24}, (_, i) => pad2(i));
   const minData = Array.from({length: 60}, (_, i) => pad2(i));
 
-  if (!visible) {
-    return null;
-  }
+  // ── All sizing computed at render time using live dimensions ──
+  const safeV = insets.top + insets.bottom + (StatusBar.currentHeight || 0);
+  const availH = screenH - safeV;
+  const isSmall = shortDim < 375;
+  const isTabletDevice = shortDim > 600;
+
+  // Landscape: compact layout to fit within limited height
+  // Show 3 items in landscape, 5 in portrait for better fit
+  const visibleItems = isLandscape ? 3 : VISIBLE;
+  const itemH = isLandscape ? Math.floor(availH * 0.12) : Math.max(36, Math.floor(availH * 0.065));
+  const wheelH = itemH * visibleItems;
+  const midIdx = Math.floor(visibleItems / 2);
+
+  const modalW = Math.min(screenW * 0.92, isTabletDevice ? 620 : isLandscape ? 560 : 380);
+  const maxModalH = availH * (isLandscape ? 0.94 : 0.88);
+
+  // Wheel widths based on available space
+  const wMonth = isSmall ? 62 : isTabletDevice ? 90 : isLandscape ? 70 : 80;
+  const wDay = isSmall ? 44 : isTabletDevice ? 60 : isLandscape ? 52 : 58;
+  const wYear = isSmall ? 54 : isTabletDevice ? 80 : isLandscape ? 60 : 68;
+  const wHour = isSmall ? 44 : isTabletDevice ? 60 : isLandscape ? 52 : 58;
+  const wMin = isSmall ? 44 : isTabletDevice ? 60 : isLandscape ? 52 : 58;
+
+  if (!visible) return null;
 
   return (
-    <Modal transparent visible animationType="none" onRequestClose={onCancel}>
+    <Modal transparent visible animationType="none" onRequestClose={onCancel} statusBarTranslucent>
       <Pressable style={[ps.overlay, {backgroundColor: c.overlayModal}]} onPress={onCancel}>
         <Animated.View
           style={[
             ps.card,
             {
+              width: modalW,
+              maxHeight: maxModalH,
               backgroundColor: c.white,
               shadowColor: c.shadowColor,
               opacity: fade,
@@ -225,53 +250,88 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
           {/* Header */}
           <View style={[ps.hdr, {borderBottomColor: c.borderLight}]}>
             <View style={[ps.hdrIcon, {backgroundColor: c.primarySurface}]}>
-              <MaterialIcons name="event" size={20} color={c.primary} />
+              <MaterialIcons name="event" size={ms(18)} color={c.primary} />
             </View>
             <Text style={[ps.hdrTitle, {color: c.textPrimary}]}>Select Date & Time</Text>
             <TouchableOpacity
               style={[ps.closeBtn, {backgroundColor: c.surface}]}
               onPress={onCancel}
-              activeOpacity={0.7}>
-              <MaterialIcons name="close" size={18} color={c.textSecondary} />
+              activeOpacity={0.7}
+              hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+              <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* Date section */}
-          <View style={ps.label}>
-            <MaterialIcons name="calendar-today" size={14} color={c.primary} />
-            <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
-          </View>
-          <View style={ps.wheels}>
-            <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={90} />
-            <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={64} />
-            <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={76} />
-          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            nestedScrollEnabled
+            contentContainerStyle={isLandscape ? ps.landscapeContent : ps.portraitContent}>
 
-          {/* Time section */}
-          <View style={[ps.label, {marginTop: 6}]}>
-            <MaterialIcons name="access-time" size={14} color={c.primary} />
-            <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
-          </View>
-          <View style={ps.wheels}>
-            <Wheel data={hourData} selected={hour} onSelect={setHour} width={64} />
-            <Text style={[ps.colon, {color: c.textPrimary}]}>:</Text>
-            <Wheel data={minData} selected={minute} onSelect={setMinute} width={64} />
-          </View>
+            {isLandscape ? (
+              <View style={ps.landscapeRow}>
+                <View style={ps.landscapeCol}>
+                  <View style={ps.sectionLabel}>
+                    <MaterialIcons name="calendar-today" size={ms(12)} color={c.primary} />
+                    <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
+                  </View>
+                  <View style={ps.wheels}>
+                    <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
+                    <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
+                    <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
+                  </View>
+                </View>
+                <View style={[ps.dividerV, {backgroundColor: c.borderLight}]} />
+                <View style={ps.landscapeCol}>
+                  <View style={ps.sectionLabel}>
+                    <MaterialIcons name="access-time" size={ms(12)} color={c.primary} />
+                    <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
+                  </View>
+                  <View style={ps.wheels}>
+                    <Wheel data={hourData} selected={hour} onSelect={setHour} width={wHour} itemH={itemH} />
+                    <Text style={[ps.colon, {color: c.textPrimary}]}>:</Text>
+                    <Wheel data={minData} selected={minute} onSelect={setMinute} width={wMin} itemH={itemH} />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <>
+                <View style={ps.sectionLabel}>
+                  <MaterialIcons name="calendar-today" size={ms(12)} color={c.primary} />
+                  <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
+                </View>
+                <View style={ps.wheels}>
+                  <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
+                  <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
+                  <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
+                </View>
+                <View style={ps.sectionLabel}>
+                  <MaterialIcons name="access-time" size={ms(12)} color={c.primary} />
+                  <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
+                </View>
+                <View style={ps.wheels}>
+                  <Wheel data={hourData} selected={hour} onSelect={setHour} width={wHour} itemH={itemH} />
+                  <Text style={[ps.colon, {color: c.textPrimary}]}>:</Text>
+                  <Wheel data={minData} selected={minute} onSelect={setMinute} width={wMin} itemH={itemH} />
+                </View>
+              </>
+            )}
+          </ScrollView>
 
-          {/* Footer buttons */}
+          {/* Footer */}
           <View style={[ps.footer, {borderTopColor: c.borderLight}]}>
             <TouchableOpacity
               style={[ps.cancelBtn, {borderColor: c.border}]}
               onPress={onCancel}
               activeOpacity={0.7}>
-              <Text style={[ps.cancelText, {color: c.textSecondary}]}>Cancel</Text>
+              <Text style={[ps.btnText, {color: c.textSecondary}]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[ps.confirmBtn, {backgroundColor: c.primary}]}
               onPress={() => onConfirm(new Date(year, month, day, hour, minute))}
               activeOpacity={0.8}>
-              <MaterialIcons name="check" size={18} color={c.textOnPrimary} />
-              <Text style={[ps.confirmText, {color: c.textOnPrimary}]}>Confirm</Text>
+              <MaterialIcons name="check" size={ms(16)} color={c.textOnPrimary} />
+              <Text style={[ps.btnText, {color: c.textOnPrimary}]}>Confirm</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -283,12 +343,10 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
 const ps = StyleSheet.create({
   overlay: {flex: 1, justifyContent: 'center', alignItems: 'center'},
   card: {
-    width: '88%',
-    maxWidth: 380,
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: 'hidden',
     elevation: 16,
-    shadowOffset: {width: 0, height: 10},
+    shadowOffset: {width: 0, height: 8},
     shadowOpacity: 0.2,
     shadowRadius: 24,
   },
@@ -296,65 +354,71 @@ const ps = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
   hdrIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  hdrTitle: {flex: 1, fontSize: 17, fontWeight: '700'},
+  hdrTitle: {flex: 1, fontSize: ms(16), fontWeight: '700'},
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  label: {
+  sectionLabel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 22,
-    paddingTop: 12,
+    gap: 5,
+    paddingHorizontal: 18,
+    paddingTop: 10,
     paddingBottom: 2,
   },
-  labelText: {fontSize: 11, fontWeight: '800', letterSpacing: 1},
+  labelText: {fontSize: ms(10), fontWeight: '800', letterSpacing: 1},
   wheels: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 6,
   },
-  colon: {fontSize: 24, fontWeight: '800', marginHorizontal: 2, marginTop: -2},
+  colon: {fontSize: ms(20), fontWeight: '800', marginHorizontal: 2, marginTop: -2},
   footer: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
-    marginTop: 6,
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1.5,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
-  cancelText: {fontSize: 15, fontWeight: '700'},
   confirmBtn: {
     flex: 1,
     flexDirection: 'row',
-    paddingVertical: 13,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
+    minHeight: 44,
   },
-  confirmText: {fontSize: 15, fontWeight: '700'},
+  btnText: {fontSize: ms(14), fontWeight: '700'},
+  portraitContent: {paddingBottom: 4},
+  landscapeContent: {paddingVertical: 4},
+  landscapeRow: {flexDirection: 'row', alignItems: 'center'},
+  landscapeCol: {flex: 1, alignItems: 'center'},
+  dividerV: {width: 1, alignSelf: 'stretch', marginVertical: 8},
 });

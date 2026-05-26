@@ -9,8 +9,6 @@ import {
   StatusBar,
   Animated,
   useWindowDimensions,
-  Modal,
-  Pressable,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -19,6 +17,8 @@ import {useTheme} from '../contexts/ThemeContext';
 import {Colors} from '../constants/colors';
 import {common} from '../constants/commonStyles';
 import DateTimePicker from '../components/DateTimePicker';
+import ResponsiveModal from '../components/ResponsiveModal';
+import {wp, ms} from '../utils/responsive';
 
 type Props = {navigation: NativeStackNavigationProp<any>};
 
@@ -58,7 +58,7 @@ function Stepper({value, unit, highlight, onIncrement, onDecrement, onChangeValu
           style={[st.stepBtn, st.stepBtnMinus, {backgroundColor: c.surface, borderColor: c.border}]}
           activeOpacity={0.7}
           onPress={() => pulse(scaleM, onDecrement)}>
-          <MaterialIcons name="remove" size={18} color={c.textSecondary} />
+          <MaterialIcons name="remove" size={ms(18)} color={c.textSecondary} />
         </TouchableOpacity>
       </Animated.View>
       <View style={[st.stepVal, {backgroundColor: highlight ? c.highlight : c.white, borderColor: c.border}]}>
@@ -80,7 +80,7 @@ function Stepper({value, unit, highlight, onIncrement, onDecrement, onChangeValu
           style={[st.stepBtn, st.stepBtnPlus, {backgroundColor: c.primary}]}
           activeOpacity={0.7}
           onPress={() => pulse(scaleP, onIncrement)}>
-          <MaterialIcons name="add" size={18} color={c.textOnPrimary} />
+          <MaterialIcons name="add" size={ms(18)} color={c.textOnPrimary} />
         </TouchableOpacity>
       </Animated.View>
       {unit ? (
@@ -106,7 +106,7 @@ function MoreBtn({onPress}: {onPress?: () => void}) {
   const {c} = useTheme();
   return (
     <TouchableOpacity style={[st.moreBtn, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.5} onPress={onPress}>
-      <MaterialIcons name="more-horiz" size={16} color={c.primary} />
+      <MaterialIcons name="more-horiz" size={ms(16)} color={c.primary} />
     </TouchableOpacity>
   );
 }
@@ -128,7 +128,7 @@ function Check({checked, label, onPress}: {checked: boolean; label?: string; onP
         {borderColor: checked ? c.primary : c.border, backgroundColor: checked ? c.primary : c.white},
         {transform: [{scale}]},
       ]}>
-        {checked && <MaterialIcons name="check" size={14} color={c.textOnPrimary} />}
+        {checked && <MaterialIcons name="check" size={ms(14)} color={c.textOnPrimary} />}
       </Animated.View>
       {label && <Text style={[st.checkLabel, {color: c.textPrimary}]}>{label}</Text>}
     </TouchableOpacity>
@@ -169,7 +169,7 @@ function LineInput({width: w, placeholder, value, onPress, editable, keyboardTyp
   const {c} = useTheme();
   const input = (
     <TextInput
-      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary}, w ? {width: w} : {flex: 1, maxWidth: 160}]}
+      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary}, w ? {width: w} : {flex: 1, maxWidth: 140}]}
       placeholderTextColor={c.textMuted}
       placeholder={placeholder || ''}
       value={value}
@@ -202,7 +202,7 @@ function SaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => vo
         onPress={onPress}
         onPressIn={() => !disabled && Animated.timing(scale, {toValue: 0.95, duration: 80, useNativeDriver: true}).start()}
         onPressOut={() => !disabled && Animated.spring(scale, {toValue: 1, friction: 4, tension: 100, useNativeDriver: true}).start()}>
-        <MaterialIcons name="check-circle" size={16} color={disabled ? c.textMuted : c.textOnPrimary} />
+        <MaterialIcons name="check-circle" size={ms(16)} color={disabled ? c.textMuted : c.textOnPrimary} />
         <Text style={[st.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}]}>Save Changes</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -213,7 +213,7 @@ function SectionTitle({title, icon}: {title: string; icon?: string}) {
   const {c} = useTheme();
   return (
     <View style={[st.secTitle, {borderBottomColor: c.border}]}>
-      {icon && <MaterialIcons name={icon as any} size={16} color={c.primary} />}
+      {icon && <MaterialIcons name={icon as any} size={ms(16)} color={c.primary} />}
       <Text style={[st.secTitleText, {color: c.textPrimary}]}>{title}</Text>
     </View>
   );
@@ -248,10 +248,10 @@ function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPr
       activeOpacity={0.6}
       onPress={onPress}>
       <View style={[st.timePickIcon, {backgroundColor: hasValue ? c.primary : c.primarySurface}]}>
-        <MaterialIcons name="schedule" size={16} color={hasValue ? c.textOnPrimary : c.primary} />
+        <MaterialIcons name="schedule" size={ms(16)} color={hasValue ? c.textOnPrimary : c.primary} />
       </View>
       <Text style={[st.timePickText, {color: hasValue ? c.primary : c.textMuted}]}>{displayText}</Text>
-      <MaterialIcons name="keyboard-arrow-down" size={18} color={hasValue ? c.primary : c.textMuted} />
+      <MaterialIcons name="keyboard-arrow-down" size={ms(18)} color={hasValue ? c.primary : c.textMuted} />
     </TouchableOpacity>
   );
 }
@@ -299,31 +299,29 @@ function ReasonListModal({
   const {c} = useTheme();
   const items = options || REASON_OPTIONS;
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={onClose}>
-        <View
-          style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}
-          onStartShouldSetResponder={() => true}>
-          <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
-            <Text style={[st.popupTitle, {color: c.textPrimary}]}>LIST</Text>
-            <TouchableOpacity style={[st.popupCloseBtn, {backgroundColor: c.surface}]} onPress={onClose} activeOpacity={0.7}>
-              <MaterialIcons name="close" size={20} color={c.textSecondary} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={{maxHeight: '60%'}} showsVerticalScrollIndicator={false} contentContainerStyle={{paddingVertical: 8}}>
-            {items.map(opt => (
-              <TouchableOpacity
-                key={opt}
-                style={common.modalOptionRow}
-                activeOpacity={0.6}
-                onPress={() => { onSelect(opt); onClose(); }}>
-                <Text style={[st.modalOptionText, {color: c.textPrimary}]}>{opt}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </Pressable>
-    </Modal>
+    <ResponsiveModal
+      visible={visible}
+      onClose={onClose}
+      maxWidth={480}
+      maxHeightPercent={75}>
+      <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
+        <Text style={[st.popupTitle, {color: c.textPrimary}]}>LIST</Text>
+        <TouchableOpacity style={[st.popupCloseBtn, {backgroundColor: c.surface}]} onPress={onClose} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{paddingVertical: wp(4)}}>
+        {items.map(opt => (
+          <TouchableOpacity
+            key={opt}
+            style={[common.modalOptionRow, {minHeight: wp(34)}]}
+            activeOpacity={0.6}
+            onPress={() => { onSelect(opt); onClose(); }}>
+            <Text style={[st.modalOptionText, {color: c.textPrimary}]}>{opt}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </ResponsiveModal>
   );
 }
 
@@ -344,35 +342,40 @@ const PRODUCTS_DATA = [
 function ProductsModal({visible, onClose}: {visible: boolean; onClose: () => void}) {
   const {c} = useTheme();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={onClose}>
-        <View
-          style={[st.popupCard, {backgroundColor: c.white, shadowColor: c.shadowColor, maxHeight: '80%'}]}
-          onStartShouldSetResponder={() => true}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={st.tabBody}>
-            {/* Table Header */}
-            <View style={st.tableHeader}>
-              <Text style={[st.tableCellCode, {fontWeight: '900', color: c.textPrimary}]}>CODE</Text>
-              <Text style={[st.tableCellDesc, {fontWeight: '900', color: c.textPrimary}]}>DESCRIPTION</Text>
-              <Text style={[st.tableCellQty, {fontWeight: '900', color: c.textPrimary}]}>QTY</Text>
-              <Text style={[st.tableCellUnit, {fontWeight: '900', color: c.textPrimary}]}>UNIT</Text>
-            </View>
-            {/* Table Rows */}
-            {PRODUCTS_DATA.map(item => (
-              <View key={item.code} style={common.tableRow}>
-                <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}]}>{item.code}</Text>
-                <Text style={[st.tableCellDesc, {fontWeight: '500', color: c.textPrimary}]}>{item.description}</Text>
-                <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}]}>{item.qty}</Text>
-                <Text style={[st.tableCellUnit, {fontWeight: '500', color: c.textPrimary}]}>{item.unit}</Text>
-              </View>
-            ))}
-          </ScrollView>
-          <TouchableOpacity style={[common.modalOptionRow, {borderTopWidth: 0.5, borderTopColor: c.border}]} activeOpacity={0.6} onPress={onClose}>
-            <Text style={[st.modalCloseText, {color: c.primary}]}>CLOSE</Text>
-          </TouchableOpacity>
+    <ResponsiveModal
+      visible={visible}
+      onClose={onClose}
+      maxWidth={520}
+      maxHeightPercent={80}>
+      <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
+        <Text style={[st.popupTitle, {color: c.textPrimary}]}>PRODUCTS</Text>
+        <TouchableOpacity
+          style={[st.popupCloseBtn, {backgroundColor: c.surface}]}
+          onPress={onClose}
+          activeOpacity={0.7}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <MaterialIcons name="close" size={ms(14)} color={c.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <ScrollView showsVerticalScrollIndicator={true} bounces={false} contentContainerStyle={{padding: wp(14)}}>
+        {/* Table Header */}
+        <View style={st.tableHeader}>
+          <Text style={[st.tableCellCode, {fontWeight: '900', color: c.textPrimary}]}>CODE</Text>
+          <Text style={[st.tableCellDesc, {fontWeight: '900', color: c.textPrimary}]}>DESCRIPTION</Text>
+          <Text style={[st.tableCellQty, {fontWeight: '900', color: c.textPrimary}]}>QTY</Text>
+          <Text style={[st.tableCellUnit, {fontWeight: '900', color: c.textPrimary}]}>UNIT</Text>
         </View>
-      </Pressable>
-    </Modal>
+        {/* Table Rows */}
+        {PRODUCTS_DATA.map(item => (
+          <View key={item.code} style={common.tableRow}>
+            <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}]}>{item.code}</Text>
+            <Text style={[st.tableCellDesc, {fontWeight: '500', color: c.textPrimary}]}>{item.description}</Text>
+            <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}]}>{item.qty}</Text>
+            <Text style={[st.tableCellUnit, {fontWeight: '500', color: c.textPrimary}]}>{item.unit}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </ResponsiveModal>
   );
 }
 
@@ -383,11 +386,13 @@ function SlumpPickerModal({
   value,
   onConfirm,
   onClose,
+  title = 'Slump From Plant',
 }: {
   visible: boolean;
   value: string;
   onConfirm: (val: string) => void;
   onClose: () => void;
+  title?: string;
 }) {
   const {c} = useTheme();
   const [tempSelected, setTempSelected] = useState(value);
@@ -448,140 +453,134 @@ function SlumpPickerModal({
   const canConfirm = activeValue.length > 0;
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleCancel}>
-      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={handleCancel}>
-        <Animated.View
-          style={[sm.card, {
-            backgroundColor: c.white,
-            shadowColor: c.shadowColor,
-            transform: [{scale: modalScale}],
-            opacity: modalOpacity,
-          }]}
-          onStartShouldSetResponder={() => true}>
+    <ResponsiveModal
+      visible={visible}
+      onClose={handleCancel}
+      maxWidth={460}
+      maxHeightPercent={80}
+      avoidKeyboard>
 
-          {/* Header */}
-          <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
-            <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
-              <MaterialIcons name="straighten" size={20} color={c.textOnPrimary} />
-            </View>
-            <View style={common.flex1}>
-              <Text style={[sm.headerTitle, {color: c.textPrimary}]}>Slump From Plant</Text>
-              <Text style={[sm.headerSub, {color: c.textMuted}]}>Select or enter slump value (mm)</Text>
-            </View>
-            <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7}>
-              <MaterialIcons name="close" size={20} color={c.textSecondary} />
-            </TouchableOpacity>
-          </View>
+      {/* Header */}
+      <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
+        <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
+          <MaterialIcons name="straighten" size={ms(20)} color={c.textOnPrimary} />
+        </View>
+        <View style={common.flex1}>
+          <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
+          <Text style={[sm.headerSub, {color: c.textMuted}]}>Select or enter value (mm)</Text>
+        </View>
+        <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+        </TouchableOpacity>
+      </View>
 
-          {/* Preset Grid */}
-          <ScrollView style={sm.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={slumpSt.gridWrap}>
-            <View style={slumpSt.grid}>
-              {SLUMP_VALUES.map(val => {
-                const isSelected = !customMode && tempSelected === val;
-                return (
-                  <TouchableOpacity
-                    key={val}
-                    style={[
-                      slumpSt.gridItem,
-                      {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1.5},
-                      isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
-                    ]}
-                    activeOpacity={0.6}
-                    onPress={() => handlePresetSelect(val)}>
-                    <Text style={[
-                      slumpSt.gridItemText,
-                      {color: c.textPrimary},
-                      isSelected && {color: c.primary, fontWeight: '900'},
-                    ]}>
-                      {val}
-                    </Text>
-                    {isSelected && (
-                      <View style={slumpSt.gridCheck}>
-                        <MaterialIcons name="check-circle" size={18} color={c.primary} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Custom Input Section */}
-            <View style={slumpSt.customSection}>
+      {/* Preset Grid */}
+      <ScrollView style={sm.scroll} showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={slumpSt.gridWrap}>
+        <View style={slumpSt.grid}>
+          {SLUMP_VALUES.map(val => {
+            const isSelected = !customMode && tempSelected === val;
+            return (
               <TouchableOpacity
+                key={val}
                 style={[
-                  slumpSt.customToggle,
+                  slumpSt.gridItem,
                   {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1.5},
-                  customMode && {backgroundColor: c.primarySurface, borderColor: c.primary},
+                  isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
                 ]}
                 activeOpacity={0.6}
-                onPress={handleCustomToggle}>
-                <View style={[slumpSt.customIcon, {backgroundColor: customMode ? c.primary : c.border}]}>
-                  <MaterialIcons name="edit" size={16} color={customMode ? c.textOnPrimary : c.textSecondary} />
-                </View>
-                <Text style={[slumpSt.customLabel, {color: customMode ? c.primary : c.textSecondary}]}>
-                  Custom Value
+                onPress={() => handlePresetSelect(val)}>
+                <Text style={[
+                  slumpSt.gridItemText,
+                  {color: c.textPrimary},
+                  isSelected && {color: c.primary, fontWeight: '900'},
+                ]}>
+                  {val}
                 </Text>
+                {isSelected && (
+                  <View style={slumpSt.gridCheck}>
+                    <MaterialIcons name="check-circle" size={ms(18)} color={c.primary} />
+                  </View>
+                )}
               </TouchableOpacity>
-              {customMode && (
-                <View style={[slumpSt.customInputWrap, {backgroundColor: c.white, borderColor: c.primary}]}>
-                  <TextInput
-                    ref={customInputRef}
-                    style={[slumpSt.customInput, {color: c.textPrimary}]}
-                    value={customValue}
-                    onChangeText={handleCustomChange}
-                    placeholder="Enter value"
-                    placeholderTextColor={c.textMuted}
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    autoFocus
-                  />
-                  <Text style={[slumpSt.customUnit, {color: c.textSecondary}]}>mm</Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
+            );
+          })}
+        </View>
 
-          {/* Footer */}
-          <View style={[sm.footer, {borderTopColor: c.border}]}>
-            <TouchableOpacity
-              style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
-              activeOpacity={0.7}
-              onPress={handleCancel}>
-              <MaterialIcons name="close" size={16} color={c.textSecondary} />
-              <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[sm.footerBtn, sm.confirmBtn, {
-                backgroundColor: canConfirm ? c.primary : c.border,
-              }]}
-              activeOpacity={canConfirm ? 0.7 : 1}
-              disabled={!canConfirm}
-              onPress={handleConfirm}>
-              <MaterialIcons name="check" size={16} color={canConfirm ? c.textOnPrimary : c.textMuted} />
-              <Text style={[sm.footerBtnText, {color: canConfirm ? c.textOnPrimary : c.textMuted}]}>
-                Confirm
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Pressable>
-    </Modal>
+        {/* Custom Input Section */}
+        <View style={slumpSt.customSection}>
+          <TouchableOpacity
+            style={[
+              slumpSt.customToggle,
+              {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1.5},
+              customMode && {backgroundColor: c.primarySurface, borderColor: c.primary},
+            ]}
+            activeOpacity={0.6}
+            onPress={handleCustomToggle}>
+            <View style={[slumpSt.customIcon, {backgroundColor: customMode ? c.primary : c.border}]}>
+              <MaterialIcons name="edit" size={ms(16)} color={customMode ? c.textOnPrimary : c.textSecondary} />
+            </View>
+            <Text style={[slumpSt.customLabel, {color: customMode ? c.primary : c.textSecondary}]}>
+              Custom Value
+            </Text>
+          </TouchableOpacity>
+          {customMode && (
+            <View style={[slumpSt.customInputWrap, {backgroundColor: c.white, borderColor: c.primary}]}>
+              <TextInput
+                ref={customInputRef}
+                style={[slumpSt.customInput, {color: c.textPrimary}]}
+                value={customValue}
+                onChangeText={handleCustomChange}
+                placeholder="Enter value"
+                placeholderTextColor={c.textMuted}
+                keyboardType="number-pad"
+                maxLength={4}
+                autoFocus
+              />
+              <Text style={[slumpSt.customUnit, {color: c.textSecondary}]}>mm</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Footer */}
+      <View style={[sm.footer, {borderTopColor: c.border}]}>
+        <TouchableOpacity
+          style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
+          activeOpacity={0.7}
+          onPress={handleCancel}>
+          <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
+          <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[sm.footerBtn, sm.confirmBtn, {
+            backgroundColor: canConfirm ? c.primary : c.border,
+          }]}
+          activeOpacity={canConfirm ? 0.7 : 1}
+          disabled={!canConfirm}
+          onPress={handleConfirm}>
+          <MaterialIcons name="check" size={ms(16)} color={canConfirm ? c.textOnPrimary : c.textMuted} />
+          <Text style={[sm.footerBtnText, {color: canConfirm ? c.textOnPrimary : c.textMuted}]}>
+            Confirm
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ResponsiveModal>
   );
 }
 
 const slumpSt = StyleSheet.create({
-  gridWrap: {paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8},
-  grid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
-  gridItem: {width: '22%', flexGrow: 1, minWidth: 70, maxWidth: 110, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', position: 'relative'},
-  gridItemText: {fontSize: 16, fontWeight: '700'},
-  gridCheck: {position: 'absolute', top: 4, right: 4},
-  customSection: {marginTop: 14, gap: 10},
-  customToggle: {flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, gap: 10},
-  customIcon: {width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
-  customLabel: {fontSize: 14, fontWeight: '700'},
-  customInputWrap: {flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, height: 48},
-  customInput: {flex: 1, fontSize: 18, fontWeight: '700', padding: 0},
-  customUnit: {fontSize: 14, fontWeight: '600', marginLeft: 8},
+  gridWrap: {paddingHorizontal: wp(10), paddingTop: wp(8), paddingBottom: wp(4)},
+  grid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(5)},
+  gridItem: {width: '22%', flexGrow: 1, minWidth: wp(60), maxWidth: wp(95), paddingVertical: wp(7), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center', position: 'relative', minHeight: wp(32)},
+  gridItemText: {fontSize: ms(13), fontWeight: '700'},
+  gridCheck: {position: 'absolute', top: wp(2), right: wp(2)},
+  customSection: {marginTop: wp(7), gap: wp(5)},
+  customToggle: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(6), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(6), minHeight: wp(32)},
+  customIcon: {width: wp(22), height: wp(22), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
+  customLabel: {fontSize: ms(11), fontWeight: '700'},
+  customInputWrap: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(8), borderWidth: 1.5, paddingHorizontal: wp(10), height: wp(34)},
+  customInput: {flex: 1, fontSize: ms(14), fontWeight: '700', padding: 0},
+  customUnit: {fontSize: ms(11), fontWeight: '600', marginLeft: wp(5)},
 });
 
 function PlantTab() {
@@ -701,18 +700,21 @@ function PlantTab() {
       <SlumpPickerModal
         visible={slumpPickerVisible}
         value={slumpFromPlant}
+        title="Slump From Plant"
         onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }}
         onClose={() => setSlumpPickerVisible(false)}
       />
       <SlumpPickerModal
         visible={loadSlumpPickerVisible}
         value={loadSlump}
+        title="Load Slump"
         onConfirm={(val) => { setLoadSlump(val); setLoadSlumpPickerVisible(false); }}
         onClose={() => setLoadSlumpPickerVisible(false)}
       />
       <SlumpPickerModal
         visible={slumpToJobPickerVisible}
         value={slumpToJob}
+        title="Slump To Job"
         onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }}
         onClose={() => setSlumpToJobPickerVisible(false)}
       />
@@ -829,6 +831,7 @@ function JobsiteTab() {
       <SlumpPickerModal
         visible={mmModalField !== null}
         value={(mmModalField === 'fullLoad' ? fullLoadMm : mmModalField === 'custWater' ? custWaterMm : maintWaterMm) || ''}
+        title={mmModalField === 'fullLoad' ? 'Full Load (mm)' : mmModalField === 'custWater' ? 'Customer Water (mm)' : 'Maintenance Water (mm)'}
         onConfirm={(val) => {
           if (mmModalField === 'fullLoad') setFullLoadMm(val);
           else if (mmModalField === 'custWater') setCustWaterMm(val);
@@ -914,6 +917,7 @@ function JobsiteTab() {
           </Field>
           <SlumpPickerModal
             visible={jobLoadSlumpPickerVisible}
+            title="Load Slump"
             value={jobLoadSlump}
             onConfirm={(val) => { setJobLoadSlump(val); setJobLoadSlumpPickerVisible(false); }}
             onClose={() => setJobLoadSlumpPickerVisible(false)}
@@ -999,109 +1003,101 @@ function SelectionModal({
   const hasTempSelection = tempSelected.length > 0;
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleCancel}>
-      <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={handleCancel}>
-        <Animated.View
-          style={[sm.card, {
-            backgroundColor: c.white,
-            shadowColor: c.shadowColor,
-            transform: [{scale: modalScale}],
-            opacity: modalOpacity,
-          }]}
-          onStartShouldSetResponder={() => true}>
+    <ResponsiveModal
+      visible={visible}
+      onClose={handleCancel}
+      maxWidth={460}
+      maxHeightPercent={80}>
 
-          {/* Header */}
-          <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
-            <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
-              <MaterialIcons name={headerIcon as any} size={20} color={c.textOnPrimary} />
-            </View>
-            <View style={common.flex1}>
-              <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
-              <Text style={[sm.headerSub, {color: c.textMuted}]}>{subtitle}</Text>
-            </View>
-            <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7}>
-              <MaterialIcons name="close" size={20} color={c.textSecondary} />
-            </TouchableOpacity>
-          </View>
+      {/* Header */}
+      <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
+        <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
+          <MaterialIcons name={headerIcon as any} size={ms(20)} color={c.textOnPrimary} />
+        </View>
+        <View style={common.flex1}>
+          <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
+          <Text style={[sm.headerSub, {color: c.textMuted}]}>{subtitle}</Text>
+        </View>
+        <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+        </TouchableOpacity>
+      </View>
 
-          {/* Options */}
-          <ScrollView style={sm.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={sm.scrollContent}>
-            {options.map(opt => {
-              const isSelected = opt.key === tempSelected;
-              return (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[
-                    sm.item,
-                    {borderColor: 'transparent', borderWidth: 1.5},
-                    isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
-                  ]}
-                  activeOpacity={0.6}
-                  onPress={() => setTempSelected(opt.key)}>
-                  <View style={[sm.itemIcon, {backgroundColor: isSelected ? c.primary : c.surface}]}>
-                    <MaterialIcons name={opt.icon as any} size={20} color={isSelected ? c.textOnPrimary : c.textSecondary} />
-                  </View>
-                  <Text style={[
-                    sm.itemText,
-                    {color: c.textPrimary},
-                    isSelected && {color: c.primary, fontWeight: '800'},
-                  ]}>
-                    {opt.key}
-                  </Text>
-                  {isSelected ? (
-                    <MaterialIcons name="check-circle" size={22} color={c.primary} />
-                  ) : (
-                    <View style={[sm.itemCircle, {borderColor: c.border}]} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Footer */}
-          <View style={[sm.footer, {borderTopColor: c.border}]}>
+      {/* Options */}
+      <ScrollView style={sm.scroll} showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={sm.scrollContent}>
+        {options.map(opt => {
+          const isSelected = opt.key === tempSelected;
+          return (
             <TouchableOpacity
-              style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
-              activeOpacity={0.7}
-              onPress={handleCancel}>
-              <MaterialIcons name="close" size={16} color={c.textSecondary} />
-              <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[sm.footerBtn, sm.confirmBtn, {
-                backgroundColor: hasTempSelection ? c.primary : c.border,
-              }]}
-              activeOpacity={hasTempSelection ? 0.7 : 1}
-              disabled={!hasTempSelection}
-              onPress={handleSave}>
-              <MaterialIcons name="check" size={16} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
-              <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}]}>
-                {hasChanged ? 'Save' : 'Confirm'}
+              key={opt.key}
+              style={[
+                sm.item,
+                {borderColor: 'transparent', borderWidth: 1.5},
+                isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
+              ]}
+              activeOpacity={0.6}
+              onPress={() => setTempSelected(opt.key)}>
+              <View style={[sm.itemIcon, {backgroundColor: isSelected ? c.primary : c.surface}]}>
+                <MaterialIcons name={opt.icon as any} size={ms(20)} color={isSelected ? c.textOnPrimary : c.textSecondary} />
+              </View>
+              <Text style={[
+                sm.itemText,
+                {color: c.textPrimary},
+                isSelected && {color: c.primary, fontWeight: '800'},
+              ]}>
+                {opt.key}
               </Text>
+              {isSelected ? (
+                <MaterialIcons name="check-circle" size={ms(22)} color={c.primary} />
+              ) : (
+                <View style={[sm.itemCircle, {borderColor: c.border}]} />
+              )}
             </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Pressable>
-    </Modal>
+          );
+        })}
+      </ScrollView>
+
+      {/* Footer */}
+      <View style={[sm.footer, {borderTopColor: c.border}]}>
+        <TouchableOpacity
+          style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
+          activeOpacity={0.7}
+          onPress={handleCancel}>
+          <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
+          <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[sm.footerBtn, sm.confirmBtn, {
+            backgroundColor: hasTempSelection ? c.primary : c.border,
+          }]}
+          activeOpacity={hasTempSelection ? 0.7 : 1}
+          disabled={!hasTempSelection}
+          onPress={handleSave}>
+          <MaterialIcons name="check" size={ms(16)} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
+          <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}]}>
+            {hasChanged ? 'Save' : 'Confirm'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ResponsiveModal>
   );
 }
 
 const sm = StyleSheet.create({
-  card: {width: '90%', maxWidth: 460, maxHeight: '80%', borderRadius: 20, elevation: 16, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.25, shadowRadius: 20, overflow: 'hidden'},
-  header: {flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1},
-  headerIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
-  headerTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
-  headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  header: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(6), borderBottomWidth: 1},
+  headerIcon: {width: wp(26), height: wp(26), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  headerTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
+  headerSub: {fontSize: ms(9), fontWeight: '500', marginTop: 0},
+  closeBtn: {width: wp(28), height: wp(28), borderRadius: wp(14), justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
   scroll: {flexGrow: 0},
-  scrollContent: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8},
-  item: {flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
-  itemIcon: {width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
-  itemText: {fontSize: 14, fontWeight: '700', flex: 1, letterSpacing: 0.2},
-  itemCircle: {width: 22, height: 22, borderRadius: 11, borderWidth: 2},
-  footer: {flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1},
-  footerBtn: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12},
-  footerBtnText: {fontSize: 14, fontWeight: '700'},
+  scrollContent: {paddingHorizontal: wp(10), paddingTop: wp(6), paddingBottom: wp(4)},
+  item: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), paddingHorizontal: wp(8), borderRadius: wp(8), marginVertical: 2, gap: wp(8), minHeight: wp(36)},
+  itemIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  itemText: {fontSize: ms(12), fontWeight: '700', flex: 1, letterSpacing: 0.2},
+  itemCircle: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2},
+  footer: {flexDirection: 'row', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(8), borderTopWidth: 1},
+  footerBtn: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(5), paddingVertical: wp(8), borderRadius: wp(10), minHeight: wp(30)},
+  footerBtnText: {fontSize: ms(12), fontWeight: '700'},
   cancelBtn: {borderWidth: 1.5},
   confirmBtn: {elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.15, shadowRadius: 4},
 });
@@ -1179,14 +1175,14 @@ function ReturnedTab() {
           activeOpacity={0.6}
           onPress={() => setDisposalModal(true)}>
           {isDisposalValid && (
-            <View style={[{width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
-              <MaterialIcons name={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.icon as any} size={16} color={c.textOnPrimary} />
+            <View style={[{width: wp(22), height: wp(22), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
+              <MaterialIcons name={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
           <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}]} numberOfLines={1}>
             {disposalMethod || 'Select method'}
           </Text>
-          <MaterialIcons name="keyboard-arrow-down" size={20} color={isDisposalValid ? c.primary : c.textMuted} />
+          <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isDisposalValid ? c.primary : c.textMuted} />
         </TouchableOpacity>
       </Field>
 
@@ -1197,14 +1193,14 @@ function ReturnedTab() {
           activeOpacity={0.6}
           onPress={() => setReasonModal(true)}>
           {isReasonValid && (
-            <View style={[{width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
-              <MaterialIcons name={RETURN_REASONS.find(r => r.key === returnReason)?.icon as any} size={16} color={c.textOnPrimary} />
+            <View style={[{width: wp(22), height: wp(22), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
+              <MaterialIcons name={RETURN_REASONS.find(r => r.key === returnReason)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
           <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}]} numberOfLines={1}>
             {returnReason || 'Select reason'}
           </Text>
-          <MaterialIcons name="keyboard-arrow-down" size={20} color={isReasonValid ? c.primary : c.textMuted} />
+          <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isReasonValid ? c.primary : c.textMuted} />
         </TouchableOpacity>
       </Field>
 
@@ -1259,7 +1255,7 @@ function TimeAdjustTab() {
       <View style={[tt.headerCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
         <View style={tt.headerTop}>
           <View style={[tt.headerIconWrap, {backgroundColor: c.primarySurface}]}>
-            <MaterialIcons name="schedule" size={20} color={c.primary} />
+            <MaterialIcons name="schedule" size={ms(20)} color={c.primary} />
           </View>
           <View style={common.flex1}>
             <Text style={[tt.headerTitle, {color: c.textPrimary}]}>Delivery Timeline</Text>
@@ -1296,7 +1292,7 @@ function TimeAdjustTab() {
               <View style={tt.stepCol}>
                 <View style={[tt.dot, {backgroundColor: hasValue ? c.primary : c.border, borderColor: hasValue ? c.primarySurface : c.surface}]}>
                   {hasValue
-                    ? <MaterialIcons name="check" size={10} color={c.textOnPrimary} />
+                    ? <MaterialIcons name="check" size={ms(10)} color={c.textOnPrimary} />
                     : <Text style={[tt.dotNum, {color: c.textMuted}]}>{i + 1}</Text>
                   }
                 </View>
@@ -1305,7 +1301,7 @@ function TimeAdjustTab() {
 
               {/* Center: icon + label */}
               <View style={[tt.iconWrap, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
-                <MaterialIcons name={event.icon as any} size={16} color={hasValue ? c.primary : c.textTertiary} />
+                <MaterialIcons name={event.icon as any} size={ms(16)} color={hasValue ? c.primary : c.textTertiary} />
               </View>
               <View style={common.flex1}>
                 <Text style={[tt.label, {color: c.textPrimary}]}>{event.key}</Text>
@@ -1316,7 +1312,7 @@ function TimeAdjustTab() {
 
               {/* Right: action */}
               <View style={[tt.editBtn, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
-                <MaterialIcons name={hasValue ? 'edit' : 'add'} size={14} color={hasValue ? c.primary : c.textMuted} />
+                <MaterialIcons name={hasValue ? 'edit' : 'add'} size={ms(14)} color={hasValue ? c.primary : c.textMuted} />
               </View>
             </TouchableOpacity>
           );
@@ -1342,25 +1338,25 @@ function TimeAdjustTab() {
 }
 
 const tt = StyleSheet.create({
-  headerCard: {borderRadius: 16, padding: 18, marginBottom: 12, elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
-  headerTop: {flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14},
-  headerIconWrap: {width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center'},
-  headerTitle: {fontSize: 17, fontWeight: '800', letterSpacing: 0.2},
-  headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  countPill: {paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5},
-  countText: {fontSize: 12, fontWeight: '800'},
-  track: {height: 4, borderRadius: 2, overflow: 'hidden'},
-  fill: {position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2},
-  listCard: {borderRadius: 16, overflow: 'hidden', marginBottom: 16, elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
-  row: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 12},
-  stepCol: {alignItems: 'center', width: 24},
-  dot: {width: 22, height: 22, borderRadius: 11, borderWidth: 2.5, justifyContent: 'center', alignItems: 'center', zIndex: 1},
-  dotNum: {fontSize: 10, fontWeight: '800'},
-  line: {width: 2, flex: 1, marginTop: -1, marginBottom: -14},
-  iconWrap: {width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
-  label: {fontSize: 13, fontWeight: '700', letterSpacing: 0.2},
-  value: {fontSize: 12, fontWeight: '600', marginTop: 2},
-  editBtn: {width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  headerCard: {borderRadius: wp(12), padding: wp(12), marginBottom: wp(8), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
+  headerTop: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(8)},
+  headerIconWrap: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
+  headerTitle: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.2},
+  headerSub: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
+  countPill: {paddingHorizontal: wp(8), paddingVertical: wp(3), borderRadius: wp(8), borderWidth: 1.5},
+  countText: {fontSize: ms(10), fontWeight: '800'},
+  track: {height: wp(3), borderRadius: wp(2), overflow: 'hidden'},
+  fill: {position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: wp(2)},
+  listCard: {borderRadius: wp(12), overflow: 'hidden', marginBottom: wp(10), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
+  row: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingHorizontal: wp(12), gap: wp(8)},
+  stepCol: {alignItems: 'center', width: wp(20)},
+  dot: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2, justifyContent: 'center', alignItems: 'center', zIndex: 1},
+  dotNum: {fontSize: ms(8), fontWeight: '800'},
+  line: {width: 2, flex: 1, marginTop: -1, marginBottom: wp(-8)},
+  iconWrap: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  label: {fontSize: ms(11), fontWeight: '700', letterSpacing: 0.2},
+  value: {fontSize: ms(10), fontWeight: '600', marginTop: 1},
+  editBtn: {width: wp(26), height: wp(26), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
 });
 
 // ─── COD PAYMENT TYPES ───
@@ -1453,7 +1449,7 @@ function CodTab() {
             <View style={[cod.selectorIcon, {backgroundColor: paymentType ? c.primary : c.surface}]}>
               <MaterialIcons
                 name={selectedPayment.icon as any}
-                size={16}
+                size={ms(16)}
                 color={paymentType ? c.textOnPrimary : c.textMuted}
               />
             </View>
@@ -1461,7 +1457,7 @@ function CodTab() {
           <Text style={[cod.selectorText, {color: paymentType ? c.primary : c.textMuted}]} numberOfLines={1}>
             {selectedPayment?.label || 'Select Payment Type'}
           </Text>
-          <MaterialIcons name="keyboard-arrow-down" size={20} color={paymentType ? c.primary : c.textMuted} />
+          <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={paymentType ? c.primary : c.textMuted} />
         </TouchableOpacity>
       </Field>
 
@@ -1496,7 +1492,7 @@ function CodTab() {
               }]}
               activeOpacity={0.7}
               onPress={decrement}>
-              <MaterialIcons name="remove" size={18} color={waitTime > 0 ? c.primary : c.textMuted} />
+              <MaterialIcons name="remove" size={ms(18)} color={waitTime > 0 ? c.primary : c.textMuted} />
             </TouchableOpacity>
           </Animated.View>
           <View style={[st.stepVal, {
@@ -1510,7 +1506,7 @@ function CodTab() {
               style={[st.stepBtn, st.stepBtnPlus, {backgroundColor: c.primary}]}
               activeOpacity={0.7}
               onPress={increment}>
-              <MaterialIcons name="add" size={18} color={c.textOnPrimary} />
+              <MaterialIcons name="add" size={ms(18)} color={c.textOnPrimary} />
             </TouchableOpacity>
           </Animated.View>
           <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
@@ -1542,97 +1538,89 @@ function CodTab() {
       </Field>
 
       {/* Payment Type Modal */}
-      <Modal visible={paymentModal} transparent animationType="none" onRequestClose={closeModal}>
-        <Pressable style={[st.popupOverlay, {backgroundColor: c.overlayModal}]} onPress={closeModal}>
-          <Animated.View
-            style={[cod.modalCard, {
-              backgroundColor: c.white,
-              shadowColor: c.shadowColor,
-              transform: [{scale: modalScale}],
-              opacity: modalOpacity,
-            }]}
-            onStartShouldSetResponder={() => true}>
-            {/* Modal Header */}
-            <View style={[cod.modalHeader, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
-              <View style={[cod.modalHeaderIcon, {backgroundColor: c.primary}]}>
-                <MaterialIcons name="payments" size={20} color={c.textOnPrimary} />
-              </View>
-              <View style={common.flex1}>
-                <Text style={[cod.modalTitle, {color: c.textPrimary}]}>Payment Type</Text>
-                <Text style={[cod.modalSubtitle, {color: c.textMuted}]}>Select a payment method</Text>
-              </View>
-              <TouchableOpacity style={[cod.modalCloseBtn, {backgroundColor: c.white}]} onPress={closeModal} activeOpacity={0.7}>
-                <MaterialIcons name="close" size={20} color={c.textSecondary} />
-              </TouchableOpacity>
-            </View>
+      <ResponsiveModal
+        visible={paymentModal}
+        onClose={closeModal}
+        maxWidth={420}
+        maxHeightPercent={75}>
+        {/* Modal Header */}
+        <View style={[cod.modalHeader, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
+          <View style={[cod.modalHeaderIcon, {backgroundColor: c.primary}]}>
+            <MaterialIcons name="payments" size={ms(20)} color={c.textOnPrimary} />
+          </View>
+          <View style={common.flex1}>
+            <Text style={[cod.modalTitle, {color: c.textPrimary}]}>Payment Type</Text>
+            <Text style={[cod.modalSubtitle, {color: c.textMuted}]}>Select a payment method</Text>
+          </View>
+          <TouchableOpacity style={[cod.modalCloseBtn, {backgroundColor: c.white}]} onPress={closeModal} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
-            {/* Modal Options */}
-            <View style={cod.modalBody}>
-              {PAYMENT_TYPES.map((opt, i) => {
-                const isSelected = opt.key === paymentType;
-                return (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[
-                      cod.modalItem,
-                      {borderColor: 'transparent', borderWidth: 1.5},
-                      isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
-                    ]}
-                    activeOpacity={0.6}
-                    onPress={() => {
-                      setPaymentType(opt.key);
-                      closeModal();
-                    }}>
-                    <View style={[cod.modalItemIcon, {
-                      backgroundColor: isSelected ? c.primary : c.surface,
-                    }]}>
-                      <MaterialIcons
-                        name={opt.icon as any}
-                        size={20}
-                        color={isSelected ? c.textOnPrimary : c.textSecondary}
-                      />
-                    </View>
-                    <Text style={[
-                      cod.modalItemText,
-                      {color: c.textPrimary},
-                      isSelected && {color: c.primary, fontWeight: '800'},
-                    ]}>
-                      {opt.label}
-                    </Text>
-                    {isSelected ? (
-                      <MaterialIcons name="check-circle" size={22} color={c.primary} />
-                    ) : (
-                      <View style={[cod.modalItemCircle, {borderColor: c.border}]} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Animated.View>
-        </Pressable>
-      </Modal>
+        {/* Modal Options */}
+        <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={cod.modalBody}>
+          {PAYMENT_TYPES.map((opt, i) => {
+            const isSelected = opt.key === paymentType;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                style={[
+                  cod.modalItem,
+                  {borderColor: 'transparent', borderWidth: 1.5},
+                  isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
+                ]}
+                activeOpacity={0.6}
+                onPress={() => {
+                  setPaymentType(opt.key);
+                  closeModal();
+                }}>
+                <View style={[cod.modalItemIcon, {
+                  backgroundColor: isSelected ? c.primary : c.surface,
+                }]}>
+                  <MaterialIcons
+                    name={opt.icon as any}
+                    size={ms(20)}
+                    color={isSelected ? c.textOnPrimary : c.textSecondary}
+                  />
+                </View>
+                <Text style={[
+                  cod.modalItemText,
+                  {color: c.textPrimary},
+                  isSelected && {color: c.primary, fontWeight: '800'},
+                ]}>
+                  {opt.label}
+                </Text>
+                {isSelected ? (
+                  <MaterialIcons name="check-circle" size={ms(22)} color={c.primary} />
+                ) : (
+                  <View style={[cod.modalItemCircle, {borderColor: c.border}]} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </ResponsiveModal>
     </View>
   );
 }
 
 const cod = StyleSheet.create({
-  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: 44, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, gap: 8},
-  selectorIcon: {width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
-  selectorText: {fontSize: 14, fontWeight: '700', flex: 1},
-  amountWrap: {flexDirection: 'row', alignItems: 'center', minWidth: 120, maxWidth: 180, height: 44, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12},
-  amountCurrency: {fontSize: 18, fontWeight: '800', marginRight: 4},
-  amountInput: {flex: 1, fontSize: 18, fontWeight: '800', padding: 0, textAlign: 'left'},
-  modalCard: {width: '88%', maxWidth: 420, borderRadius: 20, elevation: 16, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.25, shadowRadius: 20, overflow: 'hidden'},
-  modalHeader: {flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1},
-  modalHeaderIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
-  modalTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
-  modalSubtitle: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  modalCloseBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
-  modalBody: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16},
-  modalItem: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, marginVertical: 3, gap: 14},
-  modalItemIcon: {width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center'},
-  modalItemText: {fontSize: 15, fontWeight: '700', flex: 1, letterSpacing: 0.2},
-  modalItemCircle: {width: 22, height: 22, borderRadius: 11, borderWidth: 2},
+  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(34), paddingHorizontal: wp(10), borderRadius: wp(8), borderWidth: 1.5, gap: wp(5)},
+  selectorIcon: {width: wp(24), height: wp(24), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
+  selectorText: {fontSize: ms(12), fontWeight: '700', flex: 1},
+  amountWrap: {flexDirection: 'row', alignItems: 'center', minWidth: wp(100), maxWidth: wp(150), height: wp(34), borderRadius: wp(8), borderWidth: 1.5, paddingHorizontal: wp(10)},
+  amountCurrency: {fontSize: ms(15), fontWeight: '800', marginRight: wp(3)},
+  amountInput: {flex: 1, fontSize: ms(15), fontWeight: '800', padding: 0, textAlign: 'left'},
+  modalHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(8), borderBottomWidth: 1},
+  modalHeaderIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  modalTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
+  modalSubtitle: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
+  modalCloseBtn: {width: wp(30), height: wp(30), borderRadius: wp(15), justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  modalBody: {paddingHorizontal: wp(10), paddingTop: wp(6), paddingBottom: wp(8)},
+  modalItem: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), paddingHorizontal: wp(8), borderRadius: wp(8), marginVertical: 2, gap: wp(8), minHeight: wp(36)},
+  modalItemIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  modalItemText: {fontSize: ms(12), fontWeight: '700', flex: 1, letterSpacing: 0.2},
+  modalItemCircle: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2},
 });
 
 // ─── MAIN SCREEN ───
@@ -1640,8 +1628,8 @@ export default function NotesScreen({navigation}: Props) {
   const [activeTab, setActiveTab] = useState(0);
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
-  const {width} = useWindowDimensions();
-  const isTablet = width > 600;
+  const {width, height: winHeight} = useWindowDimensions();
+  const isTablet = Math.min(width, winHeight) > 600;
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -1664,7 +1652,7 @@ export default function NotesScreen({navigation}: Props) {
     <View style={[st.container, {backgroundColor: c.primaryDark}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      <View style={[st.header, {paddingTop: insets.top + 12}]}>
+      <View style={[st.header, {paddingTop: insets.top + wp(1)}]}>
         <View style={st.headerRow}>
           <View>
             <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
@@ -1674,7 +1662,7 @@ export default function NotesScreen({navigation}: Props) {
             style={[st.closeBtn, {backgroundColor: c.overlay10}]}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}>
-            <MaterialIcons name="close" size={20} color={c.textOnPrimary} />
+            <MaterialIcons name="close" size={ms(20)} color={c.textOnPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -1688,7 +1676,7 @@ export default function NotesScreen({navigation}: Props) {
                 activeOpacity={0.7}
                 onPress={() => setActiveTab(i)}>
                 <View style={[st.tabIconWrap, {backgroundColor: active ? c.overlay20 : c.overlay08}]}>
-                  <MaterialIcons name={tab.icon as any} size={15} color={active ? c.textOnPrimary : c.textOnDark60} />
+                  <MaterialIcons name={tab.icon as any} size={ms(15)} color={active ? c.textOnPrimary : c.textOnDark60} />
                 </View>
                 <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
                   {tab.label}
@@ -1712,125 +1700,122 @@ const st = StyleSheet.create({
   container: {flex: 1},
 
   // Header
-  header: {paddingHorizontal: 18, paddingBottom: 14},
-  headerRow: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14},
-  headerTitle: {color: Colors.textOnPrimary, fontSize: 16, fontWeight: '800', letterSpacing: 0.3},
-  headerSub: {fontSize: 12, fontWeight: '500', marginTop: 2},
-  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center'},
+  header: {paddingHorizontal: wp(12), paddingBottom: wp(3)},
+  headerRow: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: wp(3)},
+  headerTitle: {color: Colors.textOnPrimary, fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3},
+  headerSub: {fontSize: ms(9), fontWeight: '500', marginTop: 0},
+  closeBtn: {width: wp(30), height: wp(30), borderRadius: wp(15), justifyContent: 'center', alignItems: 'center'},
 
   // Tabs
-  tabsRow: {flexDirection: 'row', gap: 8, paddingVertical: 4, paddingRight: 8},
-  tab: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1},
-  tabIconWrap: {width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
-  tabLabel: {fontSize: 13, fontWeight: '700', letterSpacing: 0.3},
+  tabsRow: {flexDirection: 'row', gap: wp(5), paddingVertical: wp(1), paddingRight: wp(5)},
+  tab: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(4), paddingHorizontal: wp(10), borderRadius: wp(8), borderWidth: 1},
+  tabIconWrap: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
+  tabLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
 
   // Content
-  content: {flex: 1, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden'},
+  content: {flex: 1, borderTopLeftRadius: wp(20), borderTopRightRadius: wp(20), overflow: 'hidden'},
   scroll: {flex: 1},
-  scrollInner: {paddingBottom: 40, flexGrow: 1},
+  scrollInner: {paddingBottom: wp(40), flexGrow: 1},
 
   // Tab body
-  tabBody: {padding: 20, flex: 1},
+  tabBody: {padding: wp(20), flex: 1},
 
   // Save
-  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 12, elevation: 3, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
-  saveBtnText: {fontSize: 14, fontWeight: '700'},
+  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(14), paddingVertical: wp(6), borderRadius: wp(10), elevation: 3, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
+  saveBtnText: {fontSize: ms(12), fontWeight: '700'},
 
   // Field
-  field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: 14, gap: 10, borderBottomWidth: 0.5},
+  field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(5), gap: wp(5), borderBottomWidth: 0.5},
   fieldWide: {flexDirection: 'column', alignItems: 'flex-start'},
-  fieldLabel: {fontSize: 12, fontWeight: '800', minWidth: 100, maxWidth: 170, letterSpacing: 0.2},
-  fieldLabelWide: {width: '100%', marginBottom: 10},
-  fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, flex: 1},
+  fieldLabel: {fontSize: ms(10), fontWeight: '800', minWidth: wp(75), maxWidth: wp(140), letterSpacing: 0.2},
+  fieldLabelWide: {width: '100%', marginBottom: wp(4)},
+  fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(5), flex: 1},
 
   // Stepper
-  stepperWrap: {flexDirection: 'row', alignItems: 'center', gap: 2},
-  stepBtn: {width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  stepperWrap: {flexDirection: 'row', alignItems: 'center', gap: wp(1)},
+  stepBtn: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   stepBtnMinus: {borderWidth: 1},
   stepBtnPlus: {},
-  stepVal: {width: 64, height: 38, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: 8, marginHorizontal: 3},
-  stepValText: {fontSize: 15, fontWeight: '700'},
-  unitInline: {fontSize: 13, fontWeight: '600', marginLeft: 6},
-  unitBadge: {marginLeft: 8, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1},
-  unitBadgeText: {fontSize: 12, fontWeight: '700'},
+  stepVal: {width: wp(44), height: wp(28), justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: wp(6), marginHorizontal: wp(1)},
+  stepValText: {fontSize: ms(11), fontWeight: '700'},
+  unitInline: {fontSize: ms(11), fontWeight: '600', marginLeft: wp(4)},
+  unitBadge: {marginLeft: wp(8), paddingHorizontal: wp(10), paddingVertical: wp(5), borderRadius: wp(8), borderWidth: 1},
+  unitBadgeText: {fontSize: ms(11), fontWeight: '700'},
 
   // More
-  moreBtn: {width: 44, height: 44, borderRadius: 22, borderWidth: 1, justifyContent: 'center', alignItems: 'center'},
+  moreBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), borderWidth: 1, justifyContent: 'center', alignItems: 'center'},
 
   // Highlighted input
-  hlInput: {minWidth: 90, maxWidth: 140, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 10, borderWidth: 1.5},
-  hlInputText: {fontSize: 18, fontWeight: '800'},
+  hlInput: {minWidth: wp(75), maxWidth: wp(120), height: wp(32), justifyContent: 'center', alignItems: 'center', borderRadius: wp(8), borderWidth: 1.5},
+  hlInputText: {fontSize: ms(15), fontWeight: '800'},
 
   // Gray input
-  grayInput: {minWidth: 120, maxWidth: 180, height: 40, borderRadius: 10, borderWidth: 1, justifyContent: 'center', paddingHorizontal: 12},
-  grayPlaceholder: {fontSize: 13, fontWeight: '500'},
+  grayInput: {minWidth: wp(120), maxWidth: wp(180), height: wp(40), borderRadius: wp(10), borderWidth: 1, justifyContent: 'center', paddingHorizontal: wp(12)},
+  grayPlaceholder: {fontSize: ms(13), fontWeight: '500'},
 
   // Line input
-  lineInput: {borderBottomWidth: 1.5, height: 36, fontSize: 14, paddingVertical: 4},
+  lineInput: {borderBottomWidth: 1.5, height: wp(36), fontSize: ms(11), paddingVertical: wp(4)},
 
   // Checkbox
-  checkTap: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4, paddingRight: 8},
-  checkBox: {width: 24, height: 24, borderWidth: 2, borderRadius: 7, justifyContent: 'center', alignItems: 'center'},
-  checkLabel: {fontSize: 13, fontWeight: '600'},
+  checkTap: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(2), paddingRight: wp(5)},
+  checkBox: {width: wp(20), height: wp(20), borderWidth: 2, borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
+  checkLabel: {fontSize: ms(11), fontWeight: '600'},
 
   // Radio
-  radioRow: {flexDirection: 'row', alignItems: 'center', gap: 4},
-  radioTap: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8},
-  radioCircle: {width: 22, height: 22, borderRadius: 11, borderWidth: 2.5, justifyContent: 'center', alignItems: 'center'},
-  radioDot: {width: 10, height: 10, borderRadius: 5},
-  radioLabel: {fontSize: 14, fontWeight: '600'},
+  radioRow: {flexDirection: 'row', alignItems: 'center', gap: wp(2)},
+  radioTap: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(3), paddingHorizontal: wp(5), borderRadius: wp(6)},
+  radioCircle: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2, justifyContent: 'center', alignItems: 'center'},
+  radioDot: {width: wp(8), height: wp(8), borderRadius: wp(4)},
+  radioLabel: {fontSize: ms(11), fontWeight: '600'},
 
   // Text area
-  textArea: {borderRadius: 14, padding: 14, fontSize: 14, minHeight: 100, textAlignVertical: 'top', width: '100%', lineHeight: 20},
+  textArea: {borderRadius: wp(14), padding: wp(14), fontSize: ms(14), minHeight: wp(100), textAlignVertical: 'top', width: '100%', lineHeight: ms(20)},
 
   // Link
-  linkText: {fontSize: 13, fontWeight: '700', textDecorationLine: 'underline'},
+  linkText: {fontSize: ms(11), fontWeight: '700', textDecorationLine: 'underline'},
 
   // Inline
-  inlineLabel: {fontSize: 12, fontWeight: '800'},
+  inlineLabel: {fontSize: ms(11), fontWeight: '800'},
 
   // Time picker
-  timePick: {flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1},
-  timePickIcon: {width: 24, height: 24, borderRadius: 6, justifyContent: 'center', alignItems: 'center'},
-  timePickText: {fontSize: 12, fontWeight: '600'},
+  timePick: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(7), paddingVertical: wp(5), borderRadius: wp(8), borderWidth: 1},
+  timePickIcon: {width: wp(20), height: wp(20), borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
+  timePickText: {fontSize: ms(11), fontWeight: '600'},
 
   // Sub headers
-  subHeaderRow: {flexDirection: 'row', gap: 8, marginBottom: 8},
-  subHeaderPill: {paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1},
-  subHeaderText: {fontSize: 11, fontWeight: '600'},
+  subHeaderRow: {flexDirection: 'row', gap: wp(8), marginBottom: wp(8)},
+  subHeaderPill: {paddingHorizontal: wp(10), paddingVertical: wp(4), borderRadius: wp(6), borderWidth: 1},
+  subHeaderText: {fontSize: ms(11), fontWeight: '600'},
 
   // Section title
-  secTitle: {flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, paddingBottom: 10, marginBottom: 8, marginTop: 12},
-  secTitleText: {fontSize: 13, fontWeight: '800', letterSpacing: 0.3},
-
-  // (Time adjust styles moved to tt StyleSheet)
+  secTitle: {flexDirection: 'row', alignItems: 'center', gap: wp(8), borderBottomWidth: 1, paddingBottom: wp(10), marginBottom: wp(8), marginTop: wp(12)},
+  secTitleText: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3},
 
   // Selection popup
   popupOverlay: {flex: 1, backgroundColor: Colors.overlayModal, justifyContent: 'center', alignItems: 'center'},
-  popupCard: {width: '88%', maxWidth: 480, maxHeight: '75%', borderRadius: 16, elevation: 12, shadowOffset: {width: 0, height: 6}, shadowOpacity: 0.2, shadowRadius: 16, overflow: 'hidden'},
-  popupHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1},
-  popupTitle: {fontSize: 18, fontWeight: '900', letterSpacing: 0.3},
-  popupCloseBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center'},
-  popupScroll: {paddingHorizontal: 8},
-  popupItem: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 14, borderBottomWidth: 0.5, borderRadius: 8, marginVertical: 2},
-  popupItemText: {fontSize: 15, fontWeight: '600', flex: 1},
+  popupHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(10), paddingVertical: wp(5), borderBottomWidth: 1},
+  popupTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
+  popupCloseBtn: {width: wp(28), height: wp(28), borderRadius: wp(14), justifyContent: 'center', alignItems: 'center'},
+  popupScroll: {paddingHorizontal: wp(8)},
+  popupItem: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: wp(16), paddingHorizontal: wp(14), borderBottomWidth: 0.5, borderRadius: wp(8), marginVertical: 2, minHeight: wp(52)},
+  popupItemText: {fontSize: ms(15), fontWeight: '600', flex: 1},
 
   // Selector field
-  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: 42, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, gap: 6},
-  selectorText: {fontSize: 14, fontWeight: '600', flex: 1},
+  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(34), paddingHorizontal: wp(10), borderRadius: wp(8), borderWidth: 1.5, gap: wp(5)},
+  selectorText: {fontSize: ms(12), fontWeight: '600', flex: 1},
 
   // Numeric input
-  numericInput: {minWidth: 90, maxWidth: 140, height: 42, borderRadius: 10, borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: 12},
-  numericInputText: {fontSize: 18, fontWeight: '800', textAlign: 'center', padding: 0},
+  numericInput: {minWidth: wp(75), maxWidth: wp(120), height: wp(34), borderRadius: wp(8), borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: wp(10)},
+  numericInputText: {fontSize: ms(15), fontWeight: '800', textAlign: 'center', padding: 0},
 
   // Modal text
-  modalOptionText: {fontSize: 16, fontWeight: '800'},
-  modalCloseText: {fontSize: 15, fontWeight: '700'},
+  modalOptionText: {fontSize: ms(13), fontWeight: '800'},
+  modalCloseText: {fontSize: ms(13), fontWeight: '700'},
 
   // Table
-  tableHeader: {flexDirection: 'row', marginBottom: 12},
-  tableCellCode: {width: 80, fontSize: 13},
-  tableCellDesc: {flex: 1, fontSize: 13},
-  tableCellQty: {width: 50, fontSize: 13, textAlign: 'right'},
-  tableCellUnit: {width: 45, fontSize: 13, textAlign: 'right'},
+  tableHeader: {flexDirection: 'row', marginBottom: wp(12)},
+  tableCellCode: {width: wp(80), fontSize: ms(13)},
+  tableCellDesc: {flex: 1, fontSize: ms(13)},
+  tableCellQty: {width: wp(50), fontSize: ms(13), textAlign: 'right'},
+  tableCellUnit: {width: wp(45), fontSize: ms(13), textAlign: 'right'},
 });

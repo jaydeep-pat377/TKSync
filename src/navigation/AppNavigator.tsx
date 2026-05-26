@@ -1,7 +1,8 @@
-import React, {useCallback} from 'react';
-import {NavigationContainer} from '@react-navigation/native';
+import React, {useCallback, useMemo} from 'react';
+import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import Orientation from 'react-native-orientation-locker';
+import {useTheme} from '../contexts/ThemeContext';
 import SplashScreen from '../screens/SplashScreen';
 import CompanyLoginScreen from '../screens/CompanyLoginScreen';
 import DriverLoginScreen from '../screens/DriverLoginScreen';
@@ -15,6 +16,17 @@ import CurblineReleaseScreen from '../screens/CurblineReleaseScreen';
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
+  const {c} = useTheme();
+
+  // Navigation theme with proper background to prevent white flashes
+  const navTheme = useMemo(() => ({
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: c.primaryDark,
+    },
+  }), [c.primaryDark]);
+
   // Auto-lock landscape on every screen except Splash
   const onNavigationStateChange = useCallback((state: any) => {
     if (!state) return;
@@ -25,49 +37,51 @@ export default function AppNavigator() {
   }, []);
 
   return (
-    <NavigationContainer onStateChange={onNavigationStateChange}>
+    <NavigationContainer theme={navTheme} onStateChange={onNavigationStateChange}>
       <Stack.Navigator
         initialRouteName="Splash"
-        screenOptions={{headerShown: false, animation: 'none'}}>
+        screenOptions={{
+          headerShown: false,
+          animation: 'none',
+          contentStyle: {backgroundColor: c.primaryDark},
+        }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen
-          name="Login"
-          component={CompanyLoginScreen}
-        />
-        <Stack.Screen
-          name="CompanyLogin"
-          component={CompanyLoginScreen}
-        />
+        <Stack.Screen name="Login" component={CompanyLoginScreen} />
+        <Stack.Screen name="CompanyLogin" component={CompanyLoginScreen} />
         <Stack.Screen
           name="DriverLogin"
           component={DriverLoginScreen}
           options={{animation: 'slide_from_right'}}
         />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen
+          name="Dashboard"
+          component={DashboardScreen}
+          options={{contentStyle: {backgroundColor: c.background}}}
+        />
         <Stack.Screen
           name="MobileTicket"
           component={MobileTicketScreen}
-          options={{animation: 'slide_from_bottom'}}
+          options={{animation: 'slide_from_bottom', contentStyle: {backgroundColor: c.accentBg}}}
         />
         <Stack.Screen
           name="Notes"
           component={NotesScreen}
-          options={{animation: 'slide_from_bottom'}}
+          options={{animation: 'slide_from_bottom', contentStyle: {backgroundColor: c.primaryDark}}}
         />
         <Stack.Screen
           name="AcceptTicket"
           component={AcceptTicketScreen}
-          options={{animation: 'slide_from_right'}}
+          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.accentBg}}}
         />
         <Stack.Screen
           name="DisputeTicket"
           component={DisputeTicketScreen}
-          options={{animation: 'slide_from_right'}}
+          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.accentBg}}}
         />
         <Stack.Screen
           name="CurblineRelease"
           component={CurblineReleaseScreen}
-          options={{animation: 'slide_from_right'}}
+          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.accentBg}}}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -1,0 +1,122 @@
+import {Dimensions, PixelRatio} from 'react-native';
+
+// Base design dimensions (standard phone in landscape: 844x390 - iPhone 14 logical)
+// Since the app runs primarily in landscape, base width = landscape width
+const BASE_SHORT = 390;
+
+// Tablet trim: multiplied into the scale on tablet devices (shortDim > 600)
+// to make the UI slightly more compact. 0.9 = 10% reduction.
+// Phones are completely unaffected.
+const TABLET_TRIM = 0.9;
+
+/**
+ * Get the short dimension (always the smaller of width/height).
+ * This is stable regardless of orientation.
+ */
+function getShortDim(): number {
+  const {width, height} = Dimensions.get('window');
+  return Math.min(width, height);
+}
+
+/**
+ * Scale a value proportionally to device size.
+ * Uses the short dimension (portrait width) as reference to ensure
+ * consistent scaling regardless of orientation.
+ *
+ * On phones, scaling is purely linear (1:1 at 390pt).
+ * On tablets (shortDim > 600), a 10% trim is applied for a more compact UI.
+ *
+ *   Phone 390pt:     1.00x  (unchanged)
+ *   iPad Mini 744pt: 1.72x  (was 1.91x without trim)
+ *   iPad Air 820pt:  1.89x  (was 2.10x)
+ *   iPad Pro 1024pt: 2.36x  (was 2.63x)
+ */
+export function wp(size: number): number {
+  const shortDim = getShortDim();
+  let scale = shortDim / BASE_SHORT;
+  if (shortDim > 600) {
+    scale *= TABLET_TRIM;
+  }
+  return Math.round(PixelRatio.roundToNearestPixel(size * scale));
+}
+
+/**
+ * Moderate scale for fonts and icons.
+ * Scales less aggressively than wp() so text doesn't balloon on tablets.
+ * factor: 0 = no scaling, 1 = same as wp(), 0.45 = default.
+ */
+export function ms(size: number, factor: number = 0.45): number {
+  const shortDim = getShortDim();
+  let scale = shortDim / BASE_SHORT;
+  if (shortDim > 600) {
+    scale *= TABLET_TRIM;
+  }
+  const newSize = size + (size * scale - size) * factor;
+  return Math.round(PixelRatio.roundToNearestPixel(newSize));
+}
+
+/**
+ * Height-proportional scaling using the long dimension.
+ */
+export function hp(size: number): number {
+  const {width, height} = Dimensions.get('window');
+  const longDim = Math.max(width, height);
+  const scale = longDim / 844; // iPhone 14 long dimension
+  return Math.round(PixelRatio.roundToNearestPixel(size * scale));
+}
+
+/**
+ * Device type detection with granular breakpoints.
+ */
+export type DeviceType = 'smallPhone' | 'phone' | 'tablet' | 'largeTablet';
+
+export function getDeviceType(): DeviceType {
+  const shortDim = getShortDim();
+  if (shortDim < 360) return 'smallPhone';
+  if (shortDim < 600) return 'phone';
+  if (shortDim < 900) return 'tablet';
+  return 'largeTablet';
+}
+
+export function isTablet(): boolean {
+  return getShortDim() >= 600;
+}
+
+export function isLandscape(): boolean {
+  const {width, height} = Dimensions.get('window');
+  return width > height;
+}
+
+/**
+ * Responsive value picker - returns the right value for current device.
+ */
+export function responsive<T>(values: {
+  smallPhone?: T;
+  phone: T;
+  tablet?: T;
+  largeTablet?: T;
+}): T {
+  const device = getDeviceType();
+  switch (device) {
+    case 'smallPhone':
+      return values.smallPhone ?? values.phone;
+    case 'phone':
+      return values.phone;
+    case 'tablet':
+      return values.tablet ?? values.phone;
+    case 'largeTablet':
+      return values.largeTablet ?? values.tablet ?? values.phone;
+  }
+}
+
+/**
+ * Minimum touch target size (48dp per Material Design / Apple HIG).
+ */
+export const MIN_TOUCH_TARGET = 48;
+
+/**
+ * Clamp a scaled value between min and max.
+ */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}

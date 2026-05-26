@@ -17,6 +17,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
+import {wp, ms} from '../utils/responsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -28,7 +29,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
-  const isTablet = width > 600;
+  const isTablet = Math.min(width, height) > 600;
   const isLandscape = width > height;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -71,7 +72,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
         <ScrollView
           contentContainerStyle={[
             styles.innerContent,
-            {paddingTop: insets.top + 20},
+            {paddingTop: insets.top + wp(20)},
             isLandscape && styles.innerContentLandscape,
           ]}
           showsVerticalScrollIndicator={false}
@@ -118,7 +119,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
               <View style={[styles.loginTypeBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}]}>
                 <MaterialIcons
                   name="business"
-                  size={14}
+                  size={ms(14)}
                   color={c.primary}
                 />
                 <Text style={[styles.loginTypeText, {color: c.primary}]}>
@@ -222,50 +223,50 @@ export default function CompanyLoginScreen({navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1},
-  bgTop: {position: 'absolute', top: 0, left: 0, right: 0, height: '55%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},
-  bgBottom: {position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%'},
+  container: {flex: 1, overflow: 'hidden'},
+  bgTop: {position: 'absolute', top: 0, left: -5, right: -5, height: '60%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},
+  bgBottom: {position: 'absolute', bottom: 0, left: -5, right: -5, height: '55%'},
   content: {flex: 1},
-  innerContent: {flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 30},
-  innerContentLandscape: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40},
-  brandingSection: {alignItems: 'center', marginBottom: 32},
-  brandingSectionLandscape: {marginBottom: 0, flex: 1, maxWidth: 320},
+  innerContent: {flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: wp(24), paddingBottom: wp(30)},
+  innerContentLandscape: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(40)},
+  brandingSection: {alignItems: 'center', marginBottom: wp(32)},
+  brandingSectionLandscape: {marginBottom: 0, flex: 1, maxWidth: wp(320)},
   logoContainer: {marginBottom: 16},
-  logoOuter: {width: 88, height: 88, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 2},
-  logoOuterTablet: {width: 100, height: 100, borderRadius: 32},
-  logoInner: {width: 64, height: 64, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
-  logoInnerTablet: {width: 72, height: 72, borderRadius: 22},
-  appName: {fontSize: 32, fontWeight: '800', letterSpacing: 2},
-  appNameTablet: {fontSize: 38},
-  appTagline: {fontSize: 14, marginTop: 4, letterSpacing: 0.5},
-  appTaglineTablet: {fontSize: 17},
-  formWrapper: {width: '100%', maxWidth: 480},
-  formWrapperLandscape: {flex: 1, maxWidth: 460},
-  formCard: {borderRadius: 24, paddingHorizontal: 28, paddingVertical: 32, elevation: 20, shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.15, shadowRadius: 30},
-  formCardTablet: {paddingHorizontal: 36, paddingVertical: 40},
-  loginTypeBadge: {flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, gap: 6, marginBottom: 16, borderWidth: 1},
-  loginTypeText: {fontSize: 12, fontWeight: '700', letterSpacing: 0.3},
-  welcomeText: {fontSize: 26, fontWeight: '700', marginBottom: 4},
-  welcomeTextTablet: {fontSize: 30},
-  welcomeSub: {fontSize: 14, marginBottom: 24},
-  welcomeSubTablet: {fontSize: 16},
-  fieldGroup: {marginBottom: 18},
-  fieldLabel: {fontSize: 13, fontWeight: '600', marginBottom: 8, letterSpacing: 0.3},
-  fieldLabelTablet: {fontSize: 15, marginBottom: 10},
-  inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1.5},
-  inputRowTablet: {borderRadius: 16},
-  inputIconBox: {width: 44, height: 44, justifyContent: 'center', alignItems: 'center', marginLeft: 4},
-  inputIconBoxTablet: {width: 52, height: 52},
-  input: {flex: 1, paddingVertical: 14, fontSize: 15, paddingRight: 14},
-  inputTablet: {paddingVertical: 16, fontSize: 17},
-  connectButton: {flexDirection: 'row', borderRadius: 14, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
-  connectButtonTablet: {paddingVertical: 18, borderRadius: 16, marginTop: 12},
-  connectButtonText: {fontSize: 16, fontWeight: '700', letterSpacing: 0.5},
-  connectButtonTextTablet: {fontSize: 18},
-  switchRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 18, gap: 4},
-  switchText: {fontSize: 13},
-  switchLink: {fontSize: 13, fontWeight: '700'},
-  footer: {flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 12},
+  logoOuter: {width: wp(88), height: wp(88), borderRadius: wp(28), justifyContent: 'center', alignItems: 'center', borderWidth: 2},
+  logoOuterTablet: {width: wp(88), height: wp(88), borderRadius: wp(28)},
+  logoInner: {width: wp(64), height: wp(64), borderRadius: wp(20), justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
+  logoInnerTablet: {width: wp(64), height: wp(64), borderRadius: wp(20)},
+  appName: {fontSize: ms(32), fontWeight: '800', letterSpacing: 2},
+  appNameTablet: {fontSize: ms(32)},
+  appTagline: {fontSize: ms(14), marginTop: 4, letterSpacing: 0.5},
+  appTaglineTablet: {fontSize: ms(14)},
+  formWrapper: {width: '100%', maxWidth: wp(480)},
+  formWrapperLandscape: {flex: 1, maxWidth: wp(460)},
+  formCard: {borderRadius: wp(24), paddingHorizontal: wp(20), paddingVertical: wp(28), elevation: 20, shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.15, shadowRadius: 30},
+  formCardTablet: {paddingHorizontal: wp(18), paddingVertical: wp(18)},
+  loginTypeBadge: {flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(20), gap: wp(6), marginBottom: wp(16), borderWidth: 1},
+  loginTypeText: {fontSize: ms(12), fontWeight: '700', letterSpacing: 0.3},
+  welcomeText: {fontSize: ms(26), fontWeight: '700', marginBottom: 4},
+  welcomeTextTablet: {fontSize: ms(22)},
+  welcomeSub: {fontSize: ms(14), marginBottom: wp(24)},
+  welcomeSubTablet: {fontSize: ms(14)},
+  fieldGroup: {marginBottom: wp(18)},
+  fieldLabel: {fontSize: ms(13), fontWeight: '600', marginBottom: wp(8), letterSpacing: 0.3},
+  fieldLabelTablet: {fontSize: ms(12), marginBottom: wp(4)},
+  inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(14), borderWidth: 1.5},
+  inputRowTablet: {borderRadius: wp(16)},
+  inputIconBox: {width: wp(44), height: wp(44), justifyContent: 'center', alignItems: 'center', marginLeft: wp(4)},
+  inputIconBoxTablet: {width: wp(38), height: wp(38)},
+  input: {flex: 1, paddingVertical: wp(14), fontSize: ms(15), paddingRight: wp(14)},
+  inputTablet: {paddingVertical: wp(8), fontSize: ms(13)},
+  connectButton: {flexDirection: 'row', borderRadius: wp(14), paddingVertical: wp(16), alignItems: 'center', justifyContent: 'center', gap: wp(8), marginTop: wp(8), elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
+  connectButtonTablet: {paddingVertical: wp(9), borderRadius: wp(12), marginTop: wp(6)},
+  connectButtonText: {fontSize: ms(16), fontWeight: '700', letterSpacing: 0.5},
+  connectButtonTextTablet: {fontSize: ms(13)},
+  switchRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: wp(18), gap: wp(4)},
+  switchText: {fontSize: ms(13)},
+  switchLink: {fontSize: ms(13), fontWeight: '700'},
+  footer: {flexDirection: 'row', alignItems: 'center', marginTop: wp(20), gap: wp(12)},
   footerDivider: {flex: 1, height: 1},
-  footerText: {fontSize: 12, fontWeight: '500'},
+  footerText: {fontSize: ms(12), fontWeight: '500'},
 });

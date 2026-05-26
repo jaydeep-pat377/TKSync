@@ -8,11 +8,14 @@ import {
   TextInput,
   StatusBar,
   useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import {wp, ms} from '../utils/responsive';
 import SignaturePad from '../components/SignaturePad';
 
 type Props = {navigation: NativeStackNavigationProp<any>};
@@ -41,10 +44,14 @@ export default function DisputeTicketScreen({navigation}: Props) {
     <View style={[s.container, {backgroundColor: c.accentBg}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
+      <KeyboardAvoidingView
+        style={s.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + 8}]}
-        showsVerticalScrollIndicator={false}>
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + wp(8)}]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
 
         <View style={[s.card, {backgroundColor: c.white}]}>
 
@@ -55,7 +62,7 @@ export default function DisputeTicketScreen({navigation}: Props) {
               style={[s.closeBtn, {backgroundColor: c.surface}]}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}>
-              <MaterialIcons name="close" size={20} color={c.textSecondary} />
+              <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -124,19 +131,21 @@ export default function DisputeTicketScreen({navigation}: Props) {
 
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   container: {flex: 1},
+  flex1: {flex: 1},
   scroll: {flex: 1},
-  scrollContent: {paddingBottom: 30},
+  scrollContent: {paddingBottom: wp(30)},
 
   card: {
-    marginHorizontal: 10,
-    marginBottom: 10,
-    borderRadius: 14,
+    marginHorizontal: wp(10),
+    marginBottom: wp(10),
+    borderRadius: wp(14),
     overflow: 'hidden',
   },
 
@@ -145,43 +154,45 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingVertical: wp(10),
+    paddingHorizontal: wp(14),
     borderBottomWidth: 1,
   },
-  headerTitle: {fontSize: 18, fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
-  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', position: 'absolute', right: 12},
+  headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
+  closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
   // Info
-  infoSection: {paddingHorizontal: 24, paddingVertical: 20},
-  infoRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 16},
-  infoLabel: {fontSize: 14, fontWeight: '800', minWidth: 90, maxWidth: 130},
-  infoValue: {fontSize: 14, fontWeight: '500', flex: 1},
+  infoSection: {paddingHorizontal: wp(16), paddingVertical: wp(18)},
+  infoRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(10), gap: wp(10)},
+  infoLabel: {fontSize: ms(13), fontWeight: '800', minWidth: wp(75), maxWidth: wp(110)},
+  infoValue: {fontSize: ms(13), fontWeight: '500', flex: 1},
 
   // Quantity
-  qtyRow: {flexDirection: 'row', alignItems: 'center', gap: 10},
-  qtyInput: {width: 80, borderBottomWidth: 1, paddingVertical: 4, fontSize: 15, fontWeight: '600'},
-  qtyUnit: {fontSize: 14, fontWeight: '600'},
+  qtyRow: {flexDirection: 'row', alignItems: 'center', gap: wp(8)},
+  qtyInput: {width: wp(80), borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(14), fontWeight: '600'},
+  qtyUnit: {fontSize: ms(14), fontWeight: '600'},
 
   // Reason
-  reasonInput: {flex: 1, borderBottomWidth: 1, paddingVertical: 4, fontSize: 14},
+  reasonInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(14)},
 
   // Divider
-  divider: {height: 1, marginHorizontal: 20},
+  divider: {height: 1, marginHorizontal: wp(20)},
 
   // Sign
-  signSection: {paddingHorizontal: 24, paddingVertical: 24},
-  typeNameRow: {flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20},
-  typeNameLabel: {fontSize: 14, fontWeight: '800'},
-  typeNameInput: {flex: 1, borderBottomWidth: 1, paddingVertical: 4, fontSize: 14},
+  signSection: {paddingHorizontal: wp(16), paddingVertical: wp(20)},
+  typeNameRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(10), marginBottom: wp(16)},
+  typeNameLabel: {fontSize: ms(14), fontWeight: '800'},
+  typeNameInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(14)},
 
 
   // Dispute button
   disputeBtn: {
-    marginTop: 24,
-    paddingVertical: 16,
-    borderRadius: 10,
+    marginTop: wp(14),
+    paddingVertical: wp(8),
+    borderRadius: wp(6),
+    minHeight: wp(36),
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  disputeBtnText: {fontSize: 16, fontWeight: '800', letterSpacing: 0.5},
+  disputeBtnText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
 });

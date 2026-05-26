@@ -12,6 +12,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import {wp, ms} from '../utils/responsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -41,8 +42,8 @@ const TIMELINE_GRID = [
 export default function MobileTicketScreen({navigation}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
-  const {width} = useWindowDimensions();
-  const isTablet = width > 600;
+  const {width, height: winHeight} = useWindowDimensions();
+  const isTablet = Math.min(width, winHeight) > 600;
 
   return (
     <View style={[styles.container, {backgroundColor: c.background}]}>
@@ -57,13 +58,13 @@ export default function MobileTicketScreen({navigation}: Props) {
         showsVerticalScrollIndicator={false}>
 
         {/* Ticket Card */}
-        <View style={[styles.ticketCard, {backgroundColor: c.white, shadowColor: c.shadowColor}, isTablet && {marginHorizontal: 40, maxWidth: 800, alignSelf: 'center', width: '100%'}]}>
+        <View style={[styles.ticketCard, {backgroundColor: c.white, shadowColor: c.shadowColor}, isTablet && {marginHorizontal: wp(40), maxWidth: wp(800), alignSelf: 'center', width: '100%'}]}>
 
           {/* Banner */}
           <View style={[styles.banner, {backgroundColor: c.bannerBg}]}>
             <Text style={[styles.bannerTitle, {color: c.textOnPrimary}]}>MOBILE TICKET</Text>
             <View style={[styles.qrPlaceholder, {backgroundColor: c.overlay15}]}>
-              <MaterialIcons name="qr-code-2" size={48} color={c.textOnPrimary} />
+              <MaterialIcons name="qr-code-2" size={ms(48)} color={c.textOnPrimary} />
             </View>
           </View>
 
@@ -85,7 +86,7 @@ export default function MobileTicketScreen({navigation}: Props) {
               style={[styles.closeBtn, {backgroundColor: c.surface}]}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}>
-              <MaterialIcons name="close" size={20} color={c.textSecondary} />
+              <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -147,7 +148,7 @@ export default function MobileTicketScreen({navigation}: Props) {
           {/* Charges Table */}
           <View style={[styles.section, {borderBottomColor: c.border}]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{minWidth: 420}}>
+              <View style={{minWidth: wp(420)}}>
                 {/* Table Header */}
                 <View style={[styles.tableRow, styles.tableHeader, {borderBottomColor: c.textPrimary}]}>
                   <Text style={[styles.colCode, styles.thText, {color: c.textPrimary}]}>CODE</Text>
@@ -230,45 +231,45 @@ const styles = StyleSheet.create({
   container: {flex: 1},
   topBar: {height: 0},
   scroll: {flex: 1},
-  scrollContent: {paddingTop: 8, paddingBottom: 30},
-  ticketCard: {marginHorizontal: 12, borderRadius: 14, overflow: 'hidden', elevation: 4, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.12, shadowRadius: 8},
-  banner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 20},
-  bannerTitle: {fontSize: 28, fontWeight: '900', letterSpacing: 2},
-  qrPlaceholder: {width: 64, height: 64, borderRadius: 8, justifyContent: 'center', alignItems: 'center'},
-  metaRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20, borderBottomWidth: 1},
-  metaItem: {flex: 1, alignItems: 'center'},
-  metaLabel: {fontSize: 12, fontWeight: '800', letterSpacing: 0.5},
-  metaValue: {fontSize: 16, fontWeight: '600', marginTop: 2},
-  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center'},
-  section: {paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1},
-  infoRow: {flexDirection: 'row', paddingVertical: 8},
-  infoLabel: {minWidth: 90, maxWidth: 130, fontSize: 13, fontWeight: '800'},
-  infoValue: {flex: 1, fontSize: 13, fontWeight: '500'},
-  highlightValue: {paddingHorizontal: 4, paddingVertical: 2},
-  twoColGrid: {flexDirection: 'row', gap: 16},
+  scrollContent: {paddingTop: wp(8), paddingBottom: wp(30)},
+  ticketCard: {marginHorizontal: wp(12), borderRadius: wp(14), overflow: 'hidden', elevation: 4, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.12, shadowRadius: 8},
+  banner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(16), paddingVertical: wp(16)},
+  bannerTitle: {fontSize: ms(22), fontWeight: '900', letterSpacing: 1.5},
+  qrPlaceholder: {width: wp(64), height: wp(64), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  metaRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(12), paddingHorizontal: wp(16), borderBottomWidth: 1, gap: wp(4)},
+  metaItem: {flex: 1, alignItems: 'center', minWidth: wp(70)},
+  metaLabel: {fontSize: ms(11), fontWeight: '800', letterSpacing: 0.5},
+  metaValue: {fontSize: ms(14), fontWeight: '600', marginTop: 2},
+  closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center'},
+  section: {paddingHorizontal: wp(14), paddingVertical: wp(14), borderBottomWidth: 1},
+  infoRow: {flexDirection: 'row', paddingVertical: wp(6)},
+  infoLabel: {minWidth: wp(75), maxWidth: wp(110), fontSize: ms(12), fontWeight: '800'},
+  infoValue: {flex: 1, fontSize: ms(13), fontWeight: '500'},
+  highlightValue: {paddingHorizontal: wp(4), paddingVertical: wp(2)},
+  twoColGrid: {flexDirection: 'row', gap: wp(8)},
   gridCol: {flex: 1},
-  gridRow: {flexDirection: 'row', paddingVertical: 6},
-  gridLabel: {minWidth: 70, maxWidth: 100, fontSize: 12, fontWeight: '800'},
-  gridValue: {flex: 1, fontSize: 12, fontWeight: '500'},
-  tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5},
-  tableHeader: {borderBottomWidth: 1.5, paddingBottom: 8},
-  colCode: {minWidth: 50, maxWidth: 70}, colDesc: {flex: 1}, colQty: {minWidth: 40, maxWidth: 55, textAlign: 'right'}, colUnit: {minWidth: 30, maxWidth: 45, textAlign: 'center'}, colPrice: {minWidth: 40, maxWidth: 55, textAlign: 'right'}, colAmount: {minWidth: 60, maxWidth: 95, textAlign: 'right'},
-  thText: {fontSize: 12, fontWeight: '800'}, tdText: {fontSize: 12, fontWeight: '500'},
-  totalsBlock: {marginTop: 12, alignItems: 'flex-end'},
-  totalRow: {flexDirection: 'row', paddingVertical: 8, minWidth: 160, maxWidth: 220},
-  totalLabel: {flex: 1, fontSize: 14, fontWeight: '800', textAlign: 'right', paddingRight: 16},
-  totalValue: {minWidth: 80, maxWidth: 120, fontSize: 14, fontWeight: '500'},
+  gridRow: {flexDirection: 'row', paddingVertical: wp(6)},
+  gridLabel: {minWidth: wp(55), maxWidth: wp(90), fontSize: ms(11), fontWeight: '800'},
+  gridValue: {flex: 1, fontSize: ms(12), fontWeight: '500'},
+  tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), borderBottomWidth: 0.5},
+  tableHeader: {borderBottomWidth: 1.5, paddingBottom: wp(8)},
+  colCode: {minWidth: wp(50), maxWidth: wp(70)}, colDesc: {flex: 1}, colQty: {minWidth: wp(40), maxWidth: wp(55), textAlign: 'right'}, colUnit: {minWidth: wp(30), maxWidth: wp(45), textAlign: 'center'}, colPrice: {minWidth: wp(40), maxWidth: wp(55), textAlign: 'right'}, colAmount: {minWidth: wp(60), maxWidth: wp(95), textAlign: 'right'},
+  thText: {fontSize: ms(12), fontWeight: '800'}, tdText: {fontSize: ms(12), fontWeight: '500'},
+  totalsBlock: {marginTop: wp(12), alignItems: 'flex-end'},
+  totalRow: {flexDirection: 'row', paddingVertical: wp(8), minWidth: wp(160), maxWidth: wp(240)},
+  totalLabel: {flex: 1, fontSize: ms(14), fontWeight: '800', textAlign: 'right', paddingRight: wp(16)},
+  totalValue: {minWidth: wp(80), maxWidth: wp(130), fontSize: ms(14), fontWeight: '500'},
   timeGrid: {flexDirection: 'row', flexWrap: 'wrap'},
-  timeCell: {width: '33.33%', flexDirection: 'row', paddingVertical: 6},
-  timeLabel: {fontSize: 12, fontWeight: '800', minWidth: 70, maxWidth: 100},
-  timeValue: {fontSize: 12, fontWeight: '500'},
-  signatureSection: {paddingHorizontal: 20, paddingVertical: 24, alignItems: 'center'},
-  signatureBox: {width: '80%', maxWidth: 500, height: 100, borderRadius: 8, borderWidth: 1, marginBottom: 24},
-  actionRow: {flexDirection: 'row', gap: 16, width: '80%', maxWidth: 500},
-  signBtn: {flex: 1, paddingVertical: 14, borderRadius: 6, alignItems: 'center'},
-  signBtnText: {fontSize: 16, fontWeight: '800', letterSpacing: 0.5},
-  disputeBtn: {flex: 1, paddingVertical: 14, borderRadius: 6, alignItems: 'center'},
-  disputeBtnText: {fontSize: 16, fontWeight: '800', letterSpacing: 0.5},
-  dashboardLink: {marginTop: 20},
-  dashboardLinkText: {fontSize: 16, fontWeight: '700', letterSpacing: 0.3},
+  timeCell: {width: '50%', flexDirection: 'row', paddingVertical: wp(6)},
+  timeLabel: {fontSize: ms(11), fontWeight: '800', minWidth: wp(55), maxWidth: wp(80)},
+  timeValue: {fontSize: ms(12), fontWeight: '500'},
+  signatureSection: {paddingHorizontal: wp(14), paddingVertical: wp(10), alignItems: 'center'},
+  signatureBox: {width: '90%', maxWidth: wp(500), height: wp(80), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(10)},
+  actionRow: {flexDirection: 'row', gap: wp(10), width: '90%', maxWidth: wp(500)},
+  signBtn: {flex: 1, paddingVertical: wp(8), borderRadius: wp(6), alignItems: 'center', justifyContent: 'center', minHeight: wp(36)},
+  signBtnText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
+  disputeBtn: {flex: 1, paddingVertical: wp(8), borderRadius: wp(6), alignItems: 'center', justifyContent: 'center', minHeight: wp(36)},
+  disputeBtnText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
+  dashboardLink: {marginTop: wp(12)},
+  dashboardLinkText: {fontSize: ms(14), fontWeight: '700', letterSpacing: 0.3},
 });

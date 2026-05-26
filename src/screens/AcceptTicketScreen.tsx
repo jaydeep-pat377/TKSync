@@ -8,12 +8,15 @@ import {
   TextInput,
   StatusBar,
   useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import SignaturePad from '../components/SignaturePad';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import {wp, ms} from '../utils/responsive';
 
 type Props = {navigation: NativeStackNavigationProp<any>};
 
@@ -56,10 +59,15 @@ export default function AcceptTicketScreen({navigation}: Props) {
     <View style={[s.container, {backgroundColor: c.accentBg}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
+      <KeyboardAvoidingView
+        style={s.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + 8}]}
-        showsVerticalScrollIndicator={false}>
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + wp(8)}]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
 
         <View style={[s.card, {backgroundColor: c.white}]}>
 
@@ -70,7 +78,7 @@ export default function AcceptTicketScreen({navigation}: Props) {
               style={[s.closeBtn, {backgroundColor: c.surface}]}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}>
-              <MaterialIcons name="close" size={20} color={c.textSecondary} />
+              <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -165,19 +173,21 @@ export default function AcceptTicketScreen({navigation}: Props) {
 
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   container: {flex: 1},
+  flex1: {flex: 1},
   scroll: {flex: 1},
-  scrollContent: {paddingBottom: 30},
+  scrollContent: {paddingBottom: wp(30)},
 
   card: {
-    marginHorizontal: 10,
-    marginBottom: 10,
-    borderRadius: 14,
+    marginHorizontal: wp(10),
+    marginBottom: wp(10),
+    borderRadius: wp(14),
     overflow: 'hidden',
   },
 
@@ -186,48 +196,50 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingVertical: wp(10),
+    paddingHorizontal: wp(14),
     borderBottomWidth: 1,
   },
-  headerTitle: {fontSize: 18, fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
-  closeBtn: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', position: 'absolute', right: 12},
+  headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
+  closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
   // Section
-  section: {paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1},
-  sectionTitle: {fontSize: 15, fontWeight: '800', textAlign: 'center', marginBottom: 14, letterSpacing: 0.3},
+  section: {paddingHorizontal: wp(16), paddingVertical: wp(18), borderBottomWidth: 1},
+  sectionTitle: {fontSize: ms(15), fontWeight: '800', textAlign: 'center', marginBottom: wp(14), letterSpacing: 0.3},
 
   // Body text
-  bodyText: {fontSize: 13, fontWeight: '500', lineHeight: 20},
+  bodyText: {fontSize: ms(13), fontWeight: '500', lineHeight: ms(20)},
 
   // Table
-  tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5},
-  tableHeader: {borderBottomWidth: 1.5, paddingBottom: 8},
-  colCode: {minWidth: 60, maxWidth: 85},
+  tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), borderBottomWidth: 0.5},
+  tableHeader: {borderBottomWidth: 1.5, paddingBottom: wp(8)},
+  colCode: {minWidth: wp(50), maxWidth: wp(75)},
   colDesc: {flex: 1},
-  colQty: {minWidth: 40, maxWidth: 60, textAlign: 'right'},
-  colUnit: {minWidth: 35, maxWidth: 50, textAlign: 'right'},
-  thText: {fontSize: 13, fontWeight: '800'},
-  tdText: {fontSize: 13, fontWeight: '500'},
+  colQty: {minWidth: wp(40), maxWidth: wp(60), textAlign: 'right'},
+  colUnit: {minWidth: wp(35), maxWidth: wp(50), textAlign: 'right'},
+  thText: {fontSize: ms(13), fontWeight: '800'},
+  tdText: {fontSize: ms(13), fontWeight: '500'},
 
   // Input rows
-  inputRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12},
-  inputLabel: {fontSize: 13, fontWeight: '800', minWidth: 100, maxWidth: 150},
-  inputLine: {flex: 1, borderBottomWidth: 1, paddingVertical: 6, fontSize: 14},
+  inputRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(10), gap: wp(8)},
+  inputLabel: {fontSize: ms(13), fontWeight: '800', minWidth: wp(80), maxWidth: wp(130)},
+  inputLine: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(6), fontSize: ms(14)},
 
   // Terms
-  termsText: {fontSize: 12, fontWeight: '500', lineHeight: 19},
+  termsText: {fontSize: ms(12), fontWeight: '500', lineHeight: ms(19)},
 
   // Sign section
-  signSection: {paddingHorizontal: 24, paddingVertical: 20},
+  signSection: {paddingHorizontal: wp(24), paddingVertical: wp(20)},
 
 
   // Submit
   submitBtn: {
-    marginTop: 24,
-    paddingVertical: 16,
-    borderRadius: 10,
+    marginTop: wp(14),
+    paddingVertical: wp(8),
+    borderRadius: wp(6),
+    minHeight: wp(36),
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  submitBtnText: {fontSize: 16, fontWeight: '800', letterSpacing: 0.5},
+  submitBtnText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
 });

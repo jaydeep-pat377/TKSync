@@ -12,6 +12,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Orientation from 'react-native-orientation-locker';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import {ms} from '../utils/responsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -435,10 +436,10 @@ export default function SplashScreen({navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1},
+  container: {flex: 1, overflow: 'hidden'},
   bgBase: {...StyleSheet.absoluteFill},
-  bgTopGradient: {position: 'absolute', top: 0, left: 0, right: 0, height: '60%', borderBottomLeftRadius: 60, borderBottomRightRadius: 60},
-  bgBottomGradient: {position: 'absolute', left: 0, right: 0, height: '45%'},
+  bgTopGradient: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},
+  bgBottomGradient: {position: 'absolute', left: -5, right: -5, bottom: 0, height: '50%'},
   glowOverlay: {...StyleSheet.absoluteFill},
   ringsContainer: {...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center'},
   ring: {position: 'absolute', left: '50%', top: '50%', borderWidth: 1.5, backgroundColor: 'transparent'},
@@ -458,6 +459,6 @@ const styles = StyleSheet.create({
   versionContainer: {position: 'absolute', bottom: 40, alignItems: 'center'},
   versionContainerLandscape: {bottom: 20, right: 30, left: undefined},
   versionBadge: {paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, borderWidth: 1, marginBottom: 8},
-  versionText: {fontSize: 12, fontWeight: '600', letterSpacing: 0.5},
-  copyrightText: {fontSize: 11, fontWeight: '500', letterSpacing: 0.3},
+  versionText: {fontSize: ms(12), fontWeight: '600', letterSpacing: 0.5},
+  copyrightText: {fontSize: ms(11), fontWeight: '500', letterSpacing: 0.3},
 });
