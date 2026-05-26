@@ -147,6 +147,6 @@ const s = StyleSheet.create({
   typeNameLabel: {fontSize: ms(14), fontWeight: '800'},
   typeNameInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(14)},
 
-  submitBtn: {marginTop: wp(24), paddingVertical: wp(16), borderRadius: wp(10), minHeight: wp(52), alignItems: 'center'},
-  submitBtnText: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.5},
+  submitBtn: {marginTop: wp(14), paddingVertical: wp(8), borderRadius: wp(6), minHeight: wp(36), alignItems: 'center', justifyContent: 'center'},
+  submitBtnText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
 });
