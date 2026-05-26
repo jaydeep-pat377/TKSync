@@ -27,6 +27,7 @@ export default function CurblineReleaseScreen({navigation}: Props) {
   const sigHeight = Math.min(220, Math.max(120, height * 0.3));
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
@@ -40,12 +41,13 @@ export default function CurblineReleaseScreen({navigation}: Props) {
 
       <KeyboardAvoidingView
         style={s.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + wp(8)}]}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={scrollEnabled}>
 
         <View style={[s.card, {backgroundColor: c.white}]}>
 
@@ -100,7 +102,7 @@ export default function CurblineReleaseScreen({navigation}: Props) {
               />
             </View>
 
-            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} />
+            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
 
             <TouchableOpacity
               style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}

@@ -44,6 +44,7 @@ export default function AcceptTicketScreen({navigation}: Props) {
   const [customerNotes, setCustomerNotes] = useState('');
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
@@ -61,13 +62,13 @@ export default function AcceptTicketScreen({navigation}: Props) {
 
       <KeyboardAvoidingView
         style={s.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + wp(8)}]}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={scrollEnabled}>
 
         <View style={[s.card, {backgroundColor: c.white}]}>
 
@@ -160,7 +161,7 @@ export default function AcceptTicketScreen({navigation}: Props) {
             </View>
 
             {/* Signature Pad */}
-            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} />
+            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
 
             {/* Submit Button */}
             <TouchableOpacity

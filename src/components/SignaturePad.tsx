@@ -1,5 +1,5 @@
-import React, {useRef, useState, useCallback, useEffect} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import React, {useRef, useState, useCallback} from 'react';
+import {View, Text, TouchableOpacity, StyleSheet, findNodeHandle} from 'react-native';
 import SignatureScreen from 'react-native-signature-canvas';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../contexts/ThemeContext';
@@ -8,87 +8,60 @@ import {wp, ms} from '../utils/responsive';
 type Props = {
   onSignatureChange: (signature: string | null) => void;
   height?: number;
+  onTouchStart?: () => void;
+  onTouchEnd?: () => void;
 };
 
-export default function SignaturePad({onSignatureChange, height = 220}: Props) {
+export default function SignaturePad({onSignatureChange, height = 220, onTouchStart, onTouchEnd}: Props) {
   const {c, isDark} = useTheme();
   const sigRef = useRef<any>(null);
   const [hasSignature, setHasSignature] = useState(false);
-  const [drawCount, setDrawCount] = useState(0);
+  const hasDrawn = useRef(false);
 
-  // When user finishes a stroke, mark as drawn and read signature
+  const handleBegin = useCallback(() => {
+    onTouchStart?.();
+    if (!hasDrawn.current) {
+      hasDrawn.current = true;
+      setHasSignature(true);
+      onSignatureChange('drawn');
+    }
+  }, [onSignatureChange, onTouchStart]);
+
   const handleEnd = useCallback(() => {
-    setDrawCount(prev => prev + 1);
-    setHasSignature(true);
-    // Small delay to let the canvas finish rendering the stroke
+    onTouchEnd?.();
     setTimeout(() => {
       sigRef.current?.readSignature();
-    }, 100);
-  }, []);
+    }, 300);
+  }, [onTouchEnd]);
 
-  // Called when readSignature() returns data
   const handleOK = useCallback(
     (sig: string) => {
       if (sig && sig.length > 50) {
-        // Valid base64 signature data (not just empty canvas header)
         onSignatureChange(sig);
       }
     },
     [onSignatureChange],
   );
 
-  // Fallback: if onOK never fires but user drew something, still enable
-  useEffect(() => {
-    if (drawCount > 0 && !hasSignature) {
-      setHasSignature(true);
-    }
-  }, [drawCount, hasSignature]);
-
-  // When drawCount increases and we haven't got a signature yet via onOK,
-  // try reading again after a longer delay
-  useEffect(() => {
-    if (drawCount > 0) {
-      const timer = setTimeout(() => {
-        sigRef.current?.readSignature();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [drawCount]);
-
-  // Also notify parent that signature exists based on draw activity
-  useEffect(() => {
-    if (hasSignature && drawCount > 0) {
-      // If onOK hasn't fired with real data, send a placeholder to unblock button
-      onSignatureChange('drawn');
-    }
-  }, [hasSignature, drawCount, onSignatureChange]);
-
   const handleEmpty = useCallback(() => {
+    hasDrawn.current = false;
     setHasSignature(false);
-    setDrawCount(0);
     onSignatureChange(null);
   }, [onSignatureChange]);
 
   const handleClear = useCallback(() => {
     sigRef.current?.clearSignature();
+    hasDrawn.current = false;
     setHasSignature(false);
-    setDrawCount(0);
     onSignatureChange(null);
   }, [onSignatureChange]);
-
-  const handleBegin = useCallback(() => {
-    // User started drawing — preemptively mark as having content
-    if (!hasSignature) {
-      setHasSignature(true);
-    }
-  }, [hasSignature]);
 
   const webStyle = `
     .m-signature-pad { box-shadow: none; border: none; margin: 0; }
     .m-signature-pad--body { border: none; }
     .m-signature-pad--footer { display: none; }
     body, html { background-color: ${isDark ? '#1E2230' : '#F1F5F9'}; margin: 0; padding: 0; }
-    canvas { width: 100% !important; height: 100% !important; }
+    canvas { width: 100% !important; height: 100% !important; touch-action: none; }
   `;
 
   return (
@@ -111,7 +84,6 @@ export default function SignaturePad({onSignatureChange, height = 220}: Props) {
           minWidth={1.5}
           maxWidth={3}
           dotSize={2}
-          trimWhitespace
           autoClear={false}
         />
 

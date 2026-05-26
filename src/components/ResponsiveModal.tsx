@@ -2,6 +2,7 @@ import React, {useRef, useEffect} from 'react';
 import {
   Modal,
   Pressable,
+  View,
   Animated,
   StyleSheet,
   useWindowDimensions,
@@ -88,19 +89,16 @@ export default function ResponsiveModal({
           shadowColor: c.shadowColor,
         },
         animatedStyle,
-      ]}
-      onStartShouldSetResponder={() => true}
-      onMoveShouldSetResponder={() => true}>
+      ]}>
       {children}
     </Animated.View>
   );
 
   const overlay = (
-    <Pressable
-      style={[s.overlay, {backgroundColor: c.overlayModal}]}
-      onPress={onClose}>
+    <View style={[s.overlay, {backgroundColor: c.overlayModal}]}>
+      <Pressable style={s.overlayTouch} onPress={onClose} />
       {cardContent}
-    </Pressable>
+    </View>
   );
 
   if (avoidKeyboard) {
@@ -129,6 +127,9 @@ const s = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  overlayTouch: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
   },
   card: {
     borderRadius: 18,

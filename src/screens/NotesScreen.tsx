@@ -9,6 +9,8 @@ import {
   StatusBar,
   Animated,
   useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -1687,17 +1689,22 @@ export default function NotesScreen({navigation}: Props) {
         </ScrollView>
       </View>
 
-      <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
-        <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={st.scrollInner}>
-          {renderTab()}
-        </ScrollView>
-      </Animated.View>
+      <KeyboardAvoidingView
+        style={st.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={st.scrollInner} keyboardShouldPersistTaps="handled">
+            {renderTab()}
+          </ScrollView>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const st = StyleSheet.create({
   container: {flex: 1},
+  flex1: {flex: 1},
 
   // Header
   header: {paddingHorizontal: wp(12), paddingBottom: wp(3)},

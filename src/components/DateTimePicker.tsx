@@ -232,7 +232,8 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
 
   return (
     <Modal transparent visible animationType="none" onRequestClose={onCancel} statusBarTranslucent>
-      <Pressable style={[ps.overlay, {backgroundColor: c.overlayModal}]} onPress={onCancel}>
+      <View style={[ps.overlay, {backgroundColor: c.overlayModal}]}>
+        <Pressable style={ps.overlayTouch} onPress={onCancel} />
         <Animated.View
           style={[
             ps.card,
@@ -335,13 +336,14 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
             </TouchableOpacity>
           </View>
         </Animated.View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
 
 const ps = StyleSheet.create({
   overlay: {flex: 1, justifyContent: 'center', alignItems: 'center'},
+  overlayTouch: {...StyleSheet.absoluteFill},
   card: {
     borderRadius: 18,
     overflow: 'hidden',

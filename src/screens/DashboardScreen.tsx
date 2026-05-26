@@ -546,26 +546,26 @@ export default function DashboardScreen({navigation}: Props) {
       <ResponsiveModal
         visible={qrVisible}
         onClose={() => setQrVisible(false)}
-        maxWidth={isTablet ? 540 : 320}
-        widthPercent={isTablet ? 92 : 78}
-        maxHeightPercent={isTablet ? 90 : 70}>
+        maxWidth={isTablet ? 480 : 320}
+        widthPercent={isTablet ? 80 : 78}
+        maxHeightPercent={isTablet ? 95 : 70}>
         <View style={{backgroundColor: c.qrBg}}>
           <TouchableOpacity style={[styles.mCloseBtn, styles.mCloseBtnAbsolute, {backgroundColor: c.surface}]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
             <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
           <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.qrScrollContent}>
-            <Text style={[styles.qrTitle, {color: c.qrFg, marginTop: isTablet ? wp(28) : wp(14)}]}>
+            <Text style={[styles.qrTitle, {color: c.qrFg, marginTop: isTablet ? wp(20) : wp(14)}]}>
               ORDER: <Text style={styles.qrBold}>2605</Text>, TICKET: <Text style={styles.qrBold}>26209538</Text>
             </Text>
             <View style={styles.qrCodeWrap}>
               <QRCode
                 value="ORDER:2605|TICKET:26209538|TRUCK:108693|DRIVER:109003|PLANT:26-SCARBOROUGH"
-                size={Math.min(width * 0.75, isTablet ? 400 : 200)}
+                size={Math.min(width * 0.65, isTablet ? 320 : 200)}
                 backgroundColor={c.qrBg}
                 color={c.qrFg}
               />
             </View>
-            <View style={{height: isTablet ? wp(28) : wp(24)}} />
+            <View style={{height: isTablet ? wp(20) : wp(24)}} />
           </ScrollView>
         </View>
       </ResponsiveModal>
