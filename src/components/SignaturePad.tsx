@@ -1,5 +1,5 @@
 import React, {useRef, useState, useCallback} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, findNodeHandle} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import SignatureScreen from 'react-native-signature-canvas';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../contexts/ThemeContext';

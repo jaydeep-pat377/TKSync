@@ -1632,6 +1632,7 @@ export default function NotesScreen({navigation}: Props) {
   const insets = useSafeAreaInsets();
   const {width, height: winHeight} = useWindowDimensions();
   const isTablet = Math.min(width, winHeight) > 600;
+  const isLandscape = width > winHeight;
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -1654,7 +1655,7 @@ export default function NotesScreen({navigation}: Props) {
     <View style={[st.container, {backgroundColor: c.primaryDark}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      <View style={[st.header, {paddingTop: insets.top + wp(1)}]}>
+      <View style={[st.header, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
         <View style={st.headerRow}>
           <View>
             <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
@@ -1691,9 +1692,9 @@ export default function NotesScreen({navigation}: Props) {
 
       <KeyboardAvoidingView
         style={st.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
-          <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={st.scrollInner} keyboardShouldPersistTaps="handled">
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}]} keyboardShouldPersistTaps="handled">
             {renderTab()}
           </ScrollView>
         </Animated.View>
@@ -1707,7 +1708,7 @@ const st = StyleSheet.create({
   flex1: {flex: 1},
 
   // Header
-  header: {paddingHorizontal: wp(12), paddingBottom: wp(3)},
+  header: {paddingBottom: wp(3)},
   headerRow: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: wp(3)},
   headerTitle: {color: Colors.textOnPrimary, fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3},
   headerSub: {fontSize: ms(9), fontWeight: '500', marginTop: 0},

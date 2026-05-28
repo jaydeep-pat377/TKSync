@@ -23,8 +23,12 @@ type Props = {navigation: NativeStackNavigationProp<any>};
 export default function CurblineReleaseScreen({navigation}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
-  const {height} = useWindowDimensions();
-  const sigHeight = Math.min(220, Math.max(120, height * 0.3));
+  const {width, height} = useWindowDimensions();
+  const isTablet = Math.min(width, height) > 600;
+  const isLandscape = width > height;
+  const sigHeight = isTablet
+    ? Math.min(220, Math.max(140, height * 0.2))
+    : Math.min(isLandscape ? 160 : 220, Math.max(100, height * 0.25));
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
@@ -36,20 +40,20 @@ export default function CurblineReleaseScreen({navigation}: Props) {
   const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0;
 
   return (
-    <View style={[s.container, {backgroundColor: c.accentBg}]}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+    <View style={[s.container, {backgroundColor: isLandscape ? c.white : c.accentBg}]}>
+      <StatusBar translucent backgroundColor="transparent" barStyle={isLandscape ? 'dark-content' : 'light-content'} />
 
       <KeyboardAvoidingView
         style={s.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + wp(8)}]}
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: wp(50)}]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: 0, borderRadius: 0, marginBottom: 0}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>
@@ -123,7 +127,7 @@ const s = StyleSheet.create({
   container: {flex: 1},
   flex1: {flex: 1},
   scroll: {flex: 1},
-  scrollContent: {paddingBottom: wp(30)},
+  scrollContent: {flexGrow: 1},
   card: {marginHorizontal: wp(10), marginBottom: wp(10), borderRadius: wp(14), overflow: 'hidden'},
 
   header: {

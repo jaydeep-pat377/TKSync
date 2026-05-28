@@ -22,7 +22,8 @@
       "Bash(unzip -o /Users/admin/Downloads/com.truckast.sync.105.apk -d raw)",
       "Bash(./gradlew bundleRelease)",
       "Bash(./gradlew assembleRelease)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

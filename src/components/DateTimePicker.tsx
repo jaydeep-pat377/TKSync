@@ -3,19 +3,17 @@ import {
   View,
   Text,
   Modal,
-  Pressable,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   Animated,
   useWindowDimensions,
-  Platform,
   StatusBar,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../contexts/ThemeContext';
-import {ms} from '../utils/responsive';
+import {wp, ms} from '../utils/responsive';
 
 // Item height is computed at render time via the hook, not at module level
 const VISIBLE = 5;
@@ -139,9 +137,9 @@ function Wheel({data, selected, onSelect, width, itemH}: WheelProps) {
 const wS = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: 4,
-    right: 4,
-    borderRadius: 10,
+    left: wp(4),
+    right: wp(4),
+    borderRadius: wp(10),
     borderWidth: 1.5,
     zIndex: 0,
   },
@@ -211,14 +209,12 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
   const isSmall = shortDim < 375;
   const isTabletDevice = shortDim > 600;
 
-  // Landscape: compact layout to fit within limited height
-  // Show 3 items in landscape, 5 in portrait for better fit
-  const visibleItems = isLandscape ? 3 : VISIBLE;
+  // Landscape: compact item height to fit within limited height
   const itemH = isLandscape ? Math.floor(availH * 0.12) : Math.max(36, Math.floor(availH * 0.065));
-  const wheelH = itemH * visibleItems;
-  const midIdx = Math.floor(visibleItems / 2);
 
-  const modalW = Math.min(screenW * 0.92, isTabletDevice ? 620 : isLandscape ? 560 : 380);
+  const safeH = insets.left + insets.right;
+  const availW = screenW - safeH;
+  const modalW = Math.min(availW * 0.92, isTabletDevice ? 620 : isLandscape ? 560 : 380);
   const maxModalH = availH * (isLandscape ? 0.94 : 0.88);
 
   // Wheel widths based on available space
@@ -233,7 +229,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
   return (
     <Modal transparent visible animationType="none" onRequestClose={onCancel} statusBarTranslucent>
       <View style={[ps.overlay, {backgroundColor: c.overlayModal}]}>
-        <Pressable style={ps.overlayTouch} onPress={onCancel} />
+        <View style={ps.overlayTouch} />
         <Animated.View
           style={[
             ps.card,
@@ -345,7 +341,7 @@ const ps = StyleSheet.create({
   overlay: {flex: 1, justifyContent: 'center', alignItems: 'center'},
   overlayTouch: {...StyleSheet.absoluteFill},
   card: {
-    borderRadius: 18,
+    borderRadius: wp(18),
     overflow: 'hidden',
     elevation: 16,
     shadowOffset: {width: 0, height: 8},
@@ -355,72 +351,72 @@ const ps = StyleSheet.create({
   hdr: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: wp(10),
+    paddingHorizontal: wp(16),
+    paddingVertical: wp(12),
     borderBottomWidth: 1,
   },
   hdrIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: wp(34),
+    height: wp(34),
+    borderRadius: wp(10),
     justifyContent: 'center',
     alignItems: 'center',
   },
   hdrTitle: {flex: 1, fontSize: ms(16), fontWeight: '700'},
   closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: wp(34),
+    height: wp(34),
+    borderRadius: wp(17),
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionLabel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 2,
+    gap: wp(5),
+    paddingHorizontal: wp(18),
+    paddingTop: wp(10),
+    paddingBottom: wp(2),
   },
   labelText: {fontSize: ms(10), fontWeight: '800', letterSpacing: 1},
   wheels: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: wp(6),
   },
-  colon: {fontSize: ms(20), fontWeight: '800', marginHorizontal: 2, marginTop: -2},
+  colon: {fontSize: ms(20), fontWeight: '800', marginHorizontal: wp(2), marginTop: -2},
   footer: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: wp(10),
+    paddingHorizontal: wp(16),
+    paddingVertical: wp(12),
     borderTopWidth: 1,
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: wp(12),
+    borderRadius: wp(10),
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: wp(44),
   },
   confirmBtn: {
     flex: 1,
     flexDirection: 'row',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: wp(12),
+    borderRadius: wp(10),
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    minHeight: 44,
+    gap: wp(5),
+    minHeight: wp(44),
   },
   btnText: {fontSize: ms(14), fontWeight: '700'},
-  portraitContent: {paddingBottom: 4},
-  landscapeContent: {paddingVertical: 4},
+  portraitContent: {paddingBottom: wp(4)},
+  landscapeContent: {paddingVertical: wp(4)},
   landscapeRow: {flexDirection: 'row', alignItems: 'center'},
   landscapeCol: {flex: 1, alignItems: 'center'},
-  dividerV: {width: 1, alignSelf: 'stretch', marginVertical: 8},
+  dividerV: {width: 1, alignSelf: 'stretch', marginVertical: wp(8)},
 });

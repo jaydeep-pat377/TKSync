@@ -1,7 +1,6 @@
-import React, {useCallback, useMemo} from 'react';
+import React, {useMemo} from 'react';
 import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import Orientation from 'react-native-orientation-locker';
 import {useTheme} from '../contexts/ThemeContext';
 import SplashScreen from '../screens/SplashScreen';
 import CompanyLoginScreen from '../screens/CompanyLoginScreen';
@@ -27,17 +26,8 @@ export default function AppNavigator() {
     },
   }), [c.primaryDark]);
 
-  // Auto-lock landscape on every screen except Splash
-  const onNavigationStateChange = useCallback((state: any) => {
-    if (!state) return;
-    const route = state.routes[state.index];
-    if (route.name !== 'Splash') {
-      Orientation.lockToLandscape();
-    }
-  }, []);
-
   return (
-    <NavigationContainer theme={navTheme} onStateChange={onNavigationStateChange}>
+    <NavigationContainer theme={navTheme}>
       <Stack.Navigator
         initialRouteName="Splash"
         screenOptions={{

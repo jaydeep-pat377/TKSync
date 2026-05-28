@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import Orientation from 'react-native-orientation-locker';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms} from '../utils/responsive';
@@ -48,9 +47,6 @@ export default function SplashScreen({navigation}: Props) {
   const screenFade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Allow all orientations during splash
-    Orientation.unlockAllOrientations();
-
     const ringPulse = (
       scale: Animated.Value,
       opacity: Animated.Value,
@@ -205,8 +201,6 @@ export default function SplashScreen({navigation}: Props) {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        // Lock to landscape after splash
-        Orientation.lockToLandscape();
         navigation.replace('Login');
       });
     }, 3200);
@@ -310,7 +304,7 @@ export default function SplashScreen({navigation}: Props) {
       <View
         style={[
           styles.content,
-          {paddingTop: insets.top, paddingBottom: insets.bottom},
+          {paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right},
           isLandscape && styles.contentLandscape,
         ]}>
         {/* Logo section */}
@@ -422,7 +416,8 @@ export default function SplashScreen({navigation}: Props) {
         <Animated.View
           style={[
             styles.versionContainer,
-            isLandscape && styles.versionContainerLandscape,
+            {bottom: Math.max(40, insets.bottom + 16)},
+            isLandscape && [styles.versionContainerLandscape, {bottom: Math.max(20, insets.bottom + 8)}],
             {opacity: versionOpacity},
           ]}>
           <View style={[styles.versionBadge, {backgroundColor: c.overlay10, borderColor: c.overlay08}]}>
@@ -456,8 +451,8 @@ const styles = StyleSheet.create({
   divider: {width: 60, height: 2.5, borderRadius: 2, marginTop: 20, marginBottom: 20},
   dotsRow: {flexDirection: 'row', gap: 8, alignItems: 'center'},
   dot: {},
-  versionContainer: {position: 'absolute', bottom: 40, alignItems: 'center'},
-  versionContainerLandscape: {bottom: 20, right: 30, left: undefined},
+  versionContainer: {position: 'absolute', alignItems: 'center'},
+  versionContainerLandscape: {right: 30, left: undefined},
   versionBadge: {paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, borderWidth: 1, marginBottom: 8},
   versionText: {fontSize: ms(12), fontWeight: '600', letterSpacing: 0.5},
   copyrightText: {fontSize: ms(11), fontWeight: '500', letterSpacing: 0.3},

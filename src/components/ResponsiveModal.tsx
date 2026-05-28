@@ -1,7 +1,6 @@
 import React, {useRef, useEffect} from 'react';
 import {
   Modal,
-  Pressable,
   View,
   Animated,
   StyleSheet,
@@ -70,9 +69,12 @@ export default function ResponsiveModal({
   // Compute dimensions from live values (not static wp())
   const statusBarH = StatusBar.currentHeight || 0;
   const safeV = insets.top + insets.bottom + statusBarH;
+  const safeH = insets.left + insets.right;
   const availH = height - safeV;
-  const modalMaxH = availH * ((isLandscape ? Math.max(maxHeightPercent, 90) : maxHeightPercent) / 100);
-  const modalW = Math.min(width * (widthPercent / 100), maxWidth);
+  const availW = width - safeH;
+  const effectivePercent = isLandscape ? Math.min(Math.max(maxHeightPercent, 85), 95) : maxHeightPercent;
+  const modalMaxH = availH * (effectivePercent / 100);
+  const modalW = Math.min(availW * (widthPercent / 100), maxWidth);
 
   const animatedStyle = animationType === 'scale'
     ? {transform: [{scale}], opacity: fade}
@@ -96,7 +98,7 @@ export default function ResponsiveModal({
 
   const overlay = (
     <View style={[s.overlay, {backgroundColor: c.overlayModal}]}>
-      <Pressable style={s.overlayTouch} onPress={onClose} />
+      <View style={s.overlayTouch} />
       {cardContent}
     </View>
   );
@@ -106,8 +108,8 @@ export default function ResponsiveModal({
       <Modal transparent visible={visible} animationType="none" onRequestClose={onClose} statusBarTranslucent>
         <KeyboardAvoidingView
           style={s.flex1}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : statusBarH}>
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
           {overlay}
         </KeyboardAvoidingView>
       </Modal>

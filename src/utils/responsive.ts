@@ -1,7 +1,6 @@
 import {Dimensions, PixelRatio} from 'react-native';
 
-// Base design dimensions (standard phone in landscape: 844x390 - iPhone 14 logical)
-// Since the app runs primarily in landscape, base width = landscape width
+// Base design dimensions (standard phone: 390pt short dimension - iPhone 14 logical)
 const BASE_SHORT = 390;
 
 // Tablet trim: multiplied into the scale on tablet devices (shortDim > 600)
@@ -25,11 +24,6 @@ function getShortDim(): number {
  *
  * On phones, scaling is purely linear (1:1 at 390pt).
  * On tablets (shortDim > 600), a 10% trim is applied for a more compact UI.
- *
- *   Phone 390pt:     1.00x  (unchanged)
- *   iPad Mini 744pt: 1.72x  (was 1.91x without trim)
- *   iPad Air 820pt:  1.89x  (was 2.10x)
- *   iPad Pro 1024pt: 2.36x  (was 2.63x)
  */
 export function wp(size: number): number {
   const shortDim = getShortDim();
@@ -82,6 +76,10 @@ export function isTablet(): boolean {
   return getShortDim() >= 600;
 }
 
+/**
+ * Static landscape check. For components, prefer using
+ * useWindowDimensions() which triggers re-renders on rotation.
+ */
 export function isLandscape(): boolean {
   const {width, height} = Dimensions.get('window');
   return width > height;
@@ -119,4 +117,30 @@ export const MIN_TOUCH_TARGET = 48;
  */
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Orientation-aware layout helpers.
+ * Use these with live width/height from useWindowDimensions().
+ */
+export function orientationLayout(width: number, height: number) {
+  const landscape = width > height;
+  const shortDim = Math.min(width, height);
+  const tablet = shortDim >= 600;
+  const phone = !tablet;
+
+  return {
+    isLandscape: landscape,
+    isPortrait: !landscape,
+    isTablet: tablet,
+    isPhone: phone,
+    // In portrait on phone, use full-width stacking; in landscape use side-by-side
+    contentDirection: (landscape || tablet) ? 'row' as const : 'column' as const,
+    // Cards that should be side-by-side in landscape but stack in portrait
+    cardDirection: (landscape && phone) || tablet ? 'row' as const : 'column' as const,
+    // Available content width for centering cards in portrait tablet
+    maxContentWidth: tablet ? Math.min(width * 0.85, 800) : width,
+    // Horizontal padding adjustment
+    contentPadding: tablet ? wp(24) : landscape ? wp(16) : wp(14),
+  };
 }
