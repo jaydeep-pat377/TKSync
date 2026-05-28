@@ -66,6 +66,16 @@
     "project": "PROJET",
     "job": "TRAVAIL"
   },
+  "orderInfo": {
+    "title": "Info Commande",
+    "timeDue": "HEURE PR\u00c9VUE",
+    "deliveredTo": "LIVR\u00c9 \u00c0",
+    "lotBlock": "LOT / BLOC",
+    "instructions": "INSTRUCTIONS",
+    "quantity": "QUANTIT\u00c9",
+    "loads": "CHARGES",
+    "trucks": "CAMIONS"
+  },
   "mixInfo": {
     "mixId": "ID M\u00c9LANGE",
     "description": "DESCRIPTION",
@@ -78,5 +88,21 @@
     "edit": "Modifier",
     "truck": "Camion",
     "qr": "QR"
+  },
+  "productsModal": {
+    "title": "Produits",
+    "subtitle": "D\u00e9tails du m\u00e9lange",
+    "code": "CODE",
+    "description": "DESCRIPTION",
+    "qty": "QT\u00c9",
+    "unit": "UNIT\u00c9"
+  },
+  "modals": {
+    "plants": "USINES",
+    "editTicket": "MODIFIER BILLET",
+    "actions": "ACTIONS",
+    "signAccept": "SIGNER ET ACCEPTER LE BILLET",
+    "disputeLoad": "CONTESTER LA CHARGE",
+    "signCurbline": "SIGNER LA LIB\u00c9RATION"
   }
 }

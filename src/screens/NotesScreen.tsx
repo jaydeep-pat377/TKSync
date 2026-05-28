@@ -94,8 +94,16 @@ function Stepper({value, unit, highlight, onIncrement, onDecrement, onChangeValu
   );
 }
 
-function Field({label, children, wide}: {label: string; children: React.ReactNode; wide?: boolean}) {
+function Field({label, children, wide, compact}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean}) {
   const {c} = useTheme();
+  if (compact) {
+    return (
+      <View style={[st.fieldCompact, {borderBottomColor: c.borderLight}]}>
+        <Text style={[st.fieldCompactLabel, {color: c.textMuted}]}>{label}</Text>
+        <View style={st.fieldCompactBody}>{children}</View>
+      </View>
+    );
+  }
   return (
     <View style={[st.field, {borderBottomColor: c.borderLight}, wide && st.fieldWide]}>
       <Text style={[st.fieldLabel, {color: c.textPrimary}, wide && st.fieldLabelWide]}>{label}</Text>
@@ -104,10 +112,45 @@ function Field({label, children, wide}: {label: string; children: React.ReactNod
   );
 }
 
+function FieldRow({children}: {children: React.ReactNode}) {
+  return <View style={st.fieldRow}>{children}</View>;
+}
+
+function CardsGrid({children}: {children: React.ReactNode}) {
+  const {width: sw} = useWindowDimensions();
+  const isWide = sw > 680;
+  return (
+    <View style={isWide ? st.cardsGridWide : st.cardsGridNarrow}>
+      {children}
+    </View>
+  );
+}
+
+function FieldCard({children, title, icon, fullWidth}: {children: React.ReactNode; title?: string; icon?: string; fullWidth?: boolean}) {
+  const {c} = useTheme();
+  const {width: sw} = useWindowDimensions();
+  const isWide = sw > 680;
+  return (
+    <View style={[
+      st.fieldCard,
+      {backgroundColor: c.white, shadowColor: c.shadowColor, borderColor: c.borderLight},
+      isWide && !fullWidth && st.fieldCardHalf,
+    ]}>
+      {title ? (
+        <View style={st.fieldCardHeader}>
+          {icon && <MaterialIcons name={icon as any} size={ms(14)} color={c.primary} />}
+          <Text style={[st.fieldCardTitle, {color: c.textPrimary}]}>{title}</Text>
+        </View>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
 function MoreBtn({onPress}: {onPress?: () => void}) {
   const {c} = useTheme();
   return (
-    <TouchableOpacity style={[st.moreBtn, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.5} onPress={onPress}>
+    <TouchableOpacity style={[st.moreBtn, {backgroundColor: c.surface}]} activeOpacity={0.6} onPress={onPress}>
       <MaterialIcons name="more-horiz" size={ms(16)} color={c.primary} />
     </TouchableOpacity>
   );
@@ -191,7 +234,7 @@ function SaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => vo
   const {c} = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
   return (
-    <Animated.View style={{transform: [{scale}], alignSelf: 'flex-end', marginBottom: 16}}>
+    <Animated.View style={{transform: [{scale}], alignSelf: 'flex-end', marginBottom: wp(6)}}>
       <TouchableOpacity
         style={[
           st.saveBtn,
@@ -611,6 +654,8 @@ function PlantTab() {
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
+      <CardsGrid>
+      <FieldCard title="Mix Properties" icon="science">
       <Field label="SLUMP FROM PLANT">
         <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
           <YellowInput value={slumpFromPlant} />
@@ -641,40 +686,37 @@ function PlantTab() {
         <MoreBtn onPress={() => setSlumpToJobPickerVisible(true)} />
       </Field>
       <Field label="TEMP AT PLANT">
-        <LineInput width={140} placeholder="Temperature" keyboardType="numeric" />
+        <LineInput width={100} placeholder="Temperature" keyboardType="numeric" />
         <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
       </Field>
-      <Field label="ADD HAND-ADDED ITEMS?">
+      </FieldCard>
+      <FieldCard title="Truck & Additives" icon="local-shipping">
+      <FieldRow>
+        <Field label="TRUCK START" compact>
+          <TimePicker
+            label="Select"
+            value={truckStart}
+            onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
+          />
+        </Field>
+        <Field label="TRUCK END" compact>
+          <TimePicker
+            label="Select"
+            value={truckEnd}
+            onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }}
+          />
+        </Field>
+      </FieldRow>
+      <Field label="HAND-ADDED ITEMS">
         <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
         <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
           <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
         </TouchableOpacity>
       </Field>
-      <Field label={'NITROGEN ADDED\n(IF NOT ON TICKET)'}><Check checked={nitrogenAdded} onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
-      <Field label={'FIBERS ADDED\n(IF NOT ON TICKET)'}><Check checked={fibersAdded} onPress={() => setFibersAdded(!fibersAdded)} /></Field>
-      <Field label="TRUCK RENTAL">
-        <View style={common.rowGap12}>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>START</Text>
-            <TimePicker
-              label="Select"
-              value={truckStart}
-              onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
-            />
-          </View>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>END</Text>
-            <TimePicker
-              label="Select"
-              value={truckEnd}
-              onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }}
-            />
-          </View>
-        </View>
-      </Field>
-      <Field label="PLANT NOTES" wide>
-        <NoteInput placeholder="Enter plant notes..." />
-      </Field>
+      <FieldRow>
+        <Field label="NITROGEN ADDED" compact><Check checked={nitrogenAdded} label="If not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
+        <Field label="FIBERS ADDED" compact><Check checked={fibersAdded} label="If not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></Field>
+      </FieldRow>
       <Field label="LOAD TESTED">
         <View style={st.radioRow}>
           <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => setLoadTested('yes')} />
@@ -683,22 +725,33 @@ function PlantTab() {
       </Field>
       {loadTested === 'yes' && (
         <>
-          <Field label="TEMP AT PLANT">
-            <Stepper value={String(loadTemp)} unit="C" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
-          </Field>
-          <Field label="AIR">
-            <Stepper value={String(loadAir)} unit="%" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
-          </Field>
-          <Field label="SLUMP">
-            <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
-            <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-            <MoreBtn onPress={() => setLoadSlumpPickerVisible(true)} />
-          </Field>
-          <Field label="CYLINDERS">
-            <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
-          </Field>
+          <FieldRow>
+            <Field label="TEMP" compact>
+              <Stepper value={String(loadTemp)} unit="C" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
+            </Field>
+            <Field label="AIR" compact>
+              <Stepper value={String(loadAir)} unit="%" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
+            </Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label="SLUMP" compact>
+              <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
+              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+              <MoreBtn onPress={() => setLoadSlumpPickerVisible(true)} />
+            </Field>
+            <Field label="CYLINDERS" compact>
+              <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
+            </Field>
+          </FieldRow>
         </>
       )}
+      </FieldCard>
+      <FieldCard title="Plant Notes" icon="edit-note" fullWidth>
+      <Field label="NOTES" wide>
+        <NoteInput placeholder="Enter plant notes..." />
+      </Field>
+      </FieldCard>
+      </CardsGrid>
       <SlumpPickerModal
         visible={slumpPickerVisible}
         value={slumpFromPlant}
@@ -773,58 +826,30 @@ function JobsiteTab() {
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
-      <Field label="FULL LOAD">
-        <View style={common.rowEndGap8}>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
-            <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
-          </View>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
-            <View style={common.rowCenterGap6}>
-              <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
-              <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
-            </View>
-          </View>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
-            <View style={common.rowCenterGap6}>
-              <LineInput width={60} placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
-              <MoreBtn onPress={() => setMmModalField('fullLoad')} />
-            </View>
-          </View>
-        </View>
+      <CardsGrid>
+      <FieldCard title="Water" icon="water-drop">
+      <Field label="FULL LOAD (LITRES)">
+        <Stepper value={String(fullLoadLitres)} unit="L" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
       </Field>
-      <Field label="Customer Requested Water">
-        <View style={common.rowEndGap8}>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
-            <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
-          </View>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
-            <View style={common.rowCenterGap6}>
-              <LineInput width={60} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
-              <MoreBtn onPress={() => setMmModalField('custWater')} />
-            </View>
-          </View>
-        </View>
+      <Field label="FULL LOAD (REASON)">
+        <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
+        <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
       </Field>
-      <Field label="Maintenance Water">
-        <View style={common.rowEndGap8}>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
-            <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
-          </View>
-          <View style={common.colGap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>mm</Text>
-            <View style={common.rowCenterGap6}>
-              <LineInput width={60} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
-              <MoreBtn onPress={() => setMmModalField('maintWater')} />
-            </View>
-          </View>
-        </View>
+      <Field label="FULL LOAD (MM)">
+        <LineInput width={80} placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
+        <MoreBtn onPress={() => setMmModalField('fullLoad')} />
       </Field>
+      <Field label="CUSTOMER WATER">
+        <Stepper value={String(custWaterLitres)} unit="L" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
+        <LineInput width={80} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
+        <MoreBtn onPress={() => setMmModalField('custWater')} />
+      </Field>
+      <Field label="MAINTENANCE WATER">
+        <Stepper value={String(maintWaterLitres)} unit="L" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
+        <LineInput width={80} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
+        <MoreBtn onPress={() => setMmModalField('maintWater')} />
+      </Field>
+      </FieldCard>
       <ReasonListModal
         visible={fullLoadReasonModal}
         onSelect={setFullLoadReason}
@@ -843,14 +868,14 @@ function JobsiteTab() {
         onClose={() => setMmModalField(null)}
       />
 
-      <SectionTitle title="ADDED, NOT ORDERED" icon="playlist-add" />
-
+      <FieldCard title="Added, Not Ordered" icon="playlist-add">
       {['SUPER PLASTICIZER', 'CONVEYOR (IF NOT ON TICKET)', 'COLOR', 'FIBER', 'Other'].map(item => (
         <Field key={item} label={item}>
           <LineInput width={160} placeholder="Value" value={addedValues[item] || ''} onPress={item !== 'Other' ? () => setAddedModalItem(item) : undefined} onChangeText={item === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item]: text})) : undefined} />
           {item !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item)} />}
         </Field>
       ))}
+      </FieldCard>
       <ReasonListModal
         visible={addedModalItem !== null}
         options={['NOT ADDED', 'CUSTOMER', 'DRIVER']}
@@ -858,22 +883,62 @@ function JobsiteTab() {
         onClose={() => setAddedModalItem(null)}
       />
 
-      <Field label="CONVEYOR ORDERED NOT USED"><Check checked={conveyorOrdered} onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
-      <Field label="UNLOADED OVER CONVEYOR"><Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} /></Field>
-      <Field label="LOAD DISPUTED"><Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} /></Field>
-
-      <Field label="WASHOUT AREA">
-        <LineInput width={160} placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
-        <MoreBtn onPress={() => setWashoutModalVisible(true)} />
+      <FieldCard title="Options & Testing" icon="checklist">
+      <FieldRow>
+        <Field label="CONVEYOR ORDERED" compact><Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
+        <Field label="UNLOADED CONVEYOR" compact><Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} /></Field>
+      </FieldRow>
+      <FieldRow>
+        <Field label="LOAD DISPUTED" compact><Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} /></Field>
+        <Field label="WASHOUT AREA" compact>
+          <LineInput width={120} placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
+          <MoreBtn onPress={() => setWashoutModalVisible(true)} />
+        </Field>
+      </FieldRow>
+      <Field label="LOAD TESTED">
+        <View style={st.radioRow}>
+          <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => setJobLoadTested('yes')} />
+          <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => setJobLoadTested('no')} />
+        </View>
       </Field>
+      {jobLoadTested === 'yes' && (
+        <>
+          <FieldRow>
+            <Field label="TEMP" compact>
+              <Stepper value={String(jobLoadTemp)} unit="C" onIncrement={() => setJobLoadTemp(v => v + 1)} onDecrement={() => setJobLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadTemp(parseInt(v) || 0)} />
+            </Field>
+            <Field label="AIR" compact>
+              <Stepper value={String(jobLoadAir)} unit="%" onIncrement={() => setJobLoadAir(v => v + 1)} onDecrement={() => setJobLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadAir(parseInt(v) || 0)} />
+            </Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label="SLUMP" compact>
+              <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
+              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+              <MoreBtn onPress={() => setJobLoadSlumpPickerVisible(true)} />
+            </Field>
+            <Field label="CYLINDERS" compact>
+              <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
+            </Field>
+          </FieldRow>
+          <SlumpPickerModal
+            visible={jobLoadSlumpPickerVisible}
+            title="Load Slump"
+            value={jobLoadSlump}
+            onConfirm={(val) => { setJobLoadSlump(val); setJobLoadSlumpPickerVisible(false); }}
+            onClose={() => setJobLoadSlumpPickerVisible(false)}
+          />
+        </>
+      )}
+      </FieldCard>
       <ReasonListModal
         visible={washoutModalVisible}
         options={['WHEELBARROW', 'DUMPSTER', 'BEHIND CURB LINE', 'STONE PILE ON JOB SITE', 'TRUCK MOUNTED WASHOUT', 'PUMP', 'OTHER']}
         onSelect={setWashoutArea}
         onClose={() => setWashoutModalVisible(false)}
       />
-
-      <Field label="INTERNAL JOBSITE NOTES" wide>
+      <FieldCard title="Jobsite Notes" icon="edit-note" fullWidth>
+      <Field label="NOTES" wide>
         <View style={common.rowStartFullW}>
           <View style={common.flex1}>
             <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
@@ -881,6 +946,7 @@ function JobsiteTab() {
           <MoreBtn onPress={() => setJobsiteNotesModal(true)} />
         </View>
       </Field>
+      </FieldCard>
       <ReasonListModal
         visible={jobsiteNotesModal}
         options={[
@@ -894,38 +960,7 @@ function JobsiteTab() {
         onSelect={(val) => setJobsiteNotes(prev => prev ? prev + '\n' + val : val)}
         onClose={() => setJobsiteNotesModal(false)}
       />
-
-      <Field label="LOAD TESTED">
-        <View style={st.radioRow}>
-          <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => setJobLoadTested('yes')} />
-          <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => setJobLoadTested('no')} />
-        </View>
-      </Field>
-      {jobLoadTested === 'yes' && (
-        <>
-          <Field label="TEMP AT PLANT">
-            <Stepper value={String(jobLoadTemp)} unit="C" onIncrement={() => setJobLoadTemp(v => v + 1)} onDecrement={() => setJobLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadTemp(parseInt(v) || 0)} />
-          </Field>
-          <Field label="AIR">
-            <Stepper value={String(jobLoadAir)} unit="%" onIncrement={() => setJobLoadAir(v => v + 1)} onDecrement={() => setJobLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadAir(parseInt(v) || 0)} />
-          </Field>
-          <Field label="SLUMP">
-            <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
-            <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-            <MoreBtn onPress={() => setJobLoadSlumpPickerVisible(true)} />
-          </Field>
-          <Field label="CYLINDERS">
-            <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
-          </Field>
-          <SlumpPickerModal
-            visible={jobLoadSlumpPickerVisible}
-            title="Load Slump"
-            value={jobLoadSlump}
-            onConfirm={(val) => { setJobLoadSlump(val); setJobLoadSlumpPickerVisible(false); }}
-            onClose={() => setJobLoadSlumpPickerVisible(false)}
-          />
-        </>
-      )}
+      </CardsGrid>
     </View>
   );
 }
@@ -1153,6 +1188,8 @@ function ReturnedTab() {
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton disabled={!isFormValid} onPress={handleSave} />
 
+      <CardsGrid>
+      <FieldCard title="Return Details" icon="assignment-return">
       {/* Returned Concrete */}
       <Field label="RETURNED CONCRETE">
         <View style={[st.numericInput, {backgroundColor: isConcreteValid ? c.primarySurface : c.surface, borderColor: isConcreteValid ? c.primary : c.border}]}>
@@ -1205,6 +1242,8 @@ function ReturnedTab() {
           <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isReasonValid ? c.primary : c.textMuted} />
         </TouchableOpacity>
       </Field>
+      </FieldCard>
+      </CardsGrid>
 
       {/* Modals */}
       <SelectionModal
@@ -1257,7 +1296,7 @@ function TimeAdjustTab() {
       <View style={[tt.headerCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
         <View style={tt.headerTop}>
           <View style={[tt.headerIconWrap, {backgroundColor: c.primarySurface}]}>
-            <MaterialIcons name="schedule" size={ms(20)} color={c.primary} />
+            <MaterialIcons name="schedule" size={ms(18)} color={c.primary} />
           </View>
           <View style={common.flex1}>
             <Text style={[tt.headerTitle, {color: c.textPrimary}]}>Delivery Timeline</Text>
@@ -1303,7 +1342,7 @@ function TimeAdjustTab() {
 
               {/* Center: icon + label */}
               <View style={[tt.iconWrap, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
-                <MaterialIcons name={event.icon as any} size={ms(16)} color={hasValue ? c.primary : c.textTertiary} />
+                <MaterialIcons name={event.icon as any} size={ms(15)} color={hasValue ? c.primary : c.textTertiary} />
               </View>
               <View style={common.flex1}>
                 <Text style={[tt.label, {color: c.textPrimary}]}>{event.key}</Text>
@@ -1314,7 +1353,7 @@ function TimeAdjustTab() {
 
               {/* Right: action */}
               <View style={[tt.editBtn, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
-                <MaterialIcons name={hasValue ? 'edit' : 'add'} size={ms(14)} color={hasValue ? c.primary : c.textMuted} />
+                <MaterialIcons name={hasValue ? 'edit' : 'add'} size={ms(13)} color={hasValue ? c.primary : c.textMuted} />
               </View>
             </TouchableOpacity>
           );
@@ -1340,25 +1379,25 @@ function TimeAdjustTab() {
 }
 
 const tt = StyleSheet.create({
-  headerCard: {borderRadius: wp(12), padding: wp(12), marginBottom: wp(8), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
-  headerTop: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(8)},
-  headerIconWrap: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
-  headerTitle: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.2},
-  headerSub: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
-  countPill: {paddingHorizontal: wp(8), paddingVertical: wp(3), borderRadius: wp(8), borderWidth: 1.5},
-  countText: {fontSize: ms(10), fontWeight: '800'},
+  headerCard: {borderRadius: wp(10), padding: wp(10), marginBottom: wp(8), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
+  headerTop: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(6)},
+  headerIconWrap: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  headerTitle: {fontSize: ms(12), fontWeight: '800', letterSpacing: 0.2},
+  headerSub: {fontSize: ms(9), fontWeight: '500', marginTop: 1},
+  countPill: {paddingHorizontal: wp(7), paddingVertical: wp(2), borderRadius: wp(8), borderWidth: 1.5},
+  countText: {fontSize: ms(9), fontWeight: '800'},
   track: {height: wp(3), borderRadius: wp(2), overflow: 'hidden'},
   fill: {position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: wp(2)},
-  listCard: {borderRadius: wp(12), overflow: 'hidden', marginBottom: wp(10), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 6},
-  row: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingHorizontal: wp(12), gap: wp(8)},
+  listCard: {borderRadius: wp(10), overflow: 'hidden', marginBottom: wp(8), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
+  row: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(6), paddingHorizontal: wp(10), gap: wp(8)},
   stepCol: {alignItems: 'center', width: wp(20)},
   dot: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2, justifyContent: 'center', alignItems: 'center', zIndex: 1},
   dotNum: {fontSize: ms(8), fontWeight: '800'},
-  line: {width: 2, flex: 1, marginTop: -1, marginBottom: wp(-8)},
-  iconWrap: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
-  label: {fontSize: ms(11), fontWeight: '700', letterSpacing: 0.2},
-  value: {fontSize: ms(10), fontWeight: '600', marginTop: 1},
-  editBtn: {width: wp(26), height: wp(26), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  line: {width: 2, flex: 1, marginTop: -1, marginBottom: wp(-6)},
+  iconWrap: {width: wp(26), height: wp(26), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
+  label: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
+  value: {fontSize: ms(9), fontWeight: '600', marginTop: 1},
+  editBtn: {width: wp(24), height: wp(24), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
 });
 
 // ─── COD PAYMENT TYPES ───
@@ -1438,6 +1477,8 @@ function CodTab() {
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
 
+      <CardsGrid>
+      <FieldCard title="Payment Details" icon="payments">
       {/* Payment Type Selector */}
       <Field label="PAYMENT">
         <TouchableOpacity
@@ -1516,7 +1557,9 @@ function CodTab() {
           </View>
         </View>
       </Field>
+      </FieldCard>
 
+      <FieldCard fullWidth>
       {/* COD Notes */}
       <Field label="COD NOTES" wide>
         <TextInput
@@ -1525,7 +1568,7 @@ function CodTab() {
             color: c.textPrimary,
             backgroundColor: c.white,
             borderWidth: notesFocused ? 2 : 1.5,
-            minHeight: 120,
+            minHeight: wp(60),
           }]}
           multiline
           numberOfLines={5}
@@ -1538,6 +1581,8 @@ function CodTab() {
           textAlignVertical="top"
         />
       </Field>
+      </FieldCard>
+      </CardsGrid>
 
       {/* Payment Type Modal */}
       <ResponsiveModal
@@ -1607,12 +1652,12 @@ function CodTab() {
 }
 
 const cod = StyleSheet.create({
-  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(34), paddingHorizontal: wp(10), borderRadius: wp(8), borderWidth: 1.5, gap: wp(5)},
-  selectorIcon: {width: wp(24), height: wp(24), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
-  selectorText: {fontSize: ms(12), fontWeight: '700', flex: 1},
-  amountWrap: {flexDirection: 'row', alignItems: 'center', minWidth: wp(100), maxWidth: wp(150), height: wp(34), borderRadius: wp(8), borderWidth: 1.5, paddingHorizontal: wp(10)},
-  amountCurrency: {fontSize: ms(15), fontWeight: '800', marginRight: wp(3)},
-  amountInput: {flex: 1, fontSize: ms(15), fontWeight: '800', padding: 0, textAlign: 'left'},
+  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4)},
+  selectorIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
+  selectorText: {fontSize: ms(11), fontWeight: '700', flex: 1},
+  amountWrap: {flexDirection: 'row', alignItems: 'center', minWidth: wp(80), maxWidth: wp(130), height: wp(30), borderRadius: wp(7), borderWidth: 1.5, paddingHorizontal: wp(8)},
+  amountCurrency: {fontSize: ms(13), fontWeight: '800', marginRight: wp(2)},
+  amountInput: {flex: 1, fontSize: ms(13), fontWeight: '800', padding: 0, textAlign: 'left'},
   modalHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(8), borderBottomWidth: 1},
   modalHeaderIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   modalTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
@@ -1679,7 +1724,7 @@ export default function NotesScreen({navigation}: Props) {
                 activeOpacity={0.7}
                 onPress={() => setActiveTab(i)}>
                 <View style={[st.tabIconWrap, {backgroundColor: active ? c.overlay20 : c.overlay08}]}>
-                  <MaterialIcons name={tab.icon as any} size={ms(15)} color={active ? c.textOnPrimary : c.textOnDark60} />
+                  <MaterialIcons name={tab.icon as any} size={ms(14)} color={active ? c.textOnPrimary : c.textOnDark60} />
                 </View>
                 <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
                   {tab.label}
@@ -1721,85 +1766,104 @@ const st = StyleSheet.create({
   tabLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
 
   // Content
-  content: {flex: 1, borderTopLeftRadius: wp(20), borderTopRightRadius: wp(20), overflow: 'hidden'},
+  content: {flex: 1, borderTopLeftRadius: wp(16), borderTopRightRadius: wp(16), overflow: 'hidden'},
   scroll: {flex: 1},
-  scrollInner: {paddingBottom: wp(40), flexGrow: 1},
+  scrollInner: {paddingBottom: wp(20), flexGrow: 1},
 
   // Tab body
-  tabBody: {padding: wp(20), flex: 1},
+  tabBody: {paddingHorizontal: wp(8), paddingTop: wp(8), paddingBottom: wp(10), flex: 1},
+
+  // Cards grid
+  cardsGridNarrow: {gap: wp(10)},
+  cardsGridWide: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(10), alignItems: 'stretch'},
+
+  // Field card
+  fieldCard: {borderRadius: wp(10), paddingHorizontal: wp(10), paddingTop: wp(2), paddingBottom: wp(2), borderWidth: 1, width: '100%'},
+  fieldCardHalf: {flexGrow: 1, flexShrink: 1, flexBasis: '47%', width: undefined},
+  fieldCardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(5)},
+  fieldCardTitle: {fontSize: ms(10), fontWeight: '800', letterSpacing: 0.3},
 
   // Save
-  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(14), paddingVertical: wp(6), borderRadius: wp(10), elevation: 3, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
-  saveBtnText: {fontSize: ms(12), fontWeight: '700'},
+  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(8), elevation: 3, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
+  saveBtnText: {fontSize: ms(10), fontWeight: '700'},
 
   // Field
-  field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(5), gap: wp(5), borderBottomWidth: 0.5},
+  field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(5), gap: wp(4), borderBottomWidth: 0.5},
+  fieldLast: {borderBottomWidth: 0},
   fieldWide: {flexDirection: 'column', alignItems: 'flex-start'},
-  fieldLabel: {fontSize: ms(10), fontWeight: '800', minWidth: wp(75), maxWidth: wp(140), letterSpacing: 0.2},
-  fieldLabelWide: {width: '100%', marginBottom: wp(4)},
-  fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(5), flex: 1},
+  fieldLabel: {fontSize: ms(10), fontWeight: '800', minWidth: wp(70), maxWidth: wp(120), letterSpacing: 0.2},
+  fieldLabelWide: {width: '100%', marginBottom: wp(3)},
+  fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(4), flex: 1},
+
+  // Compact field (label-above for FieldRow)
+  fieldCompact: {paddingVertical: wp(5), gap: wp(3), flex: 1, borderBottomWidth: 0},
+  fieldCompactLabel: {fontSize: ms(8.5), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3},
+  fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(4)},
+
+  // Field row
+  fieldRow: {flexDirection: 'row', gap: wp(8), borderBottomWidth: 0.5},
 
   // Stepper
   stepperWrap: {flexDirection: 'row', alignItems: 'center', gap: wp(1)},
-  stepBtn: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
+  stepBtn: {width: wp(26), height: wp(26), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
   stepBtnMinus: {borderWidth: 1},
   stepBtnPlus: {},
-  stepVal: {width: wp(44), height: wp(28), justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: wp(6), marginHorizontal: wp(1)},
+  stepVal: {width: wp(40), height: wp(26), justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: wp(6), marginHorizontal: wp(1)},
   stepValText: {fontSize: ms(11), fontWeight: '700'},
-  unitInline: {fontSize: ms(11), fontWeight: '600', marginLeft: wp(4)},
-  unitBadge: {marginLeft: wp(8), paddingHorizontal: wp(10), paddingVertical: wp(5), borderRadius: wp(8), borderWidth: 1},
-  unitBadgeText: {fontSize: ms(11), fontWeight: '700'},
+  unitInline: {fontSize: ms(10), fontWeight: '600', marginLeft: wp(3)},
+  unitBadge: {marginLeft: wp(5), paddingHorizontal: wp(7), paddingVertical: wp(3), borderRadius: wp(7), borderWidth: 1},
+  unitBadgeText: {fontSize: ms(10), fontWeight: '700'},
 
   // More
-  moreBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), borderWidth: 1, justifyContent: 'center', alignItems: 'center'},
+  moreBtn: {width: wp(26), height: wp(26), borderRadius: wp(13), justifyContent: 'center', alignItems: 'center'},
 
   // Highlighted input
-  hlInput: {minWidth: wp(75), maxWidth: wp(120), height: wp(32), justifyContent: 'center', alignItems: 'center', borderRadius: wp(8), borderWidth: 1.5},
-  hlInputText: {fontSize: ms(15), fontWeight: '800'},
+  hlInput: {minWidth: wp(55), maxWidth: wp(100), height: wp(28), justifyContent: 'center', alignItems: 'center', borderRadius: wp(7), borderWidth: 1.5},
+  hlInputText: {fontSize: ms(13), fontWeight: '800'},
 
   // Gray input
-  grayInput: {minWidth: wp(120), maxWidth: wp(180), height: wp(40), borderRadius: wp(10), borderWidth: 1, justifyContent: 'center', paddingHorizontal: wp(12)},
-  grayPlaceholder: {fontSize: ms(13), fontWeight: '500'},
+  grayInput: {minWidth: wp(90), maxWidth: wp(150), height: wp(32), borderRadius: wp(8), borderWidth: 1, justifyContent: 'center', paddingHorizontal: wp(8)},
+  grayPlaceholder: {fontSize: ms(11), fontWeight: '500'},
 
   // Line input
-  lineInput: {borderBottomWidth: 1.5, height: wp(36), fontSize: ms(11), paddingVertical: wp(4)},
+  lineInput: {borderBottomWidth: 1.5, height: wp(28), fontSize: ms(11), paddingVertical: wp(3)},
 
   // Checkbox
-  checkTap: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(2), paddingRight: wp(5)},
-  checkBox: {width: wp(20), height: wp(20), borderWidth: 2, borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
-  checkLabel: {fontSize: ms(11), fontWeight: '600'},
+  checkTap: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(1), paddingRight: wp(4)},
+  checkBox: {width: wp(18), height: wp(18), borderWidth: 2, borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
+  checkLabel: {fontSize: ms(10), fontWeight: '600'},
 
   // Radio
   radioRow: {flexDirection: 'row', alignItems: 'center', gap: wp(2)},
-  radioTap: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(3), paddingHorizontal: wp(5), borderRadius: wp(6)},
-  radioCircle: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2, justifyContent: 'center', alignItems: 'center'},
-  radioDot: {width: wp(8), height: wp(8), borderRadius: wp(4)},
+  radioTap: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(2), paddingHorizontal: wp(4), borderRadius: wp(6)},
+  radioCircle: {width: wp(16), height: wp(16), borderRadius: wp(8), borderWidth: 2, justifyContent: 'center', alignItems: 'center'},
+  radioDot: {width: wp(7), height: wp(7), borderRadius: wp(4)},
   radioLabel: {fontSize: ms(11), fontWeight: '600'},
 
   // Text area
-  textArea: {borderRadius: wp(14), padding: wp(14), fontSize: ms(14), minHeight: wp(100), textAlignVertical: 'top', width: '100%', lineHeight: ms(20)},
+  textArea: {borderRadius: wp(8), padding: wp(8), fontSize: ms(12), minHeight: wp(60), textAlignVertical: 'top', width: '100%', lineHeight: ms(18)},
 
   // Link
-  linkText: {fontSize: ms(11), fontWeight: '700', textDecorationLine: 'underline'},
+  linkText: {fontSize: ms(10), fontWeight: '700', textDecorationLine: 'underline'},
 
   // Inline
-  inlineLabel: {fontSize: ms(11), fontWeight: '800'},
+  inlineLabel: {fontSize: ms(9), fontWeight: '800'},
 
   // Time picker
-  timePick: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(7), paddingVertical: wp(5), borderRadius: wp(8), borderWidth: 1},
-  timePickIcon: {width: wp(20), height: wp(20), borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
-  timePickText: {fontSize: ms(11), fontWeight: '600'},
+  timePick: {flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingHorizontal: wp(6), paddingVertical: wp(4), borderRadius: wp(7), borderWidth: 1},
+  timePickIcon: {width: wp(18), height: wp(18), borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
+  timePickText: {fontSize: ms(10), fontWeight: '600'},
 
   // Sub headers
-  subHeaderRow: {flexDirection: 'row', gap: wp(8), marginBottom: wp(8)},
-  subHeaderPill: {paddingHorizontal: wp(10), paddingVertical: wp(4), borderRadius: wp(6), borderWidth: 1},
-  subHeaderText: {fontSize: ms(11), fontWeight: '600'},
+  subHeaderRow: {flexDirection: 'row', gap: wp(6), marginBottom: wp(6)},
+  subHeaderPill: {paddingHorizontal: wp(8), paddingVertical: wp(3), borderRadius: wp(6), borderWidth: 1},
+  subHeaderText: {fontSize: ms(10), fontWeight: '600'},
 
   // Section title
-  secTitle: {flexDirection: 'row', alignItems: 'center', gap: wp(8), borderBottomWidth: 1, paddingBottom: wp(10), marginBottom: wp(8), marginTop: wp(12)},
-  secTitleText: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3},
+  secTitle: {flexDirection: 'row', alignItems: 'center', gap: wp(6), borderBottomWidth: 1, paddingBottom: wp(6), marginBottom: wp(6), marginTop: wp(8)},
+  secTitleText: {fontSize: ms(11), fontWeight: '800', letterSpacing: 0.3},
 
-  // Selection popup
+  // Popups
   popupOverlay: {flex: 1, backgroundColor: Colors.overlayModal, justifyContent: 'center', alignItems: 'center'},
   popupHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(10), paddingVertical: wp(5), borderBottomWidth: 1},
   popupTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
@@ -1808,13 +1872,13 @@ const st = StyleSheet.create({
   popupItem: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: wp(16), paddingHorizontal: wp(14), borderBottomWidth: 0.5, borderRadius: wp(8), marginVertical: 2, minHeight: wp(52)},
   popupItemText: {fontSize: ms(15), fontWeight: '600', flex: 1},
 
-  // Selector field
-  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(34), paddingHorizontal: wp(10), borderRadius: wp(8), borderWidth: 1.5, gap: wp(5)},
-  selectorText: {fontSize: ms(12), fontWeight: '600', flex: 1},
+  // Selector
+  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4)},
+  selectorText: {fontSize: ms(11), fontWeight: '600', flex: 1},
 
   // Numeric input
-  numericInput: {minWidth: wp(75), maxWidth: wp(120), height: wp(34), borderRadius: wp(8), borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: wp(10)},
-  numericInputText: {fontSize: ms(15), fontWeight: '800', textAlign: 'center', padding: 0},
+  numericInput: {minWidth: wp(65), maxWidth: wp(110), height: wp(30), borderRadius: wp(7), borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: wp(8)},
+  numericInputText: {fontSize: ms(14), fontWeight: '800', textAlign: 'center', padding: 0},
 
   // Modal text
   modalOptionText: {fontSize: ms(13), fontWeight: '800'},

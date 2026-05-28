@@ -66,6 +66,16 @@
     "project": "PROJECT",
     "job": "JOB"
   },
+  "orderInfo": {
+    "title": "Order Info",
+    "timeDue": "TIME DUE",
+    "deliveredTo": "DELIVERED TO",
+    "lotBlock": "LOT / BLOCK",
+    "instructions": "INSTRUCTIONS",
+    "quantity": "QUANTITY",
+    "loads": "LOADS",
+    "trucks": "TRUCKS"
+  },
   "mixInfo": {
     "mixId": "MIXID",
     "description": "DESCRIPTION",
@@ -78,5 +88,21 @@
     "edit": "Edit",
     "truck": "Truck",
     "qr": "QR"
+  },
+  "productsModal": {
+    "title": "Products",
+    "subtitle": "Mix Details",
+    "code": "CODE",
+    "description": "DESCRIPTION",
+    "qty": "QTY",
+    "unit": "UNIT"
+  },
+  "modals": {
+    "plants": "PLANTS",
+    "editTicket": "EDIT TICKET",
+    "actions": "ACTIONS",
+    "signAccept": "SIGN & ACCEPT TICKET",
+    "disputeLoad": "DISPUTE LOAD",
+    "signCurbline": "SIGN CURBLINE RELEASE"
   }
 }

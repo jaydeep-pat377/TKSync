@@ -30,7 +30,7 @@ export const common = StyleSheet.create({
   circleBtn: {borderRadius: wp(18), justifyContent: 'center', alignItems: 'center'},
 
   // Selector
-  selectorCompact: {flex: 0, width: wp(220)},
+  selectorCompact: {flex: 0, width: wp(200)},
 
   // Shadows
   shadowSm: {elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.08, shadowRadius: 4},
