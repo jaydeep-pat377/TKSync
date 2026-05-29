@@ -1737,7 +1737,8 @@ export default function NotesScreen({navigation}: Props) {
 
       <KeyboardAvoidingView
         style={st.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
           <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}]} keyboardShouldPersistTaps="handled">
             {renderTab()}
