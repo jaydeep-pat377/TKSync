@@ -64,22 +64,32 @@ const TRUCK_COL = [
 // Landscape section header
 function LSectionHead({icon, title, color}: {icon: string; title: string; color: string}) {
   return (
-    <View style={{flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5}}>
-      <MaterialIcons name={icon as any} size={13} color={color} />
-      <Text style={{fontSize: 10, fontWeight: '800', letterSpacing: 0.8, color}}>{title}</Text>
+    <View style={{flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 7}}>
+      <MaterialIcons name={icon as any} size={15} color={color} />
+      <Text style={{fontSize: 12, fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
     </View>
   );
 }
 
 // Landscape info row
-function LRow({label, value, highlight, highlightBg, textColor, labelW = 85}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelW?: number}) {
+function LRow({label, value, highlight, highlightBg, textColor, labelColor, labelW = 80}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelColor?: string; labelW?: number}) {
   return (
-    <View style={{flexDirection: 'row', paddingVertical: 3}}>
-      <Text style={{minWidth: labelW, maxWidth: labelW + 15, fontSize: 11, fontWeight: '800', color: textColor}}>{label}</Text>
+    <View style={{flexDirection: 'row', paddingVertical: 5}}>
+      <Text style={{minWidth: labelW, maxWidth: labelW + 10, fontSize: 12, fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
       <Text style={[
-        {flex: 1, fontSize: 12, fontWeight: '500', color: textColor},
-        highlight && {paddingHorizontal: 4, paddingVertical: 1, backgroundColor: highlightBg, borderRadius: 3},
+        {flex: 1, fontSize: 13, fontWeight: '600', color: textColor},
+        highlight && {paddingHorizontal: 4, paddingVertical: 2, backgroundColor: highlightBg, borderRadius: 3},
       ]}>{value}</Text>
+    </View>
+  );
+}
+
+// Section label with icon
+function SLabel({text, icon, color}: {text: string; icon?: string; color: string}) {
+  return (
+    <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(5), marginBottom: wp(6)}}>
+      {icon && <MaterialIcons name={icon as any} size={ms(13)} color={color} />}
+      <Text style={{fontSize: ms(10), fontWeight: '800', letterSpacing: 0.6, color}}>{text}</Text>
     </View>
   );
 }
@@ -91,236 +101,229 @@ export default function MobileTicketScreen({navigation}: Props) {
   const isTablet = Math.min(width, winHeight) > 600;
   const isLandscape = width > winHeight;
   const wide = isTablet || isLandscape;
-  const hMargin = isTablet ? 24 : isLandscape ? 16 : wp(12);
+  const hMargin = isTablet ? 24 : isLandscape ? 16 : wp(10);
 
   return (
-    <View style={[styles.container, {backgroundColor: c.background}]}>
+    <View style={[s.container, {backgroundColor: c.background}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-      <View style={[styles.topBar, {paddingTop: insets.top, backgroundColor: c.accentBg}]} />
+      <View style={[s.topBar, {paddingTop: insets.top, backgroundColor: c.accentBg}]} />
 
       <ScrollView
-        style={[styles.scroll, {backgroundColor: c.accentBg}]}
-        contentContainerStyle={[styles.scrollContent, {paddingLeft: Math.max(0, insets.left), paddingRight: Math.max(0, insets.right)}]}
+        style={[s.scroll, {backgroundColor: c.accentBg}]}
+        contentContainerStyle={[s.scrollContent, {paddingLeft: Math.max(0, insets.left), paddingRight: Math.max(0, insets.right)}]}
         showsVerticalScrollIndicator={false}>
 
-        {/* Ticket Card — full width with consistent margins */}
-        <View style={[
-          styles.ticketCard,
-          {backgroundColor: c.white, shadowColor: c.shadowColor, marginHorizontal: hMargin},
-        ]}>
+        {/* Ticket Card */}
+        <View style={[s.ticketCard, {backgroundColor: c.white, shadowColor: c.shadowColor, marginHorizontal: hMargin}]}>
 
           {/* Banner */}
-          <View style={[styles.banner, {backgroundColor: c.bannerBg}, wide && {paddingHorizontal: 14, paddingVertical: 10}]}>
-            <Text style={[styles.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 17}]}>MOBILE TICKET</Text>
-            <View style={[styles.qrPlaceholder, {backgroundColor: c.overlay15}, wide && {width: 42, height: 42, borderRadius: 7}]}>
-              <MaterialIcons name="qr-code-2" size={wide ? 28 : ms(40)} color={c.textOnPrimary} />
+          <View style={[s.banner, {backgroundColor: c.bannerBg}, wide && {paddingHorizontal: 14, paddingVertical: 7}]}>
+            <View style={[s.bannerIcon, {backgroundColor: c.overlay15}, wide && {width: 32, height: 32, borderRadius: 9}]}>
+              <MaterialIcons name="receipt-long" size={wide ? 18 : ms(16)} color={c.textOnPrimary} />
             </View>
-          </View>
-
-          {/* Order / Ticket / Date row */}
-          <View style={[styles.metaRow, {borderBottomColor: c.border}, wide && {paddingVertical: 7, paddingHorizontal: 14, gap: 4}]}>
-            {[{label: 'ORDER', value: '2605'}, {label: 'TICKET', value: '26209538'}, {label: 'DATE', value: '05/22/2026'}].map(item => (
-              <View key={item.label} style={[styles.metaItem, wide && {minWidth: 60}]}>
-                <Text style={[styles.metaLabel, {color: c.textPrimary}, wide && {fontSize: 10}]}>{item.label}</Text>
-                <Text style={[styles.metaValue, {color: c.textPrimary}, wide && {fontSize: 13}]}>{item.value}</Text>
+            <View style={{flex: 1}}>
+              <Text style={[s.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 15}]}>MOBILE TICKET</Text>
+              <View style={{flexDirection: 'row', gap: wide ? 14 : wp(10), marginTop: wide ? 2 : wp(2)}}>
+                {[{label: 'ORDER', value: '2605'}, {label: 'TICKET', value: '26209538'}, {label: 'DATE', value: '05/22/2026'}].map(item => (
+                  <View key={item.label} style={{flexDirection: 'row', alignItems: 'center', gap: wide ? 4 : wp(3)}}>
+                    <Text style={{fontSize: wide ? 9 : ms(9), fontWeight: '600', color: c.textOnDark60}}>{item.label}</Text>
+                    <Text style={{fontSize: wide ? 12 : ms(11), fontWeight: '800', color: c.textOnPrimary}}>{item.value}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-            <TouchableOpacity
-              style={[styles.closeBtn, {backgroundColor: c.surface}, wide && {width: 28, height: 28, borderRadius: 14}]}
-              onPress={() => navigation.goBack()} activeOpacity={0.7}>
-              <MaterialIcons name="close" size={wide ? 16 : ms(20)} color={c.textSecondary} />
-            </TouchableOpacity>
+            </View>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: wide ? 6 : wp(6)}}>
+              <View style={[s.qrPlaceholder, {backgroundColor: c.overlay15}, wide && {width: 30, height: 30, borderRadius: 7}]}>
+                <MaterialIcons name="qr-code-2" size={wide ? 20 : ms(20)} color={c.textOnPrimary} />
+              </View>
+              <TouchableOpacity
+                style={[s.closeBtn, {backgroundColor: c.overlay15}, wide && {width: 30, height: 30, borderRadius: 15}]}
+                onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                <MaterialIcons name="close" size={wide ? 16 : ms(18)} color={c.textOnPrimary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* ─── LANDSCAPE LAYOUT ─── */}
           {isLandscape ? (
-            <>
-              {/* Row 1: Customer Info (left 55%) + Driver/Truck (right 45%) */}
-              <View style={{flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: c.border}}>
-                <View style={{flex: 55, paddingHorizontal: 14, paddingVertical: 10, borderRightWidth: 1, borderRightColor: c.border}}>
-                  <LSectionHead icon="people" title="CUSTOMER DETAILS" color={c.primary} />
+            <View style={{flexDirection: 'row', padding: isTablet ? 14 : 10, gap: isTablet ? 10 : 8}}>
+              {/* Column 1: Customer + Driver/Truck */}
+              <View style={{flex: 30, gap: isTablet ? 10 : 8}}>
+                <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
+                  <LSectionHead icon="people" title="CUSTOMER" color={c.primary} />
                   {CUSTOMER_INFO.map(item => (
-                    <LRow key={item.label} label={item.label} value={item.value} highlight={item.highlight} highlightBg={c.highlight} textColor={c.textPrimary} />
+                    <LRow key={item.label} label={item.label} value={item.value} highlight={item.highlight} highlightBg={c.highlight} textColor={c.textPrimary} labelW={70} />
                   ))}
                 </View>
-                <View style={{flex: 45, paddingHorizontal: 14, paddingVertical: 10}}>
+                <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
                   <LSectionHead icon="local-shipping" title="DRIVER & TRUCK" color={c.primary} />
-                  <View style={{flexDirection: 'row', gap: 10}}>
-                    <View style={{flex: 1}}>
-                      {DRIVER_COL.map(item => (
-                        <LRow key={item.label} label={item.label} value={item.value} textColor={c.textPrimary} labelW={65} />
-                      ))}
-                    </View>
-                    <View style={{flex: 1}}>
-                      {TRUCK_COL.map(item => (
-                        <LRow key={item.label} label={item.label} value={item.value} textColor={c.textPrimary} labelW={65} />
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              {/* Row 2: Charges Table — full width, inline columns */}
-              <View style={{paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border}}>
-                <LSectionHead icon="receipt-long" title="CHARGES" color={c.primary} />
-                <View>
-                  <View style={[styles.tableRow, styles.tableHeader, {borderBottomColor: c.textPrimary, paddingVertical: 6, paddingBottom: 5}]}>
-                    <Text style={[wColCode, styles.thText, {color: c.textPrimary}]}>CODE</Text>
-                    <Text style={[{flex: 1}, styles.thText, {color: c.textPrimary, fontSize: 11}]}>DESCRIPTION</Text>
-                    <Text style={[wColQty, styles.thText, {color: c.textPrimary}]}>QTY</Text>
-                    <Text style={[wColUnit, styles.thText, {color: c.textPrimary}]}>UNIT</Text>
-                    <Text style={[wColPrice, styles.thText, {color: c.textPrimary}]}>PRICE</Text>
-                    <Text style={[wColAmount, styles.thText, {color: c.textPrimary}]}>AMOUNT</Text>
-                  </View>
-                  {CHARGES.map((row, i) => (
-                    <View key={`${row.code}-${i}`} style={[styles.tableRow, {borderBottomColor: c.borderLight, paddingVertical: 5}]}>
-                      <Text style={[wColCode, styles.tdText, {color: c.textPrimary}]}>{row.code}</Text>
-                      <Text style={[{flex: 1}, styles.tdText, {color: c.textPrimary, fontSize: 11}]}>{row.desc}</Text>
-                      <Text style={[wColQty, styles.tdText, {color: c.textPrimary}]}>{row.qty}</Text>
-                      <Text style={[wColUnit, styles.tdText, {color: c.textPrimary}]}>{row.unit}</Text>
-                      <Text style={[wColPrice, styles.tdText, {color: c.textPrimary}]}>{row.price}</Text>
-                      <Text style={[wColAmount, styles.tdText, {color: c.textPrimary}]}>{row.amount}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={{alignItems: 'flex-end', marginTop: 8}}>
-                  {[{label: 'Sub', value: '0.00'}, {label: 'Tax', value: '0.00'}, {label: 'Total', value: 'ON ACCOUNT'}].map(item => (
-                    <View key={item.label} style={{flexDirection: 'row', paddingVertical: 4, minWidth: 180, maxWidth: 250}}>
-                      <Text style={{flex: 1, fontSize: 13, fontWeight: '800', textAlign: 'right', paddingRight: 14, color: c.textPrimary}}>{item.label}</Text>
-                      <Text style={{minWidth: 90, fontSize: 13, fontWeight: '500', color: c.textPrimary}}>{item.value}</Text>
-                    </View>
+                  {[...DRIVER_COL, ...TRUCK_COL].map(item => (
+                    <LRow key={item.label} label={item.label} value={item.value} textColor={c.textPrimary} labelW={65} />
                   ))}
                 </View>
               </View>
 
-              {/* Row 3: Timeline (left) + Signature/Actions (right) */}
-              <View style={{flexDirection: 'row'}}>
-                <View style={{flex: 1, paddingHorizontal: 14, paddingVertical: 10, borderRightWidth: 1, borderRightColor: c.border}}>
-                  <LSectionHead icon="schedule" title="DELIVERY TIMELINE" color={c.primary} />
-                  <View style={{flexDirection: 'row', flexWrap: 'wrap'}}>
+              {/* Columns 2+3: Charges, Timeline, and shared buttons */}
+              <View style={{flex: 70, gap: isTablet ? 10 : 8}}>
+                {/* Charges + Timeline row */}
+                <View style={{flexDirection: 'row', gap: isTablet ? 10 : 8, flex: 1}}>
+                  {/* Charges */}
+                  <View style={[lCard, {flex: 1, backgroundColor: c.white, borderColor: c.border}]}>
+                    <LSectionHead icon="receipt-long" title="CHARGES" color={c.primary} />
+                    <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: c.primary, gap: 5}}>
+                      <Text style={{width: 56, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>CODE</Text>
+                      <Text style={{flex: 1, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>DESCRIPTION</Text>
+                      <Text style={{width: 35, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>QTY</Text>
+                      <Text style={{width: 28, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>UNIT</Text>
+                      <Text style={{width: 38, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>PRICE</Text>
+                      <Text style={{width: 72, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>AMOUNT</Text>
+                    </View>
+                    {CHARGES.map((row, i) => (
+                      <View key={`${row.code}-${i}`} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, gap: 5}}>
+                        <Text style={{width: 56, fontSize: 11, fontWeight: '500', color: c.textMuted}}>{row.code}</Text>
+                        <Text style={{flex: 1, fontSize: 11, fontWeight: '500', color: c.textPrimary}} numberOfLines={1}>{row.desc}</Text>
+                        <Text style={{width: 35, fontSize: 11, fontWeight: '500', color: c.textPrimary}}>{row.qty}</Text>
+                        <Text style={{width: 28, fontSize: 11, fontWeight: '500', color: c.textMuted}}>{row.unit}</Text>
+                        <Text style={{width: 38, fontSize: 11, fontWeight: '500', color: c.textPrimary}}>{row.price || '—'}</Text>
+                        <Text style={{width: 72, fontSize: 11, fontWeight: '500', color: c.textPrimary}}>{row.amount}</Text>
+                      </View>
+                    ))}
+                    <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border, marginTop: 6, paddingTop: 6}}>
+                      {[{label: 'Sub', value: '0.00'}, {label: 'Tax', value: '0.00'}, {label: 'Total', value: 'ON ACCOUNT'}].map(item => (
+                        <View key={item.label} style={{flexDirection: 'row', paddingVertical: 3}}>
+                          <Text style={{minWidth: 42, fontSize: 12, fontWeight: item.label === 'Total' ? '800' : '600', color: item.label === 'Total' ? c.textPrimary : c.textMuted}}>{item.label}</Text>
+                          <Text style={{flex: 1, fontSize: 12, fontWeight: item.label === 'Total' ? '700' : '500', color: c.textPrimary}}>{item.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Timeline */}
+                  <View style={[lCard, {width: isTablet ? 280 : 200, backgroundColor: c.white, borderColor: c.border}]}>
+                    <LSectionHead icon="schedule" title="TIMELINE" color={c.primary} />
                     {TIMELINE_GRID.map(item => (
-                      <View key={item.label} style={{minWidth: 90, flex: 1, paddingVertical: 3, paddingRight: 8}}>
-                        <Text style={{fontSize: 10, fontWeight: '800', color: c.textMuted, letterSpacing: 0.3}}>{item.label}</Text>
-                        <Text style={{fontSize: 13, fontWeight: '700', color: c.textPrimary, marginTop: 1}}>{item.time}</Text>
+                      <View key={item.label} style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 5}}>
+                        <Text style={{fontSize: 11, fontWeight: '600', color: c.textMuted}}>{item.label}</Text>
+                        <Text style={{fontSize: 13, fontWeight: '700', color: c.textPrimary}}>{item.time}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
-                <View style={{width: isTablet ? 320 : 220, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center', justifyContent: 'center'}}>
-                  <View style={{width: '100%', height: 48, borderRadius: 8, borderWidth: 1, backgroundColor: c.surface, borderColor: c.border, marginBottom: 8}} />
-                  <View style={{flexDirection: 'row', gap: 8, width: '100%'}}>
-                    <TouchableOpacity style={{flex: 1, paddingVertical: 8, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: c.signBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket')}>
-                      <Text style={{fontSize: 12, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>SIGN</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={{flex: 1, paddingVertical: 8, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: c.disputeBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
-                      <Text style={{fontSize: 12, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>DISPUTE</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity style={{marginTop: 8}} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                    <Text style={{fontSize: 12, fontWeight: '700', letterSpacing: 0.3, color: c.linkBlue}}>DASHBOARD</Text>
+
+                {/* Shared Actions */}
+                <View style={[lCard, {flexDirection: 'row', alignItems: 'center', backgroundColor: c.white, borderColor: c.border, gap: isTablet ? 10 : 8}]}>
+                  <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : 14, borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : 44, backgroundColor: c.signBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket')}>
+                    <Text style={{fontSize: isTablet ? 16 : 14, fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>SIGN</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : 14, borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : 44, backgroundColor: c.disputeBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
+                    <Text style={{fontSize: isTablet ? 16 : 14, fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>DISPUTE</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-            </>
+            </View>
           ) : (
             /* ─── PORTRAIT LAYOUT ─── */
             <>
               {/* Customer Info */}
-              <View style={[styles.section, {borderBottomColor: c.border}]}>
+              <View style={[s.section, {borderBottomColor: c.border}]}>
+                <SLabel text="CUSTOMER DETAILS" icon="people" color={c.primary} />
                 {CUSTOMER_INFO.map(item => (
-                  <View key={item.label} style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, {color: c.textPrimary}]}>{item.label}</Text>
+                  <View key={item.label} style={s.infoRow}>
+                    <Text style={[s.infoLabel, {color: c.textMuted}]}>{item.label}</Text>
                     <Text style={[
-                      styles.infoValue, {color: c.textPrimary},
-                      item.highlight && styles.highlightValue,
+                      s.infoValue, {color: c.textPrimary},
+                      item.highlight && s.highlightValue,
                       item.highlight && {backgroundColor: c.highlight},
                     ]}>{item.value}</Text>
                   </View>
                 ))}
               </View>
 
-              {/* Driver / Truck Info */}
-              <View style={[styles.section, {borderBottomColor: c.border}]}>
-                <View style={styles.twoColGrid}>
-                  <View style={styles.gridCol}>
+              {/* Driver / Truck */}
+              <View style={[s.section, {borderBottomColor: c.border}]}>
+                <SLabel text="DRIVER & TRUCK" icon="local-shipping" color={c.primary} />
+                <View style={s.twoColGrid}>
+                  <View style={s.gridCol}>
                     {DRIVER_COL.map(item => (
-                      <View key={item.label} style={styles.gridRow}>
-                        <Text style={[styles.gridLabel, {color: c.textPrimary}]}>{item.label}</Text>
-                        <Text style={[styles.gridValue, {color: c.textPrimary}]}>{item.value}</Text>
+                      <View key={item.label} style={s.gridRow}>
+                        <Text style={[s.gridLabel, {color: c.textMuted}]}>{item.label}</Text>
+                        <Text style={[s.gridValue, {color: c.textPrimary}]}>{item.value}</Text>
                       </View>
                     ))}
                   </View>
-                  <View style={styles.gridCol}>
+                  <View style={s.gridCol}>
                     {TRUCK_COL.map(item => (
-                      <View key={item.label} style={styles.gridRow}>
-                        <Text style={[styles.gridLabel, {color: c.textPrimary}]}>{item.label}</Text>
-                        <Text style={[styles.gridValue, {color: c.textPrimary}]}>{item.value}</Text>
+                      <View key={item.label} style={s.gridRow}>
+                        <Text style={[s.gridLabel, {color: c.textMuted}]}>{item.label}</Text>
+                        <Text style={[s.gridValue, {color: c.textPrimary}]}>{item.value}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
               </View>
 
-              {/* Charges Table */}
-              <View style={[styles.section, {borderBottomColor: c.border}]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{minWidth: Math.max(width * 0.85, 360)}}>
-                    <View style={[styles.tableRow, styles.tableHeader, {borderBottomColor: c.textPrimary}]}>
-                      <Text style={[styles.colCode, styles.thText, {color: c.textPrimary}]}>CODE</Text>
-                      <Text style={[styles.colDesc, styles.thText, {color: c.textPrimary}]}>DESCRIPTION</Text>
-                      <Text style={[styles.colQty, styles.thText, {color: c.textPrimary}]}>QTY</Text>
-                      <Text style={[styles.colUnit, styles.thText, {color: c.textPrimary}]}>UNIT</Text>
-                      <Text style={[styles.colPrice, styles.thText, {color: c.textPrimary}]}>PRICE</Text>
-                      <Text style={[styles.colAmount, styles.thText, {color: c.textPrimary}]}>TICKET{'\n'}AMOUNT</Text>
+              {/* Timeline + Totals */}
+              <View style={[s.section, {borderBottomColor: c.border, backgroundColor: c.surface}]}>
+                <View style={{flexDirection: 'row'}}>
+                  <View style={{flex: 1}}>
+                    <SLabel text="DELIVERY TIMELINE" icon="schedule" color={c.primary} />
+                    <View style={s.timeGrid}>
+                      {TIMELINE_GRID.map(item => (
+                        <View key={item.label} style={s.timeCell}>
+                          <Text style={[s.timeLabel, {color: c.textMuted}]}>{item.label}</Text>
+                          <Text style={[s.timeValue, {color: c.textPrimary}]}>{item.time}</Text>
+                        </View>
+                      ))}
                     </View>
-                    {CHARGES.map((row, i) => (
-                      <View key={`${row.code}-${i}`} style={[styles.tableRow, {borderBottomColor: c.borderLight}]}>
-                        <Text style={[styles.colCode, styles.tdText, {color: c.textPrimary}]}>{row.code}</Text>
-                        <Text style={[styles.colDesc, styles.tdText, {color: c.textPrimary}]}>{row.desc}</Text>
-                        <Text style={[styles.colQty, styles.tdText, {color: c.textPrimary}]}>{row.qty}</Text>
-                        <Text style={[styles.colUnit, styles.tdText, {color: c.textPrimary}]}>{row.unit}</Text>
-                        <Text style={[styles.colPrice, styles.tdText, {color: c.textPrimary}]}>{row.price}</Text>
-                        <Text style={[styles.colAmount, styles.tdText, {color: c.textPrimary}]}>{row.amount}</Text>
+                  </View>
+                  <View style={{borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border, paddingLeft: wp(10), justifyContent: 'center'}}>
+                    <SLabel text="TOTALS" color={c.primary} />
+                    {[{label: 'Sub', value: '0.00'}, {label: 'Tax', value: '0.00'}, {label: 'Total', value: 'ON ACCOUNT'}].map(item => (
+                      <View key={item.label} style={{flexDirection: 'row', paddingVertical: wp(3), gap: wp(8)}}>
+                        <Text style={{fontSize: ms(11), fontWeight: '700', color: c.textMuted, minWidth: wp(34)}}>{item.label}</Text>
+                        <Text style={[{fontSize: ms(11), fontWeight: '600', color: c.textPrimary}, item.label === 'Total' && {fontWeight: '800'}]}>{item.value}</Text>
                       </View>
                     ))}
                   </View>
-                </ScrollView>
-                <View style={styles.totalsBlock}>
-                  {[{label: 'Sub', value: '0.00'}, {label: 'Tax', value: '0.00'}, {label: 'Total', value: 'ON ACCOUNT'}].map(item => (
-                    <View key={item.label} style={styles.totalRow}>
-                      <Text style={[styles.totalLabel, {color: c.textPrimary}]}>{item.label}</Text>
-                      <Text style={[styles.totalValue, {color: c.textPrimary}]}>{item.value}</Text>
-                    </View>
-                  ))}
                 </View>
               </View>
 
-              {/* Timeline Grid */}
-              <View style={[styles.section, {borderBottomColor: c.border}]}>
-                <View style={styles.timeGrid}>
-                  {TIMELINE_GRID.map(item => (
-                    <View key={item.label} style={styles.timeCell}>
-                      <Text style={[styles.timeLabel, {color: c.textPrimary}]}>{item.label}</Text>
-                      <Text style={[styles.timeValue, {color: c.textPrimary}]}>{item.time}</Text>
+              {/* Charges */}
+              <View style={[s.section, {borderBottomColor: c.border}]}>
+                <SLabel text="CHARGES" icon="receipt-long" color={c.primary} />
+                {CHARGES.map((row, i) => (
+                  <View key={`${row.code}-${i}`} style={[s.chargeItem, {backgroundColor: i % 2 === 0 ? c.surface : c.white, borderLeftColor: c.primary}]}>
+                    <View style={s.chargeTop}>
+                      <Text style={[s.chargeDesc, {color: c.textPrimary}]} numberOfLines={2}>{row.desc}</Text>
+                      <Text style={[s.chargeCode, {color: c.textMuted, backgroundColor: c.white, paddingHorizontal: wp(4), paddingVertical: wp(1), borderRadius: wp(4), overflow: 'hidden'}]}>{row.code}</Text>
                     </View>
-                  ))}
-                </View>
+                    <View style={s.chargeFields}>
+                      {[
+                        {label: 'QTY', value: row.qty},
+                        {label: 'UNIT', value: row.unit},
+                        {label: 'PRICE', value: row.price || '—'},
+                        {label: 'AMOUNT', value: row.amount},
+                      ].map(f => (
+                        <View key={f.label} style={s.chargeField}>
+                          <Text style={[s.chargeFieldLabel, {color: c.textMuted}]}>{f.label}</Text>
+                          <Text style={[s.chargeFieldValue, {color: f.label === 'AMOUNT' ? c.primary : c.textPrimary, fontWeight: f.label === 'AMOUNT' ? '700' : '600'}]}>{f.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
               </View>
 
-              {/* Signature Area */}
-              <View style={styles.signatureSection}>
-                <View style={[styles.signatureBox, {backgroundColor: c.surface, borderColor: c.border}]} />
-                <View style={styles.actionRow}>
-                  <TouchableOpacity style={[styles.signBtn, {backgroundColor: c.signBtn}]} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket')}>
-                    <Text style={[styles.signBtnText, {color: c.textOnPrimary}]}>SIGN</Text>
+              {/* Actions */}
+              <View style={s.actionsSection}>
+                <View style={s.actionRowHalf}>
+                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.signBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket')}>
+                    <Text style={[s.actionBtnFullText, {color: c.textOnPrimary}, isTablet && {fontSize: 17}]}>SIGN</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.disputeBtn, {backgroundColor: c.disputeBtn}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
-                    <Text style={[styles.disputeBtnText, {color: c.textOnPrimary}]}>DISPUTE</Text>
+                  <TouchableOpacity style={[s.actionBtnHalf, s.actionBtnOutline, {borderColor: c.disputeBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
+                    <Text style={[s.actionBtnFullText, {color: c.disputeBtn}, isTablet && {fontSize: 16}]}>DISPUTE</Text>
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.dashboardLink} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                  <Text style={[styles.dashboardLinkText, {color: c.linkBlue}]}>DASHBOARD</Text>
-                </TouchableOpacity>
               </View>
             </>
           )}
@@ -330,56 +333,47 @@ export default function MobileTicketScreen({navigation}: Props) {
   );
 }
 
-// Fixed column widths for landscape/tablet table
-const wColCode = {minWidth: 60, maxWidth: 70, fontSize: 11};
-const wColQty = {minWidth: 36, maxWidth: 50, fontSize: 11, textAlign: 'right' as const};
-const wColUnit = {minWidth: 30, maxWidth: 40, fontSize: 11, textAlign: 'center' as const};
-const wColPrice = {minWidth: 40, maxWidth: 50, fontSize: 11, textAlign: 'right' as const};
-const wColAmount = {minWidth: 65, maxWidth: 95, fontSize: 11, textAlign: 'right' as const};
+// Landscape card style
+const lCard = {borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 14, overflow: 'hidden' as const};
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: {flex: 1},
   topBar: {height: 0},
   scroll: {flex: 1},
-  scrollContent: {paddingTop: wp(6), paddingBottom: wp(40)},
-  ticketCard: {borderRadius: wp(14), overflow: 'hidden', elevation: 4, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.12, shadowRadius: 8},
-  banner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(14), paddingVertical: wp(10)},
-  bannerTitle: {fontSize: ms(20), fontWeight: '900', letterSpacing: 1.5},
-  qrPlaceholder: {width: wp(52), height: wp(52), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
-  metaRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(8), paddingHorizontal: wp(14), borderBottomWidth: 1, gap: wp(4)},
-  metaItem: {flex: 1, alignItems: 'center', minWidth: wp(70)},
-  metaLabel: {fontSize: ms(11), fontWeight: '800', letterSpacing: 0.5},
-  metaValue: {fontSize: ms(14), fontWeight: '600', marginTop: 2},
-  closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center'},
-  section: {paddingHorizontal: wp(12), paddingVertical: wp(10), borderBottomWidth: 1},
+  scrollContent: {paddingTop: wp(5), paddingBottom: wp(16)},
+  ticketCard: {borderRadius: wp(12), overflow: 'hidden', elevation: 3, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 6},
+  banner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(12), paddingVertical: wp(8), gap: wp(8)},
+  bannerIcon: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
+  bannerTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.6},
+  qrPlaceholder: {width: wp(32), height: wp(32), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
+  closeBtn: {width: wp(34), height: wp(34), borderRadius: wp(17), justifyContent: 'center', alignItems: 'center'},
+  section: {paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: StyleSheet.hairlineWidth},
+  divider: {height: StyleSheet.hairlineWidth, marginVertical: wp(4)},
   infoRow: {flexDirection: 'row', paddingVertical: wp(4)},
-  infoLabel: {minWidth: wp(75), maxWidth: wp(110), fontSize: ms(11), fontWeight: '800'},
-  infoValue: {flex: 1, fontSize: ms(13), fontWeight: '500'},
-  highlightValue: {paddingHorizontal: wp(4), paddingVertical: wp(2)},
-  twoColGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(8)},
-  gridCol: {flex: 1, minWidth: 140},
+  infoLabel: {minWidth: wp(72), maxWidth: wp(98), fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
+  infoValue: {flex: 1, fontSize: ms(12), fontWeight: '600'},
+  highlightValue: {paddingHorizontal: wp(5), paddingVertical: wp(2), borderRadius: wp(4)},
+  twoColGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(6)},
+  gridCol: {flex: 1, minWidth: 120},
   gridRow: {flexDirection: 'row', paddingVertical: wp(4)},
-  gridLabel: {minWidth: wp(55), maxWidth: wp(90), fontSize: ms(11), fontWeight: '800'},
+  gridLabel: {minWidth: wp(52), maxWidth: wp(78), fontSize: ms(10), fontWeight: '700'},
   gridValue: {flex: 1, fontSize: ms(12), fontWeight: '500'},
-  tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), borderBottomWidth: 0.5},
-  tableHeader: {borderBottomWidth: 1.5, paddingBottom: wp(6)},
-  colCode: {minWidth: wp(50), maxWidth: wp(70)}, colDesc: {flex: 1}, colQty: {minWidth: wp(40), maxWidth: wp(55), textAlign: 'right'}, colUnit: {minWidth: wp(30), maxWidth: wp(45), textAlign: 'center'}, colPrice: {minWidth: wp(40), maxWidth: wp(55), textAlign: 'right'}, colAmount: {minWidth: wp(60), maxWidth: wp(95), textAlign: 'right'},
-  thText: {fontSize: ms(12), fontWeight: '800'}, tdText: {fontSize: ms(12), fontWeight: '500'},
-  totalsBlock: {marginTop: wp(8), alignItems: 'flex-end'},
-  totalRow: {flexDirection: 'row', paddingVertical: wp(5), minWidth: wp(160), maxWidth: wp(240)},
-  totalLabel: {flex: 1, fontSize: ms(13), fontWeight: '800', textAlign: 'right', paddingRight: wp(14)},
-  totalValue: {minWidth: wp(80), maxWidth: wp(130), fontSize: ms(13), fontWeight: '500'},
+  // Charges — card-style rows
+  chargeItem: {paddingVertical: wp(8), paddingHorizontal: wp(10), paddingLeft: wp(12), marginBottom: wp(4), borderRadius: wp(6), borderLeftWidth: 3},
+  chargeTop: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: wp(8), marginBottom: wp(6)},
+  chargeCode: {fontSize: ms(9), fontWeight: '600'},
+  chargeDesc: {flex: 1, fontSize: ms(12), fontWeight: '700', lineHeight: ms(17)},
+  chargeFields: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(12)},
+  chargeField: {gap: wp(2), minWidth: wp(40)},
+  chargeFieldLabel: {fontSize: ms(8), fontWeight: '700', letterSpacing: 0.5},
+  chargeFieldValue: {fontSize: ms(12), fontWeight: '600'},
   timeGrid: {flexDirection: 'row', flexWrap: 'wrap'},
-  timeCell: {width: '50%', flexDirection: 'row', paddingVertical: wp(4)},
-  timeLabel: {fontSize: ms(11), fontWeight: '800', minWidth: wp(55), maxWidth: wp(80)},
-  timeValue: {fontSize: ms(12), fontWeight: '500'},
-  signatureSection: {paddingHorizontal: wp(12), paddingVertical: wp(8), alignItems: 'center'},
-  signatureBox: {width: '90%', maxWidth: wp(500), height: wp(65), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(8)},
-  actionRow: {flexDirection: 'row', gap: wp(8), width: '90%', maxWidth: wp(500)},
-  signBtn: {flex: 1, paddingVertical: wp(7), borderRadius: wp(6), alignItems: 'center', justifyContent: 'center', minHeight: wp(32)},
-  signBtnText: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5},
-  disputeBtn: {flex: 1, paddingVertical: wp(7), borderRadius: wp(6), alignItems: 'center', justifyContent: 'center', minHeight: wp(32)},
-  disputeBtnText: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5},
-  dashboardLink: {marginTop: wp(8)},
-  dashboardLinkText: {fontSize: ms(13), fontWeight: '700', letterSpacing: 0.3},
+  timeCell: {width: '25%', paddingVertical: wp(4)},
+  timeLabel: {fontSize: ms(8), fontWeight: '700', letterSpacing: 0.3},
+  timeValue: {fontSize: ms(12), fontWeight: '700', marginTop: 2},
+  actionsSection: {paddingHorizontal: wp(14), paddingVertical: wp(12)},
+  actionRowHalf: {flexDirection: 'row', gap: wp(10)},
+  actionBtnHalf: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 12, minHeight: 54, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.12, shadowRadius: 3},
+  actionBtnOutline: {backgroundColor: 'transparent', borderWidth: 1.5, elevation: 0, shadowOpacity: 0},
+  actionBtnFullText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
 });

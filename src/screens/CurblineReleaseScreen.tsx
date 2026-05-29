@@ -27,8 +27,8 @@ export default function CurblineReleaseScreen({navigation}: Props) {
   const isTablet = Math.min(width, height) > 600;
   const isLandscape = width > height;
   const sigHeight = isTablet
-    ? Math.min(220, Math.max(140, height * 0.2))
-    : Math.min(isLandscape ? 160 : 220, Math.max(100, height * 0.25));
+    ? Math.min(300, Math.max(200, height * 0.28))
+    : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
@@ -45,16 +45,16 @@ export default function CurblineReleaseScreen({navigation}: Props) {
 
       <KeyboardAvoidingView
         style={s.flex1}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: wp(50)}]}
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: isLandscape ? wp(20) : wp(50)}]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: 0, borderRadius: 0, marginBottom: 0}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>
@@ -62,7 +62,8 @@ export default function CurblineReleaseScreen({navigation}: Props) {
             <TouchableOpacity
               style={[s.closeBtn, {backgroundColor: c.surface}]}
               onPress={() => navigation.goBack()}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
               <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -128,8 +129,8 @@ const s = StyleSheet.create({
   container: {flex: 1},
   flex1: {flex: 1},
   scroll: {flex: 1},
-  scrollContent: {flexGrow: 1},
-  card: {marginHorizontal: wp(10), marginBottom: wp(10), borderRadius: wp(14), overflow: 'hidden'},
+  scrollContent: {},
+  card: {marginHorizontal: wp(10), marginBottom: wp(10), borderRadius: wp(14), overflow: 'visible'},
 
   header: {
     flexDirection: 'row',
@@ -138,22 +139,25 @@ const s = StyleSheet.create({
     paddingVertical: wp(10),
     paddingHorizontal: wp(14),
     borderBottomWidth: 1,
+    borderTopLeftRadius: wp(14),
+    borderTopRightRadius: wp(14),
+    overflow: 'hidden',
   },
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
-  infoSection: {paddingHorizontal: wp(16), paddingVertical: wp(18)},
-  infoRow: {flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'wrap', paddingVertical: wp(10), gap: wp(10)},
-  infoLabel: {fontSize: ms(13), fontWeight: '800', minWidth: wp(75), maxWidth: wp(110)},
-  infoValue: {fontSize: ms(13), fontWeight: '500', flex: 1},
+  infoSection: {paddingHorizontal: wp(16), paddingVertical: wp(14)},
+  infoRow: {flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'wrap', paddingVertical: wp(8), gap: wp(8)},
+  infoLabel: {fontSize: ms(12), fontWeight: '800', minWidth: wp(75), maxWidth: wp(110)},
+  infoValue: {fontSize: ms(12), fontWeight: '500', flex: 1},
 
-  divider: {height: 1, marginHorizontal: wp(16)},
+  divider: {height: StyleSheet.hairlineWidth, marginHorizontal: wp(16)},
 
-  signSection: {paddingHorizontal: wp(16), paddingVertical: wp(20)},
+  signSection: {paddingHorizontal: wp(16), paddingVertical: wp(16)},
   typeNameRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(10), marginBottom: wp(8)},
-  typeNameLabel: {fontSize: ms(14), fontWeight: '800'},
-  typeNameInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(14)},
+  typeNameLabel: {fontSize: ms(13), fontWeight: '800'},
+  typeNameInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(13)},
 
-  submitBtn: {marginTop: wp(14), paddingVertical: wp(8), borderRadius: wp(6), minHeight: wp(36), alignItems: 'center', justifyContent: 'center'},
+  submitBtn: {marginTop: wp(12), paddingVertical: wp(8), borderRadius: wp(8), minHeight: wp(36), alignItems: 'center', justifyContent: 'center'},
   submitBtnText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
 });

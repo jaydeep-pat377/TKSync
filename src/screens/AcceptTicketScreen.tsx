@@ -42,8 +42,8 @@ export default function AcceptTicketScreen({navigation}: Props) {
   const isTablet = Math.min(width, height) > 600;
   const isLandscape = width > height;
   const sigHeight = isTablet
-    ? Math.min(200, Math.max(140, height * 0.2))
-    : Math.min(isLandscape ? 160 : 200, Math.max(100, height * 0.25));
+    ? Math.min(300, Math.max(200, height * 0.28))
+    : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
   const [email, setEmail] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [typeName, setTypeName] = useState('');
@@ -66,16 +66,16 @@ export default function AcceptTicketScreen({navigation}: Props) {
 
       <KeyboardAvoidingView
         style={s.flex1}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: wp(50)}]}
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: isLandscape ? wp(20) : wp(50)}]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: 0, borderRadius: 0, marginBottom: 0}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>
@@ -83,7 +83,8 @@ export default function AcceptTicketScreen({navigation}: Props) {
             <TouchableOpacity
               style={[s.closeBtn, {backgroundColor: c.surface}]}
               onPress={() => navigation.goBack()}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
               <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -188,13 +189,13 @@ const s = StyleSheet.create({
   container: {flex: 1},
   flex1: {flex: 1},
   scroll: {flex: 1},
-  scrollContent: {flexGrow: 1},
+  scrollContent: {},
 
   card: {
     marginHorizontal: wp(10),
     marginBottom: wp(10),
     borderRadius: wp(14),
-    overflow: 'hidden',
+    overflow: 'visible',
   },
 
   // Header
@@ -205,44 +206,46 @@ const s = StyleSheet.create({
     paddingVertical: wp(10),
     paddingHorizontal: wp(14),
     borderBottomWidth: 1,
+    borderTopLeftRadius: wp(14),
+    borderTopRightRadius: wp(14),
+    overflow: 'hidden',
   },
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
   // Section
-  section: {paddingHorizontal: wp(16), paddingVertical: wp(18), borderBottomWidth: 1},
-  sectionTitle: {fontSize: ms(15), fontWeight: '800', textAlign: 'center', marginBottom: wp(14), letterSpacing: 0.3},
+  section: {paddingHorizontal: wp(16), paddingVertical: wp(14), borderBottomWidth: 1},
+  sectionTitle: {fontSize: ms(14), fontWeight: '800', textAlign: 'center', marginBottom: wp(10), letterSpacing: 0.3},
 
   // Body text
-  bodyText: {fontSize: ms(13), fontWeight: '500', lineHeight: ms(20)},
+  bodyText: {fontSize: ms(12), fontWeight: '500', lineHeight: ms(18)},
 
   // Table
-  tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), borderBottomWidth: 0.5},
-  tableHeader: {borderBottomWidth: 1.5, paddingBottom: wp(8)},
+  tableRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), borderBottomWidth: 0.5},
+  tableHeader: {borderBottomWidth: 1.5, paddingBottom: wp(6)},
   colCode: {minWidth: wp(50), maxWidth: wp(75)},
   colDesc: {flex: 1},
   colQty: {minWidth: wp(40), maxWidth: wp(60), textAlign: 'right'},
   colUnit: {minWidth: wp(35), maxWidth: wp(50), textAlign: 'right'},
-  thText: {fontSize: ms(13), fontWeight: '800'},
-  tdText: {fontSize: ms(13), fontWeight: '500'},
+  thText: {fontSize: ms(12), fontWeight: '800'},
+  tdText: {fontSize: ms(12), fontWeight: '500'},
 
   // Input rows
-  inputRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(10), gap: wp(8)},
-  inputLabel: {fontSize: ms(13), fontWeight: '800', minWidth: wp(80), maxWidth: wp(130)},
-  inputLine: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(6), fontSize: ms(14)},
+  inputRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(8), gap: wp(8)},
+  inputLabel: {fontSize: ms(12), fontWeight: '800', minWidth: wp(80), maxWidth: wp(130)},
+  inputLine: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(5), fontSize: ms(13)},
 
   // Terms
-  termsText: {fontSize: ms(12), fontWeight: '500', lineHeight: ms(19)},
+  termsText: {fontSize: ms(11), fontWeight: '500', lineHeight: ms(17)},
 
   // Sign section
-  signSection: {paddingHorizontal: wp(24), paddingVertical: wp(20)},
-
+  signSection: {paddingHorizontal: wp(16), paddingVertical: wp(16)},
 
   // Submit
   submitBtn: {
-    marginTop: wp(14),
+    marginTop: wp(12),
     paddingVertical: wp(8),
-    borderRadius: wp(6),
+    borderRadius: wp(8),
     minHeight: wp(36),
     alignItems: 'center',
     justifyContent: 'center',

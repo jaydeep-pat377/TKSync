@@ -212,22 +212,28 @@ function GrayInput({placeholder}: {placeholder?: string}) {
 
 function LineInput({width: w, placeholder, value, onPress, editable, keyboardType, onChangeText}: {width?: number; placeholder?: string; value?: string; onPress?: () => void; editable?: boolean; keyboardType?: 'default' | 'number-pad' | 'numeric'; onChangeText?: (text: string) => void}) {
   const {c} = useTheme();
-  const input = (
+  const sizeStyle = w ? {width: w} : {flex: 1};
+  // Read-only dropdown trigger: use Text so selected value is always visible
+  if (onPress && !onChangeText) {
+    return (
+      <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={[st.lineInput, {borderBottomColor: c.border, justifyContent: 'center'}, sizeStyle]}>
+        <Text style={[st.lineInputText, {color: value ? c.textPrimary : c.textMuted}]} numberOfLines={1}>
+          {value || placeholder || ''}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+  return (
     <TextInput
-      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary}, w ? {width: w} : {flex: 1, maxWidth: 140}]}
+      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary}, sizeStyle]}
       placeholderTextColor={c.textMuted}
       placeholder={placeholder || ''}
       value={value}
-      editable={editable !== false && !onPress}
-      pointerEvents={onPress ? 'none' : 'auto'}
+      editable={editable !== false}
       keyboardType={keyboardType}
       onChangeText={onChangeText}
     />
   );
-  if (onPress) {
-    return <TouchableOpacity activeOpacity={0.7} onPress={onPress}>{input}</TouchableOpacity>;
-  }
-  return input;
 }
 
 function SaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => void}) {
@@ -871,7 +877,7 @@ function JobsiteTab() {
       <FieldCard title="Added, Not Ordered" icon="playlist-add">
       {['SUPER PLASTICIZER', 'CONVEYOR (IF NOT ON TICKET)', 'COLOR', 'FIBER', 'Other'].map(item => (
         <Field key={item} label={item}>
-          <LineInput width={160} placeholder="Value" value={addedValues[item] || ''} onPress={item !== 'Other' ? () => setAddedModalItem(item) : undefined} onChangeText={item === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item]: text})) : undefined} />
+          <LineInput placeholder="Value" value={addedValues[item] || ''} onPress={item !== 'Other' ? () => setAddedModalItem(item) : undefined} onChangeText={item === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item]: text})) : undefined} />
           {item !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item)} />}
         </Field>
       ))}
@@ -891,7 +897,7 @@ function JobsiteTab() {
       <FieldRow>
         <Field label="LOAD DISPUTED" compact><Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} /></Field>
         <Field label="WASHOUT AREA" compact>
-          <LineInput width={120} placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
+          <LineInput placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
           <MoreBtn onPress={() => setWashoutModalVisible(true)} />
         </Field>
       </FieldRow>
@@ -1827,7 +1833,8 @@ const st = StyleSheet.create({
   grayPlaceholder: {fontSize: ms(11), fontWeight: '500'},
 
   // Line input
-  lineInput: {borderBottomWidth: 1.5, height: wp(28), fontSize: ms(11), paddingVertical: wp(3)},
+  lineInput: {borderBottomWidth: 1.5, minHeight: wp(28), fontSize: ms(11), paddingVertical: wp(3)},
+  lineInputText: {fontSize: ms(11), fontWeight: '500'},
 
   // Checkbox
   checkTap: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(1), paddingRight: wp(4)},

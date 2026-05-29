@@ -1,5 +1,5 @@
 import React, {useRef, useState, useCallback} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
 import SignatureScreen from 'react-native-signature-canvas';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../contexts/ThemeContext';
@@ -12,14 +12,18 @@ type Props = {
   onTouchEnd?: () => void;
 };
 
-export default function SignaturePad({onSignatureChange, height = 220, onTouchStart, onTouchEnd}: Props) {
+export default function SignaturePad({onSignatureChange, height = 280, onTouchStart, onTouchEnd}: Props) {
   const {c, isDark} = useTheme();
   const sigRef = useRef<any>(null);
   const [hasSignature, setHasSignature] = useState(false);
   const hasDrawn = useRef(false);
+  const scrollDisabled = useRef(false);
 
   const handleBegin = useCallback(() => {
-    onTouchStart?.();
+    if (!scrollDisabled.current) {
+      scrollDisabled.current = true;
+      onTouchStart?.();
+    }
     if (!hasDrawn.current) {
       hasDrawn.current = true;
       setHasSignature(true);
@@ -28,7 +32,10 @@ export default function SignaturePad({onSignatureChange, height = 220, onTouchSt
   }, [onSignatureChange, onTouchStart]);
 
   const handleEnd = useCallback(() => {
-    onTouchEnd?.();
+    if (scrollDisabled.current) {
+      scrollDisabled.current = false;
+      onTouchEnd?.();
+    }
     setTimeout(() => {
       sigRef.current?.readSignature();
     }, 300);
@@ -85,6 +92,8 @@ export default function SignaturePad({onSignatureChange, height = 220, onTouchSt
           maxWidth={3}
           dotSize={2}
           autoClear={false}
+          scrollable={false}
+          {...(Platform.OS === 'android' ? {androidHardwareAccelerationDisabled: true, nestedScrollEnabled: false} : {})}
         />
 
         {/* Clear button */}

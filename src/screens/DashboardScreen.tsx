@@ -347,25 +347,14 @@ export default function DashboardScreen({navigation}: Props) {
       {/* ─── HEADER ─── */}
       <View style={[styles.header, {backgroundColor: c.primaryDark, paddingTop: insets.top + (L ? 2 : wp(3)), paddingLeft: Math.max(L ? 8 : wp(12), insets.left), paddingRight: Math.max(L ? 8 : wp(12), insets.right)}, L && {paddingBottom: 2}]}>
         {lp ? (
-          /* Phone landscape: single compact row */
+          /* Phone landscape: single compact row — tickets moved to KPI card */
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1}}>
               <View style={{width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}}>
                 <MaterialIcons name="local-shipping" size={16} color={c.textOnPrimary} />
               </View>
               <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{t('app.name')}</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{flex: 1}} contentContainerStyle={{flexDirection: 'row', gap: 4, alignItems: 'center'}}>
-              {TICKETS.map((ticket, i) => {
-                const active = activeTicket === i;
-                return (
-                  <View key={ticket} style={{flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 7, borderWidth: 1, borderColor: c.overlay15, backgroundColor: i === 0 ? c.accent : c.primaryLight}}>
-                    {active && <View style={{width: 4, height: 4, borderRadius: 2, backgroundColor: c.textOnPrimary}} />}
-                    <Text style={{fontWeight: '700', fontSize: 10, color: active ? c.textOnPrimary : c.textOnDark70}}>{ticket}</Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
             {/* Sync pill */}
             <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12}}>
               <Animated.View style={{transform: [{rotate: syncRotate}]}}><MaterialIcons name="sync" size={13} color={c.textOnPrimary} /></Animated.View>
@@ -414,17 +403,19 @@ export default function DashboardScreen({navigation}: Props) {
                 </TouchableOpacity>
               </View>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsRow, L && {gap: 5}]}>
-              {TICKETS.map((ticket, i) => {
-                const active = activeTicket === i;
-                return (
-                  <View key={ticket} style={[styles.tab, L && {paddingVertical: 3, paddingHorizontal: 10, borderRadius: 8}, {borderColor: c.overlay15, backgroundColor: i === 0 ? c.accent : c.primaryLight}]}>
-                    {active && <View style={[styles.tabDot, L && {width: 4, height: 4}, {backgroundColor: c.textOnPrimary}]} />}
-                    <Text style={[styles.tabText, L && {fontSize: 11}, {color: active ? c.textOnPrimary : c.textOnDark70}]}>{ticket}</Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
+            {!L && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+                {TICKETS.map((ticket, i) => {
+                  const active = activeTicket === i;
+                  return (
+                    <View key={ticket} style={[styles.tab, {borderColor: c.overlay15, backgroundColor: i === 0 ? c.accent : c.primaryLight}]}>
+                      {active && <View style={[styles.tabDot, {backgroundColor: c.textOnPrimary}]} />}
+                      <Text style={[styles.tabText, {color: active ? c.textOnPrimary : c.textOnDark70}]}>{ticket}</Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
           </>
         )}
       </View>
@@ -444,31 +435,41 @@ export default function DashboardScreen({navigation}: Props) {
 
         {/* ── Landscape: KPI + Chips in one row ── */}
         {isLandscape ? (
-          <FadeCard delay={0} style={[cs.card, {flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 6, flexWrap: 'wrap', marginBottom: lt ? 12 : 8, padding: lt ? 12 : 8}]}>
+          <FadeCard delay={0} style={[cs.card, {flexDirection: 'row', alignItems: 'center', gap: lt ? 11 : 8, flexWrap: 'wrap', marginBottom: lt ? 15 : 11, padding: lt ? 15 : 11}]}>
+            {/* Ticket numbers */}
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 7 : 5}}>
+              {TICKETS.map((ticket, i) => (
+                <View key={ticket} style={{paddingVertical: lt ? 5 : 4, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 8 : 6, backgroundColor: i === 0 ? c.accent : c.primaryLight}}>
+                  <Text style={{fontSize: lt ? 13 : 11, fontWeight: '700', color: c.textOnPrimary}}>{ticket}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={{width: StyleSheet.hairlineWidth, height: lt ? 26 : 22, backgroundColor: c.border, marginHorizontal: lt ? 5 : 3}} />
+            {/* KPI items */}
             {[
               {icon: 'receipt-long', val: '26209538', label: t('dashboard.ticket'), color: c.primary},
               {icon: 'tag', val: '2605', label: t('dashboard.order'), color: c.primaryDark},
               {icon: 'local-shipping', val: '108693', label: 'TRUCK', color: c.primary},
             ].map((kpi, i, arr) => (
               <React.Fragment key={kpi.label}>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 7 : 5, paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 6 : 4}}>
-                  <MaterialIcons name={kpi.icon as any} size={lt ? 15 : 13} color={kpi.color} />
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 6, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 7 : 5}}>
+                  <MaterialIcons name={kpi.icon as any} size={lt ? 17 : 15} color={kpi.color} />
                   <View>
-                    <Text style={{fontSize: lt ? 13 : 11, fontWeight: '800', color: c.textPrimary}}>{kpi.val}</Text>
-                    <Text style={{fontSize: lt ? 9 : 8, fontWeight: '600', color: c.textMuted, letterSpacing: 0.3}}>{kpi.label}</Text>
+                    <Text style={{fontSize: lt ? 15 : 13, fontWeight: '800', color: c.textPrimary}}>{kpi.val}</Text>
+                    <Text style={{fontSize: lt ? 11 : 10, fontWeight: '600', color: c.textMuted, letterSpacing: 0.3, marginTop: 2}}>{kpi.label}</Text>
                   </View>
                 </View>
-                {i < arr.length - 1 && <View style={{width: StyleSheet.hairlineWidth, height: lt ? 22 : 18, backgroundColor: c.border}} />}
+                {i < arr.length - 1 && <View style={{width: StyleSheet.hairlineWidth, height: lt ? 26 : 22, backgroundColor: c.border}} />}
               </React.Fragment>
             ))}
             <View style={{flex: 1}} />
-            <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 8 : 6, borderRadius: lt ? 10 : 8, gap: lt ? 4 : 3}}>
-              <View style={{width: lt ? 6 : 5, height: lt ? 6 : 5, borderRadius: 3, backgroundColor: c.success}} />
-              <Text style={{fontWeight: '600', fontSize: lt ? 11 : 9, color: c.successDark}}>{t('dashboard.active')}</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+              <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />
+              <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.successDark}}>{t('dashboard.active')}</Text>
             </View>
-            <View style={{flexDirection: 'row', alignItems: 'center', borderColor: c.border, borderWidth: StyleSheet.hairlineWidth, paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 8 : 6, borderRadius: lt ? 10 : 8, gap: lt ? 3 : 2}}>
-              <MaterialIcons name="wb-sunny" size={lt ? 12 : 10} color={c.warning} />
-              <Text style={{fontWeight: '600', fontSize: lt ? 11 : 9, color: c.textSecondary}}>10°C</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', borderColor: c.border, borderWidth: StyleSheet.hairlineWidth, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+              <MaterialIcons name="wb-sunny" size={lt ? 14 : 12} color={c.warning} />
+              <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.textSecondary}}>10°C</Text>
             </View>
           </FadeCard>
         ) : (
@@ -515,46 +516,45 @@ export default function DashboardScreen({navigation}: Props) {
         )}
 
         {/* Delivery Progress */}
-        <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 14 : 10}, {marginBottom: lt ? 14 : L ? 10 : wp(10)}]}>
-          <View style={[styles.secHeader, {borderBottomColor: c.borderLight}, L && {marginBottom: lt ? 8 : 6, paddingBottom: lt ? 6 : 4, gap: lt ? 6 : 5}]}>
-            <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 26 : 22, height: lt ? 26 : 22, borderRadius: lt ? 8 : 7}]}>
-              <MaterialIcons name="timeline" size={lt ? 15 : L ? 13 : ms(15)} color={c.textOnPrimary} />
+        <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 15 : 11}, {marginBottom: lt ? 15 : L ? 13 : wp(8)}]}>
+          <View style={[styles.secHeader, {borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4)}, L && {marginBottom: lt ? 7 : 5, paddingBottom: lt ? 6 : 5, gap: lt ? 8 : 7}]}>
+            <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 25 : 21, height: lt ? 25 : 21, borderRadius: lt ? 8 : 7}]}>
+              <MaterialIcons name="timeline" size={lt ? 15 : L ? 13 : ms(13)} color={c.textOnPrimary} />
             </View>
-            <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 15 : 13}]}>{t('dashboard.deliveryProgress')}</Text>
-            <View style={[styles.countBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}, L && {paddingHorizontal: lt ? 9 : 7, paddingVertical: lt ? 3 : 2, borderRadius: lt ? 8 : 6}]}>
-              <Text style={[styles.countText, {color: c.primary}, L && {fontSize: lt ? 12 : 10}]}>{doneCount}/{TIMELINE.length}</Text>
+            <Text style={[styles.secTitle, {color: c.textPrimary, fontSize: ms(12)}, L && {fontSize: lt ? 15 : 13}]}>{t('dashboard.deliveryProgress')}</Text>
+            <View style={[styles.countBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}, L && {paddingHorizontal: lt ? 9 : 7, paddingVertical: lt ? 3 : 2, borderRadius: lt ? 8 : 7}]}>
+              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 12 : 10}]}>{doneCount}/{TIMELINE.length}</Text>
             </View>
           </View>
 
-          {/* Steps — flex row in landscape (fills width), scrollable in portrait */}
+          {/* Steps */}
           {L ? (
-            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingTop: 6, paddingBottom: 4, marginHorizontal: 4}}>
+            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingTop: 4, paddingBottom: 2, marginHorizontal: 4}}>
               {TIMELINE.map((item, i) => {
                 const isActive = item.done && (i === TIMELINE.length - 1 || !TIMELINE[i + 1].done);
                 const isFirst = i === 0;
                 const isLast = i === TIMELINE.length - 1;
-                const dotSz = lt ? (isActive ? 24 : 20) : (isActive ? 20 : 16);
-                const lineH = lt ? 3 : 3;
+                const dotSz = lt ? (isActive ? 20 : 16) : (isActive ? 16 : 12);
                 const lineDone = item.done && !isLast && TIMELINE[i + 1]?.done;
                 return (
                   <View key={item.labelKey} style={{alignItems: 'center', flex: 1, overflow: 'visible'}}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', height: lt ? 26 : 22, width: '100%'}}>
-                      {!isFirst && <View style={{flex: 1, height: lineH, backgroundColor: item.done ? c.primary : c.border, borderRadius: 2}} />}
+                    <View style={{flexDirection: 'row', alignItems: 'center', height: lt ? 22 : 16, width: '100%'}}>
+                      {!isFirst && <View style={{flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1}} />}
                       <View style={{
                         width: dotSz, height: dotSz, borderRadius: dotSz / 2,
                         justifyContent: 'center', alignItems: 'center',
                         backgroundColor: item.done ? c.primary : c.surface,
-                        borderWidth: isActive ? 3 : 2,
+                        borderWidth: isActive ? 2.5 : 1.5,
                         borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
                       }}>
-                        {item.done && <MaterialIcons name="check" size={lt ? (isActive ? 13 : 11) : (isActive ? 11 : 9)} color={c.textOnPrimary} />}
+                        {item.done && <MaterialIcons name="check" size={lt ? (isActive ? 11 : 9) : (isActive ? 9 : 7)} color={c.textOnPrimary} />}
                       </View>
-                      {!isLast && <View style={{flex: 1, height: lineH, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 2}} />}
+                      {!isLast && <View style={{flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1}} />}
                     </View>
-                    <Text style={{fontSize: lt ? 10 : 9, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: lt ? 5 : 4}} numberOfLines={1}>
+                    <Text style={{fontSize: lt ? 10 : 9, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 4}} numberOfLines={1}>
                       {t(item.labelKey)}
                     </Text>
-                    <Text style={{fontSize: lt ? 12 : 11, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: lt ? 2 : 1}}>
+                    <Text style={{fontSize: lt ? 12 : 11, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: 2}}>
                       {item.time}
                     </Text>
                   </View>
@@ -562,32 +562,32 @@ export default function DashboardScreen({navigation}: Props) {
               })}
             </View>
           ) : (
-            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(4), paddingBottom: wp(2)}}>
+            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(2), paddingBottom: wp(1)}}>
               {TIMELINE.map((item, i) => {
                 const isActive = item.done && (i === TIMELINE.length - 1 || !TIMELINE[i + 1].done);
                 const isFirst = i === 0;
                 const isLast = i === TIMELINE.length - 1;
-                const dotSz = isActive ? 18 : 14;
+                const dotSz = isActive ? 14 : 10;
                 const lineDone = item.done && !isLast && TIMELINE[i + 1]?.done;
                 return (
                   <View key={item.labelKey} style={{alignItems: 'center', flex: 1}}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', height: 20, width: '100%'}}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', height: 16, width: '100%'}}>
                       {!isFirst && <View style={{flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1}} />}
                       <View style={{
                         width: dotSz, height: dotSz, borderRadius: dotSz / 2,
                         justifyContent: 'center', alignItems: 'center',
                         backgroundColor: item.done ? c.primary : c.surface,
-                        borderWidth: isActive ? 2.5 : 2,
+                        borderWidth: isActive ? 2 : 1.5,
                         borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
                       }}>
-                        {item.done && <MaterialIcons name="check" size={isActive ? 10 : 8} color={c.textOnPrimary} />}
+                        {item.done && <MaterialIcons name="check" size={isActive ? 8 : 6} color={c.textOnPrimary} />}
                       </View>
                       {!isLast && <View style={{flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1}} />}
                     </View>
-                    <Text style={{fontSize: 8, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 3}} numberOfLines={1}>
+                    <Text style={{fontSize: 7, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2}} numberOfLines={1}>
                       {t(item.labelKey)}
                     </Text>
-                    <Text style={{fontSize: 10, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: 1}}>
+                    <Text style={{fontSize: 9, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border}}>
                       {item.time}
                     </Text>
                   </View>
@@ -598,48 +598,48 @@ export default function DashboardScreen({navigation}: Props) {
         </FadeCard>
 
         {/* Job + Mix Cards */}
-        <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 10 : 8}]}>
+        <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 13 : 11}]}>
           {/* Job Details */}
-          <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 14 : 10}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 6 : 4, paddingBottom: lt ? 6 : 4, gap: lt ? 6 : 5}]}>
-              <MaterialIcons name="work" size={lt ? 16 : L ? 14 : ms(16)} color={c.accent} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.jobDetails')}</Text>
+          <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 17 : 13}]}>
+            <View style={[styles.secHeader, L && {marginBottom: lt ? 9 : 7, paddingBottom: lt ? 8 : 6, gap: lt ? 8 : 7}]}>
+              <MaterialIcons name="work" size={lt ? 18 : L ? 16 : ms(16)} color={c.accent} />
+              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.jobDetails')}</Text>
             </View>
             {JOB_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 6 : 4}, i < JOB_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 8 : 6}, i < JOB_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
+                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isMap ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => openAddressInMaps(item.value)} style={common.flex1}>
-                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
+                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
+                  <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
                 )}
               </View>
             ))}
           </FadeCard>
 
           {/* Mix Details */}
-          <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 14 : 10}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 6 : 4, paddingBottom: lt ? 6 : 4, gap: lt ? 6 : 5}]}>
-              <MaterialIcons name="science" size={lt ? 16 : L ? 14 : ms(16)} color={c.primary} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.mixDetails')}</Text>
+          <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 17 : 13}]}>
+            <View style={[styles.secHeader, L && {marginBottom: lt ? 9 : 7, paddingBottom: lt ? 8 : 6, gap: lt ? 8 : 7}]}>
+              <MaterialIcons name="science" size={lt ? 18 : L ? 16 : ms(16)} color={c.primary} />
+              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.mixDetails')}</Text>
             </View>
             {MIX_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 5 : 3}, i < MIX_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 7 : 5}, i < MIX_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
+                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isHighlight ? (
                   <View style={[styles.slumpPillInline, {backgroundColor: c.warningSurface, borderColor: c.warningBorder}]}>
-                    <Text style={{fontSize: lt ? 12 : L ? 11 : ms(12), fontWeight: '800', color: c.warningDark}}>{item.value}</Text>
+                    <Text style={{fontSize: lt ? 14 : L ? 13 : ms(12), fontWeight: '800', color: c.warningDark}}>{item.value}</Text>
                   </View>
                 ) : item.isLink ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
-                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 12 : 11}]}>
+                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 14 : 13}]}>
                       {item.value}
                     </Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: c.textPrimary}, L && {fontSize: lt ? 12 : 11}]}>
+                  <Text style={[styles.detailValue, common.flex1, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 13}]}>
                     {item.value}
                   </Text>
                 )}
