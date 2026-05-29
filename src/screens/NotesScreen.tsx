@@ -42,54 +42,53 @@ const TABS = [
 
 // ─── SHARED COMPONENTS ───
 
-function Stepper({value, unit, highlight, onIncrement, onDecrement, onChangeValue}: {value: string; unit: string; highlight?: boolean; onIncrement?: () => void; onDecrement?: () => void; onChangeValue?: (val: string) => void}) {
+function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: string; unit: string; highlight?: boolean; onIncrement?: () => void; onDecrement?: () => void; onChangeValue?: (val: string) => void; pickerValues?: string[]}) {
   const {c} = useTheme();
-  const scaleM = useRef(new Animated.Value(1)).current;
-  const scaleP = useRef(new Animated.Value(1)).current;
-  const pulse = useCallback((anim: Animated.Value, cb?: () => void) => {
-    Animated.sequence([
-      Animated.timing(anim, {toValue: 0.85, duration: 80, useNativeDriver: true}),
-      Animated.spring(anim, {toValue: 1, friction: 4, tension: 100, useNativeDriver: true}),
-    ]).start();
-    cb?.();
-  }, []);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const defaults = pickerValues || ['0','5','10','15','20','25','30','40','50','60','70','80','90','100'];
   return (
     <View style={st.stepperWrap}>
-      <Animated.View style={{transform: [{scale: scaleM}]}}>
-        <TouchableOpacity
-          style={[st.stepBtn, st.stepBtnMinus, {backgroundColor: c.surface, borderColor: c.border}]}
-          activeOpacity={0.7}
-          onPress={() => pulse(scaleM, onDecrement)}>
-          <MaterialIcons name="remove" size={ms(18)} color={c.textSecondary} />
-        </TouchableOpacity>
-      </Animated.View>
-      <View style={[st.stepVal, {backgroundColor: highlight ? c.highlight : c.white, borderColor: c.border}]}>
+      <View style={[st.numInput, {backgroundColor: highlight ? c.highlight : c.surface, borderColor: highlight ? c.primaryBorder : 'transparent'}]}>
         {onChangeValue ? (
           <TextInput
-            style={[st.stepValText, {color: c.textPrimary, padding: 0, textAlign: 'center', width: '100%', height: '100%'}]}
+            style={[st.numInputText, {color: c.textPrimary}]}
             value={value === '0' ? '' : value}
-            placeholder="—"
+            placeholder="0"
             placeholderTextColor={c.textMuted}
             keyboardType="number-pad"
             onChangeText={text => onChangeValue(text.replace(/[^0-9]/g, ''))}
           />
         ) : (
-          <Text style={[st.stepValText, {color: c.textPrimary}]}>{value || '—'}</Text>
+          <Text style={[st.numInputText, {color: c.textPrimary}]}>{value || '0'}</Text>
         )}
       </View>
-      <Animated.View style={{transform: [{scale: scaleP}]}}>
-        <TouchableOpacity
-          style={[st.stepBtn, st.stepBtnPlus, {backgroundColor: c.primary}]}
-          activeOpacity={0.7}
-          onPress={() => pulse(scaleP, onIncrement)}>
-          <MaterialIcons name="add" size={ms(18)} color={c.textOnPrimary} />
-        </TouchableOpacity>
-      </Animated.View>
+      <TouchableOpacity style={[st.pickerToggle, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
+        <MaterialIcons name="unfold-more" size={ms(14)} color={c.textSecondary} />
+      </TouchableOpacity>
       {unit ? (
         <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
           <Text style={[st.unitBadgeText, {color: c.textSecondary}]}>{unit}</Text>
         </View>
       ) : null}
+      <ResponsiveModal visible={pickerOpen} onClose={() => setPickerOpen(false)} maxWidth={320} maxHeightPercent={50}>
+        <View style={[st.pickerHeader, {borderBottomColor: c.border}]}>
+          <Text style={[st.pickerTitle, {color: c.textPrimary}]}>Select Value</Text>
+          <TouchableOpacity style={[st.pickerCloseBtn, {backgroundColor: c.surface}]} onPress={() => setPickerOpen(false)} activeOpacity={0.7}>
+            <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={st.pickerList}>
+          {defaults.map(v => {
+            const isSelected = v === value;
+            return (
+              <TouchableOpacity key={v} style={[st.pickerItem, {borderBottomColor: c.borderLight}, isSelected && {backgroundColor: c.primarySurface}]} activeOpacity={0.6} onPress={() => { onChangeValue?.(v); setPickerOpen(false); }}>
+                <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}]}>{v}{unit ? ` ${unit}` : ''}</Text>
+                {isSelected && <MaterialIcons name="check-circle" size={ms(16)} color={c.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </ResponsiveModal>
     </View>
   );
 }
@@ -689,7 +688,6 @@ function PlantTab() {
           <YellowInput value={slumpToJob} />
         </TouchableOpacity>
         <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-        <MoreBtn onPress={() => setSlumpToJobPickerVisible(true)} />
       </Field>
       <Field label="TEMP AT PLANT">
         <LineInput width={100} placeholder="Temperature" keyboardType="numeric" />
@@ -743,7 +741,6 @@ function PlantTab() {
             <Field label="SLUMP" compact>
               <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
               <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-              <MoreBtn onPress={() => setLoadSlumpPickerVisible(true)} />
             </Field>
             <Field label="CYLINDERS" compact>
               <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
@@ -921,7 +918,6 @@ function JobsiteTab() {
             <Field label="SLUMP" compact>
               <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
               <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-              <MoreBtn onPress={() => setJobLoadSlumpPickerVisible(true)} />
             </Field>
             <Field label="CYLINDERS" compact>
               <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
@@ -945,12 +941,7 @@ function JobsiteTab() {
       />
       <FieldCard title="Jobsite Notes" icon="edit-note" fullWidth>
       <Field label="NOTES" wide>
-        <View style={common.rowStartFullW}>
-          <View style={common.flex1}>
-            <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
-          </View>
-          <MoreBtn onPress={() => setJobsiteNotesModal(true)} />
-        </View>
+        <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
       </Field>
       </FieldCard>
       <ReasonListModal
@@ -1420,6 +1411,7 @@ function CodTab() {
   const [paymentType, setPaymentType] = useState('');
   const [paymentModal, setPaymentModal] = useState(false);
   const [waitTime, setWaitTime] = useState(0);
+  const [waitPickerOpen, setWaitPickerOpen] = useState(false);
   const [codNotes, setCodNotes] = useState('');
   const [codAmount, setCodAmount] = useState('');
   const [notesFocused, setNotesFocused] = useState(false);
@@ -1530,38 +1522,45 @@ function CodTab() {
         </View>
       </Field>
 
-      {/* Wait Time Stepper */}
+      {/* Wait Time */}
       <Field label="WAIT TIME">
         <View style={st.stepperWrap}>
-          <Animated.View style={{transform: [{scale: scaleMinus}]}}>
-            <TouchableOpacity
-              style={[st.stepBtn, st.stepBtnMinus, {
-                backgroundColor: waitTime > 0 ? c.white : c.surface,
-                borderColor: waitTime > 0 ? c.primary : c.border,
-              }]}
-              activeOpacity={0.7}
-              onPress={decrement}>
-              <MaterialIcons name="remove" size={ms(18)} color={waitTime > 0 ? c.primary : c.textMuted} />
-            </TouchableOpacity>
-          </Animated.View>
-          <View style={[st.stepVal, {
-            backgroundColor: waitTime > 0 ? c.primarySurface : c.white,
-            borderColor: waitTime > 0 ? c.primary : c.border,
-          }]}>
-            <Text style={[st.stepValText, {color: waitTime > 0 ? c.primary : c.textPrimary}]}>{waitTime}</Text>
+          <View style={[st.numInput, {backgroundColor: waitTime > 0 ? c.primarySurface : c.surface, borderColor: waitTime > 0 ? c.primaryBorder : 'transparent'}]}>
+            <TextInput
+              style={[st.numInputText, {color: waitTime > 0 ? c.primary : c.textPrimary}]}
+              value={waitTime === 0 ? '' : String(waitTime)}
+              placeholder="0"
+              placeholderTextColor={c.textMuted}
+              keyboardType="number-pad"
+              onChangeText={text => setWaitTime(parseInt(text.replace(/[^0-9]/g, '')) || 0)}
+            />
           </View>
-          <Animated.View style={{transform: [{scale: scalePlus}]}}>
-            <TouchableOpacity
-              style={[st.stepBtn, st.stepBtnPlus, {backgroundColor: c.primary}]}
-              activeOpacity={0.7}
-              onPress={increment}>
-              <MaterialIcons name="add" size={ms(18)} color={c.textOnPrimary} />
-            </TouchableOpacity>
-          </Animated.View>
+          <TouchableOpacity style={[st.pickerToggle, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setWaitPickerOpen(true)}>
+            <MaterialIcons name="unfold-more" size={ms(14)} color={c.textSecondary} />
+          </TouchableOpacity>
           <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
             <Text style={[st.unitBadgeText, {color: c.textSecondary}]}>Min</Text>
           </View>
         </View>
+        <ResponsiveModal visible={waitPickerOpen} onClose={() => setWaitPickerOpen(false)} maxWidth={320} maxHeightPercent={50}>
+          <View style={[st.pickerHeader, {borderBottomColor: c.border}]}>
+            <Text style={[st.pickerTitle, {color: c.textPrimary}]}>Select Wait Time</Text>
+            <TouchableOpacity style={[st.pickerCloseBtn, {backgroundColor: c.surface}]} onPress={() => setWaitPickerOpen(false)} activeOpacity={0.7}>
+              <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={st.pickerList}>
+            {['0','5','10','15','20','25','30','45','60','90','120'].map(v => {
+              const isSelected = v === String(waitTime);
+              return (
+                <TouchableOpacity key={v} style={[st.pickerItem, {borderBottomColor: c.borderLight}, isSelected && {backgroundColor: c.primarySurface}]} activeOpacity={0.6} onPress={() => { setWaitTime(parseInt(v)); setWaitPickerOpen(false); }}>
+                  <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}]}>{v} Min</Text>
+                  {isSelected && <MaterialIcons name="check-circle" size={ms(16)} color={c.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </ResponsiveModal>
       </Field>
       </FieldCard>
 
@@ -1810,13 +1809,18 @@ const st = StyleSheet.create({
   // Field row
   fieldRow: {flexDirection: 'row', gap: wp(8), borderBottomWidth: 0.5},
 
-  // Stepper
-  stepperWrap: {flexDirection: 'row', alignItems: 'center', gap: wp(1)},
-  stepBtn: {width: wp(26), height: wp(26), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
-  stepBtnMinus: {borderWidth: 1},
-  stepBtnPlus: {},
-  stepVal: {width: wp(40), height: wp(26), justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: wp(6), marginHorizontal: wp(1)},
-  stepValText: {fontSize: ms(11), fontWeight: '700'},
+  // Number input (replaces stepper)
+  stepperWrap: {flexDirection: 'row', alignItems: 'center', gap: wp(4)},
+  numInput: {minWidth: wp(48), height: wp(30), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(8), borderWidth: 1},
+  numInputText: {fontSize: ms(12), fontWeight: '700', textAlign: 'center', padding: 0, minWidth: wp(28)},
+  pickerToggle: {width: wp(26), height: wp(26), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center', borderWidth: 1},
+  // Picker modal
+  pickerHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1},
+  pickerTitle: {fontSize: ms(14), fontWeight: '800'},
+  pickerCloseBtn: {width: wp(30), height: wp(30), borderRadius: wp(15), justifyContent: 'center', alignItems: 'center'},
+  pickerList: {paddingVertical: wp(4)},
+  pickerItem: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: wp(10), paddingHorizontal: wp(16), borderBottomWidth: StyleSheet.hairlineWidth},
+  pickerItemText: {fontSize: ms(14), fontWeight: '600'},
   unitInline: {fontSize: ms(10), fontWeight: '600', marginLeft: wp(3)},
   unitBadge: {marginLeft: wp(5), paddingHorizontal: wp(7), paddingVertical: wp(3), borderRadius: wp(7), borderWidth: 1},
   unitBadgeText: {fontSize: ms(10), fontWeight: '700'},

@@ -435,7 +435,7 @@ export default function DashboardScreen({navigation}: Props) {
 
         {/* ── Landscape: KPI + Chips in one row ── */}
         {isLandscape ? (
-          <FadeCard delay={0} style={[cs.card, {flexDirection: 'row', alignItems: 'center', gap: lt ? 11 : 8, flexWrap: 'wrap', marginBottom: lt ? 15 : 11, padding: lt ? 15 : 11}]}>
+          <FadeCard delay={0} style={[cs.card, {flexDirection: 'row', alignItems: 'center', gap: lt ? 10 : 6, flexWrap: 'wrap', marginBottom: lt ? 10 : 6, padding: lt ? 10 : 7}]}>
             {/* Ticket numbers */}
             <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 7 : 5}}>
               {TICKETS.map((ticket, i) => (
@@ -516,14 +516,14 @@ export default function DashboardScreen({navigation}: Props) {
         )}
 
         {/* Delivery Progress */}
-        <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 15 : 11}, {marginBottom: lt ? 15 : L ? 13 : wp(8)}]}>
-          <View style={[styles.secHeader, {borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4)}, L && {marginBottom: lt ? 7 : 5, paddingBottom: lt ? 6 : 5, gap: lt ? 8 : 7}]}>
-            <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 25 : 21, height: lt ? 25 : 21, borderRadius: lt ? 8 : 7}]}>
-              <MaterialIcons name="timeline" size={lt ? 15 : L ? 13 : ms(13)} color={c.textOnPrimary} />
+        <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 10 : 7}, {marginBottom: lt ? 10 : L ? 6 : wp(8)}]}>
+          <View style={[styles.secHeader, {borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4)}, L && {marginBottom: lt ? 4 : 3, paddingBottom: lt ? 4 : 3, gap: lt ? 6 : 5}]}>
+            <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 22 : 18, height: lt ? 22 : 18, borderRadius: lt ? 7 : 6}]}>
+              <MaterialIcons name="timeline" size={lt ? 13 : L ? 11 : ms(13)} color={c.textOnPrimary} />
             </View>
-            <Text style={[styles.secTitle, {color: c.textPrimary, fontSize: ms(12)}, L && {fontSize: lt ? 15 : 13}]}>{t('dashboard.deliveryProgress')}</Text>
-            <View style={[styles.countBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}, L && {paddingHorizontal: lt ? 9 : 7, paddingVertical: lt ? 3 : 2, borderRadius: lt ? 8 : 7}]}>
-              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 12 : 10}]}>{doneCount}/{TIMELINE.length}</Text>
+            <Text style={[styles.secTitle, {color: c.textPrimary, fontSize: ms(12)}, L && {fontSize: lt ? 13 : 11}]}>{t('dashboard.deliveryProgress')}</Text>
+            <View style={[styles.countBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}, L && {paddingHorizontal: lt ? 7 : 5, paddingVertical: lt ? 2 : 1, borderRadius: lt ? 6 : 5}]}>
+              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 10 : 8}]}>{doneCount}/{TIMELINE.length}</Text>
             </View>
           </View>
 
@@ -551,10 +551,10 @@ export default function DashboardScreen({navigation}: Props) {
                       </View>
                       {!isLast && <View style={{flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1}} />}
                     </View>
-                    <Text style={{fontSize: lt ? 10 : 9, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 4}} numberOfLines={1}>
+                    <Text style={{fontSize: lt ? 9 : 8, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2}} numberOfLines={1}>
                       {t(item.labelKey)}
                     </Text>
-                    <Text style={{fontSize: lt ? 12 : 11, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: 2}}>
+                    <Text style={{fontSize: lt ? 10 : 9, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: 1}}>
                       {item.time}
                     </Text>
                   </View>
@@ -598,48 +598,48 @@ export default function DashboardScreen({navigation}: Props) {
         </FadeCard>
 
         {/* Job + Mix Cards */}
-        <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 13 : 11}]}>
+        <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 10 : 7}]}>
           {/* Job Details */}
-          <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 17 : 13}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 9 : 7, paddingBottom: lt ? 8 : 6, gap: lt ? 8 : 7}]}>
-              <MaterialIcons name="work" size={lt ? 18 : L ? 16 : ms(16)} color={c.accent} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.jobDetails')}</Text>
+          <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 12 : 8}]}>
+            <View style={[styles.secHeader, L && {marginBottom: lt ? 5 : 3, paddingBottom: lt ? 5 : 3, gap: lt ? 6 : 5}]}>
+              <MaterialIcons name="work" size={lt ? 16 : L ? 14 : ms(16)} color={c.accent} />
+              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.jobDetails')}</Text>
             </View>
             {JOB_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 8 : 6}, i < JOB_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12}]} numberOfLines={1}>{t(item.labelKey)}</Text>
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 5 : 4}, i < JOB_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
+                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isMap ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => openAddressInMaps(item.value)} style={common.flex1}>
-                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
+                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
+                  <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
                 )}
               </View>
             ))}
           </FadeCard>
 
           {/* Mix Details */}
-          <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 17 : 13}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 9 : 7, paddingBottom: lt ? 8 : 6, gap: lt ? 8 : 7}]}>
-              <MaterialIcons name="science" size={lt ? 18 : L ? 16 : ms(16)} color={c.primary} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.mixDetails')}</Text>
+          <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 12 : 8}]}>
+            <View style={[styles.secHeader, L && {marginBottom: lt ? 5 : 3, paddingBottom: lt ? 5 : 3, gap: lt ? 6 : 5}]}>
+              <MaterialIcons name="science" size={lt ? 16 : L ? 14 : ms(16)} color={c.primary} />
+              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.mixDetails')}</Text>
             </View>
             {MIX_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 7 : 5}, i < MIX_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12}]} numberOfLines={1}>{t(item.labelKey)}</Text>
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 5 : 3}, i < MIX_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
+                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isHighlight ? (
                   <View style={[styles.slumpPillInline, {backgroundColor: c.warningSurface, borderColor: c.warningBorder}]}>
-                    <Text style={{fontSize: lt ? 14 : L ? 13 : ms(12), fontWeight: '800', color: c.warningDark}}>{item.value}</Text>
+                    <Text style={{fontSize: lt ? 12 : L ? 11 : ms(12), fontWeight: '800', color: c.warningDark}}>{item.value}</Text>
                   </View>
                 ) : item.isLink ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
-                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 14 : 13}]}>
+                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 12 : 11}]}>
                       {item.value}
                     </Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 13}]}>
+                  <Text style={[styles.detailValue, common.flex1, {color: c.textPrimary}, L && {fontSize: lt ? 12 : 11}]}>
                     {item.value}
                   </Text>
                 )}
@@ -648,7 +648,7 @@ export default function DashboardScreen({navigation}: Props) {
           </FadeCard>
         </View>
 
-        <View style={{height: L ? wp(16) : wp(14)}} />
+        <View style={{height: L ? wp(8) : wp(14)}} />
         </View>
       </ScrollView>
 
@@ -660,7 +660,7 @@ export default function DashboardScreen({navigation}: Props) {
           width: 54 + insets.right,
           paddingRight: insets.right,
           paddingTop: insets.top + 10,
-          paddingBottom: Math.max(insets.bottom, 10),
+          paddingBottom: Math.max(insets.bottom, 20),
           borderLeftWidth: StyleSheet.hairlineWidth,
           borderLeftColor: c.border,
           backgroundColor: c.white,
@@ -1061,14 +1061,14 @@ const styles = StyleSheet.create({
   plantsList: {paddingHorizontal: wp(16)},
   plantItem: {paddingVertical: wp(12), borderBottomWidth: 0.5, alignItems: 'center', minHeight: wp(42)},
   plantText: {fontSize: ms(15), fontWeight: '600', textAlign: 'center'},
-  etHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(18), paddingVertical: wp(14), borderBottomWidth: 1},
-  etHeaderIcon: {width: wp(36), height: wp(36), borderRadius: wp(12), justifyContent: 'center', alignItems: 'center'},
-  etHeaderTitle: {flex: 1, fontSize: ms(17), fontWeight: '800', letterSpacing: 0.5},
-  etSectionHdr: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(18), paddingTop: wp(16), paddingBottom: wp(8)},
-  etSectionTitle: {fontSize: ms(12), fontWeight: '800', letterSpacing: 1},
-  etActionRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(14), paddingHorizontal: wp(18), gap: wp(12), minHeight: wp(56)},
-  etActionIcon: {width: wp(34), height: wp(34), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
-  etActionLabel: {flex: 1, fontSize: ms(14), fontWeight: '700'},
+  etHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(10), borderBottomWidth: 1},
+  etHeaderIcon: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
+  etHeaderTitle: {flex: 1, fontSize: ms(16), fontWeight: '800', letterSpacing: 0.5},
+  etSectionHdr: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(16), paddingTop: wp(10), paddingBottom: wp(6)},
+  etSectionTitle: {fontSize: ms(11), fontWeight: '800', letterSpacing: 1},
+  etActionRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(16), gap: wp(10), minHeight: wp(44)},
+  etActionIcon: {width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center'},
+  etActionLabel: {flex: 1, fontSize: ms(13), fontWeight: '700'},
 
   // Unified modal close button
   mCloseBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center'},

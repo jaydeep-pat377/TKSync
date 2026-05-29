@@ -110,20 +110,20 @@ export default function MobileTicketScreen({navigation}: Props) {
 
       <ScrollView
         style={[s.scroll, {backgroundColor: c.accentBg}]}
-        contentContainerStyle={[s.scrollContent, {paddingLeft: Math.max(0, insets.left), paddingRight: Math.max(0, insets.right)}]}
+        contentContainerStyle={[s.scrollContent, {paddingLeft: Math.max(0, insets.left), paddingRight: Math.max(0, insets.right), paddingBottom: isLandscape ? Math.max(wp(40), insets.bottom + wp(20)) : Math.max(wp(60), insets.bottom + wp(40))}]}
         showsVerticalScrollIndicator={false}>
 
         {/* Ticket Card */}
         <View style={[s.ticketCard, {backgroundColor: c.white, shadowColor: c.shadowColor, marginHorizontal: hMargin}]}>
 
           {/* Banner */}
-          <View style={[s.banner, {backgroundColor: c.bannerBg}, wide && {paddingHorizontal: 14, paddingVertical: 7}]}>
-            <View style={[s.bannerIcon, {backgroundColor: c.overlay15}, wide && {width: 32, height: 32, borderRadius: 9}]}>
-              <MaterialIcons name="receipt-long" size={wide ? 18 : ms(16)} color={c.textOnPrimary} />
+          <View style={[s.banner, {backgroundColor: c.bannerBg}, wide && {paddingHorizontal: 16, paddingVertical: 12}]}>
+            <View style={[s.bannerIcon, {backgroundColor: c.overlay15}, wide && {width: 34, height: 34, borderRadius: 10}]}>
+              <MaterialIcons name="receipt-long" size={wide ? 19 : ms(16)} color={c.textOnPrimary} />
             </View>
             <View style={{flex: 1}}>
-              <Text style={[s.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 15}]}>MOBILE TICKET</Text>
-              <View style={{flexDirection: 'row', gap: wide ? 14 : wp(10), marginTop: wide ? 2 : wp(2)}}>
+              <Text style={[s.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 16}]}>MOBILE TICKET</Text>
+              <View style={{flexDirection: 'row', gap: wide ? 14 : wp(14), marginTop: wide ? 5 : wp(8)}}>
                 {[{label: 'ORDER', value: '2605'}, {label: 'TICKET', value: '26209538'}, {label: 'DATE', value: '05/22/2026'}].map(item => (
                   <View key={item.label} style={{flexDirection: 'row', alignItems: 'center', gap: wide ? 4 : wp(3)}}>
                     <Text style={{fontSize: wide ? 9 : ms(9), fontWeight: '600', color: c.textOnDark60}}>{item.label}</Text>
@@ -146,9 +146,9 @@ export default function MobileTicketScreen({navigation}: Props) {
 
           {/* ─── LANDSCAPE LAYOUT ─── */}
           {isLandscape ? (
-            <View style={{flexDirection: 'row', padding: isTablet ? 14 : 10, gap: isTablet ? 10 : 8}}>
+            <View style={{flexDirection: 'row', padding: isTablet ? 12 : 6, gap: isTablet ? 8 : 5}}>
               {/* Column 1: Customer + Driver/Truck */}
-              <View style={{flex: 30, gap: isTablet ? 10 : 8}}>
+              <View style={{flex: 30, gap: isTablet ? 8 : 5}}>
                 <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
                   <LSectionHead icon="people" title="CUSTOMER" color={c.primary} />
                   {CUSTOMER_INFO.map(item => (
@@ -164,9 +164,9 @@ export default function MobileTicketScreen({navigation}: Props) {
               </View>
 
               {/* Columns 2+3: Charges, Timeline, and shared buttons */}
-              <View style={{flex: 70, gap: isTablet ? 10 : 8}}>
+              <View style={{flex: 70, gap: isTablet ? 8 : 5}}>
                 {/* Charges + Timeline row */}
-                <View style={{flexDirection: 'row', gap: isTablet ? 10 : 8, flex: 1}}>
+                <View style={{flexDirection: 'row', gap: isTablet ? 8 : 5, flex: 1}}>
                   {/* Charges */}
                   <View style={[lCard, {flex: 1, backgroundColor: c.white, borderColor: c.border}]}>
                     <LSectionHead icon="receipt-long" title="CHARGES" color={c.primary} />
@@ -334,7 +334,7 @@ export default function MobileTicketScreen({navigation}: Props) {
 }
 
 // Landscape card style
-const lCard = {borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 14, overflow: 'hidden' as const};
+const lCard = {borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 10, overflow: 'hidden' as const};
 
 const s = StyleSheet.create({
   container: {flex: 1},
