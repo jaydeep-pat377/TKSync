@@ -124,8 +124,8 @@ function FieldRow({children}: {children: React.ReactNode}) {
 }
 
 function CardsGrid({children}: {children: React.ReactNode}) {
-  const {width: sw} = useWindowDimensions();
-  const isWide = sw > 680;
+  const {width: sw, height: sh} = useWindowDimensions();
+  const isWide = sw > 680 && sw > sh;
   return (
     <View style={isWide ? st.cardsGridWide : st.cardsGridNarrow}>
       {children}
@@ -135,8 +135,8 @@ function CardsGrid({children}: {children: React.ReactNode}) {
 
 function FieldCard({children, title, icon, fullWidth}: {children: React.ReactNode; title?: string; icon?: string; fullWidth?: boolean}) {
   const {c} = useTheme();
-  const {width: sw} = useWindowDimensions();
-  const isWide = sw > 680;
+  const {width: sw, height: sh} = useWindowDimensions();
+  const isWide = sw > 680 && sw > sh;
   return (
     <View style={[
       st.fieldCard,
@@ -347,10 +347,10 @@ function NoteInput({placeholder, borderColor, bgColor, textColor, value, onChang
 
 // ─── LANDSCAPE LAYOUT COMPONENTS ───
 const ls = StyleSheet.create({
-  root: {flex: 1, paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(4)},
+  root: {flex: 1, paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(2)},
   topBar: {flexDirection: 'row', justifyContent: 'flex-end', marginBottom: wp(4)},
   columns: {flex: 1, flexDirection: 'row', gap: wp(10)},
-  card: {flex: 1, borderRadius: wp(12), paddingHorizontal: wp(12), paddingTop: wp(4), paddingBottom: wp(6)},
+  card: {flex: 1, borderRadius: wp(12), paddingHorizontal: wp(12), paddingTop: wp(4), paddingBottom: wp(4)},
   cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(4), marginBottom: wp(1)},
   cardHeaderIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
   cardTitle: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase', flex: 1},
@@ -759,9 +759,13 @@ function PlantTab() {
   const [truckPickerVisible, setTruckPickerVisible] = useState(false);
   const plantScrollRef = useRef<ScrollView>(null);
   const plantTestAnim = useRef(new Animated.Value(0)).current;
+  const {width: _pw, height: _ph} = useWindowDimensions();
+  const _pLand = _pw > _ph;
   const handlePlantLoadTested = useCallback((val: 'yes' | 'no') => {
     if (val === 'yes') {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      if (!_pLand) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
       plantTestAnim.setValue(0);
       Animated.timing(plantTestAnim, {toValue: 1, duration: 350, useNativeDriver: true}).start();
     }
@@ -769,8 +773,7 @@ function PlantTab() {
     if (val === 'yes') {
       setTimeout(() => plantScrollRef.current?.scrollToEnd({animated: true}), 250);
     }
-  }, [plantTestAnim]);
-  const {width: _pw, height: _ph} = useWindowDimensions();
+  }, [plantTestAnim, _pLand]);
   if (_pw > _ph) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
@@ -1054,9 +1057,13 @@ function JobsiteTab() {
   const [jobLoadCylinders, setJobLoadCylinders] = useState(0);
   const jobScrollRef = useRef<ScrollView>(null);
   const jobTestAnim = useRef(new Animated.Value(0)).current;
+  const {width: _jw, height: _jh} = useWindowDimensions();
+  const _jLand = _jw > _jh;
   const handleJobLoadTested = useCallback((val: 'yes' | 'no') => {
     if (val === 'yes') {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      if (!_jLand) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
       jobTestAnim.setValue(0);
       Animated.timing(jobTestAnim, {toValue: 1, duration: 350, useNativeDriver: true}).start();
     }
@@ -1064,8 +1071,7 @@ function JobsiteTab() {
     if (val === 'yes') {
       setTimeout(() => jobScrollRef.current?.scrollToEnd({animated: true}), 250);
     }
-  }, [jobTestAnim]);
-  const {width: _jw, height: _jh} = useWindowDimensions();
+  }, [jobTestAnim, _jLand]);
   if (_jw > _jh) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
@@ -2157,10 +2163,11 @@ export default function NotesScreen({navigation}: Props) {
 
       <KeyboardAvoidingView
         style={[st.flex1, {backgroundColor: c.background}]}
-        behavior="padding"
+        behavior={isLandscape ? undefined : 'padding'}
+        enabled={!isLandscape}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
-          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, isLandscape && {paddingBottom: wp(4)}, landscapeNoScroll && {flex: 1}]} keyboardShouldPersistTaps="handled">
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, landscapeNoScroll && {flex: 1}]} keyboardShouldPersistTaps="handled">
             {renderTab()}
           </ScrollView>
         </Animated.View>

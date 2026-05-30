@@ -248,8 +248,8 @@ export default function DashboardScreen({navigation}: Props) {
   const cs = {
     card: {
       backgroundColor: c.white,
-      borderRadius: lt ? 16 : L ? 14 : wp(16),
-      padding: lt ? 16 : L ? 12 : wp(14),
+      borderRadius: lt ? 14 : L ? 12 : wp(16),
+      padding: lt ? 12 : L ? 10 : wp(14),
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border,
       elevation: isDark ? 0 : 2,
@@ -476,7 +476,7 @@ export default function DashboardScreen({navigation}: Props) {
         contentContainerStyle={[
           styles.scrollInner,
           {gap: 0},
-          lt ? {padding: 14, paddingLeft: Math.max(16, insets.left + 8)} : L ? {padding: 10, paddingLeft: Math.max(10, insets.left + 6)} : isTablet ? {padding: 18, paddingLeft: Math.max(22, insets.left + 10), paddingRight: Math.max(22, insets.right + 10)} : {},
+          lt ? {padding: 10, paddingLeft: Math.max(12, insets.left + 6)} : L ? {padding: 8, paddingLeft: Math.max(8, insets.left + 4)} : isTablet ? {padding: 18, paddingLeft: Math.max(22, insets.left + 10), paddingRight: Math.max(22, insets.right + 10)} : {},
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
@@ -485,16 +485,16 @@ export default function DashboardScreen({navigation}: Props) {
 
         {/* ── Landscape: KPI row + ticket chips row ── */}
         {isLandscape ? (
-          <FadeCard delay={0} style={[cs.card, {marginBottom: lt ? 10 : 6, padding: lt ? 10 : 7}]}>
+          <FadeCard delay={0} style={[cs.card, {marginBottom: lt ? 8 : 4, padding: lt ? 8 : 6}]}>
             {/* Row 1: KPI items + status badges */}
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 10 : 6}}>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 5}}>
               {[
                 {icon: 'receipt-long', val: '26209538', label: t('dashboard.ticket'), color: c.primary},
                 {icon: 'tag', val: '2605', label: t('dashboard.order'), color: c.primaryDark},
                 {icon: 'local-shipping', val: '108693', label: 'TRUCK', color: c.primary},
               ].map((kpi, i, arr) => (
                 <React.Fragment key={kpi.label}>
-                  <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 6, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 7 : 5}}>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5, paddingVertical: lt ? 5 : 4, paddingHorizontal: lt ? 6 : 4}}>
                     <MaterialIcons name={kpi.icon as any} size={lt ? 17 : 15} color={kpi.color} />
                     <View style={{flexShrink: 1}}>
                       <Text style={{fontSize: lt ? 15 : 13, fontWeight: '800', color: c.textPrimary}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{kpi.val}</Text>
@@ -515,7 +515,7 @@ export default function DashboardScreen({navigation}: Props) {
               </View>
             </View>
             {/* Row 2: Ticket chips */}
-            <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? 8 : 6, paddingTop: lt ? 8 : 6}}>
+            <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? 6 : 4, paddingTop: lt ? 6 : 4}}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5}}>
                 {TICKETS.map((ticket, i) => (
                   <View key={ticket} style={{paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 8 : 6, backgroundColor: i === 0 ? c.accent : c.primaryLight}}>
@@ -564,8 +564,8 @@ export default function DashboardScreen({navigation}: Props) {
         )}
 
         {/* Delivery Progress */}
-        <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 10 : 7}, {marginBottom: lt ? 10 : L ? 6 : wp(8)}]}>
-          <View style={[styles.secHeader, {borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4)}, L && {marginBottom: lt ? 4 : 3, paddingBottom: lt ? 4 : 3, gap: lt ? 6 : 5}]}>
+        <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 8 : 6}, {marginBottom: lt ? 8 : L ? 4 : wp(8)}]}>
+          <View style={[styles.secHeader, {borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4)}, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
             <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 22 : 18, height: lt ? 22 : 18, borderRadius: lt ? 7 : 6}]}>
               <MaterialIcons name="timeline" size={lt ? 13 : L ? 11 : ms(13)} color={c.textOnPrimary} />
             </View>
@@ -577,7 +577,7 @@ export default function DashboardScreen({navigation}: Props) {
 
           {/* Steps */}
           {L ? (
-            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingTop: 4, paddingBottom: 2, marginHorizontal: 4}}>
+            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingTop: 2, paddingBottom: 1, marginHorizontal: 4}}>
               {TIMELINE.map((item, i) => {
                 const isActive = item.done && (i === TIMELINE.length - 1 || !TIMELINE[i + 1].done);
                 const isFirst = i === 0;
@@ -646,15 +646,15 @@ export default function DashboardScreen({navigation}: Props) {
         </FadeCard>
 
         {/* Job + Mix Cards */}
-        <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 10 : 7}]}>
+        <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 8 : 5}]}>
           {/* Job Details */}
-          <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 12 : 8}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 5 : 3, paddingBottom: lt ? 5 : 3, gap: lt ? 6 : 5}]}>
+          <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
+            <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
               <MaterialIcons name="work" size={lt ? 16 : L ? 14 : ms(16)} color={c.accent} />
               <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.jobDetails')}</Text>
             </View>
             {JOB_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 5 : 4}, i < JOB_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 3}, i < JOB_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
                 <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isMap ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => openAddressInMaps(item.value)} style={common.flex1}>
@@ -668,13 +668,13 @@ export default function DashboardScreen({navigation}: Props) {
           </FadeCard>
 
           {/* Mix Details */}
-          <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 12 : 8}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 5 : 3, paddingBottom: lt ? 5 : 3, gap: lt ? 6 : 5}]}>
+          <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
+            <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
               <MaterialIcons name="science" size={lt ? 16 : L ? 14 : ms(16)} color={c.primary} />
               <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.mixDetails')}</Text>
             </View>
             {MIX_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 5 : 3}, i < MIX_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 2}, i < MIX_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
                 <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isHighlight ? (
                   <View style={[styles.slumpPillInline, {backgroundColor: c.warningSurface, borderColor: c.warningBorder}]}>
@@ -696,7 +696,7 @@ export default function DashboardScreen({navigation}: Props) {
           </FadeCard>
         </View>
 
-        <View style={{height: L ? wp(8) : wp(14)}} />
+        <View style={{height: L ? wp(4) : wp(14)}} />
         </View>
       </ScrollView>
 
@@ -825,7 +825,7 @@ export default function DashboardScreen({navigation}: Props) {
 
           {lp ? (
             /* Landscape phone: side-by-side layout */
-            <View style={{flexDirection: 'row', padding: wp(8), gap: wp(10), alignItems: 'center'}}>
+            <View style={{flexDirection: 'row', padding: wp(8), paddingBottom: wp(16), gap: wp(10), alignItems: 'center'}}>
               <View style={{flex: 1, gap: wp(6)}}>
                 <View style={{flexDirection: 'row', gap: wp(6)}}>
                   <View style={{flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12'}}>

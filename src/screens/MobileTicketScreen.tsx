@@ -320,8 +320,8 @@ export default function MobileTicketScreen({navigation}: Props) {
                   <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.signBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket')}>
                     <Text style={[s.actionBtnFullText, {color: c.textOnPrimary}, isTablet && {fontSize: 17}]}>SIGN</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.actionBtnHalf, s.actionBtnOutline, {borderColor: c.disputeBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
-                    <Text style={[s.actionBtnFullText, {color: c.disputeBtn}, isTablet && {fontSize: 16}]}>DISPUTE</Text>
+                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.disputeBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
+                    <Text style={[s.actionBtnFullText, {color: c.textOnPrimary}, isTablet && {fontSize: 16}]}>DISPUTE</Text>
                   </TouchableOpacity>
                 </View>
               </View>
