@@ -2081,7 +2081,10 @@ export default function NotesScreen({navigation}: Props) {
 
       {isLandscape ? (
         <View style={[ls.lhRow, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
-          <Text style={[ls.lhTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
+          <View>
+            <Text style={[ls.lhTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
+            <Text style={{fontSize: ms(9), fontWeight: '500', color: c.textOnDark60}}>Delivery Notes & Records</Text>
+          </View>
           <View style={{flex: 1}} />
           <View style={[ls.lhTabGroup, {backgroundColor: c.overlay10}]}>
             {TABS.map((tab, i) => {

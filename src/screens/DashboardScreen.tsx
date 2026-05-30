@@ -311,13 +311,14 @@ export default function DashboardScreen({navigation}: Props) {
           key={item.labelKey}
           activeOpacity={0.6}
           onPress={() => handleNavPress(item, i)}
-          style={{alignItems: 'center', justifyContent: 'center', paddingVertical: 8}}>
+          style={{alignItems: 'center', justifyContent: 'center', paddingVertical: 6}}>
           <View style={{
             width: 38, height: 38, justifyContent: 'center', alignItems: 'center',
             borderRadius: 12, backgroundColor: active ? c.primarySurface : 'transparent',
           }}>
             <MaterialIcons name={item.icon as any} size={20} color={active ? c.primary : c.textMuted} />
           </View>
+          <Text style={{fontSize: 8, fontWeight: active ? '700' : '500', color: active ? c.primary : c.textMuted, marginTop: 2}} numberOfLines={1}>{t(item.labelKey)}</Text>
         </TouchableOpacity>
       );
     }
@@ -353,7 +354,10 @@ export default function DashboardScreen({navigation}: Props) {
               <View style={{width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}}>
                 <MaterialIcons name="local-shipping" size={16} color={c.textOnPrimary} />
               </View>
-              <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{t('app.name')}</Text>
+              <View>
+                <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{t('app.name')}</Text>
+                <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{t('dashboard.ticketTracking')}</Text>
+              </View>
             </View>
             {/* Sync pill */}
             <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12}}>
@@ -466,6 +470,10 @@ export default function DashboardScreen({navigation}: Props) {
             <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
               <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />
               <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.successDark}}>{t('dashboard.active')}</Text>
+            </View>
+            <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+              <MaterialIcons name="warning" size={lt ? 13 : 11} color={c.warningDark} />
+              <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.warningDark}}>{t('dashboard.onAccount')}</Text>
             </View>
             <View style={{flexDirection: 'row', alignItems: 'center', borderColor: c.border, borderWidth: StyleSheet.hairlineWidth, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
               <MaterialIcons name="wb-sunny" size={lt ? 14 : 12} color={c.warning} />
@@ -768,7 +776,7 @@ export default function DashboardScreen({navigation}: Props) {
             </View>
             <View style={{flex: 1}}>
               <Text style={[styles.qrHeaderTitle, {color: c.qrFg}]}>QR Code</Text>
-              {!lp && <Text style={[styles.qrHeaderSub, {color: c.qrFg + '90'}]}>Scan to verify delivery</Text>}
+              <Text style={[styles.qrHeaderSub, {color: c.qrFg + '90'}, lp && {fontSize: ms(8)}]}>Scan to verify delivery</Text>
             </View>
             <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.qrFg + '12'}]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
               <MaterialIcons name="close" size={ms(18)} color={c.qrFg} />
