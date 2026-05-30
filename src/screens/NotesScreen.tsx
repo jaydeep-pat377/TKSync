@@ -59,7 +59,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
       <View style={[st.numInput, _land && {minWidth: wp(32), height: wp(22), borderRadius: wp(5), paddingHorizontal: wp(4)}, {backgroundColor: highlight ? c.highlight : c.surface, borderColor: highlight ? c.primaryBorder : 'transparent'}]}>
         {onChangeValue ? (
           <TextInput
-            style={[st.numInputText, _land && {fontSize: ms(8), minWidth: wp(16)}, {color: c.textPrimary}]}
+            style={[st.numInputText, _land && {fontSize: ms(9), minWidth: wp(16)}, {color: c.textPrimary}]}
             value={value === '0' ? '' : value}
             placeholder="0"
             placeholderTextColor={c.textMuted}
@@ -67,7 +67,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
             onChangeText={text => onChangeValue(text.replace(/[^0-9]/g, ''))}
           />
         ) : (
-          <Text style={[st.numInputText, _land && {fontSize: ms(8), minWidth: wp(16)}, {color: c.textPrimary}]}>{value || '0'}</Text>
+          <Text style={[st.numInputText, _land && {fontSize: ms(9), minWidth: wp(16)}, {color: c.textPrimary}]}>{value || '0'}</Text>
         )}
       </View>
       <TouchableOpacity style={[st.pickerToggle, _land && {width: wp(18), height: wp(18), borderRadius: wp(5)}, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
@@ -75,7 +75,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
       </TouchableOpacity>
       {unit ? (
         <View style={[st.unitBadge, _land && {marginLeft: wp(1), paddingHorizontal: wp(3), paddingVertical: wp(1), borderRadius: wp(4)}, {backgroundColor: c.surface, borderColor: c.border}]}>
-          <Text style={[st.unitBadgeText, _land && {fontSize: ms(7)}, {color: c.textSecondary}]}>{unit}</Text>
+          <Text style={[st.unitBadgeText, _land && {fontSize: ms(8)}, {color: c.textSecondary}]}>{unit}</Text>
         </View>
       ) : null}
       <ResponsiveModal visible={pickerOpen} onClose={() => setPickerOpen(false)} maxWidth={320} maxHeightPercent={50}>
@@ -199,7 +199,7 @@ function Radio({selected, label, onPress}: {selected: boolean; label: string; on
       <View style={[st.radioCircle, _land && {width: wp(11), height: wp(11), borderRadius: wp(6), borderWidth: 1}, {borderColor: selected ? c.primary : c.border}]}>
         {selected && <View style={[st.radioDot, _land && {width: wp(5), height: wp(5), borderRadius: wp(3)}, {backgroundColor: c.primary}]} />}
       </View>
-      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}, _land && {fontSize: ms(7.5)}]}>{label}</Text>
+      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}, _land && {fontSize: ms(9)}]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -353,19 +353,19 @@ const ls = StyleSheet.create({
   card: {flex: 1, borderRadius: wp(12), paddingHorizontal: wp(12), paddingTop: wp(4), paddingBottom: wp(6)},
   cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(4), marginBottom: wp(1)},
   cardHeaderIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
-  cardTitle: {fontSize: ms(11), fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase', flex: 1},
+  cardTitle: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase', flex: 1},
   field: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(3), gap: wp(3), borderBottomWidth: StyleSheet.hairlineWidth},
   fieldLabel: {fontSize: ms(9), fontWeight: '700', minWidth: wp(36), maxWidth: wp(65), letterSpacing: 0.3, textTransform: 'uppercase'},
   fieldBody: {flexDirection: 'row', alignItems: 'center', gap: wp(3), flex: 1, flexShrink: 1},
   fieldWide: {flexDirection: 'column' as const, alignItems: 'flex-start' as const},
   fieldLabelWide: {width: '100%' as const, marginBottom: wp(3)},
   fieldCompact: {paddingVertical: wp(3), gap: wp(1), flex: 1, borderBottomWidth: 0},
-  fieldCompactLabel: {fontSize: ms(8), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: wp(1)},
+  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: wp(1)},
   fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(3)},
   fieldRow: {flexDirection: 'row', gap: wp(6), borderBottomWidth: StyleSheet.hairlineWidth},
   notesInput: {flex: 1, borderRadius: wp(8), padding: wp(8), fontSize: ms(12), textAlignVertical: 'top', width: '100%', lineHeight: ms(18), borderWidth: 1},
   notesSection: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(4), paddingTop: wp(6), flex: 1, gap: wp(4)},
-  notesSectionLabel: {fontSize: ms(10), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4},
+  notesSectionLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4},
   sectionDivider: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(3), paddingTop: wp(5)},
   sectionLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: wp(3)},
   saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(16), paddingVertical: wp(7), borderRadius: wp(10), elevation: 6, shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.25, shadowRadius: 10},
@@ -374,7 +374,7 @@ const ls = StyleSheet.create({
   lhTitle: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3},
   lhTabGroup: {flexDirection: 'row', borderRadius: wp(10), padding: wp(2), gap: wp(2)},
   lhTab: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(5), paddingHorizontal: wp(12), borderRadius: wp(8)},
-  lhTabLabel: {fontSize: ms(11), fontWeight: '700', letterSpacing: 0.2},
+  lhTabLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
 });
 
 function LField({label, children, wide, compact}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean}) {
@@ -728,10 +728,10 @@ const slumpSt = StyleSheet.create({
   customSection: {marginTop: wp(7), gap: wp(5)},
   customToggle: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(6), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(6), minHeight: wp(32)},
   customIcon: {width: wp(22), height: wp(22), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
-  customLabel: {fontSize: ms(11), fontWeight: '700'},
+  customLabel: {fontSize: ms(10), fontWeight: '700'},
   customInputWrap: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(8), borderWidth: 1.5, paddingHorizontal: wp(10), height: wp(34)},
   customInput: {flex: 1, fontSize: ms(14), fontWeight: '700', padding: 0},
-  customUnit: {fontSize: ms(11), fontWeight: '600', marginLeft: wp(5)},
+  customUnit: {fontSize: ms(10), fontWeight: '600', marginLeft: wp(5)},
 });
 
 function PlantTab() {
@@ -2032,14 +2032,14 @@ function CodTab() {
 const cod = StyleSheet.create({
   selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
   selectorIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
-  selectorText: {fontSize: ms(11), fontWeight: '700', flex: 1},
+  selectorText: {fontSize: ms(10), fontWeight: '700', flex: 1},
   amountWrap: {flexDirection: 'row', alignItems: 'center', minWidth: wp(80), maxWidth: wp(130), height: wp(30), borderRadius: wp(7), borderWidth: 1.5, paddingHorizontal: wp(8)},
   amountCurrency: {fontSize: ms(13), fontWeight: '800', marginRight: wp(2)},
   amountInput: {flex: 1, fontSize: ms(13), fontWeight: '800', padding: 0, textAlign: 'left'},
   modalHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(8), borderBottomWidth: 1},
   modalHeaderIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   modalTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
-  modalSubtitle: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
+  modalSubtitle: {fontSize: ms(9), fontWeight: '500', marginTop: 1},
   modalCloseBtn: {width: wp(30), height: wp(30), borderRadius: wp(15), justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.12, shadowRadius: 6},
   modalBody: {paddingHorizontal: wp(10), paddingTop: wp(6), paddingBottom: wp(8)},
   modalItem: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), paddingHorizontal: wp(8), borderRadius: wp(8), marginVertical: 2, gap: wp(8), minHeight: wp(36)},
@@ -2202,7 +2202,7 @@ const st = StyleSheet.create({
 
   // Compact field (label-above for FieldRow)
   fieldCompact: {paddingVertical: wp(5), gap: wp(3), flex: 1, borderBottomWidth: 0},
-  fieldCompactLabel: {fontSize: ms(8.5), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3},
+  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3},
   fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(4)},
 
   // Field row
@@ -2229,20 +2229,20 @@ const st = StyleSheet.create({
 
   // Highlighted input
   hlInput: {minWidth: wp(45), maxWidth: wp(85), height: wp(24), justifyContent: 'center', alignItems: 'center', borderRadius: wp(6), borderWidth: 1.5, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.08, shadowRadius: 4},
-  hlInputText: {fontSize: ms(11), fontWeight: '800'},
+  hlInputText: {fontSize: ms(12), fontWeight: '800'},
 
   // Gray input
   grayInput: {minWidth: wp(90), maxWidth: wp(150), height: wp(32), borderRadius: wp(8), borderWidth: 1, justifyContent: 'center', paddingHorizontal: wp(8)},
-  grayPlaceholder: {fontSize: ms(11), fontWeight: '500'},
+  grayPlaceholder: {fontSize: ms(12), fontWeight: '500'},
 
   // Line input
-  lineInput: {borderBottomWidth: 1, minHeight: wp(24), fontSize: ms(9.5), paddingVertical: wp(2)},
-  lineInputText: {fontSize: ms(9.5), fontWeight: '500'},
+  lineInput: {borderBottomWidth: 1, minHeight: wp(24), fontSize: ms(9), paddingVertical: wp(2)},
+  lineInputText: {fontSize: ms(9), fontWeight: '500'},
 
   // Checkbox
   checkTap: {flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingVertical: wp(1), paddingRight: wp(3)},
   checkBox: {width: wp(15), height: wp(15), borderWidth: 1.5, borderRadius: wp(4), justifyContent: 'center', alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 2},
-  checkLabel: {fontSize: ms(8.5), fontWeight: '600'},
+  checkLabel: {fontSize: ms(9), fontWeight: '600'},
 
   // Radio
   radioRow: {flexDirection: 'row', alignItems: 'center', gap: wp(2)},
@@ -2263,7 +2263,7 @@ const st = StyleSheet.create({
   // Time picker
   timePick: {flexDirection: 'row', alignItems: 'center', gap: wp(2), paddingHorizontal: wp(4), paddingVertical: wp(3), borderRadius: wp(6), borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
   timePickIcon: {width: wp(15), height: wp(15), borderRadius: wp(4), justifyContent: 'center', alignItems: 'center'},
-  timePickText: {fontSize: ms(8.5), fontWeight: '600'},
+  timePickText: {fontSize: ms(9), fontWeight: '600'},
 
   // Sub headers
   subHeaderRow: {flexDirection: 'row', gap: wp(6), marginBottom: wp(6)},
@@ -2272,7 +2272,7 @@ const st = StyleSheet.create({
 
   // Section title
   secTitle: {flexDirection: 'row', alignItems: 'center', gap: wp(6), borderBottomWidth: 1, paddingBottom: wp(6), marginBottom: wp(6), marginTop: wp(8)},
-  secTitleText: {fontSize: ms(11), fontWeight: '800', letterSpacing: 0.3},
+  secTitleText: {fontSize: ms(10), fontWeight: '800', letterSpacing: 0.3},
 
   // Popups
   popupOverlay: {flex: 1, backgroundColor: Colors.overlayModal, justifyContent: 'center', alignItems: 'center'},
@@ -2281,11 +2281,11 @@ const st = StyleSheet.create({
   popupCloseBtn: {width: wp(28), height: wp(28), borderRadius: wp(14), justifyContent: 'center', alignItems: 'center'},
   popupScroll: {paddingHorizontal: wp(8)},
   popupItem: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: wp(16), paddingHorizontal: wp(14), borderBottomWidth: 0.5, borderRadius: wp(8), marginVertical: 2, minHeight: wp(52)},
-  popupItemText: {fontSize: ms(15), fontWeight: '600', flex: 1},
+  popupItemText: {fontSize: ms(14), fontWeight: '600', flex: 1},
 
   // Selector
   selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
-  selectorText: {fontSize: ms(11), fontWeight: '600', flex: 1},
+  selectorText: {fontSize: ms(10), fontWeight: '600', flex: 1},
 
   // Numeric input
   numericInput: {minWidth: wp(65), maxWidth: wp(110), height: wp(30), borderRadius: wp(7), borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: wp(8), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
