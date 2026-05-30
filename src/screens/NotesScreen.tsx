@@ -11,7 +11,13 @@ import {
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -44,14 +50,16 @@ const TABS = [
 
 function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: string; unit: string; highlight?: boolean; onIncrement?: () => void; onDecrement?: () => void; onChangeValue?: (val: string) => void; pickerValues?: string[]}) {
   const {c} = useTheme();
+  const {width: _sw, height: _sh} = useWindowDimensions();
+  const _land = _sw > _sh;
   const [pickerOpen, setPickerOpen] = useState(false);
   const defaults = pickerValues || ['0','5','10','15','20','25','30','40','50','60','70','80','90','100'];
   return (
-    <View style={st.stepperWrap}>
-      <View style={[st.numInput, {backgroundColor: highlight ? c.highlight : c.surface, borderColor: highlight ? c.primaryBorder : 'transparent'}]}>
+    <View style={[st.stepperWrap, _land && {gap: wp(2)}]}>
+      <View style={[st.numInput, _land && {minWidth: wp(32), height: wp(22), borderRadius: wp(5), paddingHorizontal: wp(4)}, {backgroundColor: highlight ? c.highlight : c.surface, borderColor: highlight ? c.primaryBorder : 'transparent'}]}>
         {onChangeValue ? (
           <TextInput
-            style={[st.numInputText, {color: c.textPrimary}]}
+            style={[st.numInputText, _land && {fontSize: ms(8), minWidth: wp(16)}, {color: c.textPrimary}]}
             value={value === '0' ? '' : value}
             placeholder="0"
             placeholderTextColor={c.textMuted}
@@ -59,15 +67,15 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
             onChangeText={text => onChangeValue(text.replace(/[^0-9]/g, ''))}
           />
         ) : (
-          <Text style={[st.numInputText, {color: c.textPrimary}]}>{value || '0'}</Text>
+          <Text style={[st.numInputText, _land && {fontSize: ms(8), minWidth: wp(16)}, {color: c.textPrimary}]}>{value || '0'}</Text>
         )}
       </View>
-      <TouchableOpacity style={[st.pickerToggle, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
-        <MaterialIcons name="unfold-more" size={ms(14)} color={c.textSecondary} />
+      <TouchableOpacity style={[st.pickerToggle, _land && {width: wp(18), height: wp(18), borderRadius: wp(5)}, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
+        <MaterialIcons name="unfold-more" size={_land ? ms(9) : ms(11)} color={c.textSecondary} />
       </TouchableOpacity>
       {unit ? (
-        <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
-          <Text style={[st.unitBadgeText, {color: c.textSecondary}]}>{unit}</Text>
+        <View style={[st.unitBadge, _land && {marginLeft: wp(1), paddingHorizontal: wp(3), paddingVertical: wp(1), borderRadius: wp(4)}, {backgroundColor: c.surface, borderColor: c.border}]}>
+          <Text style={[st.unitBadgeText, _land && {fontSize: ms(7)}, {color: c.textSecondary}]}>{unit}</Text>
         </View>
       ) : null}
       <ResponsiveModal visible={pickerOpen} onClose={() => setPickerOpen(false)} maxWidth={320} maxHeightPercent={50}>
@@ -132,7 +140,7 @@ function FieldCard({children, title, icon, fullWidth}: {children: React.ReactNod
   return (
     <View style={[
       st.fieldCard,
-      {backgroundColor: c.white, shadowColor: c.shadowColor, borderColor: c.borderLight},
+      {backgroundColor: c.white},
       isWide && !fullWidth && st.fieldCardHalf,
     ]}>
       {title ? (
@@ -150,13 +158,15 @@ function MoreBtn({onPress}: {onPress?: () => void}) {
   const {c} = useTheme();
   return (
     <TouchableOpacity style={[st.moreBtn, {backgroundColor: c.surface}]} activeOpacity={0.6} onPress={onPress}>
-      <MaterialIcons name="more-horiz" size={ms(16)} color={c.primary} />
+      <MaterialIcons name="more-horiz" size={ms(12)} color={c.primary} />
     </TouchableOpacity>
   );
 }
 
 function Check({checked, label, onPress}: {checked: boolean; label?: string; onPress?: () => void}) {
   const {c} = useTheme();
+  const {width: _cw, height: _ch} = useWindowDimensions();
+  const _land = _cw > _ch;
   const scale = useRef(new Animated.Value(1)).current;
   const tap = () => {
     Animated.sequence([
@@ -166,27 +176,30 @@ function Check({checked, label, onPress}: {checked: boolean; label?: string; onP
     onPress?.();
   };
   return (
-    <TouchableOpacity style={st.checkTap} activeOpacity={0.7} onPress={tap}>
+    <TouchableOpacity style={[st.checkTap, _land && {gap: wp(2), paddingRight: wp(2)}]} activeOpacity={0.7} onPress={tap}>
       <Animated.View style={[
         st.checkBox,
+        _land && {width: wp(12), height: wp(12), borderRadius: wp(3), borderWidth: 1},
         {borderColor: checked ? c.primary : c.border, backgroundColor: checked ? c.primary : c.white},
         {transform: [{scale}]},
       ]}>
-        {checked && <MaterialIcons name="check" size={ms(14)} color={c.textOnPrimary} />}
+        {checked && <MaterialIcons name="check" size={_land ? ms(8) : ms(11)} color={c.textOnPrimary} />}
       </Animated.View>
-      {label && <Text style={[st.checkLabel, {color: c.textPrimary}]}>{label}</Text>}
+      {label && <Text style={[st.checkLabel, {color: c.textPrimary}, _land && {fontSize: ms(9)}]}>{label}</Text>}
     </TouchableOpacity>
   );
 }
 
 function Radio({selected, label, onPress}: {selected: boolean; label: string; onPress?: () => void}) {
   const {c} = useTheme();
+  const {width: _rw, height: _rh} = useWindowDimensions();
+  const _land = _rw > _rh;
   return (
-    <TouchableOpacity style={st.radioTap} activeOpacity={0.7} onPress={onPress}>
-      <View style={[st.radioCircle, {borderColor: selected ? c.primary : c.border}]}>
-        {selected && <View style={[st.radioDot, {backgroundColor: c.primary}]} />}
+    <TouchableOpacity style={[st.radioTap, _land && {gap: wp(2), paddingVertical: 0, paddingHorizontal: wp(2)}]} activeOpacity={0.7} onPress={onPress}>
+      <View style={[st.radioCircle, _land && {width: wp(11), height: wp(11), borderRadius: wp(6), borderWidth: 1}, {borderColor: selected ? c.primary : c.border}]}>
+        {selected && <View style={[st.radioDot, _land && {width: wp(5), height: wp(5), borderRadius: wp(3)}, {backgroundColor: c.primary}]} />}
       </View>
-      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}]}>{label}</Text>
+      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}, _land && {fontSize: ms(7.5)}]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -298,10 +311,10 @@ function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPr
       activeOpacity={0.6}
       onPress={onPress}>
       <View style={[st.timePickIcon, {backgroundColor: hasValue ? c.primary : c.primarySurface}]}>
-        <MaterialIcons name="schedule" size={ms(16)} color={hasValue ? c.textOnPrimary : c.primary} />
+        <MaterialIcons name="schedule" size={ms(12)} color={hasValue ? c.textOnPrimary : c.primary} />
       </View>
       <Text style={[st.timePickText, {color: hasValue ? c.primary : c.textMuted}]}>{displayText}</Text>
-      <MaterialIcons name="keyboard-arrow-down" size={ms(18)} color={hasValue ? c.primary : c.textMuted} />
+      <MaterialIcons name="keyboard-arrow-down" size={ms(14)} color={hasValue ? c.primary : c.textMuted} />
     </TouchableOpacity>
   );
 }
@@ -329,6 +342,94 @@ function NoteInput({placeholder, borderColor, bgColor, textColor, value, onChang
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
     />
+  );
+}
+
+// ─── LANDSCAPE LAYOUT COMPONENTS ───
+const ls = StyleSheet.create({
+  root: {flex: 1, paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(4)},
+  topBar: {flexDirection: 'row', justifyContent: 'flex-end', marginBottom: wp(4)},
+  columns: {flex: 1, flexDirection: 'row', gap: wp(10)},
+  card: {flex: 1, borderRadius: wp(12), paddingHorizontal: wp(12), paddingTop: wp(4), paddingBottom: wp(6)},
+  cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(4), marginBottom: wp(1)},
+  cardHeaderIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
+  cardTitle: {fontSize: ms(11), fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase', flex: 1},
+  field: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(3), gap: wp(3), borderBottomWidth: StyleSheet.hairlineWidth},
+  fieldLabel: {fontSize: ms(9), fontWeight: '700', minWidth: wp(36), maxWidth: wp(65), letterSpacing: 0.3, textTransform: 'uppercase'},
+  fieldBody: {flexDirection: 'row', alignItems: 'center', gap: wp(3), flex: 1, flexShrink: 1},
+  fieldWide: {flexDirection: 'column' as const, alignItems: 'flex-start' as const},
+  fieldLabelWide: {width: '100%' as const, marginBottom: wp(3)},
+  fieldCompact: {paddingVertical: wp(3), gap: wp(1), flex: 1, borderBottomWidth: 0},
+  fieldCompactLabel: {fontSize: ms(8), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: wp(1)},
+  fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(3)},
+  fieldRow: {flexDirection: 'row', gap: wp(6), borderBottomWidth: StyleSheet.hairlineWidth},
+  notesInput: {flex: 1, borderRadius: wp(8), padding: wp(8), fontSize: ms(12), textAlignVertical: 'top', width: '100%', lineHeight: ms(18), borderWidth: 1},
+  notesSection: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(4), paddingTop: wp(6), flex: 1, gap: wp(4)},
+  notesSectionLabel: {fontSize: ms(10), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4},
+  sectionDivider: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(3), paddingTop: wp(5)},
+  sectionLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: wp(3)},
+  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(16), paddingVertical: wp(7), borderRadius: wp(10), elevation: 6, shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.25, shadowRadius: 10},
+  saveBtnText: {fontSize: ms(12), fontWeight: '800', letterSpacing: 0.3},
+  lhRow: {flexDirection: 'row', alignItems: 'center', paddingBottom: wp(4)},
+  lhTitle: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3},
+  lhTabGroup: {flexDirection: 'row', borderRadius: wp(10), padding: wp(2), gap: wp(2)},
+  lhTab: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(5), paddingHorizontal: wp(12), borderRadius: wp(8)},
+  lhTabLabel: {fontSize: ms(11), fontWeight: '700', letterSpacing: 0.2},
+});
+
+function LField({label, children, wide, compact}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean}) {
+  const {c} = useTheme();
+  if (compact) {
+    return (
+      <View style={[ls.fieldCompact, {borderBottomColor: c.borderLight}]}>
+        <Text style={[ls.fieldCompactLabel, {color: c.textSecondary}]}>{label}</Text>
+        <View style={ls.fieldCompactBody}>{children}</View>
+      </View>
+    );
+  }
+  return (
+    <View style={[ls.field, {borderBottomColor: c.borderLight}, wide && ls.fieldWide]}>
+      <Text style={[ls.fieldLabel, {color: c.textSecondary}, wide && ls.fieldLabelWide]}>{label}</Text>
+      <View style={ls.fieldBody}>{children}</View>
+    </View>
+  );
+}
+
+function LFieldRow({children}: {children: React.ReactNode}) {
+  const {c} = useTheme();
+  return <View style={[ls.fieldRow, {borderBottomColor: c.borderLight}]}>{children}</View>;
+}
+
+function LCard({children, title, icon, style}: {children: React.ReactNode; title?: string; icon?: string; style?: any}) {
+  const {c} = useTheme();
+  return (
+    <View style={[ls.card, {backgroundColor: c.white}, style]}>
+      {title ? (
+        <View style={ls.cardHeader}>
+          {icon && (
+            <View style={[ls.cardHeaderIcon, {backgroundColor: c.primarySurface}]}>
+              <MaterialIcons name={icon as any} size={ms(10)} color={c.primary} />
+            </View>
+          )}
+          <Text style={[ls.cardTitle, {color: c.textPrimary}]}>{title}</Text>
+        </View>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
+function LSaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => void}) {
+  const {c} = useTheme();
+  return (
+    <TouchableOpacity
+      style={[ls.saveBtn, {backgroundColor: disabled ? c.border : c.primary, shadowColor: disabled ? c.shadowColor : c.primary}]}
+      activeOpacity={disabled ? 1 : 0.8}
+      disabled={disabled}
+      onPress={onPress}>
+      <MaterialIcons name="check-circle" size={ms(14)} color={disabled ? c.textMuted : c.textOnPrimary} />
+      <Text style={[ls.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}]}>Save</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -656,6 +757,131 @@ function PlantTab() {
   const [truckEnd, setTruckEnd] = useState<Date | undefined>();
   const [truckPickerField, setTruckPickerField] = useState<'start' | 'end' | null>(null);
   const [truckPickerVisible, setTruckPickerVisible] = useState(false);
+  const plantScrollRef = useRef<ScrollView>(null);
+  const plantTestAnim = useRef(new Animated.Value(0)).current;
+  const handlePlantLoadTested = useCallback((val: 'yes' | 'no') => {
+    if (val === 'yes') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      plantTestAnim.setValue(0);
+      Animated.timing(plantTestAnim, {toValue: 1, duration: 350, useNativeDriver: true}).start();
+    }
+    setLoadTested(val);
+    if (val === 'yes') {
+      setTimeout(() => plantScrollRef.current?.scrollToEnd({animated: true}), 250);
+    }
+  }, [plantTestAnim]);
+  const {width: _pw, height: _ph} = useWindowDimensions();
+  if (_pw > _ph) {
+    return (
+      <View style={[ls.root, {backgroundColor: c.surface}]}>
+        <View style={ls.topBar}><LSaveButton /></View>
+        <View style={ls.columns}>
+          <LCard title="Mix Properties" icon="science">
+            <LField label="SLUMP FROM PLANT">
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
+                <YellowInput value={slumpFromPlant} />
+              </TouchableOpacity>
+              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+              <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
+            </LField>
+            <LField label="WATER ADDED">
+              <View style={common.rowFlex1Gap12}>
+                <View style={common.flex1Gap6}>
+                  <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
+                  <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
+                </View>
+                <View style={common.flex1Gap6}>
+                  <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
+                  <View style={common.rowCenterGap8}>
+                    <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
+                    <MoreBtn onPress={() => setReasonModalVisible(true)} />
+                  </View>
+                </View>
+              </View>
+            </LField>
+            <LField label="SLUMP TO JOB">
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
+                <YellowInput value={slumpToJob} />
+              </TouchableOpacity>
+              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+            </LField>
+            <LField label="TEMP AT PLANT">
+              <LineInput width={100} placeholder="Temperature" keyboardType="numeric" />
+              <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
+            </LField>
+          </LCard>
+          <LCard title="Truck & Additives" icon="local-shipping">
+            <ScrollView ref={plantScrollRef} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
+              <LFieldRow>
+                <LField label="TRUCK START" compact>
+                  <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
+                </LField>
+                <LField label="TRUCK END" compact>
+                  <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
+                </LField>
+              </LFieldRow>
+              <LField label="HAND-ADDED">
+                <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
+                <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
+                  <Text style={[st.linkText, {color: c.linkBlue}]}>PRODUCTS</Text>
+                </TouchableOpacity>
+              </LField>
+              <LFieldRow>
+                <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+              </LFieldRow>
+              <LField label="LOAD TESTED">
+                <View style={st.radioRow}>
+                  <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
+                  <Radio selected={loadTested === 'no'} label="No" onPress={() => handlePlantLoadTested('no')} />
+                </View>
+              </LField>
+              {loadTested === 'yes' && (
+                <Animated.View style={{opacity: plantTestAnim, transform: [{translateY: plantTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
+                  <View style={[ls.sectionDivider, {borderTopColor: c.primary}]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
+                      <MaterialIcons name="science" size={ms(10)} color={c.primary} />
+                      <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
+                    </View>
+                  </View>
+                  <LField label="TEMP">
+                    <Stepper value={String(loadTemp)} unit="C" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
+                  </LField>
+                  <LField label="AIR">
+                    <Stepper value={String(loadAir)} unit="%" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
+                  </LField>
+                  <LField label="SLUMP">
+                    <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
+                    <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+                  </LField>
+                  <LField label="CYLINDERS">
+                    <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
+                  </LField>
+                </Animated.View>
+              )}
+            </ScrollView>
+          </LCard>
+          <LCard title="Plant Notes" icon="edit-note" style={{flex: 0.7}}>
+            <View style={{flex: 1, paddingTop: wp(2)}}>
+              <TextInput
+                style={[ls.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white}]}
+                multiline
+                placeholderTextColor={c.textMuted}
+                placeholder="Enter plant notes..."
+                textAlignVertical="top"
+              />
+            </View>
+          </LCard>
+        </View>
+        <SlumpPickerModal visible={slumpPickerVisible} value={slumpFromPlant} title="Slump From Plant" onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }} onClose={() => setSlumpPickerVisible(false)} />
+        <SlumpPickerModal visible={loadSlumpPickerVisible} value={loadSlump} title="Load Slump" onConfirm={(val) => { setLoadSlump(val); setLoadSlumpPickerVisible(false); }} onClose={() => setLoadSlumpPickerVisible(false)} />
+        <SlumpPickerModal visible={slumpToJobPickerVisible} value={slumpToJob} title="Slump To Job" onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }} onClose={() => setSlumpToJobPickerVisible(false)} />
+        <ReasonListModal visible={reasonModalVisible} onSelect={setWaterReason} onClose={() => setReasonModalVisible(false)} />
+        <ProductsModal visible={productsModalVisible} onClose={() => setProductsModalVisible(false)} />
+        <DateTimePicker visible={truckPickerVisible} value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()} onConfirm={(date) => { if (truckPickerField === 'start') {setTruckStart(date);} else if (truckPickerField === 'end') {setTruckEnd(date);} setTruckPickerVisible(false); }} onCancel={() => setTruckPickerVisible(false)} />
+      </View>
+    );
+  }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
@@ -826,6 +1052,153 @@ function JobsiteTab() {
   const [jobLoadSlump, setJobLoadSlump] = useState('');
   const [jobLoadSlumpPickerVisible, setJobLoadSlumpPickerVisible] = useState(false);
   const [jobLoadCylinders, setJobLoadCylinders] = useState(0);
+  const jobScrollRef = useRef<ScrollView>(null);
+  const jobTestAnim = useRef(new Animated.Value(0)).current;
+  const handleJobLoadTested = useCallback((val: 'yes' | 'no') => {
+    if (val === 'yes') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      jobTestAnim.setValue(0);
+      Animated.timing(jobTestAnim, {toValue: 1, duration: 350, useNativeDriver: true}).start();
+    }
+    setJobLoadTested(val);
+    if (val === 'yes') {
+      setTimeout(() => jobScrollRef.current?.scrollToEnd({animated: true}), 250);
+    }
+  }, [jobTestAnim]);
+  const {width: _jw, height: _jh} = useWindowDimensions();
+  if (_jw > _jh) {
+    return (
+      <View style={[ls.root, {backgroundColor: c.surface}]}>
+        <View style={ls.topBar}><LSaveButton /></View>
+        <View style={ls.columns}>
+          {/* Column 1: Water */}
+          <LCard title="Water" icon="water-drop" style={{flex: 1}}>
+            <LField label="LITRES">
+              <Stepper value={String(fullLoadLitres)} unit="L" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
+            </LField>
+            <LField label="REASON">
+              <LineInput placeholder="Select" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
+              <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
+            </LField>
+            <LField label="SLUMP">
+              <LineInput placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
+              <MoreBtn onPress={() => setMmModalField('fullLoad')} />
+            </LField>
+            <LField label="CUSTOMER">
+              <Stepper value={String(custWaterLitres)} unit="L" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
+              <LineInput placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
+              <MoreBtn onPress={() => setMmModalField('custWater')} />
+            </LField>
+            <LField label="MAINT.">
+              <Stepper value={String(maintWaterLitres)} unit="L" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
+              <LineInput placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
+              <MoreBtn onPress={() => setMmModalField('maintWater')} />
+            </LField>
+          </LCard>
+
+          {/* Column 2: Added, Not Ordered (moved from Water & Additives) */}
+          <LCard title="Added, Not Ordered" icon="playlist-add" style={{flex: 1}}>
+            {[
+              {key: 'SUPER PLASTICIZER', label: 'S. PLASTICIZER'},
+              {key: 'CONVEYOR (IF NOT ON TICKET)', label: 'CONVEYOR'},
+              {key: 'COLOR', label: 'COLOR'},
+              {key: 'FIBER', label: 'FIBER'},
+            ].map(item => (
+              <LField key={item.key} label={item.label}>
+                <LineInput placeholder="Select" value={addedValues[item.key] || ''} onPress={() => setAddedModalItem(item.key)} />
+                <MoreBtn onPress={() => setAddedModalItem(item.key)} />
+              </LField>
+            ))}
+            <LField label="OTHER">
+              <LineInput placeholder="Enter value" value={addedValues['Other'] || ''} onChangeText={(text) => setAddedValues(prev => ({...prev, Other: text}))} />
+            </LField>
+          </LCard>
+
+          {/* Column 3: Options & Testing + Jobsite Notes (moved to last) */}
+          <LCard title="Options & Testing" icon="checklist" style={{flex: 1}}>
+            <ScrollView ref={jobScrollRef} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
+              <LField label="CONVEYOR ORDERED">
+                <Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} />
+              </LField>
+              <LField label="UNLOADED CONVEYOR">
+                <Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
+              </LField>
+              <LField label="LOAD DISPUTED">
+                <Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
+              </LField>
+              <LField label="WASHOUT">
+                <LineInput placeholder="Select area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
+                <MoreBtn onPress={() => setWashoutModalVisible(true)} />
+              </LField>
+              <View style={[ls.sectionDivider, {borderTopColor: c.borderLight}]}>
+                <Text style={[ls.sectionLabel, {color: c.textMuted}]}>LOAD TESTING</Text>
+              </View>
+              <LField label="LOAD TESTED">
+                <View style={st.radioRow}>
+                  <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => handleJobLoadTested('yes')} />
+                  <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => handleJobLoadTested('no')} />
+                </View>
+              </LField>
+              {jobLoadTested === 'yes' && (
+                <Animated.View style={{opacity: jobTestAnim, transform: [{translateY: jobTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
+                  <View style={[ls.sectionDivider, {borderTopColor: c.primary}]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
+                      <MaterialIcons name="science" size={ms(10)} color={c.primary} />
+                      <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
+                    </View>
+                  </View>
+                  <LField label="TEMP">
+                    <Stepper value={String(jobLoadTemp)} unit="C" onIncrement={() => setJobLoadTemp(v => v + 1)} onDecrement={() => setJobLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadTemp(parseInt(v) || 0)} />
+                  </LField>
+                  <LField label="AIR">
+                    <Stepper value={String(jobLoadAir)} unit="%" onIncrement={() => setJobLoadAir(v => v + 1)} onDecrement={() => setJobLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadAir(parseInt(v) || 0)} />
+                  </LField>
+                  <LField label="SLUMP">
+                    <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
+                    <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+                  </LField>
+                  <LField label="CYLINDERS">
+                    <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
+                  </LField>
+                </Animated.View>
+              )}
+              <View style={[ls.notesSection, {borderTopColor: c.borderLight}]}>
+                <Text style={[ls.notesSectionLabel, {color: c.textMuted}]}>JOBSITE NOTES</Text>
+                <TextInput
+                  style={[ls.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white, minHeight: wp(60)}]}
+                  multiline
+                  placeholderTextColor={c.textMuted}
+                  placeholder="Enter jobsite notes..."
+                  value={jobsiteNotes}
+                  onChangeText={setJobsiteNotes}
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
+          </LCard>
+        </View>
+        <ReasonListModal visible={fullLoadReasonModal} onSelect={setFullLoadReason} onClose={() => setFullLoadReasonModal(false)} />
+        <SlumpPickerModal
+          visible={mmModalField !== null}
+          value={(mmModalField === 'fullLoad' ? fullLoadMm : mmModalField === 'custWater' ? custWaterMm : maintWaterMm) || ''}
+          title={mmModalField === 'fullLoad' ? 'Full Load (mm)' : mmModalField === 'custWater' ? 'Customer Water (mm)' : 'Maintenance Water (mm)'}
+          onConfirm={(val) => { if (mmModalField === 'fullLoad') setFullLoadMm(val); else if (mmModalField === 'custWater') setCustWaterMm(val); else if (mmModalField === 'maintWater') setMaintWaterMm(val); setMmModalField(null); }}
+          onClose={() => setMmModalField(null)}
+        />
+        <ReasonListModal visible={addedModalItem !== null} options={['NOT ADDED', 'CUSTOMER', 'DRIVER']} onSelect={(val) => { if (addedModalItem) setAddedValues(prev => ({...prev, [addedModalItem]: val})); }} onClose={() => setAddedModalItem(null)} />
+        <ReasonListModal visible={washoutModalVisible} options={['WHEELBARROW', 'DUMPSTER', 'BEHIND CURB LINE', 'STONE PILE ON JOB SITE', 'TRUCK MOUNTED WASHOUT', 'PUMP', 'OTHER']} onSelect={setWashoutArea} onClose={() => setWashoutModalVisible(false)} />
+        <ReasonListModal
+          visible={jobsiteNotesModal}
+          options={['Uneven Subgrade', 'Wet/Hot/Frozen Subgrade', 'Old Concrete > 2 Hours', 'Blessed Surface', 'Surface Rained-on', 'No Curing of Concrete', 'Incorrect Amount of Cust. Added Product', 'Not Sampling Between 10 & 90% of Load', 'Minimum Sample Size Not 1ft/3 Buckets', 'Slump Test Incorrect', 'Air Test Incorrect', 'Cylinder Making Incorrect', 'Cylinder Storage Incorrect', 'No Comment']}
+          onSelect={(val) => setJobsiteNotes(prev => prev ? prev + '\n' + val : val)}
+          onClose={() => setJobsiteNotesModal(false)}
+        />
+        {jobLoadTested === 'yes' && (
+          <SlumpPickerModal visible={jobLoadSlumpPickerVisible} title="Load Slump" value={jobLoadSlump} onConfirm={(val) => { setJobLoadSlump(val); setJobLoadSlumpPickerVisible(false); }} onClose={() => setJobLoadSlumpPickerVisible(false)} />
+        )}
+      </View>
+    );
+  }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton />
@@ -1122,7 +1495,7 @@ const sm = StyleSheet.create({
   headerIcon: {width: wp(26), height: wp(26), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   headerTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
   headerSub: {fontSize: ms(9), fontWeight: '500', marginTop: 0},
-  closeBtn: {width: wp(28), height: wp(28), borderRadius: wp(14), justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  closeBtn: {width: wp(28), height: wp(28), borderRadius: wp(14), justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.12, shadowRadius: 6},
   scroll: {flexGrow: 0},
   scrollContent: {paddingHorizontal: wp(10), paddingTop: wp(6), paddingBottom: wp(4)},
   item: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), paddingHorizontal: wp(8), borderRadius: wp(8), marginVertical: 2, gap: wp(8), minHeight: wp(36)},
@@ -1133,7 +1506,7 @@ const sm = StyleSheet.create({
   footerBtn: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(5), paddingVertical: wp(8), borderRadius: wp(10), minHeight: wp(30)},
   footerBtnText: {fontSize: ms(12), fontWeight: '700'},
   cancelBtn: {borderWidth: 1.5},
-  confirmBtn: {elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.15, shadowRadius: 4},
+  confirmBtn: {elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.18, shadowRadius: 8},
 });
 
 // ─── RETURNED TAB ───
@@ -1376,7 +1749,7 @@ function TimeAdjustTab() {
 }
 
 const tt = StyleSheet.create({
-  headerCard: {borderRadius: wp(10), padding: wp(10), marginBottom: wp(8), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
+  headerCard: {borderRadius: wp(10), padding: wp(10), marginBottom: wp(8)},
   headerTop: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(6)},
   headerIconWrap: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   headerTitle: {fontSize: ms(12), fontWeight: '800', letterSpacing: 0.2},
@@ -1385,7 +1758,7 @@ const tt = StyleSheet.create({
   countText: {fontSize: ms(9), fontWeight: '800'},
   track: {height: wp(3), borderRadius: wp(2), overflow: 'hidden'},
   fill: {position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: wp(2)},
-  listCard: {borderRadius: wp(10), overflow: 'hidden', marginBottom: wp(8), elevation: 2, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
+  listCard: {borderRadius: wp(10), overflow: 'hidden', marginBottom: wp(8)},
   row: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(6), paddingHorizontal: wp(10), gap: wp(8)},
   stepCol: {alignItems: 'center', width: wp(20)},
   dot: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2, justifyContent: 'center', alignItems: 'center', zIndex: 1},
@@ -1536,7 +1909,7 @@ function CodTab() {
             />
           </View>
           <TouchableOpacity style={[st.pickerToggle, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setWaitPickerOpen(true)}>
-            <MaterialIcons name="unfold-more" size={ms(14)} color={c.textSecondary} />
+            <MaterialIcons name="unfold-more" size={ms(11)} color={c.textSecondary} />
           </TouchableOpacity>
           <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
             <Text style={[st.unitBadgeText, {color: c.textSecondary}]}>Min</Text>
@@ -1657,7 +2030,7 @@ function CodTab() {
 }
 
 const cod = StyleSheet.create({
-  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4)},
+  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
   selectorIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
   selectorText: {fontSize: ms(11), fontWeight: '700', flex: 1},
   amountWrap: {flexDirection: 'row', alignItems: 'center', minWidth: wp(80), maxWidth: wp(130), height: wp(30), borderRadius: wp(7), borderWidth: 1.5, paddingHorizontal: wp(8)},
@@ -1667,7 +2040,7 @@ const cod = StyleSheet.create({
   modalHeaderIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   modalTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
   modalSubtitle: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
-  modalCloseBtn: {width: wp(30), height: wp(30), borderRadius: wp(15), justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 3},
+  modalCloseBtn: {width: wp(30), height: wp(30), borderRadius: wp(15), justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.12, shadowRadius: 6},
   modalBody: {paddingHorizontal: wp(10), paddingTop: wp(6), paddingBottom: wp(8)},
   modalItem: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), paddingHorizontal: wp(8), borderRadius: wp(8), marginVertical: 2, gap: wp(8), minHeight: wp(36)},
   modalItemIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
@@ -1683,6 +2056,7 @@ export default function NotesScreen({navigation}: Props) {
   const {width, height: winHeight} = useWindowDimensions();
   const isTablet = Math.min(width, winHeight) > 600;
   const isLandscape = width > winHeight;
+  const landscapeNoScroll = isLandscape && (activeTab === 0 || activeTab === 1);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -1705,47 +2079,69 @@ export default function NotesScreen({navigation}: Props) {
     <View style={[st.container, {backgroundColor: c.primaryDark}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      <View style={[st.header, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
-        <View style={st.headerRow}>
-          <View>
-            <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
-            <Text style={[st.headerSub, {color: c.textOnDark60}]}>Delivery Notes & Records</Text>
+      {isLandscape ? (
+        <View style={[ls.lhRow, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
+          <Text style={[ls.lhTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
+          <View style={{flex: 1}} />
+          <View style={[ls.lhTabGroup, {backgroundColor: c.overlay10}]}>
+            {TABS.map((tab, i) => {
+              const active = activeTab === i;
+              return (
+                <TouchableOpacity key={tab.key} style={[ls.lhTab, active && {backgroundColor: c.primary}]} activeOpacity={0.7} onPress={() => setActiveTab(i)}>
+                  <MaterialIcons name={tab.icon as any} size={ms(13)} color={active ? c.textOnPrimary : c.textOnDark60} />
+                  <Text style={[ls.lhTabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>{tab.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          <TouchableOpacity
-            style={[st.closeBtn, {backgroundColor: c.overlay10}]}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}>
-            <MaterialIcons name="close" size={ms(20)} color={c.textOnPrimary} />
+          <View style={{flex: 1}} />
+          <TouchableOpacity style={[st.closeBtn, {backgroundColor: c.overlay10}]} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <MaterialIcons name="close" size={ms(18)} color={c.textOnPrimary} />
           </TouchableOpacity>
         </View>
+      ) : (
+        <View style={[st.header, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
+          <View style={st.headerRow}>
+            <View>
+              <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
+              <Text style={[st.headerSub, {color: c.textOnDark60}]}>Delivery Notes & Records</Text>
+            </View>
+            <TouchableOpacity
+              style={[st.closeBtn, {backgroundColor: c.overlay10}]}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}>
+              <MaterialIcons name="close" size={ms(20)} color={c.textOnPrimary} />
+            </TouchableOpacity>
+          </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.tabsRow}>
-          {TABS.map((tab, i) => {
-            const active = activeTab === i;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[st.tab, active ? {backgroundColor: c.primary, borderColor: c.primary} : {backgroundColor: c.overlay06, borderColor: c.overlay15}]}
-                activeOpacity={0.7}
-                onPress={() => setActiveTab(i)}>
-                <View style={[st.tabIconWrap, {backgroundColor: active ? c.overlay20 : c.overlay08}]}>
-                  <MaterialIcons name={tab.icon as any} size={ms(14)} color={active ? c.textOnPrimary : c.textOnDark60} />
-                </View>
-                <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.tabsRow}>
+            {TABS.map((tab, i) => {
+              const active = activeTab === i;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[st.tab, active ? {backgroundColor: c.primary, borderColor: c.primary} : {backgroundColor: c.overlay06, borderColor: c.overlay15}]}
+                  activeOpacity={0.7}
+                  onPress={() => setActiveTab(i)}>
+                  <View style={[st.tabIconWrap, {backgroundColor: active ? c.overlay20 : c.overlay08}]}>
+                    <MaterialIcons name={tab.icon as any} size={ms(14)} color={active ? c.textOnPrimary : c.textOnDark60} />
+                  </View>
+                  <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       <KeyboardAvoidingView
-        style={st.flex1}
+        style={[st.flex1, {backgroundColor: c.background}]}
         behavior="padding"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
-          <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}]} keyboardShouldPersistTaps="handled">
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, landscapeNoScroll && {flex: 1}]} keyboardShouldPersistTaps="handled">
             {renderTab()}
           </ScrollView>
         </Animated.View>
@@ -1784,13 +2180,13 @@ const st = StyleSheet.create({
   cardsGridWide: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(10), alignItems: 'stretch'},
 
   // Field card
-  fieldCard: {borderRadius: wp(10), paddingHorizontal: wp(10), paddingTop: wp(2), paddingBottom: wp(2), borderWidth: 1, width: '100%'},
+  fieldCard: {borderRadius: wp(10), paddingHorizontal: wp(10), paddingTop: wp(2), paddingBottom: wp(2), width: '100%'},
   fieldCardHalf: {flexGrow: 1, flexShrink: 1, flexBasis: '47%', width: undefined},
   fieldCardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(5)},
   fieldCardTitle: {fontSize: ms(10), fontWeight: '800', letterSpacing: 0.3},
 
   // Save
-  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(8), elevation: 3, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
+  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(8), elevation: 6, shadowColor: '#000', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.20, shadowRadius: 10},
   saveBtnText: {fontSize: ms(10), fontWeight: '700'},
 
   // Field
@@ -1810,10 +2206,10 @@ const st = StyleSheet.create({
   fieldRow: {flexDirection: 'row', gap: wp(8), borderBottomWidth: 0.5},
 
   // Number input (replaces stepper)
-  stepperWrap: {flexDirection: 'row', alignItems: 'center', gap: wp(4)},
-  numInput: {minWidth: wp(48), height: wp(30), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(8), borderWidth: 1},
-  numInputText: {fontSize: ms(12), fontWeight: '700', textAlign: 'center', padding: 0, minWidth: wp(28)},
-  pickerToggle: {width: wp(26), height: wp(26), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center', borderWidth: 1},
+  stepperWrap: {flexDirection: 'row', alignItems: 'center', gap: wp(3)},
+  numInput: {minWidth: wp(40), height: wp(26), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(6), borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
+  numInputText: {fontSize: ms(10), fontWeight: '700', textAlign: 'center', padding: 0, minWidth: wp(22)},
+  pickerToggle: {width: wp(22), height: wp(22), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center', borderWidth: 1},
   // Picker modal
   pickerHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1},
   pickerTitle: {fontSize: ms(14), fontWeight: '800'},
@@ -1821,36 +2217,36 @@ const st = StyleSheet.create({
   pickerList: {paddingVertical: wp(4)},
   pickerItem: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: wp(10), paddingHorizontal: wp(16), borderBottomWidth: StyleSheet.hairlineWidth},
   pickerItemText: {fontSize: ms(14), fontWeight: '600'},
-  unitInline: {fontSize: ms(10), fontWeight: '600', marginLeft: wp(3)},
-  unitBadge: {marginLeft: wp(5), paddingHorizontal: wp(7), paddingVertical: wp(3), borderRadius: wp(7), borderWidth: 1},
-  unitBadgeText: {fontSize: ms(10), fontWeight: '700'},
+  unitInline: {fontSize: ms(8), fontWeight: '600', marginLeft: wp(2)},
+  unitBadge: {marginLeft: wp(3), paddingHorizontal: wp(5), paddingVertical: wp(2), borderRadius: wp(5), borderWidth: 1},
+  unitBadgeText: {fontSize: ms(8), fontWeight: '700'},
 
   // More
-  moreBtn: {width: wp(26), height: wp(26), borderRadius: wp(13), justifyContent: 'center', alignItems: 'center'},
+  moreBtn: {width: wp(22), height: wp(22), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center'},
 
   // Highlighted input
-  hlInput: {minWidth: wp(55), maxWidth: wp(100), height: wp(28), justifyContent: 'center', alignItems: 'center', borderRadius: wp(7), borderWidth: 1.5},
-  hlInputText: {fontSize: ms(13), fontWeight: '800'},
+  hlInput: {minWidth: wp(45), maxWidth: wp(85), height: wp(24), justifyContent: 'center', alignItems: 'center', borderRadius: wp(6), borderWidth: 1.5, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.08, shadowRadius: 4},
+  hlInputText: {fontSize: ms(11), fontWeight: '800'},
 
   // Gray input
   grayInput: {minWidth: wp(90), maxWidth: wp(150), height: wp(32), borderRadius: wp(8), borderWidth: 1, justifyContent: 'center', paddingHorizontal: wp(8)},
   grayPlaceholder: {fontSize: ms(11), fontWeight: '500'},
 
   // Line input
-  lineInput: {borderBottomWidth: 1.5, minHeight: wp(28), fontSize: ms(11), paddingVertical: wp(3)},
-  lineInputText: {fontSize: ms(11), fontWeight: '500'},
+  lineInput: {borderBottomWidth: 1, minHeight: wp(24), fontSize: ms(9.5), paddingVertical: wp(2)},
+  lineInputText: {fontSize: ms(9.5), fontWeight: '500'},
 
   // Checkbox
-  checkTap: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(1), paddingRight: wp(4)},
-  checkBox: {width: wp(18), height: wp(18), borderWidth: 2, borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
-  checkLabel: {fontSize: ms(10), fontWeight: '600'},
+  checkTap: {flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingVertical: wp(1), paddingRight: wp(3)},
+  checkBox: {width: wp(15), height: wp(15), borderWidth: 1.5, borderRadius: wp(4), justifyContent: 'center', alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 2},
+  checkLabel: {fontSize: ms(8.5), fontWeight: '600'},
 
   // Radio
   radioRow: {flexDirection: 'row', alignItems: 'center', gap: wp(2)},
-  radioTap: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(2), paddingHorizontal: wp(4), borderRadius: wp(6)},
-  radioCircle: {width: wp(16), height: wp(16), borderRadius: wp(8), borderWidth: 2, justifyContent: 'center', alignItems: 'center'},
-  radioDot: {width: wp(7), height: wp(7), borderRadius: wp(4)},
-  radioLabel: {fontSize: ms(11), fontWeight: '600'},
+  radioTap: {flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingVertical: wp(1), paddingHorizontal: wp(3), borderRadius: wp(5)},
+  radioCircle: {width: wp(14), height: wp(14), borderRadius: wp(7), borderWidth: 1.5, justifyContent: 'center', alignItems: 'center'},
+  radioDot: {width: wp(6), height: wp(6), borderRadius: wp(3)},
+  radioLabel: {fontSize: ms(9), fontWeight: '600'},
 
   // Text area
   textArea: {borderRadius: wp(8), padding: wp(8), fontSize: ms(12), minHeight: wp(60), textAlignVertical: 'top', width: '100%', lineHeight: ms(18)},
@@ -1862,9 +2258,9 @@ const st = StyleSheet.create({
   inlineLabel: {fontSize: ms(9), fontWeight: '800'},
 
   // Time picker
-  timePick: {flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingHorizontal: wp(6), paddingVertical: wp(4), borderRadius: wp(7), borderWidth: 1},
-  timePickIcon: {width: wp(18), height: wp(18), borderRadius: wp(5), justifyContent: 'center', alignItems: 'center'},
-  timePickText: {fontSize: ms(10), fontWeight: '600'},
+  timePick: {flexDirection: 'row', alignItems: 'center', gap: wp(2), paddingHorizontal: wp(4), paddingVertical: wp(3), borderRadius: wp(6), borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
+  timePickIcon: {width: wp(15), height: wp(15), borderRadius: wp(4), justifyContent: 'center', alignItems: 'center'},
+  timePickText: {fontSize: ms(8.5), fontWeight: '600'},
 
   // Sub headers
   subHeaderRow: {flexDirection: 'row', gap: wp(6), marginBottom: wp(6)},
@@ -1885,11 +2281,11 @@ const st = StyleSheet.create({
   popupItemText: {fontSize: ms(15), fontWeight: '600', flex: 1},
 
   // Selector
-  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4)},
+  selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
   selectorText: {fontSize: ms(11), fontWeight: '600', flex: 1},
 
   // Numeric input
-  numericInput: {minWidth: wp(65), maxWidth: wp(110), height: wp(30), borderRadius: wp(7), borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: wp(8)},
+  numericInput: {minWidth: wp(65), maxWidth: wp(110), height: wp(30), borderRadius: wp(7), borderWidth: 1.5, justifyContent: 'center', paddingHorizontal: wp(8), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
   numericInputText: {fontSize: ms(14), fontWeight: '800', textAlign: 'center', padding: 0},
 
   // Modal text

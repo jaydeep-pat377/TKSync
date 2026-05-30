@@ -137,15 +137,15 @@ function Wheel({data, selected, onSelect, width, itemH}: WheelProps) {
 const wS = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: wp(4),
-    right: wp(4),
-    borderRadius: wp(10),
+    left: wp(2),
+    right: wp(2),
+    borderRadius: wp(6),
     borderWidth: 1.5,
     zIndex: 0,
   },
   item: {justifyContent: 'center', alignItems: 'center'},
-  text: {fontSize: ms(15), fontWeight: '500'},
-  textSel: {fontSize: ms(17), fontWeight: '700'},
+  text: {fontSize: ms(11), fontWeight: '500'},
+  textSel: {fontSize: ms(13), fontWeight: '700'},
 });
 
 // ────────── Date Time Picker Modal ──────────
@@ -209,20 +209,20 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
   const isSmall = shortDim < 375;
   const isTabletDevice = shortDim > 600;
 
-  // Landscape: compact item height to fit within limited height
-  const itemH = isLandscape ? Math.floor(availH * 0.12) : Math.max(36, Math.floor(availH * 0.065));
+  // Tight item height
+  const itemH = isLandscape ? Math.floor(availH * 0.085) : Math.max(28, Math.floor(availH * 0.045));
 
   const safeH = insets.left + insets.right;
   const availW = screenW - safeH;
-  const modalW = Math.min(availW * 0.92, isTabletDevice ? 620 : isLandscape ? 560 : 380);
-  const maxModalH = availH * (isLandscape ? 0.94 : 0.88);
+  const modalW = Math.min(availW * 0.70, isTabletDevice ? 380 : isLandscape ? 360 : 280);
+  const maxModalH = availH * (isLandscape ? 0.78 : 0.62);
 
-  // Wheel widths based on available space
-  const wMonth = isSmall ? 62 : isTabletDevice ? 90 : isLandscape ? 70 : 80;
-  const wDay = isSmall ? 44 : isTabletDevice ? 60 : isLandscape ? 52 : 58;
-  const wYear = isSmall ? 54 : isTabletDevice ? 80 : isLandscape ? 60 : 68;
-  const wHour = isSmall ? 44 : isTabletDevice ? 60 : isLandscape ? 52 : 58;
-  const wMin = isSmall ? 44 : isTabletDevice ? 60 : isLandscape ? 52 : 58;
+  // Wheel widths — tight
+  const wMonth = isSmall ? 50 : isTabletDevice ? 66 : isLandscape ? 58 : 60;
+  const wDay = isSmall ? 34 : isTabletDevice ? 44 : isLandscape ? 38 : 42;
+  const wYear = isSmall ? 44 : isTabletDevice ? 58 : isLandscape ? 50 : 52;
+  const wHour = isSmall ? 34 : isTabletDevice ? 44 : isLandscape ? 38 : 42;
+  const wMin = isSmall ? 34 : isTabletDevice ? 44 : isLandscape ? 38 : 42;
 
   if (!visible) return null;
 
@@ -247,7 +247,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
           {/* Header */}
           <View style={[ps.hdr, {borderBottomColor: c.borderLight}]}>
             <View style={[ps.hdrIcon, {backgroundColor: c.primarySurface}]}>
-              <MaterialIcons name="event" size={ms(18)} color={c.primary} />
+              <MaterialIcons name="event" size={ms(14)} color={c.primary} />
             </View>
             <Text style={[ps.hdrTitle, {color: c.textPrimary}]}>Select Date & Time</Text>
             <TouchableOpacity
@@ -255,7 +255,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
               onPress={onCancel}
               activeOpacity={0.7}
               hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-              <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
+              <MaterialIcons name="close" size={ms(13)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -269,7 +269,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
               <View style={ps.landscapeRow}>
                 <View style={ps.landscapeCol}>
                   <View style={ps.sectionLabel}>
-                    <MaterialIcons name="calendar-today" size={ms(12)} color={c.primary} />
+                    <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
                     <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
                   </View>
                   <View style={ps.wheels}>
@@ -281,7 +281,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
                 <View style={[ps.dividerV, {backgroundColor: c.borderLight}]} />
                 <View style={ps.landscapeCol}>
                   <View style={ps.sectionLabel}>
-                    <MaterialIcons name="access-time" size={ms(12)} color={c.primary} />
+                    <MaterialIcons name="access-time" size={ms(10)} color={c.primary} />
                     <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
                   </View>
                   <View style={ps.wheels}>
@@ -294,7 +294,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
             ) : (
               <>
                 <View style={ps.sectionLabel}>
-                  <MaterialIcons name="calendar-today" size={ms(12)} color={c.primary} />
+                  <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
                   <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
                 </View>
                 <View style={ps.wheels}>
@@ -303,7 +303,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
                   <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
                 </View>
                 <View style={ps.sectionLabel}>
-                  <MaterialIcons name="access-time" size={ms(12)} color={c.primary} />
+                  <MaterialIcons name="access-time" size={ms(10)} color={c.primary} />
                   <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
                 </View>
                 <View style={ps.wheels}>
@@ -327,7 +327,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
               style={[ps.confirmBtn, {backgroundColor: c.primary}]}
               onPress={() => onConfirm(new Date(year, month, day, hour, minute))}
               activeOpacity={0.8}>
-              <MaterialIcons name="check" size={ms(16)} color={c.textOnPrimary} />
+              <MaterialIcons name="check" size={ms(13)} color={c.textOnPrimary} />
               <Text style={[ps.btnText, {color: c.textOnPrimary}]}>Confirm</Text>
             </TouchableOpacity>
           </View>
@@ -341,82 +341,82 @@ const ps = StyleSheet.create({
   overlay: {flex: 1, justifyContent: 'center', alignItems: 'center'},
   overlayTouch: {...StyleSheet.absoluteFill},
   card: {
-    borderRadius: wp(18),
+    borderRadius: wp(12),
     overflow: 'hidden',
-    elevation: 16,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
+    elevation: 10,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   hdr: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: wp(10),
-    paddingHorizontal: wp(16),
-    paddingVertical: wp(12),
+    gap: wp(6),
+    paddingHorizontal: wp(10),
+    paddingVertical: wp(6),
     borderBottomWidth: 1,
   },
   hdrIcon: {
-    width: wp(34),
-    height: wp(34),
-    borderRadius: wp(10),
+    width: wp(24),
+    height: wp(24),
+    borderRadius: wp(7),
     justifyContent: 'center',
     alignItems: 'center',
   },
-  hdrTitle: {flex: 1, fontSize: ms(16), fontWeight: '700'},
+  hdrTitle: {flex: 1, fontSize: ms(12), fontWeight: '700'},
   closeBtn: {
-    width: wp(34),
-    height: wp(34),
-    borderRadius: wp(17),
+    width: wp(24),
+    height: wp(24),
+    borderRadius: wp(12),
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionLabel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: wp(5),
-    paddingHorizontal: wp(18),
-    paddingTop: wp(10),
-    paddingBottom: wp(2),
+    gap: wp(3),
+    paddingHorizontal: wp(10),
+    paddingTop: wp(4),
+    paddingBottom: wp(1),
   },
-  labelText: {fontSize: ms(10), fontWeight: '800', letterSpacing: 1},
+  labelText: {fontSize: ms(8), fontWeight: '800', letterSpacing: 0.8},
   wheels: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: wp(6),
+    paddingHorizontal: wp(2),
   },
-  colon: {fontSize: ms(20), fontWeight: '800', marginHorizontal: wp(2), marginTop: -2},
+  colon: {fontSize: ms(14), fontWeight: '800', marginHorizontal: wp(1), marginTop: -1},
   footer: {
     flexDirection: 'row',
-    gap: wp(10),
-    paddingHorizontal: wp(16),
-    paddingVertical: wp(12),
+    gap: wp(6),
+    paddingHorizontal: wp(10),
+    paddingVertical: wp(6),
     borderTopWidth: 1,
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: wp(12),
-    borderRadius: wp(10),
+    paddingVertical: wp(6),
+    borderRadius: wp(7),
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: wp(44),
+    minHeight: wp(30),
   },
   confirmBtn: {
     flex: 1,
     flexDirection: 'row',
-    paddingVertical: wp(12),
-    borderRadius: wp(10),
+    paddingVertical: wp(6),
+    borderRadius: wp(7),
     alignItems: 'center',
     justifyContent: 'center',
-    gap: wp(5),
-    minHeight: wp(44),
+    gap: wp(3),
+    minHeight: wp(30),
   },
-  btnText: {fontSize: ms(14), fontWeight: '700'},
-  portraitContent: {paddingBottom: wp(4)},
-  landscapeContent: {paddingVertical: wp(4)},
+  btnText: {fontSize: ms(11), fontWeight: '700'},
+  portraitContent: {paddingBottom: wp(1)},
+  landscapeContent: {paddingVertical: wp(1)},
   landscapeRow: {flexDirection: 'row', alignItems: 'center'},
   landscapeCol: {flex: 1, alignItems: 'center'},
-  dividerV: {width: 1, alignSelf: 'stretch', marginVertical: wp(8)},
+  dividerV: {width: 1, alignSelf: 'stretch', marginVertical: wp(4)},
 });

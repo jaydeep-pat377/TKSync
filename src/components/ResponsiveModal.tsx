@@ -136,9 +136,10 @@ const s = StyleSheet.create({
   card: {
     borderRadius: 18,
     overflow: 'hidden',
-    elevation: 16,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    elevation: 12,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
   },
 });

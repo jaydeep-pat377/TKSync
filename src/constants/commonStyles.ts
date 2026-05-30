@@ -32,10 +32,10 @@ export const common = StyleSheet.create({
   // Selector
   selectorCompact: {flex: 0, width: wp(200)},
 
-  // Shadows
-  shadowSm: {elevation: 2, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.08, shadowRadius: 4},
-  shadowMd: {elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.15, shadowRadius: 12},
-  shadowLg: {elevation: 16, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.25, shadowRadius: 20},
+  // Shadows — Level 1 (inputs, dividers), Level 2 (cards), Level 3 (buttons, header), Level 4 (modals)
+  shadowSm: {elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
+  shadowMd: {elevation: 5, shadowColor: '#000', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.12, shadowRadius: 10},
+  shadowLg: {elevation: 10, shadowColor: '#000', shadowOffset: {width: 0, height: 6}, shadowOpacity: 0.18, shadowRadius: 16},
 
   // Full width
   fullWidth: {width: '100%'},
