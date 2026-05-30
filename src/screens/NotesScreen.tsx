@@ -355,7 +355,7 @@ const ls = StyleSheet.create({
   cardHeaderIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
   cardTitle: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase', flex: 1},
   field: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(3), gap: wp(3), borderBottomWidth: StyleSheet.hairlineWidth},
-  fieldLabel: {fontSize: ms(9), fontWeight: '700', minWidth: wp(36), maxWidth: wp(65), letterSpacing: 0.3, textTransform: 'uppercase'},
+  fieldLabel: {fontSize: ms(9), fontWeight: '700', minWidth: wp(36), maxWidth: wp(72), letterSpacing: 0.3, textTransform: 'uppercase'},
   fieldBody: {flexDirection: 'row', alignItems: 'center', gap: wp(3), flex: 1, flexShrink: 1},
   fieldWide: {flexDirection: 'column' as const, alignItems: 'flex-start' as const},
   fieldLabelWide: {width: '100%' as const, marginBottom: wp(3)},
@@ -1089,7 +1089,7 @@ function JobsiteTab() {
               <LineInput placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
               <MoreBtn onPress={() => setMmModalField('custWater')} />
             </LField>
-            <LField label="MAINT.">
+            <LField label="MAINTENANCE">
               <Stepper value={String(maintWaterLitres)} unit="L" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
               <LineInput placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
               <MoreBtn onPress={() => setMmModalField('maintWater')} />
@@ -1377,6 +1377,8 @@ function SelectionModal({
   onClose: () => void;
 }) {
   const {c} = useTheme();
+  const {width: _smW, height: _smH} = useWindowDimensions();
+  const _smLand = _smW > _smH;
   const [tempSelected, setTempSelected] = useState(selected);
   const modalScale = useRef(new Animated.Value(0.9)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
@@ -1405,6 +1407,18 @@ function SelectionModal({
     onSave(tempSelected);
     onClose();
   });
+
+  const handleItemPress = (key: string) => {
+    if (_smLand) {
+      // Landscape: select + save + close immediately
+      animateClose(() => {
+        onSave(key);
+        onClose();
+      });
+    } else {
+      setTempSelected(key);
+    }
+  };
 
   const hasChanged = tempSelected !== selected;
   const hasTempSelection = tempSelected.length > 0;
@@ -1443,7 +1457,7 @@ function SelectionModal({
                 isSelected && {backgroundColor: c.primarySurface, borderColor: c.primary},
               ]}
               activeOpacity={0.6}
-              onPress={() => setTempSelected(opt.key)}>
+              onPress={() => handleItemPress(opt.key)}>
               <View style={[sm.itemIcon, {backgroundColor: isSelected ? c.primary : c.surface}]}>
                 <MaterialIcons name={opt.icon as any} size={ms(20)} color={isSelected ? c.textOnPrimary : c.textSecondary} />
               </View>
@@ -1464,28 +1478,30 @@ function SelectionModal({
         })}
       </ScrollView>
 
-      {/* Footer */}
-      <View style={[sm.footer, {borderTopColor: c.border}]}>
-        <TouchableOpacity
-          style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
-          activeOpacity={0.7}
-          onPress={handleCancel}>
-          <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
-          <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[sm.footerBtn, sm.confirmBtn, {
-            backgroundColor: hasTempSelection ? c.primary : c.border,
-          }]}
-          activeOpacity={hasTempSelection ? 0.7 : 1}
-          disabled={!hasTempSelection}
-          onPress={handleSave}>
-          <MaterialIcons name="check" size={ms(16)} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
-          <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}]}>
-            {hasChanged ? 'Save' : 'Confirm'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Footer — portrait only */}
+      {!_smLand && (
+        <View style={[sm.footer, {borderTopColor: c.border}]}>
+          <TouchableOpacity
+            style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
+            activeOpacity={0.7}
+            onPress={handleCancel}>
+            <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
+            <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[sm.footerBtn, sm.confirmBtn, {
+              backgroundColor: hasTempSelection ? c.primary : c.border,
+            }]}
+            activeOpacity={hasTempSelection ? 0.7 : 1}
+            disabled={!hasTempSelection}
+            onPress={handleSave}>
+            <MaterialIcons name="check" size={ms(16)} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
+            <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}]}>
+              {hasChanged ? 'Save' : 'Confirm'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ResponsiveModal>
   );
 }

@@ -349,6 +349,7 @@ export default function DashboardScreen({navigation}: Props) {
       <View style={[styles.header, {backgroundColor: c.primaryDark, paddingTop: insets.top + (L ? 2 : wp(3)), paddingLeft: Math.max(L ? 8 : wp(12), insets.left), paddingRight: Math.max(L ? 8 : wp(12), insets.right)}, L && {paddingBottom: 2}]}>
         {lp ? (
           /* Phone landscape: single compact row — tickets moved to KPI card */
+          <>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1}}>
               <View style={{width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}}>
@@ -358,6 +359,19 @@ export default function DashboardScreen({navigation}: Props) {
                 <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{t('app.name')}</Text>
                 <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{t('dashboard.ticketTracking')}</Text>
               </View>
+            </View>
+            {/* Weather inline */}
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10}}>
+              <MaterialIcons name="wb-sunny" size={14} color={c.textOnPrimary} />
+              <View>
+                <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>26-SCARBOROUGH R/M</Text>
+                <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>10C CLEAR SKY</Text>
+              </View>
+            </View>
+            {/* Vehicle & Employee stacked */}
+            <View style={{backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, gap: 2}}>
+              <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>108693</Text>
+              <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>772</Text>
             </View>
             {/* Sync pill */}
             <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12}}>
@@ -374,6 +388,7 @@ export default function DashboardScreen({navigation}: Props) {
               </TouchableOpacity>
             </View>
           </View>
+          </>
         ) : (
           /* Portrait + tablet landscape: two-row header */
           <>
@@ -388,6 +403,22 @@ export default function DashboardScreen({navigation}: Props) {
                 </View>
               </View>
               <View style={[styles.headerActions, L && {gap: 5}]}>
+                {/* Weather + Vehicle + Employee — landscape only, before sync */}
+                {L && (
+                  <>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12}}>
+                      <MaterialIcons name="wb-sunny" size={16} color={c.textOnPrimary} />
+                      <View>
+                        <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>26-SCARBOROUGH R/M</Text>
+                        <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>10C CLEAR SKY</Text>
+                      </View>
+                    </View>
+                    <View style={{backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, gap: 2}}>
+                      <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>108693</Text>
+                      <Text style={{fontSize: 9, fontWeight: '500', color: c.textOnDark60}}>772</Text>
+                    </View>
+                  </>
+                )}
                 {/* Sync pill */}
                 <TouchableOpacity
                   onPress={handleSync}
@@ -424,6 +455,21 @@ export default function DashboardScreen({navigation}: Props) {
         )}
       </View>
 
+      {/* ─── WEATHER STRIP (portrait only — landscape has it in header) ─── */}
+      {!L && (
+        <View style={{backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10)}}>
+          <MaterialIcons name="wb-sunny" size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
+          <View style={{flex: 1}}>
+            <Text style={{fontSize: ms(isTablet ? 13 : 12), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3}}>26-SCARBOROUGH R/M</Text>
+            <Text style={{fontSize: ms(isTablet ? 11 : 10), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85}}>10C CLEAR SKY</Text>
+          </View>
+          <View style={{backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(4), paddingHorizontal: wp(8), borderRadius: wp(8), gap: wp(2)}}>
+            <Text style={{fontSize: ms(11), fontWeight: '700', color: c.textOnPrimary}}>108693</Text>
+            <Text style={{fontSize: ms(10), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85}}>772</Text>
+          </View>
+        </View>
+      )}
+
       {/* ─── CONTENT ─── */}
       <ScrollView
         style={styles.scroll}
@@ -437,47 +483,46 @@ export default function DashboardScreen({navigation}: Props) {
 
         <View style={isTablet && !L ? {maxWidth: 900, alignSelf: 'center', width: '100%'} : undefined}>
 
-        {/* ── Landscape: KPI + Chips in one row ── */}
+        {/* ── Landscape: KPI row + ticket chips row ── */}
         {isLandscape ? (
-          <FadeCard delay={0} style={[cs.card, {flexDirection: 'row', alignItems: 'center', gap: lt ? 10 : 6, flexWrap: 'wrap', marginBottom: lt ? 10 : 6, padding: lt ? 10 : 7}]}>
-            {/* Ticket numbers */}
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 7 : 5}}>
-              {TICKETS.map((ticket, i) => (
-                <View key={ticket} style={{paddingVertical: lt ? 5 : 4, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 8 : 6, backgroundColor: i === 0 ? c.accent : c.primaryLight}}>
-                  <Text style={{fontSize: lt ? 13 : 11, fontWeight: '700', color: c.textOnPrimary}}>{ticket}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={{width: StyleSheet.hairlineWidth, height: lt ? 26 : 22, backgroundColor: c.border, marginHorizontal: lt ? 5 : 3}} />
-            {/* KPI items */}
-            {[
-              {icon: 'receipt-long', val: '26209538', label: t('dashboard.ticket'), color: c.primary},
-              {icon: 'tag', val: '2605', label: t('dashboard.order'), color: c.primaryDark},
-              {icon: 'local-shipping', val: '108693', label: 'TRUCK', color: c.primary},
-            ].map((kpi, i, arr) => (
-              <React.Fragment key={kpi.label}>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 6, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 7 : 5}}>
-                  <MaterialIcons name={kpi.icon as any} size={lt ? 17 : 15} color={kpi.color} />
-                  <View>
-                    <Text style={{fontSize: lt ? 15 : 13, fontWeight: '800', color: c.textPrimary}}>{kpi.val}</Text>
-                    <Text style={{fontSize: lt ? 11 : 10, fontWeight: '600', color: c.textMuted, letterSpacing: 0.3, marginTop: 2}}>{kpi.label}</Text>
+          <FadeCard delay={0} style={[cs.card, {marginBottom: lt ? 10 : 6, padding: lt ? 10 : 7}]}>
+            {/* Row 1: KPI items + status badges */}
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 10 : 6}}>
+              {[
+                {icon: 'receipt-long', val: '26209538', label: t('dashboard.ticket'), color: c.primary},
+                {icon: 'tag', val: '2605', label: t('dashboard.order'), color: c.primaryDark},
+                {icon: 'local-shipping', val: '108693', label: 'TRUCK', color: c.primary},
+              ].map((kpi, i, arr) => (
+                <React.Fragment key={kpi.label}>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 6, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 7 : 5}}>
+                    <MaterialIcons name={kpi.icon as any} size={lt ? 17 : 15} color={kpi.color} />
+                    <View style={{flexShrink: 1}}>
+                      <Text style={{fontSize: lt ? 15 : 13, fontWeight: '800', color: c.textPrimary}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{kpi.val}</Text>
+                      <Text style={{fontSize: lt ? 11 : 10, fontWeight: '600', color: c.textMuted, letterSpacing: 0.3, marginTop: 2}}>{kpi.label}</Text>
+                    </View>
                   </View>
-                </View>
-                {i < arr.length - 1 && <View style={{width: StyleSheet.hairlineWidth, height: lt ? 26 : 22, backgroundColor: c.border}} />}
-              </React.Fragment>
-            ))}
-            <View style={{flex: 1}} />
-            <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-              <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />
-              <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.successDark}}>{t('dashboard.active')}</Text>
+                  {i < arr.length - 1 && <View style={{width: StyleSheet.hairlineWidth, height: lt ? 26 : 22, backgroundColor: c.border}} />}
+                </React.Fragment>
+              ))}
+              <View style={{flex: 1}} />
+              <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />
+                <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.successDark}}>{t('dashboard.active')}</Text>
+              </View>
+              <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                <MaterialIcons name="warning" size={lt ? 13 : 11} color={c.warningDark} />
+                <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.warningDark}}>{t('dashboard.onAccount')}</Text>
+              </View>
             </View>
-            <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-              <MaterialIcons name="warning" size={lt ? 13 : 11} color={c.warningDark} />
-              <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.warningDark}}>{t('dashboard.onAccount')}</Text>
-            </View>
-            <View style={{flexDirection: 'row', alignItems: 'center', borderColor: c.border, borderWidth: StyleSheet.hairlineWidth, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-              <MaterialIcons name="wb-sunny" size={lt ? 14 : 12} color={c.warning} />
-              <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.textSecondary}}>10°C</Text>
+            {/* Row 2: Ticket chips */}
+            <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? 8 : 6, paddingTop: lt ? 8 : 6}}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5}}>
+                {TICKETS.map((ticket, i) => (
+                  <View key={ticket} style={{paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 8 : 6, backgroundColor: i === 0 ? c.accent : c.primaryLight}}>
+                    <Text style={{fontSize: lt ? 12 : 10, fontWeight: '700', color: c.textOnPrimary}} numberOfLines={1}>{ticket}</Text>
+                  </View>
+                ))}
+              </ScrollView>
             </View>
           </FadeCard>
         ) : (
@@ -512,11 +557,6 @@ export default function DashboardScreen({navigation}: Props) {
                 <View style={[styles.statusChip, {backgroundColor: c.warningSurface}]}>
                   <MaterialIcons name="warning" size={ms(11)} color={c.warningDark} />
                   <Text style={[styles.chipLabel, {color: c.warningDark}]}>{t('dashboard.onAccount')}</Text>
-                </View>
-                <View style={{flex: 1}} />
-                <View style={[styles.infoChip, {borderColor: c.border}]}>
-                  <MaterialIcons name="wb-sunny" size={ms(12)} color={c.warning} />
-                  <Text style={[styles.chipLabel, {color: c.textSecondary}]}>10°C</Text>
                 </View>
               </View>
             </FadeCard>
