@@ -2144,7 +2144,7 @@ export default function NotesScreen({navigation}: Props) {
         behavior="padding"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
-          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, landscapeNoScroll && {flex: 1}]} keyboardShouldPersistTaps="handled">
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, isLandscape && {paddingBottom: wp(4)}, landscapeNoScroll && {flex: 1}]} keyboardShouldPersistTaps="handled">
             {renderTab()}
           </ScrollView>
         </Animated.View>
