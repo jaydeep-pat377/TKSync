@@ -18,6 +18,8 @@
     "react-i18next": "^17.0.8",
     "react-native": "0.85.3",
     "react-native-localize": "^3.7.0",
+    "react-native-mmkv": "^4.3.1",
+    "react-native-nitro-modules": "^0.35.9",
     "react-native-orientation-locker": "^1.7.0",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-safe-area-context": "^5.5.2",

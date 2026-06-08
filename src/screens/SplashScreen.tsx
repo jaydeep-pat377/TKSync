@@ -194,7 +194,7 @@ export default function SplashScreen({navigation}: Props) {
       ]),
     ]).start();
 
-    // Fade out and navigate
+    // Fade out and navigate after splash animation
     const timer = setTimeout(() => {
       Animated.timing(screenFade, {
         toValue: 0,

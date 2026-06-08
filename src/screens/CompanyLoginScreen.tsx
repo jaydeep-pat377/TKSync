@@ -17,6 +17,8 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
+import {useAuth} from '../contexts/AuthContext';
+import {ApiError} from '../services/api';
 import {wp, ms} from '../utils/responsive';
 
 type Props = {
@@ -25,8 +27,11 @@ type Props = {
 
 export default function CompanyLoginScreen({navigation}: Props) {
   const [companyCode, setCompanyCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const {t} = useTranslation();
   const {c} = useTheme();
+  const {companyLogin, isCompanyLoggedIn, isDriverLoggedIn} = useAuth();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const shortDim = Math.min(width, height);
@@ -39,14 +44,41 @@ export default function CompanyLoginScreen({navigation}: Props) {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
+    if (isDriverLoggedIn) {
+      navigation.replace('Dashboard');
+    } else if (isCompanyLoggedIn) {
+      navigation.replace('DriverLogin');
+    }
+  }, [isCompanyLoggedIn, isDriverLoggedIn, navigation]);
+
+  useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {toValue: 1, duration: 600, useNativeDriver: true}),
       Animated.spring(slideAnim, {toValue: 0, friction: 8, tension: 50, useNativeDriver: true}),
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  const handleConnect = () => {
-    navigation.navigate('DriverLogin');
+  const handleConnect = async () => {
+    const code = companyCode.trim();
+    if (!code) {
+      setError(t('companyLogin.errorEmpty', 'Please enter a company code'));
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      await companyLogin(code);
+      navigation.navigate('DriverLogin');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError(t('companyLogin.errorNetwork', 'Network error. Please try again.'));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Fixed maxWidth caps (NOT scaled by wp() — prevents bloating on tablets)
@@ -194,6 +226,14 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 </View>
               </View>
 
+              {/* Error Message */}
+              {error ? (
+                <View style={[styles.errorBox, {backgroundColor: c.errorSurface, borderColor: c.error}]}>
+                  <MaterialIcons name="error-outline" size={ms(14)} color={c.error} />
+                  <Text style={[styles.errorText, {color: c.error || '#EF4444'}]}>{error}</Text>
+                </View>
+              ) : null}
+
               {/* Connect Button */}
               <TouchableOpacity
                 style={[
@@ -201,13 +241,15 @@ export default function CompanyLoginScreen({navigation}: Props) {
                   landscapePhone && {paddingVertical: wp(10), borderRadius: 10, marginTop: 4},
                   isTablet && {paddingVertical: 14, borderRadius: 12, marginTop: 6},
                   {backgroundColor: c.primary, shadowColor: c.primary},
+                  loading && {opacity: 0.7},
                 ]}
                 onPress={handleConnect}
-                activeOpacity={0.85}>
+                activeOpacity={0.85}
+                disabled={loading}>
                 <Text style={[styles.connectButtonText, isTablet && {fontSize: ms(14)}, {color: c.textOnPrimary}]}>
-                  {t('companyLogin.connect')}
+                  {loading ? t('companyLogin.connecting', 'Connecting...') : t('companyLogin.connect')}
                 </Text>
-                <MaterialIcons name="arrow-forward" size={isTablet ? 22 : 20} color={c.textOnPrimary} />
+                {!loading && <MaterialIcons name="arrow-forward" size={isTablet ? 22 : 20} color={c.textOnPrimary} />}
               </TouchableOpacity>
 
               {/* Footer */}
@@ -245,6 +287,8 @@ const styles = StyleSheet.create({
   inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(12), borderWidth: 1.5},
   inputIconBox: {width: wp(40), height: wp(40), justifyContent: 'center', alignItems: 'center', marginLeft: wp(4)},
   input: {flex: 1, paddingVertical: wp(12), fontSize: ms(15), paddingRight: wp(14)},
+  errorBox: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(8), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(10)},
+  errorText: {fontSize: ms(12), fontWeight: '500', flex: 1},
   connectButton: {flexDirection: 'row', borderRadius: wp(12), paddingVertical: wp(14), alignItems: 'center', justifyContent: 'center', gap: wp(8), marginTop: wp(6), elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
   connectButtonText: {fontSize: ms(16), fontWeight: '700', letterSpacing: 0.5},
   footer: {flexDirection: 'row', alignItems: 'center', marginTop: wp(16), gap: wp(12)},

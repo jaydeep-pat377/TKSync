@@ -12,40 +12,73 @@ import {
   Pressable,
   Linking,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
+import i18n from '../i18n';
 import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../contexts/ThemeContext';
+import {useAuth} from '../contexts/AuthContext';
+import {ticketsApi, type Ticket, type TicketDetail} from '../services/api';
 import {Colors} from '../constants/colors';
 import {common} from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
 import {wp, ms} from '../utils/responsive';
 
-const TICKETS = ['26209538', '31369591', '31369583'];
+const TIMELINE_ICONS: Record<string, string> = {
+  ticketed: 'receipt-long',
+  loading: 'hourglass-bottom',
+  to_job: 'local-shipping',
+  on_job: 'location-on',
+  pouring: 'water-drop',
+  washing: 'clean-hands',
+  to_plant: 'route',
+  at_plant: 'factory',
+};
 
-const TIMELINE = [
-  {labelKey: 'timeline.ticketed', time: '07:46', icon: 'receipt-long', done: true},
-  {labelKey: 'timeline.loading', time: '07:49', icon: 'hourglass-bottom', done: true},
-  {labelKey: 'timeline.toJob', time: '08:05', icon: 'local-shipping', done: true},
-  {labelKey: 'timeline.onJob', time: '08:23', icon: 'location-on', done: true},
-  {labelKey: 'timeline.pouring', time: '08:46', icon: 'water-drop', done: true},
-  {labelKey: 'timeline.washing', time: '09:08', icon: 'clean-hands', done: true},
-  {labelKey: 'timeline.toPlant', time: '09:10', icon: 'route', done: true},
-  {labelKey: 'timeline.atPlant', time: '--', icon: 'factory', done: false},
-];
+const TIMELINE_LABEL_KEYS: Record<string, string> = {
+  ticketed: 'timeline.ticketed',
+  loading: 'timeline.loading',
+  to_job: 'timeline.toJob',
+  on_job: 'timeline.onJob',
+  pouring: 'timeline.pouring',
+  washing: 'timeline.washing',
+  to_plant: 'timeline.toPlant',
+  at_plant: 'timeline.atPlant',
+};
 
-const JOB_INFO = [
-  {labelKey: 'jobInfo.customer', value: 'GILLAM CONSTRUCTION GROUP', icon: 'people'},
-  {labelKey: 'jobInfo.project', value: 'BLDG A - SEWELLS ROAD RESIDENTIAL BUILDI', icon: 'apartment'},
-  {labelKey: 'jobInfo.job', value: 'BLDG A - SEWELLS ROAD RESIDENTIAL BUILDI', icon: 'work'},
-  {labelKey: 'orderInfo.timeDue', value: '08:00 AM', icon: 'schedule'},
-  {labelKey: 'orderInfo.deliveredTo', value: '123 MAIN ST, SCARBOROUGH ON', icon: 'place', isLink: true, isMap: true},
-  {labelKey: 'orderInfo.lotBlock', value: 'LOT 5 / BLOCK A', icon: 'grid-view'},
-  {labelKey: 'orderInfo.instructions', value: 'POUR AT REAR ENTRANCE - USE CHUTE', icon: 'info-outline'},
-];
+function formatTime(dateStr: string | null): string {
+  if (!dateStr) return '--';
+  const d = new Date(dateStr);
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, '0');
+  return `${h > 12 ? h - 12 : h || 12}:${m}`;
+}
+
+function buildTimeline(detail: TicketDetail) {
+  return detail.progress.steps.map(step => ({
+    labelKey: TIMELINE_LABEL_KEYS[step.key] || step.key,
+    icon: TIMELINE_ICONS[step.key] || 'circle',
+    time: formatTime(step.time),
+    done: step.done,
+  }));
+}
+
+function buildJobInfo(detail: TicketDetail) {
+  const {job} = detail;
+  return [
+    {labelKey: 'jobInfo.customer', value: job.customer_name || '-', icon: 'people'},
+    {labelKey: 'jobInfo.project', value: job.project_name || '-', icon: 'apartment'},
+    {labelKey: 'jobInfo.job', value: job.job || '-', icon: 'work'},
+    {labelKey: 'orderInfo.timeDue', value: job.time_due ? formatTime(job.time_due) : '-', icon: 'schedule'},
+    {labelKey: 'orderInfo.deliveredTo', value: job.delivered_to || '-', icon: 'place', isLink: true, isMap: true},
+    {labelKey: 'orderInfo.lotBlock', value: job.lot_block || '-', icon: 'grid-view'},
+    {labelKey: 'orderInfo.instructions', value: job.instructions || '-', icon: 'info-outline'},
+  ];
+}
 
 const openAddressInMaps = (address: string) => {
   const encoded = encodeURIComponent(address);
@@ -56,25 +89,37 @@ const openAddressInMaps = (address: string) => {
   Linking.openURL(url!);
 };
 
-const MIX_INFO: {labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean}[] = [
-  {labelKey: 'mixInfo.mixId', value: '6138438', icon: 'tag'},
-  {labelKey: 'mixInfo.description', value: '30MPA MR', icon: 'science', isLink: true},
-  {labelKey: 'mixInfo.usage', value: 'SUSPENDED SLAB', icon: 'category'},
-  {labelKey: 'mixInfo.slump', value: '120+-30 mm', isHighlight: true},
-  {labelKey: 'orderInfo.quantity', value: '3.40 m3', icon: 'straighten'},
-  {labelKey: 'orderInfo.loads', value: '1 of 3', icon: 'layers'},
-  {labelKey: 'orderInfo.trucks', value: '108693', icon: 'local-shipping'},
-];
+const STATUS_MAP: Record<number, string> = {
+  0: 'Pending',
+  1: 'In Transit',
+  2: 'On Site',
+  3: 'Pouring',
+  4: 'Completed',
+};
 
-const MIX_PRODUCTS = [
-  {code: '6138576', desc: '35MPA AIR C1 .40', qty: '3.40', unit: 'm3'},
-  {code: '12581', desc: 'TOARC FEE', qty: '1.00', unit: '/l'},
-  {code: '14301', desc: 'FLEX FUEL SURCHARGE', qty: '1.00', unit: '/l'},
-  {code: '15902', desc: 'INDUSTRIAL EMISSIONS CHARGE', qty: '1.00', unit: '/l'},
-  {code: '2571', desc: 'ENVIRONMENTAL CHARGE - M3', qty: '1.00', unit: '/l'},
-  {code: '5843', desc: 'FUEL SURCHARGE - CBM /M3', qty: '1.00', unit: '/l'},
-  {code: '2386', desc: 'DELIVERY CHARGE', qty: '1.00', unit: '/l'},
-];
+const PAYMENT_MAP: Record<string, string> = {
+  '1': 'Cash',
+  '2': 'Check',
+  '3': 'Credit Card',
+  '4': 'On Account',
+};
+
+function buildMixInfo(detail: TicketDetail) {
+  const {ticket, mix} = detail;
+  const statusLabel = STATUS_MAP[ticket.current_status] ?? String(ticket.current_status);
+  const paymentLabel = PAYMENT_MAP[ticket.payment_form] ?? (ticket.payment_form || '-');
+  const loadsStr = mix.loads.current != null ? `${mix.loads.current} of ${mix.loads.total}` : '-';
+  return [
+    {labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science', isLink: true},
+    {labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category'},
+    {labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true},
+    {labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten'},
+    {labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers'},
+    {labelKey: 'mixInfo.status', value: statusLabel, icon: 'info'},
+    {labelKey: 'mixInfo.payment', value: paymentLabel, icon: 'payment'},
+    {labelKey: 'mixInfo.total', value: ticket.total_amount != null ? `$${ticket.total_amount.toFixed(2)}` : '-', icon: 'account-balance-wallet', isHighlight: true},
+  ] as {labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean}[];
+}
 
 const BOTTOM_ACTIONS = [
   {icon: 'note-alt', labelKey: 'actions.notes'},
@@ -84,16 +129,14 @@ const BOTTOM_ACTIONS = [
   {icon: 'qr-code-scanner', labelKey: 'actions.qr'},
 ];
 
-const MENU_ITEMS = [
-  {icon: 'local-shipping', label: 'Vehicle', color: ''},
-  {icon: 'person-off', label: 'Logout Driver', color: ''},
-  {icon: 'domain-disabled', label: 'Logout Tenant', color: 'warn'},
-  {icon: 'translate', label: 'Language', color: ''},
-  {icon: 'info-outline', label: 'About', color: ''},
+const MENU_ITEMS_BASE = [
+  {icon: 'local-shipping', labelKey: 'menu.vehicle', actionKey: 'Vehicle', color: ''},
+  {icon: 'person-off', labelKey: 'menu.logoutDriver', actionKey: 'Logout Driver', color: ''},
+  {icon: 'domain-disabled', labelKey: 'menu.logoutTenant', actionKey: 'Logout Tenant', color: 'warn'},
+  {icon: 'translate', labelKey: 'menu.language', actionKey: 'Language', color: ''},
+  {icon: 'info-outline', labelKey: 'menu.about', actionKey: 'About', color: ''},
 ];
 
-const doneCount = TIMELINE.filter(s => s.done).length;
-const progressPct = (doneCount / TIMELINE.length) * 100;
 
 // Skeleton shimmer
 function Skeleton({width: w, height: h, radius = 8, style}: any) {
@@ -152,10 +195,15 @@ type Props = {
 };
 
 export default function DashboardScreen({navigation}: Props) {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeTicket, setActiveTicket] = useState(0);
+  const [detail, setDetail] = useState<TicketDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [logoutType, setLogoutType] = useState<'driver' | 'tenant' | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [qrVisible, setQrVisible] = useState(false);
   const [plantsVisible, setPlantsVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
@@ -165,6 +213,7 @@ export default function DashboardScreen({navigation}: Props) {
   const [syncAgo, setSyncAgo] = useState('just now');
   const {t} = useTranslation();
   const {isDark, toggle, c} = useTheme();
+  const {driverLogout, companyLogout, driver, company} = useAuth();
   const insets = useSafeAreaInsets();
   const {width, height: winHeight} = useWindowDimensions();
   const isTablet = Math.min(width, winHeight) > 600;
@@ -187,35 +236,68 @@ export default function DashboardScreen({navigation}: Props) {
     return () => clearInterval(iv);
   }, [lastSyncTime]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1400);
-    return () => clearTimeout(timer);
+  const fetchTickets = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      setRefreshing(true);
+      const {data} = await ticketsApi.getLatest({page: 1, limit: 20, date: '2026-06-05'});
+      console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
+      setTickets(data.data);
+      setActiveTicket(0);
+      setLastSyncTime(new Date());
+    } catch (err) {
+      console.log('[Tickets] fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  const fetchDetail = useCallback(async (ticketId: number) => {
+    setDetailLoading(true);
+    try {
+      const {data} = await ticketsApi.getById(ticketId);
+      setDetail(data);
+    } catch (err) {
+      console.log('[TicketDetail] fetch error:', err);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
+
+  // Fetch detail when active ticket changes
+  useEffect(() => {
+    const ticket = tickets[activeTicket];
+    if (ticket) {
+      fetchDetail(ticket.id);
+    } else {
+      setDetail(null);
+    }
+  }, [activeTicket, tickets, fetchDetail]);
 
   const handleSync = useCallback(() => {
-    // Animate the sync icon spin
     syncSpin.setValue(0);
     Animated.timing(syncSpin, {toValue: 1, duration: 600, useNativeDriver: true}).start();
-    setRefreshing(true);
-    setLoading(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      setLoading(false);
-      setLastSyncTime(new Date());
-    }, 1000);
-  }, [syncSpin]);
+    fetchTickets(false);
+  }, [syncSpin, fetchTickets]);
 
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setLoading(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      setLoading(false);
-      setLastSyncTime(new Date());
-    }, 1000);
-  }, []);
+    fetchTickets(false);
+  }, [fetchTickets]);
 
   const syncRotate = syncSpin.interpolate({inputRange: [0, 1], outputRange: ['0deg', '360deg']});
+
+  // Derived data from active ticket
+  const currentTicket = tickets[activeTicket] || null;
+  const timeline = detail ? buildTimeline(detail) : [];
+  const jobInfo = detail ? buildJobInfo(detail) : [];
+  const mixInfo = detail ? buildMixInfo(detail) : [];
+  const doneCount = detail ? detail.progress.completed : 0;
+  const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -230,6 +312,36 @@ export default function DashboardScreen({navigation}: Props) {
       Animated.timing(menuScale, {toValue: 0, duration: 150, useNativeDriver: true}),
       Animated.timing(menuOpacity, {toValue: 0, duration: 150, useNativeDriver: true}),
     ]).start(() => setMenuVisible(false));
+  };
+
+  const handleLogoutConfirm = async () => {
+    const type = logoutType;
+    setLoggingOut(true);
+    try {
+      if (type === 'driver') {
+        await driverLogout();
+        setLogoutType(null);
+        navigation.replace('DriverLogin');
+      } else if (type === 'tenant') {
+        await companyLogout();
+        setLogoutType(null);
+        navigation.replace('Login');
+      }
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
+  const handleMenuItemPress = (label: string) => {
+    closeMenu();
+    if (label === 'Logout Driver') {
+      setLogoutType('driver');
+    } else if (label === 'Logout Tenant') {
+      setLogoutType('tenant');
+    } else if (label === 'Language') {
+      const nextLang = i18n.language === 'en' ? 'fr' : 'en';
+      i18n.changeLanguage(nextLang);
+    }
   };
 
   const handleNavPress = useCallback((item: typeof BOTTOM_ACTIONS[0], i: number) => {
@@ -364,14 +476,14 @@ export default function DashboardScreen({navigation}: Props) {
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10}}>
               <MaterialIcons name="wb-sunny" size={14} color={c.textOnPrimary} />
               <View>
-                <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>26-SCARBOROUGH R/M</Text>
-                <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>10C CLEAR SKY</Text>
+                <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{currentTicket?.location_name || ''}</Text>
               </View>
             </View>
             {/* Vehicle & Employee stacked */}
             <View style={{backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, gap: 2}}>
-              <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>108693</Text>
-              <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>772</Text>
+              <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
+              <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{driver?.driver_code || '-'}</Text>
             </View>
             {/* Sync pill */}
             <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12}}>
@@ -409,13 +521,13 @@ export default function DashboardScreen({navigation}: Props) {
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12}}>
                       <MaterialIcons name="wb-sunny" size={16} color={c.textOnPrimary} />
                       <View>
-                        <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>26-SCARBOROUGH R/M</Text>
-                        <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>10C CLEAR SKY</Text>
+                        <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                        <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{currentTicket?.location_name || ''}</Text>
                       </View>
                     </View>
                     <View style={{backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, gap: 2}}>
-                      <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>108693</Text>
-                      <Text style={{fontSize: 9, fontWeight: '500', color: c.textOnDark60}}>772</Text>
+                      <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
+                      <Text style={{fontSize: 9, fontWeight: '500', color: c.textOnDark60}}>{driver?.driver_code || '-'}</Text>
                     </View>
                   </>
                 )}
@@ -440,13 +552,13 @@ export default function DashboardScreen({navigation}: Props) {
             </View>
             {!L && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-                {TICKETS.map((ticket, i) => {
-                  const active = activeTicket === i;
+                {tickets.map((ticket, i) => {
+                  const isActive = activeTicket === i;
                   return (
-                    <View key={ticket} style={[styles.tab, {borderColor: c.overlay15, backgroundColor: i === 0 ? c.accent : c.primaryLight}]}>
-                      {active && <View style={[styles.tabDot, {backgroundColor: c.textOnPrimary}]} />}
-                      <Text style={[styles.tabText, {color: active ? c.textOnPrimary : c.textOnDark70}]}>{ticket}</Text>
-                    </View>
+                    <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, {borderColor: c.overlay15, backgroundColor: isActive ? c.accent : c.primaryLight}]}>
+                      {isActive && <View style={[styles.tabDot, {backgroundColor: c.textOnPrimary}]} />}
+                      <Text style={[styles.tabText, {color: isActive ? c.textOnPrimary : c.textOnDark70}]}>{ticket.ticket_code}</Text>
+                    </TouchableOpacity>
                   );
                 })}
               </ScrollView>
@@ -460,12 +572,12 @@ export default function DashboardScreen({navigation}: Props) {
         <View style={{backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10)}}>
           <MaterialIcons name="wb-sunny" size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
           <View style={{flex: 1}}>
-            <Text style={{fontSize: ms(isTablet ? 13 : 12), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3}}>26-SCARBOROUGH R/M</Text>
-            <Text style={{fontSize: ms(isTablet ? 11 : 10), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85}}>10C CLEAR SKY</Text>
+            <Text style={{fontSize: ms(isTablet ? 13 : 12), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+            <Text style={{fontSize: ms(isTablet ? 11 : 10), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85}}>{currentTicket?.location_name || ''}</Text>
           </View>
           <View style={{backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(4), paddingHorizontal: wp(8), borderRadius: wp(8), gap: wp(2)}}>
-            <Text style={{fontSize: ms(11), fontWeight: '700', color: c.textOnPrimary}}>108693</Text>
-            <Text style={{fontSize: ms(10), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85}}>772</Text>
+            <Text style={{fontSize: ms(11), fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
+            <Text style={{fontSize: ms(10), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85}}>{driver?.driver_code || '-'}</Text>
           </View>
         </View>
       )}
@@ -489,9 +601,9 @@ export default function DashboardScreen({navigation}: Props) {
             {/* Row 1: KPI items + status badges */}
             <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 5}}>
               {[
-                {icon: 'receipt-long', val: '26209538', label: t('dashboard.ticket'), color: c.primary},
-                {icon: 'tag', val: '2605', label: t('dashboard.order'), color: c.primaryDark},
-                {icon: 'local-shipping', val: '108693', label: 'TRUCK', color: c.primary},
+                {icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary},
+                {icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark},
+                {icon: 'local-shipping', val: currentTicket?.truck_code || '-', label: 'TRUCK', color: c.primary},
               ].map((kpi, i, arr) => (
                 <React.Fragment key={kpi.label}>
                   <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5, paddingVertical: lt ? 5 : 4, paddingHorizontal: lt ? 6 : 4}}>
@@ -505,22 +617,30 @@ export default function DashboardScreen({navigation}: Props) {
                 </React.Fragment>
               ))}
               <View style={{flex: 1}} />
-              <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />
-                <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.successDark}}>{t('dashboard.active')}</Text>
-              </View>
-              <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                <MaterialIcons name="warning" size={lt ? 13 : 11} color={c.warningDark} />
-                <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.warningDark}}>{t('dashboard.onAccount')}</Text>
-              </View>
+              {currentTicket?.active ? (
+                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                  <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />
+                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.successDark}}>{t('dashboard.active')}</Text>
+                </View>
+              ) : (
+                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                  <MaterialIcons name="warning" size={lt ? 13 : 11} color={c.warningDark} />
+                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.warningDark}}>{t('dashboard.inactive')}</Text>
+                </View>
+              )}
+              {currentTicket != null ? (
+                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.primarySurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.primary}}>{STATUS_MAP[currentTicket.current_status] ?? currentTicket.current_status}</Text>
+                </View>
+              ) : null}
             </View>
             {/* Row 2: Ticket chips */}
             <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? 6 : 4, paddingTop: lt ? 6 : 4}}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5}}>
-                {TICKETS.map((ticket, i) => (
-                  <View key={ticket} style={{paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 8 : 6, backgroundColor: i === 0 ? c.accent : c.primaryLight}}>
-                    <Text style={{fontSize: lt ? 12 : 10, fontWeight: '700', color: c.textOnPrimary}} numberOfLines={1}>{ticket}</Text>
-                  </View>
+                {tickets.map((ticket, i) => (
+                  <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 8 : 6, backgroundColor: activeTicket === i ? c.accent : c.primaryLight}}>
+                    <Text style={{fontSize: lt ? 12 : 10, fontWeight: '700', color: c.textOnPrimary}} numberOfLines={1}>{ticket.ticket_code}</Text>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
@@ -531,9 +651,9 @@ export default function DashboardScreen({navigation}: Props) {
             <FadeCard delay={0} style={[cs.card, {padding: wp(10), marginBottom: wp(8)}]}>
               <View style={styles.kpiRow}>
                 {[
-                  {icon: 'receipt-long', val: '26209538', label: t('dashboard.ticket'), color: c.primary},
-                  {icon: 'tag', val: '2605', label: t('dashboard.order'), color: c.primaryDark},
-                  {icon: 'local-shipping', val: '108693', label: 'TRUCK', color: c.primary},
+                  {icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary},
+                  {icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark},
+                  {icon: 'local-shipping', val: currentTicket?.truck_code || '-', label: 'TRUCK', color: c.primary},
                 ].map((kpi, i, arr) => (
                   <React.Fragment key={kpi.label}>
                     <View style={styles.kpiItem}>
@@ -550,40 +670,55 @@ export default function DashboardScreen({navigation}: Props) {
                 ))}
               </View>
               <View style={[styles.chipRow, {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: wp(8), paddingTop: wp(8)}]}>
-                <View style={[styles.statusChip, {backgroundColor: c.successSurface}]}>
-                  <View style={[styles.chipDot, {backgroundColor: c.success}]} />
-                  <Text style={[styles.chipLabel, {color: c.successDark}]}>{t('dashboard.active')}</Text>
-                </View>
-                <View style={[styles.statusChip, {backgroundColor: c.warningSurface}]}>
-                  <MaterialIcons name="warning" size={ms(11)} color={c.warningDark} />
-                  <Text style={[styles.chipLabel, {color: c.warningDark}]}>{t('dashboard.onAccount')}</Text>
-                </View>
+                {currentTicket?.active ? (
+                  <View style={[styles.statusChip, {backgroundColor: c.successSurface}]}>
+                    <View style={[styles.chipDot, {backgroundColor: c.success}]} />
+                    <Text style={[styles.chipLabel, {color: c.successDark}]}>{t('dashboard.active')}</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.statusChip, {backgroundColor: c.warningSurface}]}>
+                    <MaterialIcons name="warning" size={ms(11)} color={c.warningDark} />
+                    <Text style={[styles.chipLabel, {color: c.warningDark}]}>{t('dashboard.inactive')}</Text>
+                  </View>
+                )}
+                {currentTicket != null ? (
+                  <View style={[styles.statusChip, {backgroundColor: c.primarySurface}]}>
+                    <Text style={[styles.chipLabel, {color: c.primary}]}>{STATUS_MAP[currentTicket.current_status] ?? currentTicket.current_status}</Text>
+                  </View>
+                ) : null}
               </View>
             </FadeCard>
           </>
         )}
 
+        {/* Detail loading indicator */}
+        {detailLoading && (
+          <View style={{paddingVertical: wp(12), alignItems: 'center'}}>
+            <ActivityIndicator size="small" color={c.primary} />
+          </View>
+        )}
+
         {/* Delivery Progress */}
-        <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 8 : 6}, {marginBottom: lt ? 8 : L ? 4 : wp(8)}]}>
+        {!detailLoading && <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 8 : 6}, {marginBottom: lt ? 8 : L ? 4 : wp(8)}]}>
           <View style={[styles.secHeader, {borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4)}, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
             <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 22 : 18, height: lt ? 22 : 18, borderRadius: lt ? 7 : 6}]}>
               <MaterialIcons name="timeline" size={lt ? 13 : L ? 11 : ms(13)} color={c.textOnPrimary} />
             </View>
             <Text style={[styles.secTitle, {color: c.textPrimary, fontSize: ms(12)}, L && {fontSize: lt ? 13 : 11}]}>{t('dashboard.deliveryProgress')}</Text>
             <View style={[styles.countBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}, L && {paddingHorizontal: lt ? 7 : 5, paddingVertical: lt ? 2 : 1, borderRadius: lt ? 6 : 5}]}>
-              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 10 : 8}]}>{doneCount}/{TIMELINE.length}</Text>
+              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 10 : 8}]}>{doneCount}/{timeline.length}</Text>
             </View>
           </View>
 
           {/* Steps */}
           {L ? (
             <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingTop: 2, paddingBottom: 1, marginHorizontal: 4}}>
-              {TIMELINE.map((item, i) => {
-                const isActive = item.done && (i === TIMELINE.length - 1 || !TIMELINE[i + 1].done);
+              {timeline.map((item, i) => {
+                const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
                 const isFirst = i === 0;
-                const isLast = i === TIMELINE.length - 1;
+                const isLast = i === timeline.length - 1;
                 const dotSz = lt ? (isActive ? 20 : 16) : (isActive ? 16 : 12);
-                const lineDone = item.done && !isLast && TIMELINE[i + 1]?.done;
+                const lineDone = item.done && !isLast && timeline[i + 1]?.done;
                 return (
                   <View key={item.labelKey} style={{alignItems: 'center', flex: 1, overflow: 'visible'}}>
                     <View style={{flexDirection: 'row', alignItems: 'center', height: lt ? 22 : 16, width: '100%'}}>
@@ -611,12 +746,12 @@ export default function DashboardScreen({navigation}: Props) {
             </View>
           ) : (
             <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(2), paddingBottom: wp(1)}}>
-              {TIMELINE.map((item, i) => {
-                const isActive = item.done && (i === TIMELINE.length - 1 || !TIMELINE[i + 1].done);
+              {timeline.map((item, i) => {
+                const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
                 const isFirst = i === 0;
-                const isLast = i === TIMELINE.length - 1;
+                const isLast = i === timeline.length - 1;
                 const dotSz = isActive ? 14 : 10;
-                const lineDone = item.done && !isLast && TIMELINE[i + 1]?.done;
+                const lineDone = item.done && !isLast && timeline[i + 1]?.done;
                 return (
                   <View key={item.labelKey} style={{alignItems: 'center', flex: 1}}>
                     <View style={{flexDirection: 'row', alignItems: 'center', height: 16, width: '100%'}}>
@@ -643,18 +778,18 @@ export default function DashboardScreen({navigation}: Props) {
               })}
             </View>
           )}
-        </FadeCard>
+        </FadeCard>}
 
         {/* Job + Mix Cards */}
-        <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 8 : 5}]}>
+        {!detailLoading && <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 8 : 5}]}>
           {/* Job Details */}
           <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
             <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
               <MaterialIcons name="work" size={lt ? 16 : L ? 14 : ms(16)} color={c.accent} />
               <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.jobDetails')}</Text>
             </View>
-            {JOB_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 3}, i < JOB_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
+            {jobInfo.map((item, i) => (
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 3}, i < jobInfo.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
                 <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isMap ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => openAddressInMaps(item.value)} style={common.flex1}>
@@ -673,8 +808,8 @@ export default function DashboardScreen({navigation}: Props) {
               <MaterialIcons name="science" size={lt ? 16 : L ? 14 : ms(16)} color={c.primary} />
               <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.mixDetails')}</Text>
             </View>
-            {MIX_INFO.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 2}, i < MIX_INFO.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
+            {mixInfo.map((item, i) => (
+              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 2}, i < mixInfo.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
                 <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isHighlight ? (
                   <View style={[styles.slumpPillInline, {backgroundColor: c.warningSurface, borderColor: c.warningBorder}]}>
@@ -694,7 +829,7 @@ export default function DashboardScreen({navigation}: Props) {
               </View>
             ))}
           </FadeCard>
-        </View>
+        </View>}
 
         <View style={{height: L ? wp(4) : wp(14)}} />
         </View>
@@ -764,30 +899,32 @@ export default function DashboardScreen({navigation}: Props) {
                 <MaterialIcons name="person" size={ms(18)} color={c.primary} />
               </View>
               <View style={common.flex1}>
-                <Text style={[styles.ddName, {color: c.textPrimary}]}>Driver 772</Text>
+                <Text style={[styles.ddName, {color: c.textPrimary}]}>{driver?.driver_name || `Driver ${driver?.driver_code || ''}`}</Text>
                 <Text style={[styles.ddSub, {color: c.textMuted}]}>ACME Ready-Mix</Text>
               </View>
             </View>
 
             {/* Menu Items */}
-            {MENU_ITEMS.map((item, i) => {
+            {MENU_ITEMS_BASE.map((item, i) => {
               const isWarn = item.color === 'warn';
               const iconColor = isWarn ? c.error : c.textSecondary;
               const labelColor = isWarn ? c.error : c.textPrimary;
               const bgColor = isWarn ? c.errorSurface : c.surface;
+              const label = t(item.labelKey);
+              const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
               return (
                 <TouchableOpacity
-                  key={item.label}
+                  key={item.actionKey}
                   style={[
                     styles.ddItem,
-                    i < MENU_ITEMS.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight},
+                    i < MENU_ITEMS_BASE.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight},
                   ]}
                   activeOpacity={0.6}
-                  onPress={closeMenu}>
+                  onPress={() => handleMenuItemPress(item.actionKey)}>
                   <View style={[styles.ddIcon, {backgroundColor: bgColor}]}>
                     <MaterialIcons name={item.icon as any} size={ms(18)} color={iconColor} />
                   </View>
-                  <Text style={[styles.ddLabel, {color: labelColor}]}>{item.label}</Text>
+                  <Text style={[styles.ddLabel, {color: labelColor}]}>{label}{suffix}</Text>
                   <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
                 </TouchableOpacity>
               );
@@ -830,27 +967,27 @@ export default function DashboardScreen({navigation}: Props) {
                 <View style={{flexDirection: 'row', gap: wp(6)}}>
                   <View style={{flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12'}}>
                     <Text style={{fontSize: ms(8), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80'}}>ORDER</Text>
-                    <Text style={{fontSize: ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1}}>2605</Text>
+                    <Text style={{fontSize: ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1}}>{currentTicket?.order_code || '-'}</Text>
                   </View>
                   <View style={{flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12'}}>
                     <Text style={{fontSize: ms(8), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80'}}>TICKET</Text>
-                    <Text style={{fontSize: ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1}}>26209538</Text>
+                    <Text style={{fontSize: ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1}}>{currentTicket?.ticket_code || '-'}</Text>
                   </View>
                 </View>
                 <View style={{gap: wp(3)}}>
                   <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
                     <MaterialIcons name="local-shipping" size={ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{fontSize: ms(10), fontWeight: '600', color: c.qrFg + '60'}}>TRUCK 108693 · DRIVER 109003</Text>
+                    <Text style={{fontSize: ms(10), fontWeight: '600', color: c.qrFg + '60'}}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
                   </View>
                   <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
                     <MaterialIcons name="factory" size={ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{fontSize: ms(10), fontWeight: '600', color: c.qrFg + '60'}}>26-SCARBOROUGH R/M</Text>
+                    <Text style={{fontSize: ms(10), fontWeight: '600', color: c.qrFg + '60'}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
                   </View>
                 </View>
               </View>
               <View style={[styles.qrCodeCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
                 <QRCode
-                  value="ORDER:2605|TICKET:26209538|TRUCK:108693|DRIVER:109003|PLANT:26-SCARBOROUGH"
+                  value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
                   size={Math.round(Math.min(Math.max(winHeight - insets.top - insets.bottom - 100, 110), 180))}
                   backgroundColor={c.white}
                   color={c.qrFg}
@@ -866,17 +1003,17 @@ export default function DashboardScreen({navigation}: Props) {
               <View style={styles.qrChipRow}>
                 <View style={[styles.qrChip, {backgroundColor: c.qrFg + '12'}]}>
                   <Text style={[styles.qrChipLabel, {color: c.qrFg + '80'}]}>ORDER</Text>
-                  <Text style={[styles.qrChipValue, {color: c.qrFg}]}>2605</Text>
+                  <Text style={[styles.qrChipValue, {color: c.qrFg}]}>{currentTicket?.order_code || '-'}</Text>
                 </View>
                 <View style={[styles.qrChip, {backgroundColor: c.qrFg + '12'}]}>
                   <Text style={[styles.qrChipLabel, {color: c.qrFg + '80'}]}>TICKET</Text>
-                  <Text style={[styles.qrChipValue, {color: c.qrFg}]}>26209538</Text>
+                  <Text style={[styles.qrChipValue, {color: c.qrFg}]}>{currentTicket?.ticket_code || '-'}</Text>
                 </View>
               </View>
               <View style={styles.qrCodeSection}>
                 <View style={[styles.qrCodeCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
                   <QRCode
-                    value="ORDER:2605|TICKET:26209538|TRUCK:108693|DRIVER:109003|PLANT:26-SCARBOROUGH"
+                    value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
                     size={Math.round(Math.min(Math.max((width - insets.left - insets.right) * 0.45, 150), isTablet ? 260 : 200))}
                     backgroundColor={c.white}
                     color={c.qrFg}
@@ -886,11 +1023,11 @@ export default function DashboardScreen({navigation}: Props) {
               <View style={styles.qrFooter}>
                 <View style={[styles.qrFooterRow, {borderTopColor: c.qrFg + '12'}]}>
                   <MaterialIcons name="local-shipping" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70'}]}>TRUCK 108693 · DRIVER 109003</Text>
+                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70'}]}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
                 </View>
                 <View style={styles.qrFooterRow}>
                   <MaterialIcons name="factory" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70'}]}>26-SCARBOROUGH R/M</Text>
+                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70'}]}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
                 </View>
               </View>
             </ScrollView>
@@ -1009,15 +1146,53 @@ export default function DashboardScreen({navigation}: Props) {
             <Text style={[styles.pmColUnit, styles.pmTh, {color: c.textPrimary}]}>{t('productsModal.unit')}</Text>
           </View>
           {/* Table Rows */}
-          {MIX_PRODUCTS.map((row, i) => (
-            <View key={`${row.code}-${i}`} style={[styles.pmRow, {backgroundColor: i % 2 === 0 ? 'transparent' : c.surface, borderBottomColor: c.borderLight}]}>
-              <Text style={[styles.pmColCode, styles.pmTd, {color: c.textMuted}]}>{row.code}</Text>
-              <Text style={[styles.pmColDesc, styles.pmTd, {color: c.textPrimary}]}>{row.desc}</Text>
-              <Text style={[styles.pmColQty, styles.pmTd, {color: c.textPrimary}]}>{row.qty}</Text>
-              <Text style={[styles.pmColUnit, styles.pmTd, {color: c.textMuted}]}>{row.unit}</Text>
-            </View>
-          ))}
+          <View style={{padding: wp(16), alignItems: 'center'}}>
+            <Text style={{color: c.textMuted, fontSize: ms(13)}}>{t('productsModal.noData', 'No product data available')}</Text>
+          </View>
         </ScrollView>
+      </ResponsiveModal>
+
+      {/* ─── LOGOUT CONFIRMATION MODAL ─── */}
+      <ResponsiveModal
+        visible={logoutType !== null}
+        onClose={() => setLogoutType(null)}
+        maxWidth={360}
+        widthPercent={isLandscape ? 40 : 80}>
+        <View style={{padding: wp(16), alignItems: 'center'}}>
+          <View style={[styles.logoutIconWrap, {backgroundColor: logoutType === 'tenant' ? c.errorSurface : c.warningSurface}]}>
+            <MaterialIcons
+              name={logoutType === 'tenant' ? 'domain-disabled' : 'person-off'}
+              size={ms(28)}
+              color={logoutType === 'tenant' ? c.error : c.warningDark}
+            />
+          </View>
+          <Text style={[styles.logoutTitle, {color: c.textPrimary}]}>
+            {logoutType === 'tenant' ? t('logout.tenantTitle') : t('logout.driverTitle')}
+          </Text>
+          <Text style={[styles.logoutMessage, {color: c.textSecondary}]}>
+            {logoutType === 'tenant' ? t('logout.tenantMessage') : t('logout.driverMessage')}
+          </Text>
+          <View style={styles.logoutButtons}>
+            <TouchableOpacity
+              style={[styles.logoutBtn, {backgroundColor: c.surface, borderWidth: 1, borderColor: c.border}]}
+              onPress={() => setLogoutType(null)}
+              activeOpacity={0.7}
+              disabled={loggingOut}>
+              <Text style={[styles.logoutBtnText, {color: c.textPrimary}]}>{t('logout.cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.logoutBtn, {backgroundColor: logoutType === 'tenant' ? c.error : c.warningDark}, loggingOut && {opacity: 0.7}]}
+              onPress={handleLogoutConfirm}
+              activeOpacity={0.7}
+              disabled={loggingOut}>
+              {loggingOut ? (
+                <ActivityIndicator size="small" color={c.textOnPrimary} />
+              ) : (
+                <Text style={[styles.logoutBtnText, {color: c.textOnPrimary}]}>{t('logout.confirm')}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       </ResponsiveModal>
 
     </View>
@@ -1138,4 +1313,12 @@ const styles = StyleSheet.create({
   pmColUnit: {width: wp(35), textAlign: 'center'},
   pmTh: {fontSize: ms(11), fontWeight: '900', letterSpacing: 0.5},
   pmTd: {fontSize: ms(12), fontWeight: '500'},
+
+  // Logout confirmation modal
+  logoutIconWrap: {width: wp(48), height: wp(48), borderRadius: wp(24), justifyContent: 'center', alignItems: 'center', marginBottom: wp(10)},
+  logoutTitle: {fontSize: ms(17), fontWeight: '700', marginBottom: wp(4)},
+  logoutMessage: {fontSize: ms(12), fontWeight: '400', textAlign: 'center', lineHeight: ms(17), marginBottom: wp(14)},
+  logoutButtons: {flexDirection: 'row', gap: wp(8), width: '100%'},
+  logoutBtn: {flex: 1, paddingVertical: wp(10), borderRadius: wp(10), alignItems: 'center', justifyContent: 'center'},
+  logoutBtnText: {fontSize: ms(14), fontWeight: '600'},
 });

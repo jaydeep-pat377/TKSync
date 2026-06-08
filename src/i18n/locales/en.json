@@ -13,6 +13,9 @@
     "serverUrl": "Server URL",
     "serverUrlPlaceholder": "https://yourserver.com (optional)",
     "connect": "Connect",
+    "connecting": "Connecting...",
+    "errorEmpty": "Please enter a company code",
+    "errorNetwork": "Network error. Please try again.",
     "alreadyConnected": "Already connected?",
     "driverLogin": "Driver Login"
   },
@@ -25,6 +28,9 @@
     "driverPin": "Employee ID",
     "driverPinPlaceholder": "Enter employee ID",
     "signIn": "Sign In",
+    "signingIn": "Signing In...",
+    "errorEmpty": "Please enter vehicle ID and employee ID",
+    "errorNetwork": "Network error. Please try again.",
     "switchCompany": "Wrong company?",
     "companyLogin": "Switch Company"
   },
@@ -44,10 +50,11 @@
     "ticket": "TICKET",
     "order": "ORDER",
     "active": "ACTIVE",
+    "inactive": "INACTIVE",
     "onAccount": "ON ACCOUNT",
     "deliveryProgress": "Delivery Progress",
     "jobDetails": "Job Details",
-    "mixDetails": "Mix Details",
+    "mixDetails": "Order Details",
     "lastSyncedAt": "Last synced at {{time}}",
     "syncNow": "Sync Now"
   },
@@ -70,6 +77,7 @@
     "title": "Order Info",
     "timeDue": "TIME DUE",
     "deliveredTo": "DELIVERED TO",
+    "plant": "PLANT",
     "lotBlock": "LOT / BLOCK",
     "instructions": "INSTRUCTIONS",
     "quantity": "QUANTITY",
@@ -80,7 +88,14 @@
     "mixId": "MIXID",
     "description": "DESCRIPTION",
     "usage": "USAGE",
-    "slump": "SLUMP"
+    "slump": "SLUMP",
+    "order": "ORDER",
+    "status": "STATUS",
+    "payment": "PAYMENT",
+    "amount": "AMOUNT",
+    "tax": "TAX",
+    "total": "TOTAL",
+    "truck": "TRUCK"
   },
   "actions": {
     "notes": "Notes",
@@ -89,13 +104,29 @@
     "truck": "Truck",
     "qr": "QR"
   },
+  "menu": {
+    "vehicle": "Vehicle",
+    "logoutDriver": "Logout Driver",
+    "logoutTenant": "Logout Tenant",
+    "language": "Language",
+    "about": "About"
+  },
+  "logout": {
+    "driverTitle": "Logout Driver",
+    "driverMessage": "Are you sure you want to logout as driver? You will return to the driver login screen.",
+    "tenantTitle": "Logout Tenant",
+    "tenantMessage": "Are you sure you want to logout from the company? All session data will be cleared.",
+    "cancel": "Cancel",
+    "confirm": "Logout"
+  },
   "productsModal": {
     "title": "Products",
     "subtitle": "Mix Details",
     "code": "CODE",
     "description": "DESCRIPTION",
     "qty": "QTY",
-    "unit": "UNIT"
+    "unit": "UNIT",
+    "noData": "No product data available"
   },
   "modals": {
     "plants": "PLANTS",

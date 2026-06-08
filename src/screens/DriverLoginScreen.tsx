@@ -17,6 +17,8 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
+import {useAuth} from '../contexts/AuthContext';
+import {ApiError} from '../services/api';
 import {wp, ms} from '../utils/responsive';
 
 type Props = {
@@ -26,8 +28,11 @@ type Props = {
 export default function DriverLoginScreen({navigation}: Props) {
   const [truckNumber, setTruckNumber] = useState('');
   const [driverPin, setDriverPin] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const {t} = useTranslation();
   const {c} = useTheme();
+  const {driverLogin, company} = useAuth();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const shortDim = Math.min(width, height);
@@ -46,8 +51,28 @@ export default function DriverLoginScreen({navigation}: Props) {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  const handleLogin = () => {
-    navigation.replace('Dashboard');
+  const handleLogin = async () => {
+    const truck = truckNumber.trim();
+    const pin = driverPin.trim();
+    if (!truck || !pin) {
+      setError(t('driverLogin.errorEmpty', 'Please enter truck number and driver PIN'));
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      await driverLogin(truck, pin);
+      navigation.replace('Dashboard');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError(t('driverLogin.errorNetwork', 'Network error. Please try again.'));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Fixed maxWidth caps (NOT scaled by wp())
@@ -123,7 +148,7 @@ export default function DriverLoginScreen({navigation}: Props) {
             </Text>
             <View style={[styles.companyBadge, {backgroundColor: c.textOnDark12}]}>
               <MaterialIcons name="check-circle" size={ms(12)} color={c.success} />
-              <Text style={[styles.companyBadgeText, {color: c.textOnDark70}]}>ACME Ready-Mix</Text>
+              <Text style={[styles.companyBadgeText, {color: c.textOnDark70}]}>{company?.company_name ?? ''}</Text>
             </View>
           </Animated.View>
 
@@ -232,6 +257,14 @@ export default function DriverLoginScreen({navigation}: Props) {
                 </View>
               </View>
 
+              {/* Error Message */}
+              {error ? (
+                <View style={[styles.errorBox, {backgroundColor: c.errorSurface, borderColor: c.error}]}>
+                  <MaterialIcons name="error-outline" size={ms(14)} color={c.error} />
+                  <Text style={[styles.errorText, {color: c.error || '#EF4444'}]}>{error}</Text>
+                </View>
+              ) : null}
+
               {/* Sign In Button */}
               <TouchableOpacity
                 style={[
@@ -239,13 +272,15 @@ export default function DriverLoginScreen({navigation}: Props) {
                   landscapePhone && {paddingVertical: wp(10), borderRadius: 10, marginTop: 4},
                   isTablet && {paddingVertical: 14, borderRadius: 12, marginTop: 6},
                   {backgroundColor: c.primary, shadowColor: c.primary},
+                  loading && {opacity: 0.7},
                 ]}
                 onPress={handleLogin}
-                activeOpacity={0.85}>
+                activeOpacity={0.85}
+                disabled={loading}>
                 <Text style={[styles.loginButtonText, isTablet && {fontSize: ms(14)}, {color: c.textOnPrimary}]}>
-                  {t('driverLogin.signIn')}
+                  {loading ? t('driverLogin.signingIn', 'Signing In...') : t('driverLogin.signIn')}
                 </Text>
-                <MaterialIcons name="arrow-forward" size={isTablet ? 22 : 20} color={c.textOnPrimary} />
+                {!loading && <MaterialIcons name="arrow-forward" size={isTablet ? 22 : 20} color={c.textOnPrimary} />}
               </TouchableOpacity>
 
               {/* Footer */}
@@ -285,6 +320,8 @@ const styles = StyleSheet.create({
   inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(12), borderWidth: 1.5},
   inputIconBox: {width: wp(40), height: wp(40), justifyContent: 'center', alignItems: 'center', marginLeft: wp(4)},
   input: {flex: 1, paddingVertical: wp(12), fontSize: ms(15), paddingRight: wp(14)},
+  errorBox: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(8), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(10)},
+  errorText: {fontSize: ms(12), fontWeight: '500', flex: 1},
   loginButton: {flexDirection: 'row', borderRadius: wp(12), paddingVertical: wp(14), alignItems: 'center', justifyContent: 'center', gap: wp(8), marginTop: wp(6), elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
   loginButtonText: {fontSize: ms(16), fontWeight: '700', letterSpacing: 0.5},
   footer: {flexDirection: 'row', alignItems: 'center', marginTop: wp(14), gap: wp(12)},
