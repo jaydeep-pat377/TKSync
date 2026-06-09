@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,8 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  useWindowDimensions,
   Animated,
+  type LayoutChangeEvent,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -29,11 +29,14 @@ export default function CompanyLoginScreen({navigation}: Props) {
   const [companyCode, setCompanyCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [layout, setLayout] = useState<{width: number; height: number} | null>(null);
   const {t} = useTranslation();
   const {c} = useTheme();
   const {companyLogin, isCompanyLoggedIn, isDriverLoggedIn} = useAuth();
   const insets = useSafeAreaInsets();
-  const {width, height} = useWindowDimensions();
+
+  const width = layout?.width ?? 0;
+  const height = layout?.height ?? 0;
   const shortDim = Math.min(width, height);
   const isTablet = shortDim > 600;
   const isLandscape = width > height;
@@ -42,6 +45,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const animStarted = useRef(false);
 
   useEffect(() => {
     if (isDriverLoggedIn) {
@@ -51,11 +55,16 @@ export default function CompanyLoginScreen({navigation}: Props) {
     }
   }, [isCompanyLoggedIn, isDriverLoggedIn, navigation]);
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {toValue: 1, duration: 600, useNativeDriver: true}),
-      Animated.spring(slideAnim, {toValue: 0, friction: 8, tension: 50, useNativeDriver: true}),
-    ]).start();
+  const onRootLayout = useCallback((e: LayoutChangeEvent) => {
+    const {width: w, height: h} = e.nativeEvent.layout;
+    setLayout({width: w, height: h});
+    if (!animStarted.current) {
+      animStarted.current = true;
+      Animated.parallel([
+        Animated.timing(fadeAnim, {toValue: 1, duration: 600, useNativeDriver: true}),
+        Animated.spring(slideAnim, {toValue: 0, friction: 8, tension: 50, useNativeDriver: true}),
+      ]).start();
+    }
   }, [fadeAnim, slideAnim]);
 
   const handleConnect = async () => {
@@ -86,12 +95,13 @@ export default function CompanyLoginScreen({navigation}: Props) {
   const brandingMaxW = isTablet ? 360 : 280;
 
   return (
-    <View style={[styles.container, {backgroundColor: c.primaryDark}]}>
+    <View style={[styles.container, {backgroundColor: c.primaryDark}]} onLayout={onRootLayout}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
       <View style={[styles.bgTop, {backgroundColor: c.primary}]} />
       <View style={[styles.bgBottom, {backgroundColor: c.primaryDark}]} />
 
+      {!layout ? null : (
       <KeyboardAvoidingView
         style={styles.content}
         behavior="padding"
@@ -262,6 +272,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+      )}
     </View>
   );
 }
