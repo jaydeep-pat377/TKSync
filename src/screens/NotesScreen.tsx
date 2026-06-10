@@ -13,6 +13,7 @@ import {
   Platform,
   LayoutAnimation,
   UIManager,
+  ActivityIndicator,
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -21,14 +22,19 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {Colors} from '../constants/colors';
 import {common} from '../constants/commonStyles';
 import DateTimePicker from '../components/DateTimePicker';
 import ResponsiveModal from '../components/ResponsiveModal';
 import {wp, ms} from '../utils/responsive';
+import {ticketsApi, type DeliveryRecord} from '../services/api';
 
-type Props = {navigation: NativeStackNavigationProp<any>};
+type Props = {
+  navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<any>;
+};
 
 function formatPickerTime(date: Date | undefined): string {
   if (!date) return '';
@@ -245,6 +251,67 @@ function LineInput({width: w, placeholder, value, onPress, editable, keyboardTyp
       keyboardType={keyboardType}
       onChangeText={onChangeText}
     />
+  );
+}
+
+function SaveResultModal({visible, success, message, onClose}: {visible: boolean; success: boolean; message: string; onClose: () => void}) {
+  const {c} = useTheme();
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      scaleAnim.setValue(0.8);
+      opacityAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(scaleAnim, {toValue: 1, friction: 6, tension: 80, useNativeDriver: true}),
+        Animated.timing(opacityAnim, {toValue: 1, duration: 200, useNativeDriver: true}),
+      ]).start();
+    }
+  }, [visible, scaleAnim, opacityAnim]);
+
+  return (
+    <ResponsiveModal visible={visible} onClose={onClose} maxWidth={340} maxHeightPercent={50}>
+      <View style={{alignItems: 'center', paddingVertical: wp(24), paddingHorizontal: wp(20)}}>
+        <Animated.View style={{transform: [{scale: scaleAnim}], opacity: opacityAnim}}>
+          <View style={{
+            width: wp(52), height: wp(52), borderRadius: wp(26),
+            backgroundColor: success ? c.successSurface || (c.success + '20') : (c.error + '20'),
+            justifyContent: 'center', alignItems: 'center', marginBottom: wp(14),
+          }}>
+            <MaterialIcons
+              name={success ? 'check-circle' : 'error'}
+              size={ms(28)}
+              color={success ? c.success : c.error}
+            />
+          </View>
+        </Animated.View>
+        <Text style={{fontSize: ms(16), fontWeight: '800', color: c.textPrimary, marginBottom: wp(6), textAlign: 'center'}}>
+          {success ? 'Saved Successfully' : 'Save Failed'}
+        </Text>
+        <Text style={{fontSize: ms(12), fontWeight: '500', color: c.textSecondary, textAlign: 'center', lineHeight: ms(18)}}>
+          {message}
+        </Text>
+        <TouchableOpacity
+          style={{
+            marginTop: wp(18),
+            backgroundColor: success ? c.primary : c.error,
+            paddingVertical: wp(10),
+            paddingHorizontal: wp(30),
+            borderRadius: wp(10),
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: wp(6),
+          }}
+          activeOpacity={0.8}
+          onPress={onClose}>
+          <MaterialIcons name={success ? 'done' : 'close'} size={ms(16)} color={c.textOnPrimary} />
+          <Text style={{fontSize: ms(13), fontWeight: '700', color: c.textOnPrimary}}>
+            {success ? 'Done' : 'Dismiss'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ResponsiveModal>
   );
 }
 
@@ -490,8 +557,9 @@ const PRODUCTS_DATA = [
   {code: '9071', description: 'CHUTE WASHOUT', qty: '8.60', unit: '/m'},
 ];
 
-function ProductsModal({visible, onClose}: {visible: boolean; onClose: () => void}) {
+function ProductsModal({visible, onClose, products}: {visible: boolean; onClose: () => void; products?: {item_code: string; description: string; quantity: number | null; unit: string | null}[]}) {
   const {c} = useTheme();
+  const items = products && products.length > 0 ? products : PRODUCTS_DATA.map(p => ({item_code: p.code, description: p.description, quantity: parseFloat(p.qty), unit: p.unit}));
   return (
     <ResponsiveModal
       visible={visible}
@@ -509,20 +577,18 @@ function ProductsModal({visible, onClose}: {visible: boolean; onClose: () => voi
         </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={true} bounces={false} contentContainerStyle={{padding: wp(14)}}>
-        {/* Table Header */}
         <View style={st.tableHeader}>
           <Text style={[st.tableCellCode, {fontWeight: '900', color: c.textPrimary}]}>CODE</Text>
           <Text style={[st.tableCellDesc, {fontWeight: '900', color: c.textPrimary}]}>DESCRIPTION</Text>
           <Text style={[st.tableCellQty, {fontWeight: '900', color: c.textPrimary}]}>QTY</Text>
           <Text style={[st.tableCellUnit, {fontWeight: '900', color: c.textPrimary}]}>UNIT</Text>
         </View>
-        {/* Table Rows */}
-        {PRODUCTS_DATA.map(item => (
-          <View key={item.code} style={common.tableRow}>
-            <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}]}>{item.code}</Text>
+        {items.map(item => (
+          <View key={item.item_code} style={common.tableRow}>
+            <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}]}>{item.item_code}</Text>
             <Text style={[st.tableCellDesc, {fontWeight: '500', color: c.textPrimary}]}>{item.description}</Text>
-            <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}]}>{item.qty}</Text>
-            <Text style={[st.tableCellUnit, {fontWeight: '500', color: c.textPrimary}]}>{item.unit}</Text>
+            <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}]}>{item.quantity ?? '0'}</Text>
+            <Text style={[st.tableCellUnit, {fontWeight: '500', color: c.textPrimary}]}>{item.unit || '-'}</Text>
           </View>
         ))}
       </ScrollView>
@@ -734,29 +800,62 @@ const slumpSt = StyleSheet.create({
   customUnit: {fontSize: ms(10), fontWeight: '600', marginLeft: wp(5)},
 });
 
-function PlantTab() {
+function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
-  const [slumpFromPlant, setSlumpFromPlant] = useState('20');
+  const p = data?.plant;
+  const [saving, setSaving] = useState(false);
+  const handleSavePlant = async () => {
+    if (!ticketId) return;
+    setSaving(true);
+    setSavingOverlay?.(true);
+    try {
+      await ticketsApi.saveDeliveryTab(ticketId, 'plant', {
+        slump_from_plant: slumpFromPlant !== '' ? Number(slumpFromPlant) : null,
+        slump_to_job: slumpToJob !== '' ? Number(slumpToJob) : null,
+        temp_at_plant: tempAtPlant !== '' ? Number(tempAtPlant) : null,
+        water_added_full: waterLitres,
+        water_reason: waterReason || null,
+        truck_start: truckStart ? truckStart.toISOString() : null,
+        truck_end: truckEnd ? truckEnd.toISOString() : null,
+        hand_added: handAdded,
+        nitrogen_added: nitrogenAdded,
+        fibers_added: fibersAdded,
+        load_tested: loadTested === 'yes' ? true : loadTested === 'no' ? false : null,
+        notes: plantNotes || null,
+      });
+      await refreshRecord?.();
+      onSaveResult?.(true, 'Plant data has been saved successfully.');
+    } catch (err: any) {
+      onSaveResult?.(false, err.message || 'Failed to save plant data.');
+    } finally {
+      setSaving(false);
+      setSavingOverlay?.(false);
+    }
+  };
+  const [slumpFromPlant, setSlumpFromPlant] = useState(p?.slump_from_plant != null ? String(p.slump_from_plant) : '');
   const [slumpPickerVisible, setSlumpPickerVisible] = useState(false);
-  const [slumpToJob, setSlumpToJob] = useState('140');
+  const [slumpToJob, setSlumpToJob] = useState(p?.slump_to_job != null ? String(p.slump_to_job) : '');
   const [slumpToJobPickerVisible, setSlumpToJobPickerVisible] = useState(false);
-  const [waterLitres, setWaterLitres] = useState(0);
-  const [waterReason, setWaterReason] = useState('');
+  const [waterLitres, setWaterLitres] = useState(p?.water_added_full ?? 0);
+  const [waterReason, setWaterReason] = useState(p?.water_reason || '');
   const [reasonModalVisible, setReasonModalVisible] = useState(false);
   const [productsModalVisible, setProductsModalVisible] = useState(false);
-  const [handAdded, setHandAdded] = useState(false);
-  const [nitrogenAdded, setNitrogenAdded] = useState(false);
-  const [fibersAdded, setFibersAdded] = useState(false);
-  const [loadTested, setLoadTested] = useState<'yes' | 'no' | null>(null);
+  const [handAdded, setHandAdded] = useState(p?.hand_added ?? false);
+  const [nitrogenAdded, setNitrogenAdded] = useState(p?.nitrogen_added ?? false);
+  const [fibersAdded, setFibersAdded] = useState(p?.fibers_added ?? false);
+  const [loadTested, setLoadTested] = useState<'yes' | 'no' | null>(p?.load_tested === true ? 'yes' : p?.load_tested === false ? 'no' : null);
   const [loadTemp, setLoadTemp] = useState(0);
   const [loadAir, setLoadAir] = useState(0);
   const [loadSlump, setLoadSlump] = useState('');
   const [loadSlumpPickerVisible, setLoadSlumpPickerVisible] = useState(false);
   const [loadCylinders, setLoadCylinders] = useState(0);
-  const [truckStart, setTruckStart] = useState<Date | undefined>();
-  const [truckEnd, setTruckEnd] = useState<Date | undefined>();
+  const [truckStart, setTruckStart] = useState<Date | undefined>(p?.truck_start ? new Date(p.truck_start) : undefined);
+  const [truckEnd, setTruckEnd] = useState<Date | undefined>(p?.truck_end ? new Date(p.truck_end) : undefined);
   const [truckPickerField, setTruckPickerField] = useState<'start' | 'end' | null>(null);
   const [truckPickerVisible, setTruckPickerVisible] = useState(false);
+  const [plantNotes, setPlantNotes] = useState(p?.notes || '');
+  const [tempAtPlant, setTempAtPlant] = useState(p?.temp_at_plant != null ? String(p.temp_at_plant) : '');
+
   const plantScrollRef = useRef<ScrollView>(null);
   const plantTestAnim = useRef(new Animated.Value(0)).current;
   const {width: _pw, height: _ph} = useWindowDimensions();
@@ -777,7 +876,7 @@ function PlantTab() {
   if (_pw > _ph) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
-        <View style={ls.topBar}><LSaveButton /></View>
+        <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSavePlant} /></View>
         <View style={ls.columns}>
           <LCard title="Mix Properties" icon="science">
             <LField label="SLUMP FROM PLANT">
@@ -809,7 +908,7 @@ function PlantTab() {
               <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
             </LField>
             <LField label="TEMP AT PLANT">
-              <LineInput width={100} placeholder="Temperature" keyboardType="numeric" />
+              <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
               <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
             </LField>
           </LCard>
@@ -871,6 +970,8 @@ function PlantTab() {
                 multiline
                 placeholderTextColor={c.textMuted}
                 placeholder="Enter plant notes..."
+                value={plantNotes}
+                onChangeText={setPlantNotes}
                 textAlignVertical="top"
               />
             </View>
@@ -880,14 +981,14 @@ function PlantTab() {
         <SlumpPickerModal visible={loadSlumpPickerVisible} value={loadSlump} title="Load Slump" onConfirm={(val) => { setLoadSlump(val); setLoadSlumpPickerVisible(false); }} onClose={() => setLoadSlumpPickerVisible(false)} />
         <SlumpPickerModal visible={slumpToJobPickerVisible} value={slumpToJob} title="Slump To Job" onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }} onClose={() => setSlumpToJobPickerVisible(false)} />
         <ReasonListModal visible={reasonModalVisible} onSelect={setWaterReason} onClose={() => setReasonModalVisible(false)} />
-        <ProductsModal visible={productsModalVisible} onClose={() => setProductsModalVisible(false)} />
+        <ProductsModal visible={productsModalVisible} onClose={() => setProductsModalVisible(false)} products={p?.products} />
         <DateTimePicker visible={truckPickerVisible} value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()} onConfirm={(date) => { if (truckPickerField === 'start') {setTruckStart(date);} else if (truckPickerField === 'end') {setTruckEnd(date);} setTruckPickerVisible(false); }} onCancel={() => setTruckPickerVisible(false)} />
       </View>
     );
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton />
+      <SaveButton disabled={saving} onPress={handleSavePlant} />
       <CardsGrid>
       <FieldCard title="Mix Properties" icon="science">
       <Field label="SLUMP FROM PLANT">
@@ -919,7 +1020,7 @@ function PlantTab() {
         <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
       </Field>
       <Field label="TEMP AT PLANT">
-        <LineInput width={100} placeholder="Temperature" keyboardType="numeric" />
+        <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
         <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
       </Field>
       </FieldCard>
@@ -980,7 +1081,7 @@ function PlantTab() {
       </FieldCard>
       <FieldCard title="Plant Notes" icon="edit-note" fullWidth>
       <Field label="NOTES" wide>
-        <NoteInput placeholder="Enter plant notes..." />
+        <NoteInput placeholder="Enter plant notes..." value={plantNotes} onChangeText={setPlantNotes} />
       </Field>
       </FieldCard>
       </CardsGrid>
@@ -1013,6 +1114,7 @@ function PlantTab() {
       <ProductsModal
         visible={productsModalVisible}
         onClose={() => setProductsModalVisible(false)}
+        products={p?.products}
       />
       <DateTimePicker
         visible={truckPickerVisible}
@@ -1029,27 +1131,69 @@ function PlantTab() {
 }
 
 // ─── JOBSITE TAB ───
-function JobsiteTab() {
+function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
-  const [fullLoadLitres, setFullLoadLitres] = useState(0);
-  const [fullLoadReason, setFullLoadReason] = useState('');
+  const j = data?.jobsite;
+  const [saving, setSaving] = useState(false);
+  const handleSaveJobsite = async () => {
+    if (!ticketId) return;
+    setSaving(true);
+    setSavingOverlay?.(true);
+    try {
+      await ticketsApi.saveDeliveryTab(ticketId, 'jobsite', {
+        full_load_litres: fullLoadLitres,
+        full_load_reason: fullLoadReason || null,
+        full_load_mm: fullLoadMm !== '' ? Number(fullLoadMm) : null,
+        customer_water_litres: custWaterLitres,
+        customer_water_mm: custWaterMm !== '' ? Number(custWaterMm) : null,
+        maintenance_water_litres: maintWaterLitres,
+        maintenance_water_mm: maintWaterMm !== '' ? Number(maintWaterMm) : null,
+        super_plasticizer: addedValues['SUPER PLASTICIZER'] || null,
+        conveyor: addedValues['CONVEYOR (IF NOT ON TICKET)'] || null,
+        color: addedValues['COLOR'] || null,
+        fiber: addedValues['FIBER'] || null,
+        other: addedValues['Other'] || null,
+        conveyor_ordered_not_used: conveyorOrdered,
+        unloaded_conveyor: unloadedConveyor,
+        load_disputed: loadDisputed,
+        washout_area: washoutArea || null,
+        load_tested: jobLoadTested === 'yes' ? true : jobLoadTested === 'no' ? false : null,
+        notes: jobsiteNotes || null,
+      });
+      await refreshRecord?.();
+      onSaveResult?.(true, 'Jobsite data has been saved successfully.');
+    } catch (err: any) {
+      onSaveResult?.(false, err.message || 'Failed to save jobsite data.');
+    } finally {
+      setSaving(false);
+      setSavingOverlay?.(false);
+    }
+  };
+  const [fullLoadLitres, setFullLoadLitres] = useState(j?.full_load_litres ?? 0);
+  const [fullLoadReason, setFullLoadReason] = useState(j?.full_load_reason || '');
   const [fullLoadReasonModal, setFullLoadReasonModal] = useState(false);
-  const [fullLoadMm, setFullLoadMm] = useState('');
-  const [custWaterLitres, setCustWaterLitres] = useState(0);
-  const [custWaterMm, setCustWaterMm] = useState('');
-  const [maintWaterLitres, setMaintWaterLitres] = useState(0);
-  const [maintWaterMm, setMaintWaterMm] = useState('');
+  const [fullLoadMm, setFullLoadMm] = useState(j?.full_load_mm != null ? String(j.full_load_mm) : '');
+  const [custWaterLitres, setCustWaterLitres] = useState(j?.customer_water_litres ?? 0);
+  const [custWaterMm, setCustWaterMm] = useState(j?.customer_water_mm != null ? String(j.customer_water_mm) : '');
+  const [maintWaterLitres, setMaintWaterLitres] = useState(j?.maintenance_water_litres ?? 0);
+  const [maintWaterMm, setMaintWaterMm] = useState(j?.maintenance_water_mm != null ? String(j.maintenance_water_mm) : '');
   const [mmModalField, setMmModalField] = useState<'fullLoad' | 'custWater' | 'maintWater' | null>(null);
-  const [addedValues, setAddedValues] = useState<Record<string, string>>({});
+  const [addedValues, setAddedValues] = useState<Record<string, string>>({
+    'SUPER PLASTICIZER': j?.super_plasticizer || '',
+    'CONVEYOR (IF NOT ON TICKET)': j?.conveyor || '',
+    'COLOR': j?.color || '',
+    'FIBER': j?.fiber || '',
+    'Other': j?.other || '',
+  });
   const [addedModalItem, setAddedModalItem] = useState<string | null>(null);
-  const [washoutArea, setWashoutArea] = useState('');
+  const [washoutArea, setWashoutArea] = useState(j?.washout_area || '');
   const [washoutModalVisible, setWashoutModalVisible] = useState(false);
-  const [jobsiteNotes, setJobsiteNotes] = useState('');
+  const [jobsiteNotes, setJobsiteNotes] = useState(j?.notes || '');
   const [jobsiteNotesModal, setJobsiteNotesModal] = useState(false);
-  const [conveyorOrdered, setConveyorOrdered] = useState(false);
-  const [unloadedConveyor, setUnloadedConveyor] = useState(false);
-  const [loadDisputed, setLoadDisputed] = useState(false);
-  const [jobLoadTested, setJobLoadTested] = useState<'yes' | 'no' | null>(null);
+  const [conveyorOrdered, setConveyorOrdered] = useState(j?.conveyor_ordered_not_used ?? false);
+  const [unloadedConveyor, setUnloadedConveyor] = useState(j?.unloaded_conveyor ?? false);
+  const [loadDisputed, setLoadDisputed] = useState(j?.load_disputed ?? false);
+  const [jobLoadTested, setJobLoadTested] = useState<'yes' | 'no' | null>(j?.load_tested === true ? 'yes' : j?.load_tested === false ? 'no' : null);
   const [jobLoadTemp, setJobLoadTemp] = useState(0);
   const [jobLoadAir, setJobLoadAir] = useState(0);
   const [jobLoadSlump, setJobLoadSlump] = useState('');
@@ -1059,6 +1203,8 @@ function JobsiteTab() {
   const jobTestAnim = useRef(new Animated.Value(0)).current;
   const {width: _jw, height: _jh} = useWindowDimensions();
   const _jLand = _jw > _jh;
+
+
   const handleJobLoadTested = useCallback((val: 'yes' | 'no') => {
     if (val === 'yes') {
       if (!_jLand) {
@@ -1075,7 +1221,7 @@ function JobsiteTab() {
   if (_jw > _jh) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
-        <View style={ls.topBar}><LSaveButton /></View>
+        <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSaveJobsite} /></View>
         <View style={ls.columns}>
           {/* Column 1: Water */}
           <LCard title="Water" icon="water-drop" style={{flex: 1}}>
@@ -1105,10 +1251,10 @@ function JobsiteTab() {
           {/* Column 2: Added, Not Ordered (moved from Water & Additives) */}
           <LCard title="Added, Not Ordered" icon="playlist-add" style={{flex: 1}}>
             {[
-              {key: 'SUPER PLASTICIZER', label: 'S. PLASTICIZER'},
-              {key: 'CONVEYOR (IF NOT ON TICKET)', label: 'CONVEYOR'},
-              {key: 'COLOR', label: 'COLOR'},
-              {key: 'FIBER', label: 'FIBER'},
+              {key: 'SUPER PLASTICIZER', label: 'S. PLASTICIZER', apiKey: 'super_plasticizer'},
+              {key: 'CONVEYOR (IF NOT ON TICKET)', label: 'CONVEYOR', apiKey: 'conveyor'},
+              {key: 'COLOR', label: 'COLOR', apiKey: 'color'},
+              {key: 'FIBER', label: 'FIBER', apiKey: 'fiber'},
             ].map(item => (
               <LField key={item.key} label={item.label}>
                 <LineInput placeholder="Select" value={addedValues[item.key] || ''} onPress={() => setAddedModalItem(item.key)} />
@@ -1136,6 +1282,7 @@ function JobsiteTab() {
                 <LineInput placeholder="Select area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
                 <MoreBtn onPress={() => setWashoutModalVisible(true)} />
               </LField>
+              <>
               <View style={[ls.sectionDivider, {borderTopColor: c.borderLight}]}>
                 <Text style={[ls.sectionLabel, {color: c.textMuted}]}>LOAD TESTING</Text>
               </View>
@@ -1168,6 +1315,7 @@ function JobsiteTab() {
                   </LField>
                 </Animated.View>
               )}
+              </>
               <View style={[ls.notesSection, {borderTopColor: c.borderLight}]}>
                 <Text style={[ls.notesSectionLabel, {color: c.textMuted}]}>JOBSITE NOTES</Text>
                 <TextInput
@@ -1207,7 +1355,7 @@ function JobsiteTab() {
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton />
+      <SaveButton disabled={saving} onPress={handleSaveJobsite} />
       <CardsGrid>
       <FieldCard title="Water" icon="water-drop">
       <Field label="FULL LOAD (LITRES)">
@@ -1251,10 +1399,16 @@ function JobsiteTab() {
       />
 
       <FieldCard title="Added, Not Ordered" icon="playlist-add">
-      {['SUPER PLASTICIZER', 'CONVEYOR (IF NOT ON TICKET)', 'COLOR', 'FIBER', 'Other'].map(item => (
-        <Field key={item} label={item}>
-          <LineInput placeholder="Value" value={addedValues[item] || ''} onPress={item !== 'Other' ? () => setAddedModalItem(item) : undefined} onChangeText={item === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item]: text})) : undefined} />
-          {item !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item)} />}
+      {[
+        {key: 'SUPER PLASTICIZER', apiKey: 'super_plasticizer'},
+        {key: 'CONVEYOR (IF NOT ON TICKET)', apiKey: 'conveyor'},
+        {key: 'COLOR', apiKey: 'color'},
+        {key: 'FIBER', apiKey: 'fiber'},
+        {key: 'Other', apiKey: 'other'},
+      ].map(item => (
+        <Field key={item.key} label={item.key}>
+          <LineInput placeholder="Value" value={addedValues[item.key] || ''} onPress={item.key !== 'Other' ? () => setAddedModalItem(item.key) : undefined} onChangeText={item.key === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item.key]: text})) : undefined} />
+          {item.key !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item.key)} />}
         </Field>
       ))}
       </FieldCard>
@@ -1343,23 +1497,23 @@ function JobsiteTab() {
 
 // ─── DISPOSAL METHOD OPTIONS ───
 const DISPOSAL_METHODS = [
-  {key: 'RESHIPPED IN YARD', icon: 'local-shipping'},
-  {key: 'DUMPED IN YARD', icon: 'terrain'},
-  {key: 'DUMPED AT THIRD PARTY YARD', icon: 'warehouse'},
-  {key: 'MADE BLOCKS', icon: 'view-module'},
-  {key: 'USED FOR PLANT/SHOP', icon: 'factory'},
-  {key: 'RE-ROUTED TO DIFFERENT SITE', icon: 'alt-route'},
-  {key: 'GRANULIZE', icon: 'grain'},
+  {key: 'RESHIPPED_IN_YARD', label: 'Reshipped in Yard', icon: 'local-shipping'},
+  {key: 'DUMPED_IN_YARD', label: 'Dumped in Yard', icon: 'terrain'},
+  {key: 'DUMPED_AT_THIRD_PARTY_YARD', label: 'Dumped at Third Party Yard', icon: 'warehouse'},
+  {key: 'MADE_BLOCKS', label: 'Made Blocks', icon: 'view-module'},
+  {key: 'USED_FOR_PLANT_SHOP', label: 'Used for Plant/Shop', icon: 'factory'},
+  {key: 'RE_ROUTED_TO_DIFFERENT_SITE', label: 'Re-routed to Different Site', icon: 'alt-route'},
+  {key: 'GRANULIZE', label: 'Granulize', icon: 'grain'},
 ];
 
 const RETURN_REASONS = [
-  {key: 'REJECTED - AIR OUT OF SPEC', icon: 'air'},
-  {key: 'REJECTED - SLUMP OUT OF SPEC', icon: 'trending-down'},
-  {key: 'REJECTED - TEMPERATURE', icon: 'thermostat'},
-  {key: 'REJECTED - BALLING', icon: 'circle'},
-  {key: 'REJECTED - TIME LIMIT EXCEEDED', icon: 'timer-off'},
-  {key: 'POUR COMPLETE - NOT NEEDED', icon: 'check-circle-outline'},
-  {key: 'OTHER - DRIVER ADD NOTES', icon: 'edit-note'},
+  {key: 'REJECTED_AIR_OUT_OF_SPEC', label: 'Rejected - Air Out of Spec', icon: 'air'},
+  {key: 'REJECTED_SLUMP_OUT_OF_SPEC', label: 'Rejected - Slump Out of Spec', icon: 'trending-down'},
+  {key: 'REJECTED_TEMPERATURE', label: 'Rejected - Temperature', icon: 'thermostat'},
+  {key: 'REJECTED_BALLING', label: 'Rejected - Balling', icon: 'circle'},
+  {key: 'REJECTED_TIME_LIMIT_EXCEEDED', label: 'Rejected - Time Limit Exceeded', icon: 'timer-off'},
+  {key: 'POUR_COMPLETE_NOT_NEEDED', label: 'Pour Complete - Not Needed', icon: 'check-circle-outline'},
+  {key: 'OTHER_DRIVER_ADD_NOTES', label: 'Other - Driver Add Notes', icon: 'edit-note'},
 ];
 
 // ─── ENHANCED SELECTION MODAL ───
@@ -1377,7 +1531,7 @@ function SelectionModal({
   title: string;
   subtitle: string;
   headerIcon: string;
-  options: {key: string; icon: string}[];
+  options: {key: string; label?: string; icon: string}[];
   selected: string;
   onSave: (val: string) => void;
   onClose: () => void;
@@ -1472,7 +1626,7 @@ function SelectionModal({
                 {color: c.textPrimary},
                 isSelected && {color: c.primary, fontWeight: '800'},
               ]}>
-                {opt.key}
+                {opt.label || opt.key}
               </Text>
               {isSelected ? (
                 <MaterialIcons name="check-circle" size={ms(22)} color={c.primary} />
@@ -1532,11 +1686,15 @@ const sm = StyleSheet.create({
 });
 
 // ─── RETURNED TAB ───
-function ReturnedTab() {
+function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
-  const [concreteVal, setConcreteVal] = useState('');
-  const [disposalMethod, setDisposalMethod] = useState('');
-  const [returnReason, setReturnReason] = useState('');
+  const r = data?.returned;
+
+
+  const [concreteVal, setConcreteVal] = useState(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
+  const [disposalMethod, setDisposalMethod] = useState(r?.disposal_method || '');
+  const [returnReason, setReturnReason] = useState(r?.reason_for_return || '');
+  const [saving, setSaving] = useState(false);
   const [disposalModal, setDisposalModal] = useState(false);
   const [reasonModal, setReasonModal] = useState(false);
 
@@ -1571,14 +1729,29 @@ function ReturnedTab() {
   const isReasonValid = RETURN_REASONS.some(r => r.key === returnReason);
   const isFormValid = isConcreteValid && isDisposalValid && isReasonValid;
 
-  const handleSave = () => {
-    if (!isFormValid) {return;}
-    // All valid — safe to proceed with save
+  const handleSave = async () => {
+    if (!isFormValid || !ticketId) return;
+    setSaving(true);
+    setSavingOverlay?.(true);
+    try {
+      await ticketsApi.saveDeliveryTab(ticketId, 'returned', {
+        returned_concrete_m3: Number(concreteVal),
+        disposal_method: disposalMethod,
+        reason_for_return: returnReason,
+      });
+      await refreshRecord?.();
+      onSaveResult?.(true, 'Returned data has been saved successfully.');
+    } catch (err: any) {
+      onSaveResult?.(false, err.message || 'Failed to save returned data.');
+    } finally {
+      setSaving(false);
+      setSavingOverlay?.(false);
+    }
   };
 
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton disabled={!isFormValid} onPress={handleSave} />
+      <SaveButton disabled={!isFormValid || saving} onPress={handleSave} />
 
       <CardsGrid>
       <FieldCard title="Return Details" icon="assignment-return">
@@ -1611,7 +1784,7 @@ function ReturnedTab() {
             </View>
           )}
           <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}]} numberOfLines={1}>
-            {disposalMethod || 'Select method'}
+            {DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || 'Select method'}
           </Text>
           <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isDisposalValid ? c.primary : c.textMuted} />
         </TouchableOpacity>
@@ -1629,7 +1802,7 @@ function ReturnedTab() {
             </View>
           )}
           <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}]} numberOfLines={1}>
-            {returnReason || 'Select reason'}
+            {RETURN_REASONS.find(r => r.key === returnReason)?.label || returnReason || 'Select reason'}
           </Text>
           <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isReasonValid ? c.primary : c.textMuted} />
         </TouchableOpacity>
@@ -1672,9 +1845,59 @@ const TIME_EVENTS = [
   {key: 'AT PLANT', icon: 'factory'},
 ];
 
-function TimeAdjustTab() {
+function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c, isDark} = useTheme();
-  const [selectedTimes, setSelectedTimes] = useState<{[key: string]: Date}>({});
+  const timeSteps = data?.time?.steps;
+  const [saving, setSaving] = useState(false);
+  const handleSaveTime = async () => {
+    if (!ticketId) return;
+    const uiToApi: Record<string, string> = {
+      'LEAVE PLANT': 'leave_plant',
+      'ARRIVE JOB': 'arrive_job',
+      'START POUR': 'start_pour',
+      'WASHING': 'washing',
+      'LEAVE JOB': 'leave_job',
+      'AT PLANT': 'at_plant',
+    };
+    const body: Record<string, string | null> = {};
+    TIME_EVENTS.forEach(e => {
+      const apiKey = uiToApi[e.key];
+      if (apiKey) {
+        body[apiKey] = selectedTimes[e.key] ? selectedTimes[e.key].toISOString() : null;
+      }
+    });
+    setSaving(true);
+    setSavingOverlay?.(true);
+    try {
+      await ticketsApi.saveDeliveryTab(ticketId, 'time', body);
+      await refreshRecord?.();
+      onSaveResult?.(true, 'Time data has been saved successfully.');
+    } catch (err: any) {
+      onSaveResult?.(false, err.message || 'Failed to save time data.');
+    } finally {
+      setSaving(false);
+      setSavingOverlay?.(false);
+    }
+  };
+  const [selectedTimes, setSelectedTimes] = useState<{[key: string]: Date}>(() => {
+    if (!timeSteps) return {};
+    const times: {[key: string]: Date} = {};
+    const keyMap: Record<string, string> = {
+      leave_plant: 'LEAVE PLANT',
+      arrive_job: 'ARRIVE JOB',
+      start_pour: 'START POUR',
+      washing: 'WASHING',
+      leave_job: 'LEAVE JOB',
+      at_plant: 'AT PLANT',
+    };
+    timeSteps.forEach(step => {
+      const uiKey = keyMap[step.key];
+      if (uiKey && step.time) {
+        times[uiKey] = new Date(step.time);
+      }
+    });
+    return times;
+  });
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerField, setPickerField] = useState<string | null>(null);
 
@@ -1753,7 +1976,7 @@ function TimeAdjustTab() {
       </View>
 
       {/* Save */}
-      <SaveButton disabled={!allFilled} />
+      <SaveButton disabled={!allFilled || saving} onPress={handleSaveTime} />
 
       <DateTimePicker
         visible={pickerVisible}
@@ -1801,14 +2024,51 @@ const PAYMENT_TYPES = [
 ];
 
 // ─── COD TAB ───
-function CodTab() {
+function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
-  const [paymentType, setPaymentType] = useState('');
+  const codData = data?.cod;
+
+
+  const [saving, setSaving] = useState(false);
+  const keyToApiCode: Record<string, string> = {
+    prepaid_cc: 'PREPAID_CREDIT_CARD',
+    cash: 'CASH',
+    check: 'CHECK',
+    other: 'OTHER',
+  };
+  const handleSaveCod = async () => {
+    if (!ticketId) return;
+    setSaving(true);
+    setSavingOverlay?.(true);
+    try {
+      await ticketsApi.saveDeliveryTab(ticketId, 'cod', {
+        payment_type: paymentType ? (keyToApiCode[paymentType] || null) : null,
+        amount: codAmount !== '' ? Number(codAmount) : null,
+        wait_time_minutes: waitTime,
+        notes: codNotes || null,
+      });
+      await refreshRecord?.();
+      onSaveResult?.(true, 'COD data has been saved successfully.');
+    } catch (err: any) {
+      onSaveResult?.(false, err.message || 'Failed to save COD data.');
+    } finally {
+      setSaving(false);
+      setSavingOverlay?.(false);
+    }
+  };
+  // Map API payment_type codes to local UI keys
+  const paymentCodeToKey: Record<string, string> = {
+    PREPAID_CREDIT_CARD: 'prepaid_cc',
+    CASH: 'cash',
+    CHECK: 'check',
+    OTHER: 'other',
+  };
+  const [paymentType, setPaymentType] = useState(codData?.payment_type ? (paymentCodeToKey[codData.payment_type] || '') : '');
   const [paymentModal, setPaymentModal] = useState(false);
-  const [waitTime, setWaitTime] = useState(0);
+  const [waitTime, setWaitTime] = useState(codData?.wait_time_minutes ?? 0);
   const [waitPickerOpen, setWaitPickerOpen] = useState(false);
-  const [codNotes, setCodNotes] = useState('');
-  const [codAmount, setCodAmount] = useState('');
+  const [codNotes, setCodNotes] = useState(codData?.notes || '');
+  const [codAmount, setCodAmount] = useState(codData?.amount != null ? String(codData.amount) : '');
   const [notesFocused, setNotesFocused] = useState(false);
 
   const scaleMinus = useRef(new Animated.Value(1)).current;
@@ -1868,7 +2128,7 @@ function CodTab() {
 
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton />
+      <SaveButton disabled={saving} onPress={handleSaveCod} />
 
       <CardsGrid>
       <FieldCard title="Payment Details" icon="payments">
@@ -2071,8 +2331,21 @@ const cod = StyleSheet.create({
 });
 
 // ─── MAIN SCREEN ───
-export default function NotesScreen({navigation}: Props) {
+export default function NotesScreen({navigation, route}: Props) {
+  const ticketId = (route.params as any)?.ticketId as number | undefined;
   const [activeTab, setActiveTab] = useState(0);
+  const [deliveryRecord, setDeliveryRecord] = useState<DeliveryRecord | null>(null);
+  const [recordLoading, setRecordLoading] = useState(false);
+  const [saveModal, setSaveModal] = useState<{visible: boolean; success: boolean; message: string}>({visible: false, success: false, message: ''});
+  const showSaveResult = useCallback((success: boolean, message: string) => {
+    setSaveModal({visible: true, success, message});
+  }, []);
+  const [savingOverlay, setSavingOverlay] = useState(false);
+  const refreshRecord = useCallback(async () => {
+    if (!ticketId) return;
+    const res = await ticketsApi.getDeliveryRecord(ticketId);
+    setDeliveryRecord(res.data);
+  }, [ticketId]);
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height: winHeight} = useWindowDimensions();
@@ -2082,18 +2355,36 @@ export default function NotesScreen({navigation}: Props) {
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!ticketId) return;
+    setRecordLoading(true);
+    ticketsApi.getDeliveryRecord(ticketId)
+      .then(res => setDeliveryRecord(res.data))
+      .catch(() => {})
+      .finally(() => setRecordLoading(false));
+  }, [ticketId]);
+
+  useEffect(() => {
     slideAnim.setValue(20);
     Animated.spring(slideAnim, {toValue: 0, friction: 8, tension: 60, useNativeDriver: true}).start();
   }, [activeTab, slideAnim]);
 
+  // Key forces tabs to remount when delivery record changes, so useState initializers pick up fresh data
+  const dataVersion = useRef(0);
+  const prevRecord = useRef(deliveryRecord);
+  if (prevRecord.current !== deliveryRecord) {
+    dataVersion.current += 1;
+    prevRecord.current = deliveryRecord;
+  }
+  const dataKey = `data-${dataVersion.current}`;
+
   const renderTab = () => {
     switch (activeTab) {
-      case 0: return <PlantTab />;
-      case 1: return <JobsiteTab />;
-      case 2: return <ReturnedTab />;
-      case 3: return <TimeAdjustTab />;
-      case 4: return <CodTab />;
-      default: return <PlantTab />;
+      case 0: return <PlantTab key={dataKey} data={deliveryRecord} ticketId={ticketId} onSaveResult={showSaveResult} setSavingOverlay={setSavingOverlay} refreshRecord={refreshRecord} />;
+      case 1: return <JobsiteTab key={dataKey} data={deliveryRecord} ticketId={ticketId} onSaveResult={showSaveResult} setSavingOverlay={setSavingOverlay} refreshRecord={refreshRecord} />;
+      case 2: return <ReturnedTab key={dataKey} data={deliveryRecord} ticketId={ticketId} onSaveResult={showSaveResult} setSavingOverlay={setSavingOverlay} refreshRecord={refreshRecord} />;
+      case 3: return <TimeAdjustTab key={dataKey} data={deliveryRecord} ticketId={ticketId} onSaveResult={showSaveResult} setSavingOverlay={setSavingOverlay} refreshRecord={refreshRecord} />;
+      case 4: return <CodTab key={dataKey} data={deliveryRecord} ticketId={ticketId} onSaveResult={showSaveResult} setSavingOverlay={setSavingOverlay} refreshRecord={refreshRecord} />;
+      default: return <PlantTab key={dataKey} data={deliveryRecord} ticketId={ticketId} onSaveResult={showSaveResult} setSavingOverlay={setSavingOverlay} refreshRecord={refreshRecord} />;
     }
   };
 
@@ -2104,7 +2395,7 @@ export default function NotesScreen({navigation}: Props) {
       {isLandscape ? (
         <View style={[ls.lhRow, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
           <View>
-            <Text style={[ls.lhTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
+            <Text style={[ls.lhTitle, {color: c.textOnPrimary}]}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
             <Text style={{fontSize: ms(9), fontWeight: '500', color: c.textOnDark60}}>Delivery Notes & Records</Text>
           </View>
           <View style={{flex: 1}} />
@@ -2128,7 +2419,7 @@ export default function NotesScreen({navigation}: Props) {
         <View style={[st.header, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
           <View style={st.headerRow}>
             <View>
-              <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER 2605 / TICKET 26209538</Text>
+              <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
               <Text style={[st.headerSub, {color: c.textOnDark60}]}>Delivery Notes & Records</Text>
             </View>
             <TouchableOpacity
@@ -2172,6 +2463,21 @@ export default function NotesScreen({navigation}: Props) {
           </ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>
+      <SaveResultModal
+        visible={saveModal.visible}
+        success={saveModal.success}
+        message={saveModal.message}
+        onClose={() => setSaveModal(s => ({...s, visible: false}))}
+      />
+      {(savingOverlay || recordLoading) && (
+        <View style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', zIndex: 100}}>
+          <View style={{backgroundColor: c.white, borderRadius: wp(14), padding: wp(24), alignItems: 'center', gap: wp(12), elevation: 10, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.2, shadowRadius: 12}}>
+            <ActivityIndicator size="large" color={c.primary} />
+            <Text style={{fontSize: ms(13), fontWeight: '700', color: c.textPrimary}}>{savingOverlay ? 'Saving...' : 'Loading...'}</Text>
+            <Text style={{fontSize: ms(10), fontWeight: '500', color: c.textSecondary}}>Please wait</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }

@@ -10,8 +10,6 @@ import {
   RefreshControl,
   Animated,
   Pressable,
-  Linking,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -80,14 +78,7 @@ function buildJobInfo(detail: TicketDetail) {
   ];
 }
 
-const openAddressInMaps = (address: string) => {
-  const encoded = encodeURIComponent(address);
-  const url = Platform.select({
-    ios: `maps:0,0?q=${encoded}`,
-    default: `https://www.google.com/maps/search/?api=1&query=${encoded}`,
-  });
-  Linking.openURL(url!);
-};
+// Removed — map navigation now handled via in-app MapScreen
 
 const STATUS_MAP: Record<number, string> = {
   0: 'Pending',
@@ -208,6 +199,8 @@ export default function DashboardScreen({navigation}: Props) {
   const [plantsVisible, setPlantsVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [productsVisible, setProductsVisible] = useState(false);
+  const [vehicleVisible, setVehicleVisible] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [activeBottom, setActiveBottom] = useState(-1);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
@@ -240,7 +233,7 @@ export default function DashboardScreen({navigation}: Props) {
     try {
       if (showLoading) setLoading(true);
       setRefreshing(true);
-      const {data} = await ticketsApi.getLatest({page: 1, limit: 20, date: '2026-06-05'});
+      const {data} = await ticketsApi.getLatest({page: 1, limit: 20});
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
       setActiveTicket(0);
@@ -334,7 +327,9 @@ export default function DashboardScreen({navigation}: Props) {
 
   const handleMenuItemPress = (label: string) => {
     closeMenu();
-    if (label === 'Logout Driver') {
+    if (label === 'Vehicle') {
+      setVehicleVisible(true);
+    } else if (label === 'Logout Driver') {
       setLogoutType('driver');
     } else if (label === 'Logout Tenant') {
       setLogoutType('tenant');
@@ -346,12 +341,12 @@ export default function DashboardScreen({navigation}: Props) {
 
   const handleNavPress = useCallback((item: typeof BOTTOM_ACTIONS[0], i: number) => {
     setActiveBottom(i);
-    if (item.icon === 'label') {navigation.navigate('MobileTicket');}
-    if (item.icon === 'note-alt') {navigation.navigate('Notes');}
+    if (item.icon === 'label') {navigation.navigate('MobileTicket', {ticketId: currentTicket?.id});}
+    if (item.icon === 'note-alt') {navigation.navigate('Notes', {ticketId: currentTicket?.id});}
     if (item.icon === 'edit') {setEditVisible(true);}
     if (item.icon === 'qr-code-scanner') {setQrVisible(true);}
     if (item.icon === 'local-shipping') {setPlantsVisible(true);}
-  }, [navigation]);
+  }, [navigation, currentTicket]);
 
   // Shorthand flags
   const L = isLandscape;
@@ -446,7 +441,6 @@ export default function DashboardScreen({navigation}: Props) {
         }}>
           <MaterialIcons name={item.icon as any} size={isTablet ? 21 : 20} color={active ? c.primary : c.textMuted} />
         </View>
-        <Text style={{fontSize: ms(9), fontWeight: active ? '700' : '500', color: active ? c.primary : c.textMuted, marginTop: 2}}>{t(item.labelKey)}</Text>
       </TouchableOpacity>
     );
   };
@@ -792,8 +786,16 @@ export default function DashboardScreen({navigation}: Props) {
               <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 3}, i < jobInfo.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
                 <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isMap ? (
-                  <TouchableOpacity activeOpacity={0.6} onPress={() => openAddressInMaps(item.value)} style={common.flex1}>
-                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
+                  <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', {
+                    delivery: detail?.location?.delivery,
+                    plant: detail?.location?.plant,
+                    truck: detail?.location?.truck,
+                    address: item.value,
+                  })} style={common.flex1}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                      <Text style={[styles.detailValue, {color: c.accent, flex: 1}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
+                      <MaterialIcons name="map" size={L ? 14 : 16} color={c.accent} />
+                    </View>
                   </TouchableOpacity>
                 ) : (
                   <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
@@ -883,8 +885,9 @@ export default function DashboardScreen({navigation}: Props) {
               styles.dropdown,
               {
                 backgroundColor: c.white,
-                top: insets.top + wp(58),
+                top: insets.top + (isLandscape ? wp(40) : wp(58)),
                 right: Math.max(wp(16), insets.right + wp(4)),
+                maxHeight: isLandscape ? winHeight - insets.top - insets.bottom - wp(50) : undefined,
                 borderColor: c.border,
                 opacity: menuOpacity,
                 transform: [
@@ -894,17 +897,18 @@ export default function DashboardScreen({navigation}: Props) {
               },
             ]}>
             {/* Header */}
-            <View style={[styles.ddHeader, {borderBottomColor: c.borderLight}]}>
-              <View style={[styles.ddAvatar, {backgroundColor: c.primarySurface}]}>
-                <MaterialIcons name="person" size={ms(18)} color={c.primary} />
+            <View style={[styles.ddHeader, isLandscape && {paddingVertical: 6, paddingHorizontal: wp(12), gap: wp(8)}, {borderBottomColor: c.borderLight}]}>
+              <View style={[styles.ddAvatar, isLandscape && {width: 26, height: 26, borderRadius: 8}, {backgroundColor: c.primarySurface}]}>
+                <MaterialIcons name="person" size={isLandscape ? 14 : ms(18)} color={c.primary} />
               </View>
               <View style={common.flex1}>
-                <Text style={[styles.ddName, {color: c.textPrimary}]}>{driver?.driver_name || `Driver ${driver?.driver_code || ''}`}</Text>
-                <Text style={[styles.ddSub, {color: c.textMuted}]}>ACME Ready-Mix</Text>
+                <Text style={[styles.ddName, isLandscape && {fontSize: ms(12)}, {color: c.textPrimary}]}>{driver?.driver_name || `Driver ${driver?.driver_code || ''}`}</Text>
+                <Text style={[styles.ddSub, isLandscape && {fontSize: ms(9)}, {color: c.textMuted}]}>ACME Ready-Mix</Text>
               </View>
             </View>
 
             {/* Menu Items */}
+            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
             {MENU_ITEMS_BASE.map((item, i) => {
               const isWarn = item.color === 'warn';
               const iconColor = isWarn ? c.error : c.textSecondary;
@@ -917,21 +921,23 @@ export default function DashboardScreen({navigation}: Props) {
                   key={item.actionKey}
                   style={[
                     styles.ddItem,
+                    isLandscape && {paddingVertical: 6, paddingHorizontal: wp(12), minHeight: 34, gap: wp(8)},
                     i < MENU_ITEMS_BASE.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight},
                   ]}
                   activeOpacity={0.6}
                   onPress={() => handleMenuItemPress(item.actionKey)}>
-                  <View style={[styles.ddIcon, {backgroundColor: bgColor}]}>
-                    <MaterialIcons name={item.icon as any} size={ms(18)} color={iconColor} />
+                  <View style={[styles.ddIcon, isLandscape && {width: 24, height: 24, borderRadius: 7}, {backgroundColor: bgColor}]}>
+                    <MaterialIcons name={item.icon as any} size={isLandscape ? 14 : ms(18)} color={iconColor} />
                   </View>
-                  <Text style={[styles.ddLabel, {color: labelColor}]}>{label}{suffix}</Text>
-                  <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
+                  <Text style={[styles.ddLabel, isLandscape && {fontSize: ms(12)}, {color: labelColor}]}>{label}{suffix}</Text>
+                  <MaterialIcons name="chevron-right" size={isLandscape ? 16 : ms(18)} color={c.textMuted} />
                 </TouchableOpacity>
               );
             })}
+            </ScrollView>
 
             {/* Version footer */}
-            <View style={[styles.ddFooter, {borderTopColor: c.borderLight}]}>
+            <View style={[styles.ddFooter, isLandscape && {paddingVertical: 4}, {borderTopColor: c.borderLight}]}>
               <Text style={[styles.ddVersion, {color: c.textMuted}]}>v1.20.0</Text>
             </View>
           </Animated.View>
@@ -1066,6 +1072,48 @@ export default function DashboardScreen({navigation}: Props) {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </ResponsiveModal>
+
+      {/* ─── VEHICLE MODAL ─── */}
+      <ResponsiveModal
+        visible={vehicleVisible}
+        onClose={() => setVehicleVisible(false)}
+        maxWidth={isTablet ? 500 : 420}
+        widthPercent={isTablet ? 60 : 85}
+        maxHeightPercent={60}>
+        <View style={[styles.mHeader, {borderBottomColor: c.border}]}>
+          <Text style={[styles.mHeaderTitle, {color: c.textPrimary}]}>{t('modals.vehicle', 'Vehicle')}</Text>
+          <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.surface}]} onPress={() => setVehicleVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        <View style={{alignItems: 'center', paddingVertical: wp(30), paddingHorizontal: wp(20)}}>
+          <Text style={{fontSize: ms(14), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase'}}>CURRENT VEHICLE ID</Text>
+          <Text style={{fontSize: ms(22), fontWeight: '700', color: c.textPrimary, marginTop: 8}}>{driver?.truck_code || '-'}</Text>
+
+          <View style={{marginTop: wp(30), alignItems: 'center'}}>
+            <Text style={{fontSize: ms(14), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase'}}>BROADCASTING STATUS</Text>
+            <Text style={{fontSize: ms(14), fontWeight: '500', color: c.textSecondary, marginTop: 8}}>
+              {isBroadcasting ? 'BROADCASTING' : 'NOT BROADCASTING'}
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: isBroadcasting ? '#EF4444' : '#15803d',
+                paddingVertical: 14,
+                paddingHorizontal: 40,
+                borderRadius: 8,
+                marginTop: 16,
+                minWidth: 200,
+                alignItems: 'center',
+              }}
+              activeOpacity={0.8}
+              onPress={() => setIsBroadcasting(b => !b)}>
+              <Text style={{fontSize: ms(15), fontWeight: '700', color: '#fff', letterSpacing: 0.5}}>
+                {isBroadcasting ? 'TURN OFF' : 'TURN ON'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ResponsiveModal>
 
       {/* ─── EDIT TICKET MODAL ─── */}
@@ -1259,7 +1307,7 @@ const styles = StyleSheet.create({
   ddAvatar: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
   ddName: {fontSize: ms(14), fontWeight: '700'},
   ddSub: {fontSize: ms(11), fontWeight: '500', marginTop: 1},
-  ddItem: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(10), minHeight: wp(42)},
+  ddItem: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(13), minHeight: wp(42)},
   ddIcon: {width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center'},
   ddLabel: {flex: 1, fontSize: ms(14), fontWeight: '600'},
   ddFooter: {alignItems: 'center', paddingVertical: wp(8), borderTopWidth: StyleSheet.hairlineWidth},

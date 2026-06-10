@@ -10,17 +10,24 @@ import {
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import SignaturePad from '../components/SignaturePad';
+import ThemedAlert from '../components/ThemedAlert';
+import {ticketsApi} from '../services/api';
 
-type Props = {navigation: NativeStackNavigationProp<any>};
+type Props = {
+  navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<{DisputeTicket: {ticketId?: number}}, 'DisputeTicket'>;
+};
 
-export default function DisputeTicketScreen({navigation}: Props) {
+export default function DisputeTicketScreen({navigation, route}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
@@ -29,17 +36,44 @@ export default function DisputeTicketScreen({navigation}: Props) {
   const sigHeight = isTablet
     ? Math.min(300, Math.max(200, height * 0.28))
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
+  const ticketId = route.params?.ticketId;
   const [quantity, setQuantity] = useState('6');
   const [reason, setReason] = useState('');
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
 
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
   }, []);
 
-  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0;
+  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting;
+
+  const handleDispute = useCallback(async () => {
+    if (!canSubmit || !ticketId || !signature) return;
+    setSubmitting(true);
+    try {
+      await ticketsApi.dispute(ticketId, {
+        quantity: parseFloat(quantity.trim()) || 0,
+        reason: reason.trim(),
+        signed_name: typeName.trim(),
+        signature_image: signature,
+      });
+      setAlert({type: 'success', title: 'Success', message: 'Ticket disputed successfully.'});
+    } catch (err: any) {
+      setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to dispute ticket.'});
+    } finally {
+      setSubmitting(false);
+    }
+  }, [canSubmit, ticketId, quantity, reason, typeName, signature]);
+
+  const handleAlertClose = useCallback(() => {
+    const wasSuccess = alert?.type === 'success';
+    setAlert(null);
+    if (wasSuccess) navigation.goBack();
+  }, [alert, navigation]);
 
   const handleQuantityChange = (text: string) => {
     setQuantity(text.replace(/[^0-9.]/g, ''));
@@ -55,12 +89,12 @@ export default function DisputeTicketScreen({navigation}: Props) {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: isLandscape ? wp(20) : wp(50)}]}
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : 0), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: isLandscape ? wp(20) : wp(50)}]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: 14, borderRadius: 10}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>
@@ -132,14 +166,27 @@ export default function DisputeTicketScreen({navigation}: Props) {
             <TouchableOpacity
               style={[s.disputeBtn, {backgroundColor: canSubmit ? c.disputeBtn : c.border}]}
               activeOpacity={canSubmit ? 0.8 : 1}
-              disabled={!canSubmit}>
-              <Text style={[s.disputeBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>DISPUTE</Text>
+              disabled={!canSubmit}
+              onPress={handleDispute}>
+              {submitting ? (
+                <ActivityIndicator size="small" color={c.textOnPrimary} />
+              ) : (
+                <Text style={[s.disputeBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>DISPUTE</Text>
+              )}
             </TouchableOpacity>
           </View>
 
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
+
+      <ThemedAlert
+        visible={alert !== null}
+        type={alert?.type || 'success'}
+        title={alert?.title || ''}
+        message={alert?.message || ''}
+        onClose={handleAlertClose}
+      />
     </View>
   );
 }
@@ -151,9 +198,7 @@ const s = StyleSheet.create({
   scrollContent: {},
 
   card: {
-    marginHorizontal: wp(10),
     marginBottom: wp(10),
-    borderRadius: wp(14),
     overflow: 'visible',
   },
 
@@ -163,17 +208,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: wp(10),
-    paddingHorizontal: wp(14),
+    paddingHorizontal: wp(12),
     borderBottomWidth: 1,
-    borderTopLeftRadius: wp(14),
-    borderTopRightRadius: wp(14),
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     overflow: 'hidden',
   },
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
   // Info
-  infoSection: {paddingHorizontal: wp(16), paddingVertical: wp(14)},
+  infoSection: {paddingHorizontal: wp(12), paddingVertical: wp(14)},
   infoRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(8), gap: wp(8)},
   infoLabel: {fontSize: ms(12), fontWeight: '800', minWidth: wp(75), maxWidth: wp(110)},
   infoValue: {fontSize: ms(12), fontWeight: '500', flex: 1},
@@ -187,10 +232,10 @@ const s = StyleSheet.create({
   reasonInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(13)},
 
   // Divider
-  divider: {height: StyleSheet.hairlineWidth, marginHorizontal: wp(16)},
+  divider: {height: StyleSheet.hairlineWidth, marginHorizontal: wp(12)},
 
   // Sign
-  signSection: {paddingHorizontal: wp(16), paddingVertical: wp(16)},
+  signSection: {paddingHorizontal: wp(12), paddingVertical: wp(16)},
   typeNameRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(10), marginBottom: wp(8)},
   typeNameLabel: {fontSize: ms(13), fontWeight: '800'},
   typeNameInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(13)},

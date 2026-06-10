@@ -27,7 +27,9 @@
       "Bash(git stash:*)",
       "Read(//Users/admin/Desktop/tksync-mobile-api/**)",
       "Bash(adb devices:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(adb:*)",
+      "Bash(./gradlew assembleDebug)"
     ]
   }
 }

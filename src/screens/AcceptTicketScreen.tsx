@@ -10,15 +10,22 @@ import {
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import SignaturePad from '../components/SignaturePad';
+import ThemedAlert from '../components/ThemedAlert';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+import {ticketsApi} from '../services/api';
 
-type Props = {navigation: NativeStackNavigationProp<any>};
+type Props = {
+  navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<{AcceptTicket: {ticketId?: number}}, 'AcceptTicket'>;
+};
 
 const PRODUCTS = [
   {code: '6138506', desc: '32MPA AIR C2 .45 SIDEWALK', qty: '6.00', unit: 'm3'},
@@ -35,7 +42,7 @@ const TERMS_EN =
 const TERMS_FR =
   '    ST. MARYS CEMENT INC. (CANADA) D/B/A CANADA BUILDING MATERIALS A LE PLAISIR DE LIVRER LE BETON OU LES PRODUITS A BASE DE BETON (LE << PRODUIT >>) DECRITS DANS LA PRESENTE FICHE DE LIVRAISON. VEUILLEZ NOTER QUE LE\n    PRODUIT EST ASSUJETTI A NOS CONDITIONS DE VENTE - BETON (DISPONIBLES SUR NOTRE SITE WEB A L\'ADRESSE HTTP://SALESTERMSANDCONDITIONS.VCNAINC.COM/ OU SUR DEMANDE). TOUTE PROPOSITION OU TENTATIVE DE\n    MODIFICATION DES PRESENTES CONDITIONS, Y COMPRIS PAR ANNOTATION AU RECTO DE LA PRESENTE FICHE DE LIVRAISON, EST EXPRESSEMENT REJETEE.TOUT DESACCORD AVEC LES INFORMATIONS CONTENUES SUR CE BILLET DOIT ETRE SIGNALE DANS LES 24 HEURES SUIVANT LA LIVRAISON, AUTREMENT TOUTES LES INFORMATIONS SERONT CONSIDEREES DEFINITIVES.';
 
-export default function AcceptTicketScreen({navigation}: Props) {
+export default function AcceptTicketScreen({navigation, route}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
@@ -44,11 +51,14 @@ export default function AcceptTicketScreen({navigation}: Props) {
   const sigHeight = isTablet
     ? Math.min(300, Math.max(200, height * 0.28))
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
+  const ticketId = route.params?.ticketId;
   const [email, setEmail] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
 
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
@@ -58,7 +68,31 @@ export default function AcceptTicketScreen({navigation}: Props) {
   const isNotesValid = customerNotes.trim().length > 0;
   const isNameValid = typeName.trim().length > 0;
   const isSigned = signature !== null && signature.length > 0;
-  const canSubmit = isEmailValid && isNotesValid && isNameValid && isSigned;
+  const canSubmit = isEmailValid && isNotesValid && isNameValid && isSigned && !submitting;
+
+  const handleSubmit = useCallback(async () => {
+    if (!canSubmit || !ticketId || !signature) return;
+    setSubmitting(true);
+    try {
+      await ticketsApi.sign(ticketId, {
+        email: email.trim() || undefined,
+        customer_notes: customerNotes.trim() || undefined,
+        signed_name: typeName.trim(),
+        signature_image: signature,
+      });
+      setAlert({type: 'success', title: 'Success', message: 'Ticket signed successfully.'});
+    } catch (err: any) {
+      setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to sign ticket.'});
+    } finally {
+      setSubmitting(false);
+    }
+  }, [canSubmit, ticketId, email, customerNotes, typeName, signature]);
+
+  const handleAlertClose = useCallback(() => {
+    const wasSuccess = alert?.type === 'success';
+    setAlert(null);
+    if (wasSuccess) navigation.goBack();
+  }, [alert, navigation]);
 
   return (
     <View style={[s.container, {backgroundColor: isLandscape ? c.white : c.accentBg}]}>
@@ -70,12 +104,12 @@ export default function AcceptTicketScreen({navigation}: Props) {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: isLandscape ? wp(20) : wp(50)}]}
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : 0), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: isLandscape ? wp(20) : wp(8)}]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: 14, borderRadius: 10}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>
@@ -173,14 +207,27 @@ export default function AcceptTicketScreen({navigation}: Props) {
             <TouchableOpacity
               style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
               activeOpacity={canSubmit ? 0.8 : 1}
-              disabled={!canSubmit}>
-              <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
+              disabled={!canSubmit}
+              onPress={handleSubmit}>
+              {submitting ? (
+                <ActivityIndicator size="small" color={c.textOnPrimary} />
+              ) : (
+                <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
+              )}
             </TouchableOpacity>
           </View>
 
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
+
+      <ThemedAlert
+        visible={alert !== null}
+        type={alert?.type || 'success'}
+        title={alert?.title || ''}
+        message={alert?.message || ''}
+        onClose={handleAlertClose}
+      />
     </View>
   );
 }
@@ -192,9 +239,7 @@ const s = StyleSheet.create({
   scrollContent: {},
 
   card: {
-    marginHorizontal: wp(10),
     marginBottom: wp(10),
-    borderRadius: wp(14),
     overflow: 'visible',
   },
 
@@ -204,17 +249,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: wp(10),
-    paddingHorizontal: wp(14),
+    paddingHorizontal: wp(12),
     borderBottomWidth: 1,
-    borderTopLeftRadius: wp(14),
-    borderTopRightRadius: wp(14),
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     overflow: 'hidden',
   },
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
   // Section
-  section: {paddingHorizontal: wp(16), paddingVertical: wp(14), borderBottomWidth: 1},
+  section: {paddingHorizontal: wp(12), paddingVertical: wp(14), borderBottomWidth: 1},
   sectionTitle: {fontSize: ms(14), fontWeight: '800', textAlign: 'center', marginBottom: wp(10), letterSpacing: 0.3},
 
   // Body text
@@ -239,7 +284,7 @@ const s = StyleSheet.create({
   termsText: {fontSize: ms(11), fontWeight: '500', lineHeight: ms(17)},
 
   // Sign section
-  signSection: {paddingHorizontal: wp(16), paddingVertical: wp(16)},
+  signSection: {paddingHorizontal: wp(12), paddingVertical: wp(16)},
 
   // Submit
   submitBtn: {

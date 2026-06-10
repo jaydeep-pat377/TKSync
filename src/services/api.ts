@@ -31,7 +31,7 @@ async function request<T = any>(
 
   console.log(`[API Request] ${method} ${url}`, {
     ...(body ? {params: body} : {}),
-    token: accessToken ? `${accessToken.slice(0, 20)}...${accessToken.slice(-10)}` : 'none',
+    token: accessToken || 'none',
   });
 
   const res = await fetch(url, {
@@ -47,6 +47,7 @@ async function request<T = any>(
     data: json.data,
     ...(json.error_code ? {error_code: json.error_code} : {}),
     ...(json.message ? {message: json.message} : {}),
+    ...(json.errors ? {errors: json.errors} : {}),
   });
 
   if (!json.success) {
@@ -252,6 +253,170 @@ export type TicketDetail = {
     loads: {current: number | null; total: number};
     truck_code: string;
   };
+  location?: {
+    delivery?: {lat: number; lng: number; radius_m?: number};
+    plant?: {lat: number; lng: number};
+    route?: {distance_miles: number | null; duration: number | null; calculated_at: string | null};
+    truck?: {lat: number; lng: number; updated_at: string | null};
+  };
+};
+
+export type DeliveryRecord = {
+  ticket: {
+    id: number;
+    ticket_id: number;
+    ticket_code: string;
+    order_code: string;
+    truck_code: string;
+    driver_name: string;
+    plant_name: string;
+  };
+  saved_at: string | null;
+  saved_by: string | null;
+  plant: {
+    slump_from_plant: number | null;
+    slump_to_job: number | null;
+    temp_at_plant: number | null;
+    water_added_full: number | null;
+    water_reason: string | null;
+    truck_start: string | null;
+    truck_end: string | null;
+    hand_added: boolean | null;
+    nitrogen_added: boolean | null;
+    fibers_added: boolean | null;
+    load_tested: boolean | null;
+    notes: string | null;
+    products: {item_code: string; description: string; quantity: number | null; unit: string | null}[];
+    measured: {
+      slump_from_plant: string | null;
+      slump_to_job: string | null;
+      temp_at_plant: string | null;
+      temper_water: number | null;
+      temper_water_unit: string | null;
+    };
+  };
+  jobsite: {
+    full_load_litres: number | null;
+    full_load_reason: string | null;
+    full_load_mm: number | null;
+    customer_water_litres: number | null;
+    customer_water_mm: number | null;
+    maintenance_water_litres: number | null;
+    maintenance_water_mm: number | null;
+    super_plasticizer: string | null;
+    conveyor: string | null;
+    color: string | null;
+    fiber: string | null;
+    other: string | null;
+    conveyor_ordered_not_used: boolean | null;
+    unloaded_conveyor: boolean | null;
+    load_disputed: boolean | null;
+    washout_area: string | null;
+    load_tested: boolean | null;
+    notes: string | null;
+    measured: {
+      full_load_total: string | null;
+      max_allowed_water: string | null;
+    };
+  };
+  returned: {
+    returned_concrete_m3: number | null;
+    disposal_method: string | null;
+    reason_for_return: string | null;
+    options: {
+      disposal_methods: {code: string; label: string}[];
+      return_reasons: {code: string; label: string}[];
+    };
+  };
+  time: {
+    completed: number;
+    total: number;
+    steps: {key: string; label: string; time: string | null; done: boolean}[];
+  };
+  cod: {
+    payment_type: string | null;
+    payment_form_code: number | null;
+    amount: number | null;
+    wait_time_minutes: number | null;
+    notes: string | null;
+    options: {
+      payment_types: {code: string; label: string}[];
+    };
+  };
+};
+
+export type MobileTicketPrint = {
+  header: {
+    id: number;
+    ticket_id: number;
+    ticket_code: string;
+    order_code: string;
+    order_date: string;
+    qr_value: string;
+  };
+  customer: {
+    customer_name: string;
+    project_name: string | null;
+    address: string | null;
+    map_page: string | null;
+    ordered_by: string | null;
+    ordered_by_phone: string | null;
+    job: string | null;
+    purchase_order: string | null;
+    instructions: string | null;
+  };
+  driver_truck: {
+    driver_code: string;
+    driver_name: string;
+    truck_code: string;
+    truck_ahead: string | null;
+    plant_name: string;
+    usage: string | null;
+    slump: string | null;
+    mix_code: string | null;
+    load: {
+      size: number | null;
+      unit: string | null;
+      poured: number;
+      display: string | null;
+    };
+    quantity: {
+      this_load: number | null;
+      order_total: number | null;
+      unit: string | null;
+      display: string | null;
+    };
+  };
+  timeline: {
+    completed: number;
+    total: number;
+    steps: {key: string; label: string; time: string | null; done: boolean}[];
+  };
+  totals: {
+    subtotal: number | null;
+    tax: number | null;
+    total: number | null;
+    on_account: boolean;
+    total_display: string | number | null;
+    payment_form: string | null;
+    payment_terms: string | null;
+  };
+  charges: {
+    code: string;
+    product_id: number;
+    description: string;
+    is_mix: boolean;
+    quantity: number | null;
+    unit: string | null;
+    price: number | null;
+    amount: number | null;
+  }[];
+  signature_status: {
+    is_signed: boolean;
+    is_disputed: boolean;
+    signed_name: string | null;
+    signed_at: string | null;
+  };
 };
 
 export const ticketsApi = {
@@ -266,6 +431,25 @@ export const ticketsApi = {
   },
   getById: (id: number) =>
     request<TicketDetail>(`/tickets/${id}`),
+  getPrintable: (id: number) =>
+    request<MobileTicketPrint>(`/tickets/${id}/print`),
+  getDeliveryRecord: (id: number) =>
+    request<DeliveryRecord>(`/tickets/${id}/delivery-record`),
+  saveDeliveryTab: (id: number, tab: string, body: Record<string, any>) =>
+    request<DeliveryRecord>(`/tickets/${id}/delivery-record/${tab}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  sign: (id: number, body: {email?: string; customer_notes?: string; signed_name: string; signature_image: string}) =>
+    request(`/tickets/${id}/sign`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  dispute: (id: number, body: {quantity: number; reason: string; signed_name: string; signature_image: string; product_code?: string; product_description?: string; quantity_unit?: string}) =>
+    request(`/tickets/${id}/dispute`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
 
 export const authApi = {

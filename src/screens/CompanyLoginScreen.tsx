@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
   ScrollView,
   Platform,
   Animated,
-  type LayoutChangeEvent,
+  Keyboard,
+  useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -29,14 +30,12 @@ export default function CompanyLoginScreen({navigation}: Props) {
   const [companyCode, setCompanyCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [layout, setLayout] = useState<{width: number; height: number} | null>(null);
   const {t} = useTranslation();
   const {c} = useTheme();
   const {companyLogin, isCompanyLoggedIn, isDriverLoggedIn} = useAuth();
   const insets = useSafeAreaInsets();
+  const {width, height} = useWindowDimensions();
 
-  const width = layout?.width ?? 0;
-  const height = layout?.height ?? 0;
   const shortDim = Math.min(width, height);
   const isTablet = shortDim > 600;
   const isLandscape = width > height;
@@ -46,6 +45,24 @@ export default function CompanyLoginScreen({navigation}: Props) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const animStarted = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Track keyboard height directly — don't rely on adjustResize (broken on MIUI)
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', e => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
+  const handleInputFocus = () => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({animated: true}), 350);
+  };
 
   useEffect(() => {
     if (isDriverLoggedIn) {
@@ -55,9 +72,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
     }
   }, [isCompanyLoggedIn, isDriverLoggedIn, navigation]);
 
-  const onRootLayout = useCallback((e: LayoutChangeEvent) => {
-    const {width: w, height: h} = e.nativeEvent.layout;
-    setLayout({width: w, height: h});
+  useEffect(() => {
     if (!animStarted.current) {
       animStarted.current = true;
       Animated.parallel([
@@ -66,6 +81,15 @@ export default function CompanyLoginScreen({navigation}: Props) {
       ]).start();
     }
   }, [fadeAnim, slideAnim]);
+
+  // Dismiss keyboard on orientation change to prevent layout chaos
+  const prevLandscape = useRef(isLandscape);
+  useEffect(() => {
+    if (prevLandscape.current !== isLandscape) {
+      prevLandscape.current = isLandscape;
+      Keyboard.dismiss();
+    }
+  }, [isLandscape]);
 
   const handleConnect = async () => {
     const code = companyCode.trim();
@@ -78,7 +102,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
     setLoading(true);
     try {
       await companyLogin(code);
-      navigation.navigate('DriverLogin');
+      navigation.replace('DriverLogin');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -94,101 +118,116 @@ export default function CompanyLoginScreen({navigation}: Props) {
   const formMaxW = isTablet ? 520 : 480;
   const brandingMaxW = isTablet ? 360 : 280;
 
+  // Compute explicit widths from screen dimensions to avoid "one-render-behind" bug
+  // (percentage/flex widths resolve against stale parent layout during rotation)
+  const padL = Math.max(isTablet ? 40 : wp(20), insets.left + 10);
+  const padR = Math.max(isTablet ? 40 : wp(20), insets.right + 10);
+  const contentW = width - padL - padR;
+  const gap = landscapeTablet ? 50 : wp(20);
+  const brandingW = isLandscape
+    ? Math.min(landscapePhone ? 240 : brandingMaxW, (contentW - gap) * 0.4)
+    : contentW;
+  const formW = isLandscape
+    ? Math.min(formMaxW, contentW - brandingW - gap)
+    : Math.min(formMaxW, contentW);
+
   return (
-    <View style={[styles.container, {backgroundColor: c.primaryDark}]} onLayout={onRootLayout}>
+    <View style={[styles.container, {backgroundColor: c.primaryDark}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
       <View style={[styles.bgTop, {backgroundColor: c.primary}]} />
       <View style={[styles.bgBottom, {backgroundColor: c.primaryDark}]} />
 
-      {!layout ? null : (
       <KeyboardAvoidingView
         style={styles.content}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             styles.innerContent,
             {
-              paddingTop: isLandscape ? insets.top + wp(6) : insets.top + wp(16),
-              paddingBottom: isLandscape ? Math.max(insets.bottom, wp(8)) : wp(24),
-              paddingLeft: Math.max(isTablet ? 40 : wp(20), insets.left + 10),
-              paddingRight: Math.max(isTablet ? 40 : wp(20), insets.right + 10),
+              paddingTop: isLandscape ? insets.top + 4 : insets.top + wp(16),
+              paddingBottom: (isLandscape ? insets.bottom + 8 : wp(24)) + keyboardHeight,
+              paddingLeft: padL,
+              paddingRight: padR,
             },
-            isLandscape && styles.innerContentLandscape,
-            landscapeTablet && {gap: 50},
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={false}>
 
-          {/* Branding */}
-          <Animated.View
-            style={[
-              styles.brandingSection,
-              isLandscape && {marginBottom: 0, flex: 1, maxWidth: brandingMaxW},
-              landscapePhone && {maxWidth: 240},
-              {opacity: fadeAnim},
-            ]}>
-            <View style={{marginBottom: landscapePhone ? 8 : 16}}>
-              <View style={[
-                styles.logoOuter,
-                landscapePhone && {width: 60, height: 60, borderRadius: 20},
-                isTablet && {width: 100, height: 100, borderRadius: 30},
-                {backgroundColor: c.overlay15, borderColor: c.overlay25},
+          <View style={[
+            styles.innerRow,
+            {width: contentW},
+            isLandscape && styles.innerRowLandscape,
+            landscapeTablet && {gap: 50},
+          ]}>
+            {/* Branding */}
+            <Animated.View
+              style={[
+                styles.brandingSection,
+                isLandscape && {marginBottom: 0, width: brandingW},
+                {opacity: fadeAnim},
               ]}>
+              <View style={{marginBottom: landscapePhone ? 4 : 16}}>
                 <View style={[
-                  styles.logoInner,
-                  landscapePhone && {width: 44, height: 44, borderRadius: 14},
-                  isTablet && {width: 72, height: 72, borderRadius: 22},
-                  {backgroundColor: c.primaryLight, shadowColor: c.shadowColor},
+                  styles.logoOuter,
+                  landscapePhone && {width: 50, height: 50, borderRadius: 16},
+                  isTablet && {width: 100, height: 100, borderRadius: 30},
+                  {backgroundColor: c.overlay15, borderColor: c.overlay25},
                 ]}>
-                  <MaterialIcons
-                    name="sync"
-                    size={landscapePhone ? 22 : isTablet ? 36 : 30}
-                    color={c.textOnPrimary}
-                  />
+                  <View style={[
+                    styles.logoInner,
+                    landscapePhone && {width: 36, height: 36, borderRadius: 12},
+                    isTablet && {width: 72, height: 72, borderRadius: 22},
+                    {backgroundColor: c.primaryLight, shadowColor: c.shadowColor},
+                  ]}>
+                    <MaterialIcons
+                      name="sync"
+                      size={landscapePhone ? 18 : isTablet ? 36 : 30}
+                      color={c.textOnPrimary}
+                    />
+                  </View>
                 </View>
               </View>
-            </View>
-            <Text style={[
-              styles.appName,
-              landscapePhone && {fontSize: ms(22)},
-              isTablet && {fontSize: ms(28)},
-              {color: c.textOnPrimary},
-            ]}>
-              {t('app.name')}
-            </Text>
-            <Text style={[styles.appTagline, {color: c.textOnDark70}]}>
-              {t('app.tagline')}
-            </Text>
-          </Animated.View>
+              <Text style={[
+                styles.appName,
+                landscapePhone && {fontSize: ms(22)},
+                isTablet && {fontSize: ms(28)},
+                {color: c.textOnPrimary},
+              ]}>
+                {t('app.name')}
+              </Text>
+              <Text style={[styles.appTagline, {color: c.textOnDark70}]}>
+                {t('app.tagline')}
+              </Text>
+            </Animated.View>
 
-          {/* Form Card */}
-          <Animated.View
-            style={[
-              {maxWidth: formMaxW},
-              !isLandscape && {width: '100%'},
-              isLandscape && {flex: 1, maxWidth: formMaxW},
-              {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
-            ]}>
+            {/* Form Card */}
+            <Animated.View
+              style={[
+                {width: formW},
+                {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
+              ]}>
             <View style={[
               styles.formCard,
-              landscapePhone && {paddingVertical: wp(14), paddingHorizontal: wp(16), borderRadius: 18},
+              landscapePhone && {paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14},
               isTablet && {paddingVertical: 24, paddingHorizontal: 28, borderRadius: 22},
               {backgroundColor: c.white, shadowColor: c.shadowColor},
             ]}>
-              {/* Login type indicator */}
-              <View style={[styles.loginTypeBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}]}>
-                <MaterialIcons name="business" size={ms(14)} color={c.primary} />
-                <Text style={[styles.loginTypeText, {color: c.primary}]}>
-                  {t('companyLogin.badge')}
-                </Text>
-              </View>
+              {/* Login type indicator — hide in landscape phone */}
+              {!landscapePhone && (
+                <View style={[styles.loginTypeBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}]}>
+                  <MaterialIcons name="business" size={ms(14)} color={c.primary} />
+                  <Text style={[styles.loginTypeText, {color: c.primary}]}>
+                    {t('companyLogin.badge')}
+                  </Text>
+                </View>
+              )}
 
               <Text style={[
                 styles.welcomeText,
-                landscapePhone && {fontSize: ms(20), marginBottom: 2},
+                landscapePhone && {fontSize: ms(18), marginBottom: 1},
                 isTablet && {fontSize: ms(20)},
                 {color: c.textPrimary},
               ]}>
@@ -196,7 +235,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
               </Text>
               <Text style={[
                 styles.welcomeSub,
-                landscapePhone && {marginBottom: wp(12)},
+                landscapePhone && {marginBottom: 6, fontSize: ms(12)},
                 isTablet && {marginBottom: 18},
                 {color: c.textTertiary},
               ]}>
@@ -204,8 +243,8 @@ export default function CompanyLoginScreen({navigation}: Props) {
               </Text>
 
               {/* Company Code */}
-              <View style={{marginBottom: landscapePhone ? wp(10) : isTablet ? 14 : wp(18)}}>
-                <Text style={[styles.fieldLabel, {color: c.textSecondary}]}>
+              <View style={{marginBottom: landscapePhone ? 6 : isTablet ? 14 : wp(18)}}>
+                <Text style={[styles.fieldLabel, landscapePhone && {marginBottom: 3}, {color: c.textSecondary}]}>
                   {t('companyLogin.companyCode')}
                 </Text>
                 <View style={[
@@ -215,15 +254,15 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 ]}>
                   <View style={[
                     styles.inputIconBox,
-                    landscapePhone && {width: 34, height: 34},
+                    landscapePhone && {width: 30, height: 30},
                     isTablet && {width: 42, height: 42},
                   ]}>
-                    <MaterialIcons name="vpn-key" size={isTablet ? 22 : 20} color={c.primaryLight} />
+                    <MaterialIcons name="vpn-key" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
                   </View>
                   <TextInput
                     style={[
                       styles.input,
-                      landscapePhone && {paddingVertical: wp(8)},
+                      landscapePhone && {paddingVertical: 6, fontSize: ms(13)},
                       isTablet && {paddingVertical: 10, fontSize: ms(14)},
                       {color: c.textPrimary},
                     ]}
@@ -232,6 +271,10 @@ export default function CompanyLoginScreen({navigation}: Props) {
                     value={companyCode}
                     onChangeText={setCompanyCode}
                     autoCapitalize="characters"
+                    onFocus={handleInputFocus}
+                    returnKeyType="go"
+                    onSubmitEditing={handleConnect}
+                    maxLength={50}
                   />
                 </View>
               </View>
@@ -248,7 +291,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
               <TouchableOpacity
                 style={[
                   styles.connectButton,
-                  landscapePhone && {paddingVertical: wp(10), borderRadius: 10, marginTop: 4},
+                  landscapePhone && {paddingVertical: 8, borderRadius: 10, marginTop: 2},
                   isTablet && {paddingVertical: 14, borderRadius: 12, marginTop: 6},
                   {backgroundColor: c.primary, shadowColor: c.primary},
                   loading && {opacity: 0.7},
@@ -256,23 +299,25 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 onPress={handleConnect}
                 activeOpacity={0.85}
                 disabled={loading}>
-                <Text style={[styles.connectButtonText, isTablet && {fontSize: ms(14)}, {color: c.textOnPrimary}]}>
+                <Text style={[styles.connectButtonText, landscapePhone && {fontSize: ms(13)}, isTablet && {fontSize: ms(14)}, {color: c.textOnPrimary}]}>
                   {loading ? t('companyLogin.connecting', 'Connecting...') : t('companyLogin.connect')}
                 </Text>
-                {!loading && <MaterialIcons name="arrow-forward" size={isTablet ? 22 : 20} color={c.textOnPrimary} />}
+                {!loading && <MaterialIcons name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
               </TouchableOpacity>
 
-              {/* Footer */}
-              <View style={[styles.footer, landscapePhone && {marginTop: wp(10)}, isTablet && {marginTop: 16}]}>
-                <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
-                <Text style={[styles.footerText, {color: c.textPlaceholder}]}>{t('app.poweredBy')}</Text>
-                <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
-              </View>
+              {/* Footer — hide in landscape phone */}
+              {!landscapePhone && (
+                <View style={[styles.footer, isTablet && {marginTop: 16}]}>
+                  <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
+                  <Text style={[styles.footerText, {color: c.textPlaceholder}]}>{t('app.poweredBy')}</Text>
+                  <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
+                </View>
+              )}
             </View>
           </Animated.View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      )}
     </View>
   );
 }
@@ -283,7 +328,8 @@ const styles = StyleSheet.create({
   bgBottom: {position: 'absolute', bottom: 0, left: -5, right: -5, height: '50%'},
   content: {flex: 1},
   innerContent: {flexGrow: 1, alignItems: 'center', justifyContent: 'center'},
-  innerContentLandscape: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(20)},
+  innerRow: {alignItems: 'center', justifyContent: 'center'},
+  innerRowLandscape: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(20)},
   brandingSection: {alignItems: 'center', marginBottom: wp(24)},
   logoOuter: {width: wp(82), height: wp(82), borderRadius: wp(26), justifyContent: 'center', alignItems: 'center', borderWidth: 2},
   logoInner: {width: wp(60), height: wp(60), borderRadius: wp(18), justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},

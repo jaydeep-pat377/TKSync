@@ -66,6 +66,36 @@ yarn-error.log
 # testing
 /coverage
 
+# Environment variables                                                                             
+.env                                                                                                
+.env.*                                                                                              
+    
+
+# Claude Code local settings
+.claude/
+
+# Android build-generated assets
+android/android/
+android/app/src/main/assets/
+android/app/src/main/res/drawable-mdpi/
+android/app/src/main/res/drawable-xhdpi/
+android/app/src/main/res/drawable-xxhdpi/
+android/app/src/main/res/drawable-xxxhdpi/
+android/app/src/main/res/raw/
+
+# Signing certificates & keys
+*.p12
+*.pem
+*.cer
+*.jks
+
+# Build outputs
+*.apk
+*.aab
+
+# Logs
+*.log
+
 # Yarn
 .yarn/*
 !.yarn/patches

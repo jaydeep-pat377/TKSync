@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,59 +7,31 @@ import {
   TouchableOpacity,
   StatusBar,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+import {ticketsApi, type MobileTicketPrint} from '../services/api';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<{MobileTicket: {ticketId?: number}}, 'MobileTicket'>;
 };
 
-const CHARGES = [
-  {code: '6138609', desc: '35MPA AIR C1 .40 MR', qty: '9.00', unit: 'm3', price: '', amount: 'ON ACCOUNT'},
-  {code: '2782', desc: 'EASYFLOW MID', qty: '0', unit: '/m', price: '', amount: 'ON ACCOUNT'},
-  {code: '12581', desc: 'TOARC FEE', qty: '9.00', unit: '/m', price: '', amount: 'ON ACCOUNT'},
-  {code: '14301', desc: 'FLEX FUEL SURCHARGE', qty: '9.00', unit: '/m', price: '', amount: 'ON ACCOUNT'},
-  {code: '15902', desc: 'INDUSTRIAL EMISSIONS CHARGE', qty: '9.00', unit: '/m', price: '', amount: 'ON ACCOUNT'},
-  {code: '2294', desc: 'AFTER HOURS CHARGE', qty: '9.00', unit: '/m', price: '', amount: 'ON ACCOUNT'},
-  {code: '2571', desc: 'ENVIRONMENTAL CHARGE - M3', qty: '9.00', unit: '/m', price: '', amount: 'ON ACCOUNT'},
-  {code: '5843', desc: 'FUEL SURCHARGE - CBM /M3', qty: '9.00', unit: '/m', price: '', amount: 'ON ACCOUNT'},
-];
+const fmtTime = (t: string | null) => {
+  if (!t) return '--';
+  const d = new Date(t);
+  return d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: false});
+};
 
-const TIMELINE_GRID = [
-  {label: 'LOADING', time: '05:23'},
-  {label: 'TO JOB', time: '05:49'},
-  {label: 'ON JOB', time: '06:13'},
-  {label: 'POURING', time: '06:19'},
-  {label: 'WASHING', time: '06:47'},
-  {label: 'TO PLANT', time: '06:55'},
-  {label: 'AT PLANT', time: '--'},
-];
-
-const CUSTOMER_INFO = [
-  {label: 'CUSTOMER', value: 'GILLAM CONSTRUCTION GROUP'},
-  {label: 'PROJECT', value: 'BLDG A - SEWELLS ROAD RESIDENTIAL BUILDI'},
-  {label: 'ADDRESS', value: '3080 BOSTWICK RD LONDON\nMapPage:LOT88'},
-  {label: 'ORDERED BY', value: 'MARK'},
-  {label: 'INSTRUCTIONS', value: 'GREY TOWER CRANE - PICK POINT 1 - POURING OFF BOSTWICK RD', highlight: true},
-];
-
-const DRIVER_COL = [
-  {label: 'DRIVER', value: '109003'},
-  {label: 'PLANT', value: '26-SCARBOROUGH R/M'},
-  {label: 'LOAD', value: '9.00 M3 (0.00 M3 Poured)'},
-  {label: 'QUANTITY', value: '9.00 M3 of 110.10 M3'},
-];
-
-const TRUCK_COL = [
-  {label: 'TRUCK', value: '605'},
-  {label: 'TRUCK AHEAD', value: ''},
-  {label: 'SLUMP', value: '120+-30 mm'},
-  {label: 'USAGE', value: ''},
-];
+const fmtAmount = (v: number | null, onAccount: boolean) => {
+  if (onAccount || v == null) return 'ON ACCOUNT';
+  return `$${v.toFixed(2)}`;
+};
 
 // Landscape section header
 function LSectionHead({icon, title, color}: {icon: string; title: string; color: string}) {
@@ -94,7 +66,7 @@ function SLabel({text, icon, color}: {text: string; icon?: string; color: string
   );
 }
 
-export default function MobileTicketScreen({navigation}: Props) {
+export default function MobileTicketScreen({navigation, route}: Props) {
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height: winHeight} = useWindowDimensions();
@@ -102,6 +74,90 @@ export default function MobileTicketScreen({navigation}: Props) {
   const isLandscape = width > winHeight;
   const wide = isTablet || isLandscape;
   const hMargin = isTablet ? 24 : isLandscape ? 16 : wp(10);
+
+  const ticketId = route.params?.ticketId;
+  const [data, setData] = useState<MobileTicketPrint | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchPrintable = useCallback(async (id: number) => {
+    setLoading(true);
+    try {
+      const res = await ticketsApi.getPrintable(id);
+      setData(res.data);
+    } catch (err) {
+      console.log('[MobileTicket] fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (ticketId) {
+      fetchPrintable(ticketId);
+    }
+  }, [ticketId, fetchPrintable]);
+
+  // Derived display data
+  const header = data?.header;
+  const cust = data?.customer;
+  const dt = data?.driver_truck;
+  const tl = data?.timeline;
+  const totals = data?.totals;
+  const charges = data?.charges || [];
+
+  const orderCode = header?.order_code || '-';
+  const ticketCode = header?.ticket_code || '-';
+  const orderDate = header?.order_date
+    ? new Date(header.order_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'})
+    : '-';
+
+  const customerInfo = cust ? [
+    {label: 'CUSTOMER', value: cust.customer_name || '-'},
+    {label: 'PROJECT', value: cust.project_name || '-'},
+    {label: 'ADDRESS', value: cust.address ? `${cust.address}${cust.map_page ? `\nMapPage:${cust.map_page}` : ''}` : '-'},
+    {label: 'ORDERED BY', value: cust.ordered_by || '-'},
+    {label: 'INSTRUCTIONS', value: cust.instructions || '-', highlight: Boolean(cust.instructions)},
+  ] : [];
+
+  const driverCol = dt ? [
+    {label: 'DRIVER', value: dt.driver_code || '-'},
+    {label: 'PLANT', value: dt.plant_name || '-'},
+    {label: 'LOAD', value: dt.load.display || '-'},
+    {label: 'QUANTITY', value: dt.quantity.display || '-'},
+  ] : [];
+
+  const truckCol = dt ? [
+    {label: 'TRUCK', value: dt.truck_code || '-'},
+    {label: 'TRUCK AHEAD', value: dt.truck_ahead || '-'},
+    {label: 'SLUMP', value: dt.slump || '-'},
+    {label: 'USAGE', value: dt.usage || '-'},
+  ] : [];
+
+  const timelineGrid = tl?.steps
+    ? tl.steps.map(step => ({label: step.label.toUpperCase(), time: fmtTime(step.time)}))
+    : [];
+
+  const subTotal = totals?.subtotal != null ? totals.subtotal.toFixed(2) : '0.00';
+  const taxTotal = totals?.tax != null ? totals.tax.toFixed(2) : '0.00';
+  const grandTotal = totals ? String(totals.total_display ?? 'ON ACCOUNT') : 'ON ACCOUNT';
+
+  const chargeRows = charges.map(ch => ({
+    code: ch.code || '-',
+    desc: ch.description || '-',
+    qty: ch.quantity != null ? String(ch.quantity) : '-',
+    unit: ch.unit || '-',
+    price: ch.price != null ? ch.price.toFixed(2) : '-',
+    amount: fmtAmount(ch.amount, totals?.on_account ?? true),
+  }));
+
+  if (loading) {
+    return (
+      <View style={[s.container, {backgroundColor: c.accentBg, justifyContent: 'center', alignItems: 'center'}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <ActivityIndicator size="large" color={c.textOnPrimary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[s.container, {backgroundColor: c.background}]}>
@@ -124,7 +180,7 @@ export default function MobileTicketScreen({navigation}: Props) {
             <View style={{flex: 1}}>
               <Text style={[s.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 16}]}>MOBILE TICKET</Text>
               <View style={{flexDirection: 'row', gap: wide ? 14 : wp(14), marginTop: wide ? 5 : wp(8)}}>
-                {[{label: 'ORDER', value: '2605'}, {label: 'TICKET', value: '26209538'}, {label: 'DATE', value: '05/22/2026'}].map(item => (
+                {[{label: 'ORDER', value: orderCode}, {label: 'TICKET', value: ticketCode}, {label: 'DATE', value: orderDate}].map(item => (
                   <View key={item.label} style={{flexDirection: 'row', alignItems: 'center', gap: wide ? 4 : wp(3)}}>
                     <Text style={{fontSize: wide ? 9 : ms(9), fontWeight: '600', color: c.textOnDark60}}>{item.label}</Text>
                     <Text style={{fontSize: wide ? 12 : ms(11), fontWeight: '800', color: c.textOnPrimary}}>{item.value}</Text>
@@ -151,13 +207,13 @@ export default function MobileTicketScreen({navigation}: Props) {
               <View style={{flex: 30, gap: isTablet ? 8 : 5}}>
                 <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
                   <LSectionHead icon="people" title="CUSTOMER" color={c.primary} />
-                  {CUSTOMER_INFO.map(item => (
+                  {customerInfo.map(item => (
                     <LRow key={item.label} label={item.label} value={item.value} highlight={item.highlight} highlightBg={c.highlight} textColor={c.textPrimary} labelW={70} />
                   ))}
                 </View>
                 <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
                   <LSectionHead icon="local-shipping" title="DRIVER & TRUCK" color={c.primary} />
-                  {[...DRIVER_COL, ...TRUCK_COL].map(item => (
+                  {[...driverCol, ...truckCol].map(item => (
                     <LRow key={item.label} label={item.label} value={item.value} textColor={c.textPrimary} labelW={65} />
                   ))}
                 </View>
@@ -178,18 +234,18 @@ export default function MobileTicketScreen({navigation}: Props) {
                       <Text style={{width: 38, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>PRICE</Text>
                       <Text style={{width: 72, fontSize: 11, fontWeight: '800', color: c.textPrimary}}>AMOUNT</Text>
                     </View>
-                    {CHARGES.map((row, i) => (
+                    {chargeRows.map((row, i) => (
                       <View key={`${row.code}-${i}`} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, gap: 5}}>
                         <Text style={{width: 56, fontSize: 11, fontWeight: '500', color: c.textMuted}}>{row.code}</Text>
                         <Text style={{flex: 1, fontSize: 11, fontWeight: '500', color: c.textPrimary}} numberOfLines={1}>{row.desc}</Text>
                         <Text style={{width: 35, fontSize: 11, fontWeight: '500', color: c.textPrimary}}>{row.qty}</Text>
                         <Text style={{width: 28, fontSize: 11, fontWeight: '500', color: c.textMuted}}>{row.unit}</Text>
-                        <Text style={{width: 38, fontSize: 11, fontWeight: '500', color: c.textPrimary}}>{row.price || '—'}</Text>
+                        <Text style={{width: 38, fontSize: 11, fontWeight: '500', color: c.textPrimary}}>{row.price}</Text>
                         <Text style={{width: 72, fontSize: 11, fontWeight: '500', color: c.textPrimary}}>{row.amount}</Text>
                       </View>
                     ))}
                     <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border, marginTop: 6, paddingTop: 6}}>
-                      {[{label: 'Sub', value: '0.00'}, {label: 'Tax', value: '0.00'}, {label: 'Total', value: 'ON ACCOUNT'}].map(item => (
+                      {[{label: 'Sub', value: subTotal}, {label: 'Tax', value: taxTotal}, {label: 'Total', value: grandTotal}].map(item => (
                         <View key={item.label} style={{flexDirection: 'row', paddingVertical: 3}}>
                           <Text style={{minWidth: 42, fontSize: 12, fontWeight: item.label === 'Total' ? '800' : '600', color: item.label === 'Total' ? c.textPrimary : c.textMuted}}>{item.label}</Text>
                           <Text style={{flex: 1, fontSize: 12, fontWeight: item.label === 'Total' ? '700' : '500', color: c.textPrimary}}>{item.value}</Text>
@@ -201,7 +257,7 @@ export default function MobileTicketScreen({navigation}: Props) {
                   {/* Timeline */}
                   <View style={[lCard, {width: isTablet ? 280 : 200, backgroundColor: c.white, borderColor: c.border}]}>
                     <LSectionHead icon="schedule" title="TIMELINE" color={c.primary} />
-                    {TIMELINE_GRID.map(item => (
+                    {timelineGrid.map(item => (
                       <View key={item.label} style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 5}}>
                         <Text style={{fontSize: 11, fontWeight: '600', color: c.textMuted}}>{item.label}</Text>
                         <Text style={{fontSize: 13, fontWeight: '700', color: c.textPrimary}}>{item.time}</Text>
@@ -212,10 +268,10 @@ export default function MobileTicketScreen({navigation}: Props) {
 
                 {/* Shared Actions */}
                 <View style={[lCard, {flexDirection: 'row', alignItems: 'center', backgroundColor: c.white, borderColor: c.border, gap: isTablet ? 10 : 8}]}>
-                  <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : 14, borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : 44, backgroundColor: c.signBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket')}>
+                  <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : 14, borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : 44, backgroundColor: c.signBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket', {ticketId})}>
                     <Text style={{fontSize: isTablet ? 16 : 14, fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>SIGN</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : 14, borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : 44, backgroundColor: c.disputeBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
+                  <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : 14, borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : 44, backgroundColor: c.disputeBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket', {ticketId})}>
                     <Text style={{fontSize: isTablet ? 16 : 14, fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>DISPUTE</Text>
                   </TouchableOpacity>
                 </View>
@@ -227,7 +283,7 @@ export default function MobileTicketScreen({navigation}: Props) {
               {/* Customer Info */}
               <View style={[s.section, {borderBottomColor: c.border}]}>
                 <SLabel text="CUSTOMER DETAILS" icon="people" color={c.primary} />
-                {CUSTOMER_INFO.map(item => (
+                {customerInfo.map(item => (
                   <View key={item.label} style={s.infoRow}>
                     <Text style={[s.infoLabel, {color: c.textMuted}]}>{item.label}</Text>
                     <Text style={[
@@ -244,7 +300,7 @@ export default function MobileTicketScreen({navigation}: Props) {
                 <SLabel text="DRIVER & TRUCK" icon="local-shipping" color={c.primary} />
                 <View style={s.twoColGrid}>
                   <View style={s.gridCol}>
-                    {DRIVER_COL.map(item => (
+                    {driverCol.map(item => (
                       <View key={item.label} style={s.gridRow}>
                         <Text style={[s.gridLabel, {color: c.textMuted}]}>{item.label}</Text>
                         <Text style={[s.gridValue, {color: c.textPrimary}]}>{item.value}</Text>
@@ -252,7 +308,7 @@ export default function MobileTicketScreen({navigation}: Props) {
                     ))}
                   </View>
                   <View style={s.gridCol}>
-                    {TRUCK_COL.map(item => (
+                    {truckCol.map(item => (
                       <View key={item.label} style={s.gridRow}>
                         <Text style={[s.gridLabel, {color: c.textMuted}]}>{item.label}</Text>
                         <Text style={[s.gridValue, {color: c.textPrimary}]}>{item.value}</Text>
@@ -268,7 +324,7 @@ export default function MobileTicketScreen({navigation}: Props) {
                   <View style={{flex: 1}}>
                     <SLabel text="DELIVERY TIMELINE" icon="schedule" color={c.primary} />
                     <View style={s.timeGrid}>
-                      {TIMELINE_GRID.map(item => (
+                      {timelineGrid.map(item => (
                         <View key={item.label} style={s.timeCell}>
                           <Text style={[s.timeLabel, {color: c.textMuted}]}>{item.label}</Text>
                           <Text style={[s.timeValue, {color: c.textPrimary}]}>{item.time}</Text>
@@ -278,7 +334,7 @@ export default function MobileTicketScreen({navigation}: Props) {
                   </View>
                   <View style={{borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border, paddingLeft: wp(10), justifyContent: 'center'}}>
                     <SLabel text="TOTALS" color={c.primary} />
-                    {[{label: 'Sub', value: '0.00'}, {label: 'Tax', value: '0.00'}, {label: 'Total', value: 'ON ACCOUNT'}].map(item => (
+                    {[{label: 'Sub', value: subTotal}, {label: 'Tax', value: taxTotal}, {label: 'Total', value: grandTotal}].map(item => (
                       <View key={item.label} style={{flexDirection: 'row', paddingVertical: wp(3), gap: wp(8)}}>
                         <Text style={{fontSize: ms(11), fontWeight: '700', color: c.textMuted, minWidth: wp(34)}}>{item.label}</Text>
                         <Text style={[{fontSize: ms(11), fontWeight: '600', color: c.textPrimary}, item.label === 'Total' && {fontWeight: '800'}]}>{item.value}</Text>
@@ -291,7 +347,7 @@ export default function MobileTicketScreen({navigation}: Props) {
               {/* Charges */}
               <View style={[s.section, {borderBottomColor: c.border}]}>
                 <SLabel text="CHARGES" icon="receipt-long" color={c.primary} />
-                {CHARGES.map((row, i) => (
+                {chargeRows.map((row, i) => (
                   <View key={`${row.code}-${i}`} style={[s.chargeItem, {backgroundColor: i % 2 === 0 ? c.surface : c.white, borderLeftColor: c.primary}]}>
                     <View style={s.chargeTop}>
                       <Text style={[s.chargeDesc, {color: c.textPrimary}]} numberOfLines={2}>{row.desc}</Text>
@@ -301,7 +357,7 @@ export default function MobileTicketScreen({navigation}: Props) {
                       {[
                         {label: 'QTY', value: row.qty},
                         {label: 'UNIT', value: row.unit},
-                        {label: 'PRICE', value: row.price || '—'},
+                        {label: 'PRICE', value: row.price},
                         {label: 'AMOUNT', value: row.amount},
                       ].map(f => (
                         <View key={f.label} style={s.chargeField}>
@@ -317,10 +373,10 @@ export default function MobileTicketScreen({navigation}: Props) {
               {/* Actions */}
               <View style={s.actionsSection}>
                 <View style={s.actionRowHalf}>
-                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.signBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket')}>
+                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.signBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket', {ticketId})}>
                     <Text style={[s.actionBtnFullText, {color: c.textOnPrimary}, isTablet && {fontSize: 17}]}>SIGN</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.disputeBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket')}>
+                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.disputeBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket', {ticketId})}>
                     <Text style={[s.actionBtnFullText, {color: c.textOnPrimary}, isTablet && {fontSize: 16}]}>DISPUTE</Text>
                   </TouchableOpacity>
                 </View>

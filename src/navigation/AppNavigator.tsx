@@ -11,6 +11,7 @@ import NotesScreen from '../screens/NotesScreen';
 import AcceptTicketScreen from '../screens/AcceptTicketScreen';
 import DisputeTicketScreen from '../screens/DisputeTicketScreen';
 import CurblineReleaseScreen from '../screens/CurblineReleaseScreen';
+import MapScreen from '../screens/MapScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -72,6 +73,11 @@ export default function AppNavigator() {
           name="CurblineRelease"
           component={CurblineReleaseScreen}
           options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.accentBg}}}
+        />
+        <Stack.Screen
+          name="Map"
+          component={MapScreen}
+          options={{animation: 'slide_from_bottom', contentStyle: {backgroundColor: c.background}}}
         />
       </Stack.Navigator>
     </NavigationContainer>
