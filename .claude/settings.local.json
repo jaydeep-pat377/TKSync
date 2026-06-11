@@ -29,7 +29,8 @@
       "Bash(adb devices:*)",
       "WebSearch",
       "Bash(adb:*)",
-      "Bash(./gradlew assembleDebug)"
+      "Bash(./gradlew assembleDebug)",
+      "Bash(ENVFILE=.env.production ./gradlew assembleRelease)"
     ]
   }
 }

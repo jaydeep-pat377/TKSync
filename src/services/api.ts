@@ -1,7 +1,7 @@
 import Config from 'react-native-config';
 import {storage} from './storage';
 
-const BASE_URL = Config.API_BASE_URL || 'http://192.168.1.20:3000/api';
+const BASE_URL = Config.API_BASE_URL || '';
 
 type ApiResponse<T = any> = {
   success: boolean;

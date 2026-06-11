@@ -109,7 +109,7 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: 14, borderRadius: 10}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {maxWidth: 700, alignSelf: 'center', width: '100%', borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: 14, borderRadius: 10}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>

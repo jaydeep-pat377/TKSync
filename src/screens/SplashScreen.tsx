@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Animated,
   StatusBar,
+  Image,
   useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -338,10 +339,9 @@ export default function SplashScreen({navigation}: Props) {
                 },
               ]}>
               <Animated.View style={{opacity: iconOpacity}}>
-                <MaterialIcons
-                  name="local-shipping"
-                  size={iconSize}
-                  color={c.textOnPrimary}
+                <Image
+                  source={require('../assets/images/logo.png')}
+                  style={{width: logoInnerSize * 0.85, height: logoInnerSize * 0.85, borderRadius: logoInnerSize * 0.2}}
                 />
               </Animated.View>
             </View>

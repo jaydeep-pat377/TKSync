@@ -11,6 +11,7 @@ import {
   Animated,
   Pressable,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -458,9 +459,7 @@ export default function DashboardScreen({navigation}: Props) {
           <>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1}}>
-              <View style={{width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}}>
-                <MaterialIcons name="local-shipping" size={16} color={c.textOnPrimary} />
-              </View>
+              <Image source={require('../assets/images/logo.png')} style={{width: 26, height: 26, borderRadius: 8}} />
               <View>
                 <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{t('app.name')}</Text>
                 <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{t('dashboard.ticketTracking')}</Text>
@@ -500,9 +499,7 @@ export default function DashboardScreen({navigation}: Props) {
           <>
             <View style={[styles.headerRow, L && {marginBottom: 3}]}>
               <View style={styles.headerLeft}>
-                <View style={[styles.logo, {backgroundColor: c.primary}, L && {width: 30, height: 30, borderRadius: 9}]}>
-                  <MaterialIcons name="local-shipping" size={L ? 18 : ms(isTablet ? 24 : 20)} color={c.textOnPrimary} />
-                </View>
+                <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && {width: 30, height: 30, borderRadius: 9}]} />
                 <View style={{marginLeft: L ? 8 : wp(10)}}>
                   <Text style={[styles.logoTitle, {color: c.textOnPrimary}, L && {fontSize: 15}]}>{t('app.name')}</Text>
                   <Text style={[styles.logoSub, {color: c.textOnDark60, marginTop: 1}, L && {fontSize: 9}]}>{t('dashboard.ticketTracking')}</Text>
@@ -1254,7 +1251,7 @@ const styles = StyleSheet.create({
   header: {paddingBottom: wp(6)},
   headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6)},
   headerLeft: {flexDirection: 'row', alignItems: 'center'},
-  logo: {width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center'},
+  logo: {width: wp(34), height: wp(34), borderRadius: wp(11)},
   logoTitle: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.3},
   logoSub: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
   headerActions: {flexDirection: 'row', alignItems: 'center', gap: wp(6)},

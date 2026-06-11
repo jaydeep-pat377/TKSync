@@ -11,6 +11,7 @@ import {
   Platform,
   Animated,
   Keyboard,
+  Image,
   useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -176,10 +177,9 @@ export default function DriverLoginScreen({navigation}: Props) {
                     isTablet && {width: 72, height: 72, borderRadius: 22},
                     {backgroundColor: c.primaryLight, shadowColor: c.shadowColor},
                   ]}>
-                    <MaterialIcons
-                      name="local-shipping"
-                      size={landscapePhone ? 18 : isTablet ? 36 : 30}
-                      color={c.textOnPrimary}
+                    <Image
+                      source={require('../assets/images/logo.png')}
+                      style={{width: landscapePhone ? 32 : isTablet ? 65 : 52, height: landscapePhone ? 32 : isTablet ? 65 : 52, borderRadius: landscapePhone ? 10 : isTablet ? 18 : 14}}
                     />
                   </View>
                 </View>
