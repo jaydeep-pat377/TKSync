@@ -113,25 +113,36 @@ function getTicketStatus(ticket: Ticket) {
   return {key: 'dashboard.pending' as const, type: 'warning' as const};
 }
 
-function buildMixInfo(detail: TicketDetail, temperature?: string | null) {
-  const {ticket, mix} = detail;
-  const statusLabel = STATUS_MAP[ticket.current_status] ?? String(ticket.current_status);
-  const paymentLabel = PAYMENT_MAP[ticket.payment_form] ?? (ticket.payment_form || '-');
+function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
+  const {mix} = detail;
   const loadsStr = mix.loads.current != null ? `${mix.loads.current} of ${mix.loads.total}` : '-';
-  // Normalize quantity display with corrected UOM
   const qtyParts = (mix.quantity || '').split(/\s+/);
   const qtyDisplay = qtyParts.length >= 2
     ? `${qtyParts[0]} ${normalizeUOM(qtyParts[1])}`
     : mix.quantity || '-';
-  const tempDisplay = temperature != null ? `${temperature}\u00b0` : '-';
   return [
-    {labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science', isLink: true},
-    {labelKey: 'mixInfo.temperature', value: tempDisplay, icon: 'thermostat'},
+    {labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science'},
+    {labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true},
     {labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category'},
     {labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true},
     {labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten'},
     {labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers'},
-    {labelKey: 'mixInfo.status', value: statusLabel, icon: 'info'},
+  ] as {labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean}[];
+}
+
+function buildMixInfoFromTicket(ticket: Ticket) {
+  const mix = ticket.mix;
+  const qtyParts = (mix?.quantity || '').split(/\s+/);
+  const qtyDisplay = qtyParts.length >= 2
+    ? `${qtyParts[0]} ${normalizeUOM(qtyParts[1])}`
+    : mix?.quantity || '-';
+  return [
+    {labelKey: 'mixInfo.mixId', value: mix?.mix_code || '-', icon: 'science'},
+    {labelKey: 'mixInfo.description', value: mix?.description || '-', icon: 'description', isLink: true},
+    {labelKey: 'mixInfo.usage', value: '-', icon: 'category'},
+    {labelKey: 'mixInfo.slump', value: mix?.slump || '-', isHighlight: true},
+    {labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten'},
+    {labelKey: 'orderInfo.loads', value: '-', icon: 'layers'},
   ] as {labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean}[];
 }
 
@@ -317,7 +328,9 @@ export default function DashboardScreen({navigation}: Props) {
   const timeline = detail ? buildTimeline(detail) : [];
   const jobInfo = detail ? buildJobInfo(detail) : [];
   const temperature = deliveryRecord?.plant?.temp_at_plant ?? deliveryRecord?.plant?.measured?.temp_at_plant;
-  const mixInfo = detail ? buildMixInfo(detail, temperature != null ? String(temperature) : null) : [];
+  const mixInfo = detail
+    ? buildMixInfo(detail, currentTicket?.mix?.description || null)
+    : currentTicket ? buildMixInfoFromTicket(currentTicket) : [];
   const doneCount = detail ? detail.progress.completed : 0;
   const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 

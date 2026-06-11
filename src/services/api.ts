@@ -184,6 +184,13 @@ export type Ticket = {
   total_amount: number;
   tax_amount: number;
   active: boolean;
+  mix?: {
+    mix_code: string | null;
+    description: string | null;
+    slump: string | null;
+    quantity: string | null;
+    load_size: string | null;
+  };
 };
 
 export type TicketsResponse = {
