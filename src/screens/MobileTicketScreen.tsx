@@ -48,8 +48,8 @@ const normalizeUOM = (unit: string | null): string => {
 function LSectionHead({icon, title, color}: {icon: string; title: string; color: string}) {
   return (
     <View style={{flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8}}>
-      <MaterialIcons name={icon as any} size={ms(15)} color={color} />
-      <Text style={{fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
+      <MaterialIcons name={icon as any} size={ms(12)} color={color} />
+      <Text style={{fontSize: ms(10), fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
     </View>
   );
 }
@@ -58,9 +58,9 @@ function LSectionHead({icon, title, color}: {icon: string; title: string; color:
 function LRow({label, value, highlight, highlightBg, textColor, labelColor, labelW = 80}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelColor?: string; labelW?: number}) {
   return (
     <View style={{flexDirection: 'row', paddingVertical: 6}}>
-      <Text style={{minWidth: labelW, maxWidth: labelW + 10, fontSize: ms(12), fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
+      <Text style={{minWidth: labelW, maxWidth: labelW + 10, fontSize: ms(10), fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
       <Text style={[
-        {flex: 1, fontSize: ms(13), fontWeight: '600', color: textColor},
+        {flex: 1, fontSize: ms(10), fontWeight: '600', color: textColor},
         highlight && {paddingHorizontal: 4, paddingVertical: 2, backgroundColor: highlightBg, borderRadius: 3},
       ]}>{value}</Text>
     </View>

@@ -109,7 +109,7 @@ function normalizeUOM(unit: string | null | undefined): string {
 
 function getTicketStatus(ticket: Ticket) {
   if (ticket.current_status === 4) return {key: 'dashboard.completed' as const, type: 'completed' as const};
-  if (ticket.active) return {key: 'dashboard.inProcess' as const, type: 'active' as const};
+  if (ticket.active) return {key: 'dashboard.active' as const, type: 'active' as const};
   return {key: 'dashboard.pending' as const, type: 'warning' as const};
 }
 
@@ -132,8 +132,6 @@ function buildMixInfo(detail: TicketDetail, temperature?: string | null) {
     {labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten'},
     {labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers'},
     {labelKey: 'mixInfo.status', value: statusLabel, icon: 'info'},
-    {labelKey: 'mixInfo.payment', value: paymentLabel, icon: 'payment'},
-    {labelKey: 'mixInfo.total', value: ticket.total_amount != null ? `$${ticket.total_amount.toFixed(2)}` : '-', icon: 'account-balance-wallet', isHighlight: true},
   ] as {labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean}[];
 }
 
@@ -636,15 +634,15 @@ export default function DashboardScreen({navigation}: Props) {
                 const isCompleted = status.type === 'completed';
                 const isActive = status.type === 'active';
                 return (
-                  <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: isCompleted ? c.primarySurface : isActive ? c.successSurface : c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                    {isActive && <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />}
-                    <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: isCompleted ? c.primary : isActive ? c.successDark : c.warningDark}}>{t(status.key)}</Text>
+                  <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                    {isActive && <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: '#000'}} />}
+                    <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark}}>{t(status.key)}</Text>
                   </View>
                 );
               })()}
               {currentTicket != null && (
-                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.primarySurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.primary}}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
+                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.error, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: '#fff'}}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
                 </View>
               )}
             </View>
@@ -688,15 +686,15 @@ export default function DashboardScreen({navigation}: Props) {
                   const isCompleted = status.type === 'completed';
                   const isActive = status.type === 'active';
                   return (
-                    <View style={[styles.statusChip, {backgroundColor: isCompleted ? c.primarySurface : isActive ? c.successSurface : c.warningSurface}]}>
-                      {isActive && <View style={[styles.chipDot, {backgroundColor: c.success}]} />}
-                      <Text style={[styles.chipLabel, {color: isCompleted ? c.primary : isActive ? c.successDark : c.warningDark}]}>{t(status.key)}</Text>
+                    <View style={[styles.statusChip, {backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface}]}>
+                      {isActive && <View style={[styles.chipDot, {backgroundColor: '#000'}]} />}
+                      <Text style={[styles.chipLabel, {color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark}]}>{t(status.key)}</Text>
                     </View>
                   );
                 })()}
                 {currentTicket != null && (
-                  <View style={[styles.statusChip, {backgroundColor: c.primarySurface}]}>
-                    <Text style={[styles.chipLabel, {color: c.primary}]}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
+                  <View style={[styles.statusChip, {backgroundColor: c.error}]}>
+                    <Text style={[styles.chipLabel, {color: '#fff'}]}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
                   </View>
                 )}
               </View>

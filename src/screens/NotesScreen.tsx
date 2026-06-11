@@ -119,7 +119,7 @@ function Field({label, children, wide, compact, last}: {label: string; children:
   }
   return (
     <View style={[st.field, {borderBottomColor: c.borderLight}, wide && st.fieldWide, last && {borderBottomWidth: 0}]}>
-      <Text style={[st.fieldLabel, {color: c.textPrimary}, wide && st.fieldLabelWide]}>{label}</Text>
+      <Text style={[st.fieldLabel, {color: c.textPrimary}, wide && st.fieldLabelWide]} numberOfLines={1}>{label}</Text>
       <View style={st.fieldBody}>{children}</View>
     </View>
   );
@@ -182,7 +182,7 @@ function Check({checked, label, onPress}: {checked: boolean; label?: string; onP
     onPress?.();
   };
   return (
-    <TouchableOpacity style={[st.checkTap, _land && {gap: wp(2), paddingRight: wp(2)}]} activeOpacity={0.7} onPress={tap}>
+    <TouchableOpacity style={[st.checkTap, _land && {gap: wp(5), paddingRight: wp(2)}]} activeOpacity={0.7} onPress={tap}>
       <Animated.View style={[
         st.checkBox,
         _land && {width: wp(12), height: wp(12), borderRadius: wp(3), borderWidth: 1},
@@ -416,19 +416,19 @@ function NoteInput({placeholder, borderColor, bgColor, textColor, value, onChang
 const ls = StyleSheet.create({
   root: {flex: 1, paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(4)},
   topBar: {flexDirection: 'row', justifyContent: 'flex-end', marginBottom: wp(4)},
-  columns: {flex: 1, flexDirection: 'row', gap: wp(10)},
-  card: {flex: 1, borderRadius: wp(10), paddingHorizontal: wp(14), paddingTop: wp(8), paddingBottom: wp(14), borderWidth: StyleSheet.hairlineWidth},
+  columns: {flex: 1, flexDirection: 'row', gap: wp(10), alignItems: 'flex-start'},
+  card: {flexGrow: 1, flexShrink: 1, flexBasis: 0, alignSelf: 'stretch', borderRadius: wp(10), paddingHorizontal: wp(14), paddingTop: wp(8), paddingBottom: wp(14), borderWidth: StyleSheet.hairlineWidth},
   cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingBottom: wp(7), marginBottom: wp(5), borderBottomWidth: StyleSheet.hairlineWidth},
   cardHeaderIcon: {width: wp(22), height: wp(22), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
   cardTitle: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1},
-  field: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), gap: wp(5), borderBottomWidth: StyleSheet.hairlineWidth},
-  fieldLabel: {fontSize: ms(10), fontWeight: '700', minWidth: wp(40), maxWidth: wp(78), letterSpacing: 0.3, textTransform: 'uppercase'},
+  field: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), gap: wp(5), borderBottomWidth: StyleSheet.hairlineWidth},
+  fieldLabel: {fontSize: ms(10), fontWeight: '700', minWidth: wp(40), maxWidth: wp(120), letterSpacing: 0.3},
   fieldBody: {flexDirection: 'row', alignItems: 'center', gap: wp(5), flex: 1, flexShrink: 1},
   fieldWide: {flexDirection: 'column' as const, alignItems: 'flex-start' as const},
-  fieldLabelWide: {width: '100%' as const, marginBottom: wp(4)},
-  fieldCompact: {paddingVertical: wp(6), gap: wp(3), flex: 1, borderBottomWidth: 0},
-  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: wp(3)},
-  fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(5)},
+  fieldLabelWide: {width: '100%' as const, marginBottom: wp(10)},
+  fieldCompact: {paddingVertical: 0, gap: 0, flex: 1, borderBottomWidth: 0},
+  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.3, marginBottom: 0},
+  fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(4)},
   fieldRow: {flexDirection: 'row', gap: wp(10), borderBottomWidth: StyleSheet.hairlineWidth},
   notesInput: {flex: 1, borderRadius: wp(8), padding: wp(10), fontSize: ms(12), textAlignVertical: 'top', width: '100%', lineHeight: ms(18), borderWidth: 1},
   notesSection: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(4), paddingTop: wp(6), flex: 1, gap: wp(4)},
@@ -456,7 +456,7 @@ function LField({label, children, wide, compact, noBorder}: {label: string; chil
   }
   return (
     <View style={[ls.field, {borderBottomColor: c.borderLight}, wide && ls.fieldWide, noBorder && {borderBottomWidth: 0}]}>
-      <Text style={[ls.fieldLabel, {color: c.textSecondary}, wide && ls.fieldLabelWide]}>{label}</Text>
+      <Text style={[ls.fieldLabel, {color: c.textSecondary}, wide && [ls.fieldLabelWide, {maxWidth: undefined}]]} numberOfLines={wide ? undefined : 1}>{label}</Text>
       <View style={ls.fieldBody}>{children}</View>
     </View>
   );
@@ -877,65 +877,61 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   if (_pw > _ph) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
+        <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSavePlant} /></View>
         <View style={{flex: 1, gap: wp(8)}}>
           {/* Top: two columns */}
-          <View style={{flexDirection: 'row', gap: wp(10), minHeight: '64%'}}>
+          <View style={{flexDirection: 'row', gap: wp(10), flex: 3}}>
             <LCard title="Mix Properties" icon="science">
-              <LField label="SLUMP FROM PLANT">
+              <LField label="SLUMP AT PLANT (mm)">
                 <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
                   <YellowInput value={slumpFromPlant} />
                 </TouchableOpacity>
-                <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
                 <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
               </LField>
-              <LField label="WATER ADDED">
+              <LField label="WATER ADDED (litres)">
                 <View style={common.rowFlex1Gap12}>
-                  <View style={common.flex1Gap6}>
-                    <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
-                    <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
-                  </View>
-                  <View style={common.flex1Gap6}>
-                    <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
-                    <View style={common.rowCenterGap8}>
-                      <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
-                      <MoreBtn onPress={() => setReasonModalVisible(true)} />
-                    </View>
+                  <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
+                  <View style={[common.rowCenterGap8, {flex: 1}]}>
+                    <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
+                    <MoreBtn onPress={() => setReasonModalVisible(true)} />
                   </View>
                 </View>
               </LField>
-              <LField label="SLUMP TO JOB">
+              <LField label="SLUMP TO JOB (mm)">
                 <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
                   <YellowInput value={slumpToJob} />
                 </TouchableOpacity>
-                <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
               </LField>
-              <LField label="TEMP AT PLANT" noBorder>
+              <LField label="TEMP AT PLANT (°c)" noBorder>
                 <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
-                <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
               </LField>
             </LCard>
             <View style={{flex: 1}}>
-            <LCard title="Truck & Additives" icon="local-shipping" headerRight={<LSaveButton disabled={saving} onPress={handleSavePlant} />}>
+            <LCard title="Truck & Additives" icon="local-shipping">
               {loadTested === 'yes' ? (
-              <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
-                <LFieldRow>
-                  <LField label="TRUCK START" compact>
-                    <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
-                  </LField>
-                  <LField label="TRUCK END" compact>
-                    <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
-                  </LField>
-                </LFieldRow>
+              <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled contentContainerStyle={{gap: wp(8)}}>
+                <View style={{paddingVertical: wp(4)}}>
+                  <LFieldRow>
+                    <LField label="TRUCK START" compact>
+                      <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
+                    </LField>
+                    <LField label="TRUCK END" compact>
+                      <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
+                    </LField>
+                  </LFieldRow>
+                </View>
                 <LField label="HAND-ADDED">
                   <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
-                    <Text style={[st.linkText, {color: c.linkBlue}]}>PRODUCTS</Text>
+                    <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
                   </TouchableOpacity>
                 </LField>
-                <LFieldRow>
-                  <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
-                  <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
-                </LFieldRow>
+                <View style={{paddingVertical: wp(4)}}>
+                  <LFieldRow>
+                    <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                    <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+                  </LFieldRow>
+                </View>
                 <LField label="LOAD TESTED">
                   <View style={[st.radioRow, {justifyContent: 'center'}]}>
                     <Radio selected={true} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
@@ -949,41 +945,48 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                       <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
                     </View>
                   </View>
-                  <LField label="TEMP">
-                    <Stepper value={String(loadTemp)} unit="C" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
-                  </LField>
-                  <LField label="AIR">
-                    <Stepper value={String(loadAir)} unit="%" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
-                  </LField>
-                  <LField label="SLUMP">
-                    <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
-                    <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-                  </LField>
-                  <LField label="CYLINDERS">
-                    <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
-                  </LField>
+                  <LFieldRow>
+                    <LField label="TEMP(°c)" compact>
+                      <Stepper value={String(loadTemp)} unit="" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
+                    </LField>
+                    <LField label="AIR(%)" compact>
+                      <Stepper value={String(loadAir)} unit="" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
+                    </LField>
+                  </LFieldRow>
+                  <LFieldRow>
+                    <LField label="SLUMP(mm)" compact>
+                      <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
+                    </LField>
+                    <LField label="CYLINDERS" compact>
+                      <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
+                    </LField>
+                  </LFieldRow>
                 </Animated.View>
               </ScrollView>
               ) : (
-              <View>
-                <LFieldRow>
-                  <LField label="TRUCK START" compact>
-                    <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
-                  </LField>
-                  <LField label="TRUCK END" compact>
-                    <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
-                  </LField>
-                </LFieldRow>
+              <View style={{gap: wp(8)}}>
+                <View style={{paddingVertical: wp(4)}}>
+                  <LFieldRow>
+                    <LField label="TRUCK START" compact>
+                      <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
+                    </LField>
+                    <LField label="TRUCK END" compact>
+                      <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
+                    </LField>
+                  </LFieldRow>
+                </View>
                 <LField label="HAND-ADDED">
                   <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
-                    <Text style={[st.linkText, {color: c.linkBlue}]}>PRODUCTS</Text>
+                    <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
                   </TouchableOpacity>
                 </LField>
-                <LFieldRow>
-                  <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
-                  <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
-                </LFieldRow>
+                <View style={{paddingVertical: wp(4)}}>
+                  <LFieldRow>
+                    <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                    <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+                  </LFieldRow>
+                </View>
                 <LField label="LOAD TESTED">
                   <View style={[st.radioRow, {justifyContent: 'center'}]}>
                     <Radio selected={false} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
@@ -1021,37 +1024,28 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       <SaveButton disabled={saving} onPress={handleSavePlant} />
       <CardsGrid>
       <FieldCard title="Mix Properties" icon="science">
-      <Field label="SLUMP FROM PLANT">
+      <Field label="SLUMP AT PLANT (mm)">
         <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
           <YellowInput value={slumpFromPlant} />
         </TouchableOpacity>
-        <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
         <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
       </Field>
-      <Field label="WATER ADDED(FULL)">
+      <Field label="WATER ADDED (litres)">
         <View style={common.rowFlex1Gap12}>
-          <View style={common.flex1Gap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
-            <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
-          </View>
-          <View style={common.flex1Gap6}>
-            <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
-            <View style={common.rowCenterGap8}>
-              <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
-              <MoreBtn onPress={() => setReasonModalVisible(true)} />
-            </View>
+          <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
+          <View style={[common.rowCenterGap8, {flex: 1}]}>
+            <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
+            <MoreBtn onPress={() => setReasonModalVisible(true)} />
           </View>
         </View>
       </Field>
-      <Field label="SLUMP TO JOB">
+      <Field label="SLUMP TO JOB (mm)">
         <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
           <YellowInput value={slumpToJob} />
         </TouchableOpacity>
-        <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
       </Field>
-      <Field label="TEMP AT PLANT" last>
+      <Field label="TEMP AT PLANT (°c)" last>
         <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
-        <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
       </Field>
       </FieldCard>
       <FieldCard title="Truck & Additives" icon="local-shipping">
@@ -1090,17 +1084,16 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       {loadTested === 'yes' && (
         <>
           <FieldRow>
-            <Field label="TEMP" compact>
-              <Stepper value={String(loadTemp)} unit="C" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
+            <Field label="TEMP(°c)" compact>
+              <Stepper value={String(loadTemp)} unit="" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
             </Field>
-            <Field label="AIR" compact>
-              <Stepper value={String(loadAir)} unit="%" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
+            <Field label="AIR(%)" compact>
+              <Stepper value={String(loadAir)} unit="" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
             </Field>
           </FieldRow>
           <FieldRow>
-            <Field label="SLUMP" compact>
+            <Field label="SLUMP(mm)" compact>
               <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
-              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
             </Field>
             <Field label="CYLINDERS" compact>
               <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
@@ -1254,9 +1247,10 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSaveJobsite} /></View>
         <View style={ls.columns}>
           {/* Column 1: Water */}
-          <LCard title="Water" icon="water-drop" style={{flex: 1}}>
-            <LField label="LITRES">
-              <Stepper value={String(fullLoadLitres)} unit="L" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
+          <View style={{flex: 1}}>
+          <LCard title="Water" icon="water-drop">
+            <LField label="FULL LOAD (litres)">
+              <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
             </LField>
             <LField label="REASON">
               <LineInput placeholder="Select" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
@@ -1266,23 +1260,42 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               <LineInput placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
               <MoreBtn onPress={() => setMmModalField('fullLoad')} />
             </LField>
-            <LField label="CUSTOMER">
-              <Stepper value={String(custWaterLitres)} unit="L" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
-              <LineInput placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
-              <MoreBtn onPress={() => setMmModalField('custWater')} />
+            <LField label="CUSTOMER REQUESTED WATER(litres)" wide noBorder>
+              <View style={common.rowCenterGap8}>
+                <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
+                <LineInput placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
+                <MoreBtn onPress={() => setMmModalField('custWater')} />
+              </View>
             </LField>
-            <LField label="MAINTENANCE">
-              <Stepper value={String(maintWaterLitres)} unit="L" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
-              <LineInput placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
-              <MoreBtn onPress={() => setMmModalField('maintWater')} />
+            <View style={{marginTop: wp(8)}} />
+            <LField label="MAINTENANCE WATER(litres)" wide noBorder>
+              <View style={common.rowCenterGap8}>
+                <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
+                <LineInput placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
+                <MoreBtn onPress={() => setMmModalField('maintWater')} />
+              </View>
             </LField>
           </LCard>
+          </View>
 
           {/* Column 2: Added, Not Ordered (moved from Water & Additives) */}
-          <LCard title="Added, Not Ordered" icon="playlist-add" style={{flex: 1}}>
+          <View style={{flex: 1}}>
+          <LCard title="Added, Not Ordered" icon="playlist-add" style={{flex: 0, alignSelf: 'flex-start', width: '100%'}}>
+            <LField label="SUPER PLASTICIZER" wide noBorder>
+              <View style={common.rowCenterGap8}>
+                <LineInput placeholder="Select" value={addedValues['SUPER PLASTICIZER'] || ''} onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
+                <MoreBtn onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
+              </View>
+            </LField>
+            <View style={{marginTop: wp(12)}} />
+            <LField label="CONVEYOR(if not on ticket)" wide noBorder>
+              <View style={common.rowCenterGap8}>
+                <LineInput placeholder="Select" value={addedValues['CONVEYOR (IF NOT ON TICKET)'] || ''} onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
+                <MoreBtn onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
+              </View>
+            </LField>
+            <View style={{marginTop: wp(10)}} />
             {[
-              {key: 'SUPER PLASTICIZER', label: 'S. PLASTICIZER', apiKey: 'super_plasticizer'},
-              {key: 'CONVEYOR (IF NOT ON TICKET)', label: 'CONVEYOR', apiKey: 'conveyor'},
               {key: 'COLOR', label: 'COLOR', apiKey: 'color'},
               {key: 'FIBER', label: 'FIBER', apiKey: 'fiber'},
             ].map(item => (
@@ -1295,20 +1308,21 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               <LineInput placeholder="Enter value" value={addedValues['Other'] || ''} onChangeText={(text) => setAddedValues(prev => ({...prev, Other: text}))} />
             </LField>
           </LCard>
+          </View>
 
           {/* Column 3: Options & Testing + Jobsite Notes (moved to last) */}
           <LCard title="Options & Testing" icon="checklist" style={{flex: 1}}>
             <ScrollView ref={jobScrollRef} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
-              <LField label="CONVEYOR ORDERED">
+              <LField label="CONVEYOR ORDERED" compact>
                 <Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} />
               </LField>
-              <LField label="UNLOADED CONVEYOR">
-                <Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
+              <LField label="UNLOAD OVER CONVEYOR" compact>
+                <Check checked={unloadedConveyor} label="Not used" onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
               </LField>
               <LField label="LOAD DISPUTED">
                 <Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
               </LField>
-              <LField label="WASHOUT">
+              <LField label="WASHOUT" noBorder>
                 <LineInput placeholder="Select area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
                 <MoreBtn onPress={() => setWashoutModalVisible(true)} />
               </LField>
@@ -1316,7 +1330,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               <View style={[ls.sectionDivider, {borderTopColor: c.borderLight}]}>
                 <Text style={[ls.sectionLabel, {color: c.textMuted}]}>LOAD TESTING</Text>
               </View>
-              <LField label="LOAD TESTED">
+              <LField label="LOAD TESTED" noBorder>
                 <View style={st.radioRow}>
                   <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => handleJobLoadTested('yes')} />
                   <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => handleJobLoadTested('no')} />
@@ -1324,30 +1338,33 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               </LField>
               {jobLoadTested === 'yes' && (
                 <Animated.View style={{opacity: jobTestAnim, transform: [{translateY: jobTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
-                  <View style={[ls.sectionDivider, {borderTopColor: c.primary}]}>
+                  <View style={[ls.sectionDivider, {borderTopColor: 'transparent'}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
                       <MaterialIcons name="science" size={ms(10)} color={c.primary} />
                       <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
                     </View>
                   </View>
-                  <LField label="TEMP">
-                    <Stepper value={String(jobLoadTemp)} unit="C" onIncrement={() => setJobLoadTemp(v => v + 1)} onDecrement={() => setJobLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadTemp(parseInt(v) || 0)} />
-                  </LField>
-                  <LField label="AIR">
-                    <Stepper value={String(jobLoadAir)} unit="%" onIncrement={() => setJobLoadAir(v => v + 1)} onDecrement={() => setJobLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadAir(parseInt(v) || 0)} />
-                  </LField>
-                  <LField label="SLUMP">
-                    <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
-                    <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-                  </LField>
-                  <LField label="CYLINDERS">
-                    <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
-                  </LField>
+                  <LFieldRow>
+                    <LField label="TEMP(°c)" compact>
+                      <Stepper value={String(jobLoadTemp)} unit="" onIncrement={() => setJobLoadTemp(v => v + 1)} onDecrement={() => setJobLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadTemp(parseInt(v) || 0)} />
+                    </LField>
+                    <LField label="AIR(%)" compact>
+                      <Stepper value={String(jobLoadAir)} unit="" onIncrement={() => setJobLoadAir(v => v + 1)} onDecrement={() => setJobLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadAir(parseInt(v) || 0)} />
+                    </LField>
+                  </LFieldRow>
+                  <LFieldRow>
+                    <LField label="SLUMP(mm)" compact>
+                      <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
+                    </LField>
+                    <LField label="CYLINDERS" compact>
+                      <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
+                    </LField>
+                  </LFieldRow>
                 </Animated.View>
               )}
               </>
               <View style={[ls.notesSection, {borderTopColor: c.borderLight}]}>
-                <Text style={[ls.notesSectionLabel, {color: c.textMuted}]}>JOBSITE NOTES</Text>
+                <Text style={[ls.notesSectionLabel, {color: c.textMuted}]}>INTERNAL JOBSITE NOTES</Text>
                 <TextInput
                   style={[ls.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white, minHeight: wp(60)}]}
                   multiline
@@ -1388,24 +1405,24 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       <SaveButton disabled={saving} onPress={handleSaveJobsite} />
       <CardsGrid>
       <FieldCard title="Water" icon="water-drop">
-      <Field label="FULL LOAD (LITRES)">
-        <Stepper value={String(fullLoadLitres)} unit="L" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
+      <Field label="FULL LOAD (litres)">
+        <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
       </Field>
-      <Field label="FULL LOAD (REASON)">
+      <Field label="REASON">
         <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
         <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
       </Field>
-      <Field label="FULL LOAD (MM)">
+      <Field label="SLUMP(mm)">
         <LineInput width={80} placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
         <MoreBtn onPress={() => setMmModalField('fullLoad')} />
       </Field>
-      <Field label="CUSTOMER WATER">
-        <Stepper value={String(custWaterLitres)} unit="L" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
+      <Field label="CUSTOMER REQUESTED WATER(litres)">
+        <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
         <LineInput width={80} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
         <MoreBtn onPress={() => setMmModalField('custWater')} />
       </Field>
-      <Field label="MAINTENANCE WATER" last>
-        <Stepper value={String(maintWaterLitres)} unit="L" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
+      <Field label="MAINTENANCE WATER(litres)" last>
+        <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
         <LineInput width={80} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
         <MoreBtn onPress={() => setMmModalField('maintWater')} />
       </Field>
@@ -1429,9 +1446,15 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       />
 
       <FieldCard title="Added, Not Ordered" icon="playlist-add">
+      <Field label="SUPER PLASTICIZER">
+        <LineInput placeholder="Value" value={addedValues['SUPER PLASTICIZER'] || ''} onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
+        <MoreBtn onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
+      </Field>
+      <Field label="CONVEYOR(if not on ticket)">
+        <LineInput placeholder="Value" value={addedValues['CONVEYOR (IF NOT ON TICKET)'] || ''} onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
+        <MoreBtn onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
+      </Field>
       {[
-        {key: 'SUPER PLASTICIZER', apiKey: 'super_plasticizer'},
-        {key: 'CONVEYOR (IF NOT ON TICKET)', apiKey: 'conveyor'},
         {key: 'COLOR', apiKey: 'color'},
         {key: 'FIBER', apiKey: 'fiber'},
         {key: 'Other', apiKey: 'other'},
@@ -1452,15 +1475,21 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       <FieldCard title="Options & Testing" icon="checklist">
       <FieldRow>
         <Field label="CONVEYOR ORDERED" compact><Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
-        <Field label="UNLOADED CONVEYOR" compact><Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} /></Field>
-      </FieldRow>
-      <FieldRow>
-        <Field label="LOAD DISPUTED" compact><Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} /></Field>
         <Field label="WASHOUT AREA" compact>
           <LineInput placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
           <MoreBtn onPress={() => setWashoutModalVisible(true)} />
         </Field>
       </FieldRow>
+      <View style={{flexDirection: 'row', gap: wp(8), paddingVertical: wp(5), borderBottomWidth: 0.5, borderBottomColor: c.borderLight}}>
+        <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
+          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>LOAD DISPUTED</Text>
+          <Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
+        </View>
+        <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
+          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>UNLOAD OVER CONVEYOR</Text>
+          <Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
+        </View>
+      </View>
       <Field label="LOAD TESTED" last={jobLoadTested !== 'yes'}>
         <View style={st.radioRow}>
           <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => setJobLoadTested('yes')} />
@@ -1502,7 +1531,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         onSelect={setWashoutArea}
         onClose={() => setWashoutModalVisible(false)}
       />
-      <FieldCard title="Jobsite Notes" icon="edit-note" fullWidth>
+      <FieldCard title="Internal Jobsite Notes" icon="edit-note" fullWidth>
       <Field label="NOTES" wide last>
         <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
       </Field>
@@ -1789,9 +1818,9 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       <FieldCard title="Return Details" icon="assignment-return">
       {/* Returned Concrete */}
       <Field label="RETURNED CONCRETE">
-        <View style={[st.numericInput, {backgroundColor: isConcreteValid ? c.primarySurface : c.surface, borderColor: isConcreteValid ? c.primary : c.border}]}>
+        <View style={[st.numericInput, {backgroundColor: '#FFFF00', borderColor: c.primaryBorder}]}>
           <TextInput
-            style={[st.numericInputText, {color: isConcreteValid ? c.primary : c.textPrimary}]}
+            style={[st.numericInputText, {color: c.textPrimary}]}
             value={concreteVal}
             onChangeText={handleConcreteChange}
             keyboardType="decimal-pad"
@@ -2193,25 +2222,6 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
       </Field>
 
       {/* COD Amount */}
-      <Field label="AMOUNT">
-        <View style={[cod.amountWrap, {
-          backgroundColor: codAmount ? c.primarySurface : c.white,
-          borderColor: codAmount ? c.primary : c.border,
-        }]}>
-          <Text style={[cod.amountCurrency, {color: codAmount ? c.primary : c.textMuted}]}>$</Text>
-          <TextInput
-            style={[cod.amountInput, {color: codAmount ? c.primary : c.textPrimary}]}
-            value={codAmount}
-            onChangeText={handleAmountChange}
-            keyboardType="decimal-pad"
-            maxLength={10}
-            selectTextOnFocus
-            placeholder="0.00"
-            placeholderTextColor={c.textMuted}
-          />
-        </View>
-      </Field>
-
       {/* Wait Time */}
       <Field label="WAIT TIME">
         <View style={st.stepperWrap}>
@@ -2560,13 +2570,13 @@ const st = StyleSheet.create({
   field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(5), gap: wp(4), borderBottomWidth: 0.5},
   fieldLast: {borderBottomWidth: 0},
   fieldWide: {flexDirection: 'column', alignItems: 'flex-start'},
-  fieldLabel: {fontSize: ms(10), fontWeight: '800', minWidth: wp(70), maxWidth: wp(120), letterSpacing: 0.2},
+  fieldLabel: {fontSize: ms(10), fontWeight: '800', minWidth: wp(70), maxWidth: wp(160), letterSpacing: 0.2},
   fieldLabelWide: {width: '100%', marginBottom: wp(3)},
   fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(4), flex: 1},
 
   // Compact field (label-above for FieldRow)
   fieldCompact: {paddingVertical: wp(5), gap: wp(3), flex: 1, borderBottomWidth: 0},
-  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3},
+  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.3},
   fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(4)},
 
   // Field row
