@@ -38,14 +38,16 @@ export function wp(size: number): number {
  * Moderate scale for fonts and icons.
  * Scales less aggressively than wp() so text doesn't balloon on tablets.
  * factor: 0 = no scaling, 1 = same as wp(), 0.45 = default.
+ *
+ * On tablets (shortDim > 600), the minimum factor is raised to 0.6
+ * so drivers can read text comfortably. TABLET_TRIM is NOT applied
+ * to font scaling — only to layout dimensions via wp().
  */
 export function ms(size: number, factor: number = 0.45): number {
   const shortDim = getShortDim();
-  let scale = shortDim / BASE_SHORT;
-  if (shortDim > 600) {
-    scale *= TABLET_TRIM;
-  }
-  const newSize = size + (size * scale - size) * factor;
+  const scale = shortDim / BASE_SHORT;
+  const effectiveFactor = shortDim > 600 ? Math.max(factor, 0.6) : factor;
+  const newSize = size + (size * scale - size) * effectiveFactor;
   return Math.round(PixelRatio.roundToNearestPixel(newSize));
 }
 

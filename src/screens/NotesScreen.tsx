@@ -28,7 +28,7 @@ import {Colors} from '../constants/colors';
 import {common} from '../constants/commonStyles';
 import DateTimePicker from '../components/DateTimePicker';
 import ResponsiveModal from '../components/ResponsiveModal';
-import {wp, ms} from '../utils/responsive';
+import {wp, ms, hp} from '../utils/responsive';
 import {ticketsApi, type DeliveryRecord} from '../services/api';
 
 type Props = {
@@ -107,7 +107,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
   );
 }
 
-function Field({label, children, wide, compact}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean}) {
+function Field({label, children, wide, compact, last}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean; last?: boolean}) {
   const {c} = useTheme();
   if (compact) {
     return (
@@ -118,7 +118,7 @@ function Field({label, children, wide, compact}: {label: string; children: React
     );
   }
   return (
-    <View style={[st.field, {borderBottomColor: c.borderLight}, wide && st.fieldWide]}>
+    <View style={[st.field, {borderBottomColor: c.borderLight}, wide && st.fieldWide, last && {borderBottomWidth: 0}]}>
       <Text style={[st.fieldLabel, {color: c.textPrimary}, wide && st.fieldLabelWide]}>{label}</Text>
       <View style={st.fieldBody}>{children}</View>
     </View>
@@ -191,7 +191,7 @@ function Check({checked, label, onPress}: {checked: boolean; label?: string; onP
       ]}>
         {checked && <MaterialIcons name="check" size={_land ? ms(8) : ms(11)} color={c.textOnPrimary} />}
       </Animated.View>
-      {label && <Text style={[st.checkLabel, {color: c.textPrimary}, _land && {fontSize: ms(9)}]}>{label}</Text>}
+      {label && <Text style={[st.checkLabel, {color: c.textPrimary}, _land && {fontSize: ms(11)}]}>{label}</Text>}
     </TouchableOpacity>
   );
 }
@@ -201,11 +201,11 @@ function Radio({selected, label, onPress}: {selected: boolean; label: string; on
   const {width: _rw, height: _rh} = useWindowDimensions();
   const _land = _rw > _rh;
   return (
-    <TouchableOpacity style={[st.radioTap, _land && {gap: wp(2), paddingVertical: 0, paddingHorizontal: wp(2)}]} activeOpacity={0.7} onPress={onPress}>
-      <View style={[st.radioCircle, _land && {width: wp(11), height: wp(11), borderRadius: wp(6), borderWidth: 1}, {borderColor: selected ? c.primary : c.border}]}>
-        {selected && <View style={[st.radioDot, _land && {width: wp(5), height: wp(5), borderRadius: wp(3)}, {backgroundColor: c.primary}]} />}
+    <TouchableOpacity style={[st.radioTap, _land && {gap: wp(3), paddingVertical: 0, paddingHorizontal: wp(2)}]} activeOpacity={0.7} onPress={onPress}>
+      <View style={[st.radioCircle, _land && {width: wp(12), height: wp(12), borderRadius: wp(6), borderWidth: 1.5}, {borderColor: selected ? c.primary : c.border}]}>
+        {selected && <View style={[st.radioDot, _land && {width: wp(6), height: wp(6), borderRadius: wp(3)}, {backgroundColor: c.primary}]} />}
       </View>
-      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}, _land && {fontSize: ms(9)}]}>{label}</Text>
+      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}, _land && {fontSize: ms(11)}]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -230,7 +230,7 @@ function GrayInput({placeholder}: {placeholder?: string}) {
 
 function LineInput({width: w, placeholder, value, onPress, editable, keyboardType, onChangeText}: {width?: number; placeholder?: string; value?: string; onPress?: () => void; editable?: boolean; keyboardType?: 'default' | 'number-pad' | 'numeric'; onChangeText?: (text: string) => void}) {
   const {c} = useTheme();
-  const sizeStyle = w ? {width: w} : {flex: 1};
+  const sizeStyle = w ? {width: wp(w)} : {flex: 1};
   // Read-only dropdown trigger: use Text so selected value is always visible
   if (onPress && !onChangeText) {
     return (
@@ -414,27 +414,27 @@ function NoteInput({placeholder, borderColor, bgColor, textColor, value, onChang
 
 // ─── LANDSCAPE LAYOUT COMPONENTS ───
 const ls = StyleSheet.create({
-  root: {flex: 1, paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(2)},
+  root: {flex: 1, paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(4)},
   topBar: {flexDirection: 'row', justifyContent: 'flex-end', marginBottom: wp(4)},
   columns: {flex: 1, flexDirection: 'row', gap: wp(10)},
-  card: {flex: 1, borderRadius: wp(12), paddingHorizontal: wp(12), paddingTop: wp(4), paddingBottom: wp(4)},
-  cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(4), marginBottom: wp(1)},
-  cardHeaderIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
-  cardTitle: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase', flex: 1},
-  field: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(3), gap: wp(3), borderBottomWidth: StyleSheet.hairlineWidth},
-  fieldLabel: {fontSize: ms(9), fontWeight: '700', minWidth: wp(36), maxWidth: wp(72), letterSpacing: 0.3, textTransform: 'uppercase'},
-  fieldBody: {flexDirection: 'row', alignItems: 'center', gap: wp(3), flex: 1, flexShrink: 1},
+  card: {flex: 1, borderRadius: wp(10), paddingHorizontal: wp(14), paddingTop: wp(8), paddingBottom: wp(14), borderWidth: StyleSheet.hairlineWidth},
+  cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingBottom: wp(7), marginBottom: wp(5), borderBottomWidth: StyleSheet.hairlineWidth},
+  cardHeaderIcon: {width: wp(22), height: wp(22), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
+  cardTitle: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1},
+  field: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(7), gap: wp(5), borderBottomWidth: StyleSheet.hairlineWidth},
+  fieldLabel: {fontSize: ms(10), fontWeight: '700', minWidth: wp(40), maxWidth: wp(78), letterSpacing: 0.3, textTransform: 'uppercase'},
+  fieldBody: {flexDirection: 'row', alignItems: 'center', gap: wp(5), flex: 1, flexShrink: 1},
   fieldWide: {flexDirection: 'column' as const, alignItems: 'flex-start' as const},
-  fieldLabelWide: {width: '100%' as const, marginBottom: wp(3)},
-  fieldCompact: {paddingVertical: wp(3), gap: wp(1), flex: 1, borderBottomWidth: 0},
-  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: wp(1)},
-  fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(3)},
-  fieldRow: {flexDirection: 'row', gap: wp(6), borderBottomWidth: StyleSheet.hairlineWidth},
-  notesInput: {flex: 1, borderRadius: wp(8), padding: wp(8), fontSize: ms(12), textAlignVertical: 'top', width: '100%', lineHeight: ms(18), borderWidth: 1},
+  fieldLabelWide: {width: '100%' as const, marginBottom: wp(4)},
+  fieldCompact: {paddingVertical: wp(6), gap: wp(3), flex: 1, borderBottomWidth: 0},
+  fieldCompactLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: wp(3)},
+  fieldCompactBody: {flexDirection: 'row', alignItems: 'center', gap: wp(5)},
+  fieldRow: {flexDirection: 'row', gap: wp(10), borderBottomWidth: StyleSheet.hairlineWidth},
+  notesInput: {flex: 1, borderRadius: wp(8), padding: wp(10), fontSize: ms(12), textAlignVertical: 'top', width: '100%', lineHeight: ms(18), borderWidth: 1},
   notesSection: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(4), paddingTop: wp(6), flex: 1, gap: wp(4)},
   notesSectionLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4},
-  sectionDivider: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(3), paddingTop: wp(5)},
-  sectionLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: wp(3)},
+  sectionDivider: {borderTopWidth: StyleSheet.hairlineWidth, marginTop: wp(5), paddingTop: wp(7)},
+  sectionLabel: {fontSize: ms(9), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: wp(4)},
   saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(16), paddingVertical: wp(7), borderRadius: wp(10), elevation: 6, shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.25, shadowRadius: 10},
   saveBtnText: {fontSize: ms(12), fontWeight: '800', letterSpacing: 0.3},
   lhRow: {flexDirection: 'row', alignItems: 'center', paddingBottom: wp(4)},
@@ -444,7 +444,7 @@ const ls = StyleSheet.create({
   lhTabLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
 });
 
-function LField({label, children, wide, compact}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean}) {
+function LField({label, children, wide, compact, noBorder}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean; noBorder?: boolean}) {
   const {c} = useTheme();
   if (compact) {
     return (
@@ -455,7 +455,7 @@ function LField({label, children, wide, compact}: {label: string; children: Reac
     );
   }
   return (
-    <View style={[ls.field, {borderBottomColor: c.borderLight}, wide && ls.fieldWide]}>
+    <View style={[ls.field, {borderBottomColor: c.borderLight}, wide && ls.fieldWide, noBorder && {borderBottomWidth: 0}]}>
       <Text style={[ls.fieldLabel, {color: c.textSecondary}, wide && ls.fieldLabelWide]}>{label}</Text>
       <View style={ls.fieldBody}>{children}</View>
     </View>
@@ -467,18 +467,19 @@ function LFieldRow({children}: {children: React.ReactNode}) {
   return <View style={[ls.fieldRow, {borderBottomColor: c.borderLight}]}>{children}</View>;
 }
 
-function LCard({children, title, icon, style}: {children: React.ReactNode; title?: string; icon?: string; style?: any}) {
+function LCard({children, title, icon, style, headerRight}: {children: React.ReactNode; title?: string; icon?: string; style?: any; headerRight?: React.ReactNode}) {
   const {c} = useTheme();
   return (
-    <View style={[ls.card, {backgroundColor: c.white}, style]}>
+    <View style={[ls.card, {backgroundColor: c.white, borderColor: c.borderLight}, style]}>
       {title ? (
-        <View style={ls.cardHeader}>
+        <View style={[ls.cardHeader, {borderBottomColor: c.borderLight}]}>
           {icon && (
             <View style={[ls.cardHeaderIcon, {backgroundColor: c.primarySurface}]}>
-              <MaterialIcons name={icon as any} size={ms(10)} color={c.primary} />
+              <MaterialIcons name={icon as any} size={ms(12)} color={c.primary} />
             </View>
           )}
           <Text style={[ls.cardTitle, {color: c.textPrimary}]}>{title}</Text>
+          {headerRight}
         </View>
       ) : null}
       {children}
@@ -876,69 +877,71 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   if (_pw > _ph) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
-        <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSavePlant} /></View>
-        <View style={ls.columns}>
-          <LCard title="Mix Properties" icon="science">
-            <LField label="SLUMP FROM PLANT">
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
-                <YellowInput value={slumpFromPlant} />
-              </TouchableOpacity>
-              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-              <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
-            </LField>
-            <LField label="WATER ADDED">
-              <View style={common.rowFlex1Gap12}>
-                <View style={common.flex1Gap6}>
-                  <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
-                  <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
-                </View>
-                <View style={common.flex1Gap6}>
-                  <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
-                  <View style={common.rowCenterGap8}>
-                    <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
-                    <MoreBtn onPress={() => setReasonModalVisible(true)} />
+        <View style={{flex: 1, gap: wp(8)}}>
+          {/* Top: two columns */}
+          <View style={{flexDirection: 'row', gap: wp(10), minHeight: '64%'}}>
+            <LCard title="Mix Properties" icon="science">
+              <LField label="SLUMP FROM PLANT">
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
+                  <YellowInput value={slumpFromPlant} />
+                </TouchableOpacity>
+                <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+                <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
+              </LField>
+              <LField label="WATER ADDED">
+                <View style={common.rowFlex1Gap12}>
+                  <View style={common.flex1Gap6}>
+                    <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Litres</Text>
+                    <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
+                  </View>
+                  <View style={common.flex1Gap6}>
+                    <Text style={[st.inlineLabel, {color: c.textPrimary}]}>Reason</Text>
+                    <View style={common.rowCenterGap8}>
+                      <LineInput placeholder="Reason" value={waterReason} onPress={() => setReasonModalVisible(true)} />
+                      <MoreBtn onPress={() => setReasonModalVisible(true)} />
+                    </View>
                   </View>
                 </View>
-              </View>
-            </LField>
-            <LField label="SLUMP TO JOB">
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
-                <YellowInput value={slumpToJob} />
-              </TouchableOpacity>
-              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
-            </LField>
-            <LField label="TEMP AT PLANT">
-              <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
-              <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
-            </LField>
-          </LCard>
-          <LCard title="Truck & Additives" icon="local-shipping">
-            <ScrollView ref={plantScrollRef} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
-              <LFieldRow>
-                <LField label="TRUCK START" compact>
-                  <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
-                </LField>
-                <LField label="TRUCK END" compact>
-                  <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
-                </LField>
-              </LFieldRow>
-              <LField label="HAND-ADDED">
-                <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
-                <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
-                  <Text style={[st.linkText, {color: c.linkBlue}]}>PRODUCTS</Text>
+              </LField>
+              <LField label="SLUMP TO JOB">
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
+                  <YellowInput value={slumpToJob} />
                 </TouchableOpacity>
+                <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
               </LField>
-              <LFieldRow>
-                <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
-                <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
-              </LFieldRow>
-              <LField label="LOAD TESTED">
-                <View style={st.radioRow}>
-                  <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
-                  <Radio selected={loadTested === 'no'} label="No" onPress={() => handlePlantLoadTested('no')} />
-                </View>
+              <LField label="TEMP AT PLANT" noBorder>
+                <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
+                <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
               </LField>
-              {loadTested === 'yes' && (
+            </LCard>
+            <View style={{flex: 1}}>
+            <LCard title="Truck & Additives" icon="local-shipping" headerRight={<LSaveButton disabled={saving} onPress={handleSavePlant} />}>
+              {loadTested === 'yes' ? (
+              <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
+                <LFieldRow>
+                  <LField label="TRUCK START" compact>
+                    <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
+                  </LField>
+                  <LField label="TRUCK END" compact>
+                    <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
+                  </LField>
+                </LFieldRow>
+                <LField label="HAND-ADDED">
+                  <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
+                  <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
+                    <Text style={[st.linkText, {color: c.linkBlue}]}>PRODUCTS</Text>
+                  </TouchableOpacity>
+                </LField>
+                <LFieldRow>
+                  <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                  <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+                </LFieldRow>
+                <LField label="LOAD TESTED">
+                  <View style={[st.radioRow, {justifyContent: 'center'}]}>
+                    <Radio selected={true} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
+                    <Radio selected={false} label="No" onPress={() => handlePlantLoadTested('no')} />
+                  </View>
+                </LField>
                 <Animated.View style={{opacity: plantTestAnim, transform: [{translateY: plantTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
                   <View style={[ls.sectionDivider, {borderTopColor: c.primary}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
@@ -960,21 +963,48 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                     <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
                   </LField>
                 </Animated.View>
+              </ScrollView>
+              ) : (
+              <View>
+                <LFieldRow>
+                  <LField label="TRUCK START" compact>
+                    <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
+                  </LField>
+                  <LField label="TRUCK END" compact>
+                    <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
+                  </LField>
+                </LFieldRow>
+                <LField label="HAND-ADDED">
+                  <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
+                  <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
+                    <Text style={[st.linkText, {color: c.linkBlue}]}>PRODUCTS</Text>
+                  </TouchableOpacity>
+                </LField>
+                <LFieldRow>
+                  <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                  <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+                </LFieldRow>
+                <LField label="LOAD TESTED">
+                  <View style={[st.radioRow, {justifyContent: 'center'}]}>
+                    <Radio selected={false} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
+                    <Radio selected={loadTested === 'no'} label="No" onPress={() => handlePlantLoadTested('no')} />
+                  </View>
+                </LField>
+              </View>
               )}
-            </ScrollView>
-          </LCard>
-          <LCard title="Plant Notes" icon="edit-note" style={{flex: 0.7}}>
-            <View style={{flex: 1, paddingTop: wp(2)}}>
-              <TextInput
-                style={[ls.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white}]}
-                multiline
-                placeholderTextColor={c.textMuted}
-                placeholder="Enter plant notes..."
-                value={plantNotes}
-                onChangeText={setPlantNotes}
-                textAlignVertical="top"
-              />
+            </LCard>
             </View>
+          </View>
+          {/* Bottom: Plant Notes — compact */}
+          <LCard title="Plant Notes" icon="edit-note" style={{flex: 1}}>
+            <TextInput
+              style={{flex: 1, borderRadius: wp(8), paddingHorizontal: wp(10), paddingVertical: wp(10), fontSize: ms(12), backgroundColor: c.white, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, color: c.textPrimary, textAlignVertical: 'top'}}
+              multiline
+              placeholderTextColor={c.textMuted}
+              placeholder="Enter plant notes..."
+              value={plantNotes}
+              onChangeText={setPlantNotes}
+            />
           </LCard>
         </View>
         <SlumpPickerModal visible={slumpPickerVisible} value={slumpFromPlant} title="Slump From Plant" onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }} onClose={() => setSlumpPickerVisible(false)} />
@@ -1019,7 +1049,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         </TouchableOpacity>
         <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
       </Field>
-      <Field label="TEMP AT PLANT">
+      <Field label="TEMP AT PLANT" last>
         <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
         <Text style={[st.unitInline, {color: c.textSecondary}]}>°C</Text>
       </Field>
@@ -1051,7 +1081,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         <Field label="NITROGEN ADDED" compact><Check checked={nitrogenAdded} label="If not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
         <Field label="FIBERS ADDED" compact><Check checked={fibersAdded} label="If not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></Field>
       </FieldRow>
-      <Field label="LOAD TESTED">
+      <Field label="LOAD TESTED" last={loadTested !== 'yes'}>
         <View style={st.radioRow}>
           <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => setLoadTested('yes')} />
           <Radio selected={loadTested === 'no'} label="No" onPress={() => setLoadTested('no')} />
@@ -1080,7 +1110,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       )}
       </FieldCard>
       <FieldCard title="Plant Notes" icon="edit-note" fullWidth>
-      <Field label="NOTES" wide>
+      <Field label="NOTES" wide last>
         <NoteInput placeholder="Enter plant notes..." value={plantNotes} onChangeText={setPlantNotes} />
       </Field>
       </FieldCard>
@@ -1374,7 +1404,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         <LineInput width={80} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
         <MoreBtn onPress={() => setMmModalField('custWater')} />
       </Field>
-      <Field label="MAINTENANCE WATER">
+      <Field label="MAINTENANCE WATER" last>
         <Stepper value={String(maintWaterLitres)} unit="L" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
         <LineInput width={80} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
         <MoreBtn onPress={() => setMmModalField('maintWater')} />
@@ -1406,7 +1436,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         {key: 'FIBER', apiKey: 'fiber'},
         {key: 'Other', apiKey: 'other'},
       ].map(item => (
-        <Field key={item.key} label={item.key}>
+        <Field key={item.key} label={item.key} last={item.key === 'Other'}>
           <LineInput placeholder="Value" value={addedValues[item.key] || ''} onPress={item.key !== 'Other' ? () => setAddedModalItem(item.key) : undefined} onChangeText={item.key === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item.key]: text})) : undefined} />
           {item.key !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item.key)} />}
         </Field>
@@ -1431,7 +1461,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           <MoreBtn onPress={() => setWashoutModalVisible(true)} />
         </Field>
       </FieldRow>
-      <Field label="LOAD TESTED">
+      <Field label="LOAD TESTED" last={jobLoadTested !== 'yes'}>
         <View style={st.radioRow}>
           <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => setJobLoadTested('yes')} />
           <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => setJobLoadTested('no')} />
@@ -1473,7 +1503,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         onClose={() => setWashoutModalVisible(false)}
       />
       <FieldCard title="Jobsite Notes" icon="edit-note" fullWidth>
-      <Field label="NOTES" wide>
+      <Field label="NOTES" wide last>
         <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
       </Field>
       </FieldCard>
@@ -1688,6 +1718,8 @@ const sm = StyleSheet.create({
 // ─── RETURNED TAB ───
 function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
+  const {width: _rtW, height: _rtH} = useWindowDimensions();
+  const _rtLand = _rtW > _rtH;
   const r = data?.returned;
 
 
@@ -1783,7 +1815,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
               <MaterialIcons name={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
-          <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}]} numberOfLines={1}>
+          <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}]} numberOfLines={1} ellipsizeMode="tail">
             {DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || 'Select method'}
           </Text>
           <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isDisposalValid ? c.primary : c.textMuted} />
@@ -1791,7 +1823,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       </Field>
 
       {/* Reason for Return */}
-      <Field label="REASON FOR RETURN">
+      <Field label="REASON FOR RETURN" last>
         <TouchableOpacity
           style={[st.selectorBtn, common.selectorCompact, {backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
           activeOpacity={0.6}
@@ -1801,7 +1833,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
               <MaterialIcons name={RETURN_REASONS.find(r => r.key === returnReason)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
-          <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}]} numberOfLines={1}>
+          <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}]} numberOfLines={1} ellipsizeMode="tail">
             {RETURN_REASONS.find(r => r.key === returnReason)?.label || returnReason || 'Select reason'}
           </Text>
           <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isReasonValid ? c.primary : c.textMuted} />
@@ -1846,7 +1878,9 @@ const TIME_EVENTS = [
 ];
 
 function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
-  const {c, isDark} = useTheme();
+  const {c} = useTheme();
+  const {width: _tw, height: _th} = useWindowDimensions();
+  const _tLand = _tw > _th;
   const timeSteps = data?.time?.steps;
   const [saving, setSaving] = useState(false);
   const handleSaveTime = async () => {
@@ -1906,7 +1940,6 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
 
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-
       {/* Header card */}
       <View style={[tt.headerCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
         <View style={tt.headerTop}>
@@ -2026,6 +2059,8 @@ const PAYMENT_TYPES = [
 // ─── COD TAB ───
 function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
+  const {width: _codW, height: _codH} = useWindowDimensions();
+  const _codLand = _codW > _codH;
   const codData = data?.cod;
 
 
@@ -2221,7 +2256,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
       <FieldCard fullWidth>
       {/* COD Notes */}
-      <Field label="COD NOTES" wide>
+      <Field label="COD NOTES" wide last>
         <TextInput
           style={[st.textArea, {
             borderColor: notesFocused ? c.primary : c.border,
@@ -2458,7 +2493,7 @@ export default function NotesScreen({navigation, route}: Props) {
         enabled={!isLandscape}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
-          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, landscapeNoScroll && {flex: 1}]} keyboardShouldPersistTaps="handled">
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, landscapeNoScroll && {flex: 1, paddingBottom: 0}]} keyboardShouldPersistTaps="handled">
             {renderTab()}
           </ScrollView>
         </Animated.View>
@@ -2512,7 +2547,7 @@ const st = StyleSheet.create({
   cardsGridWide: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(10), alignItems: 'stretch'},
 
   // Field card
-  fieldCard: {borderRadius: wp(10), paddingHorizontal: wp(10), paddingTop: wp(2), paddingBottom: wp(2), width: '100%'},
+  fieldCard: {borderRadius: wp(10), paddingHorizontal: wp(10), paddingTop: wp(2), paddingBottom: wp(6), width: '100%'},
   fieldCardHalf: {flexGrow: 1, flexShrink: 1, flexBasis: '47%', width: undefined},
   fieldCardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(5)},
   fieldCardTitle: {fontSize: ms(10), fontWeight: '800', letterSpacing: 0.3},

@@ -25,7 +25,11 @@ type Props = {
 const fmtTime = (t: string | null) => {
   if (!t) return '--';
   const d = new Date(t);
-  return d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: false});
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${m} ${ampm}`;
 };
 
 const fmtAmount = (v: number | null, onAccount: boolean) => {
@@ -33,12 +37,19 @@ const fmtAmount = (v: number | null, onAccount: boolean) => {
   return `$${v.toFixed(2)}`;
 };
 
+// Temporary frontend UOM normalization — should be fixed in API
+const UOM_MAP: Record<string, string> = {MQ: 'CY'};
+const normalizeUOM = (unit: string | null): string => {
+  if (!unit) return '-';
+  return UOM_MAP[unit.toUpperCase()] || unit;
+};
+
 // Landscape section header
 function LSectionHead({icon, title, color}: {icon: string; title: string; color: string}) {
   return (
-    <View style={{flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 7}}>
-      <MaterialIcons name={icon as any} size={15} color={color} />
-      <Text style={{fontSize: 12, fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
+    <View style={{flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8}}>
+      <MaterialIcons name={icon as any} size={ms(15)} color={color} />
+      <Text style={{fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
     </View>
   );
 }
@@ -46,10 +57,10 @@ function LSectionHead({icon, title, color}: {icon: string; title: string; color:
 // Landscape info row
 function LRow({label, value, highlight, highlightBg, textColor, labelColor, labelW = 80}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelColor?: string; labelW?: number}) {
   return (
-    <View style={{flexDirection: 'row', paddingVertical: 5}}>
-      <Text style={{minWidth: labelW, maxWidth: labelW + 10, fontSize: 12, fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
+    <View style={{flexDirection: 'row', paddingVertical: 6}}>
+      <Text style={{minWidth: labelW, maxWidth: labelW + 10, fontSize: ms(12), fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
       <Text style={[
-        {flex: 1, fontSize: 13, fontWeight: '600', color: textColor},
+        {flex: 1, fontSize: ms(13), fontWeight: '600', color: textColor},
         highlight && {paddingHorizontal: 4, paddingVertical: 2, backgroundColor: highlightBg, borderRadius: 3},
       ]}>{value}</Text>
     </View>
@@ -145,7 +156,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
     code: ch.code || '-',
     desc: ch.description || '-',
     qty: ch.quantity != null ? String(ch.quantity) : '-',
-    unit: ch.unit || '-',
+    unit: normalizeUOM(ch.unit),
     price: ch.price != null ? ch.price.toFixed(2) : '-',
     amount: fmtAmount(ch.amount, totals?.on_account ?? true),
   }));
@@ -403,30 +414,30 @@ const s = StyleSheet.create({
   bannerTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.6},
   qrPlaceholder: {width: wp(32), height: wp(32), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
   closeBtn: {width: wp(34), height: wp(34), borderRadius: wp(17), justifyContent: 'center', alignItems: 'center'},
-  section: {paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: StyleSheet.hairlineWidth},
+  section: {paddingHorizontal: wp(14), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth},
   divider: {height: StyleSheet.hairlineWidth, marginVertical: wp(4)},
-  infoRow: {flexDirection: 'row', paddingVertical: wp(4)},
-  infoLabel: {minWidth: wp(72), maxWidth: wp(98), fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
-  infoValue: {flex: 1, fontSize: ms(12), fontWeight: '600'},
+  infoRow: {flexDirection: 'row', paddingVertical: wp(6)},
+  infoLabel: {minWidth: wp(72), maxWidth: wp(98), fontSize: ms(11), fontWeight: '700', letterSpacing: 0.2},
+  infoValue: {flex: 1, fontSize: ms(13), fontWeight: '600'},
   highlightValue: {paddingHorizontal: wp(5), paddingVertical: wp(2), borderRadius: wp(4)},
   twoColGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(6)},
   gridCol: {flex: 1, minWidth: 120},
   gridRow: {flexDirection: 'row', paddingVertical: wp(4)},
-  gridLabel: {minWidth: wp(52), maxWidth: wp(78), fontSize: ms(10), fontWeight: '700'},
-  gridValue: {flex: 1, fontSize: ms(12), fontWeight: '500'},
+  gridLabel: {minWidth: wp(52), maxWidth: wp(78), fontSize: ms(11), fontWeight: '700'},
+  gridValue: {flex: 1, fontSize: ms(13), fontWeight: '500'},
   // Charges — card-style rows
   chargeItem: {paddingVertical: wp(8), paddingHorizontal: wp(10), paddingLeft: wp(12), marginBottom: wp(4), borderRadius: wp(6), borderLeftWidth: 3},
   chargeTop: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: wp(8), marginBottom: wp(6)},
   chargeCode: {fontSize: ms(9), fontWeight: '600'},
-  chargeDesc: {flex: 1, fontSize: ms(12), fontWeight: '700', lineHeight: ms(17)},
+  chargeDesc: {flex: 1, fontSize: ms(13), fontWeight: '700', lineHeight: ms(18)},
   chargeFields: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(12)},
   chargeField: {gap: wp(2), minWidth: wp(40)},
-  chargeFieldLabel: {fontSize: ms(8), fontWeight: '700', letterSpacing: 0.5},
-  chargeFieldValue: {fontSize: ms(12), fontWeight: '600'},
+  chargeFieldLabel: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.5},
+  chargeFieldValue: {fontSize: ms(13), fontWeight: '600'},
   timeGrid: {flexDirection: 'row', flexWrap: 'wrap'},
   timeCell: {width: '25%', paddingVertical: wp(4)},
-  timeLabel: {fontSize: ms(8), fontWeight: '700', letterSpacing: 0.3},
-  timeValue: {fontSize: ms(12), fontWeight: '700', marginTop: 2},
+  timeLabel: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.3},
+  timeValue: {fontSize: ms(13), fontWeight: '700', marginTop: 2},
   actionsSection: {paddingHorizontal: wp(14), paddingVertical: wp(12)},
   actionRowHalf: {flexDirection: 'row', gap: wp(10)},
   actionBtnHalf: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 12, minHeight: 54, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.12, shadowRadius: 3},

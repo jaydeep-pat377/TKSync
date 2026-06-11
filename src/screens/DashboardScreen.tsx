@@ -21,7 +21,7 @@ import i18n from '../i18n';
 import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../contexts/ThemeContext';
 import {useAuth} from '../contexts/AuthContext';
-import {ticketsApi, type Ticket, type TicketDetail} from '../services/api';
+import {ticketsApi, type Ticket, type TicketDetail, type DeliveryRecord} from '../services/api';
 import {Colors} from '../constants/colors';
 import {common} from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
@@ -54,7 +54,9 @@ function formatTime(dateStr: string | null): string {
   const d = new Date(dateStr);
   const h = d.getHours();
   const m = d.getMinutes().toString().padStart(2, '0');
-  return `${h > 12 ? h - 12 : h || 12}:${m}`;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${m} ${ampm}`;
 }
 
 function buildTimeline(detail: TicketDetail) {
@@ -82,30 +84,52 @@ function buildJobInfo(detail: TicketDetail) {
 // Removed — map navigation now handled via in-app MapScreen
 
 const STATUS_MAP: Record<number, string> = {
-  0: 'Pending',
-  1: 'In Transit',
-  2: 'On Site',
-  3: 'Pouring',
+  0: 'Printed',
+  1: 'Loading',
+  2: 'To Job',
+  3: 'On Job',
   4: 'Completed',
 };
 
 const PAYMENT_MAP: Record<string, string> = {
-  '1': 'Cash',
-  '2': 'Check',
-  '3': 'Credit Card',
-  '4': 'On Account',
+  '1': 'CASH',
+  '2': 'CHECK',
+  '3': 'CREDIT CARD',
+  '4': 'ON ACCOUNT',
 };
 
-function buildMixInfo(detail: TicketDetail) {
+// Temporary frontend UOM normalization — should be fixed in API
+const UOM_MAP: Record<string, string> = {
+  MQ: 'CY',
+};
+function normalizeUOM(unit: string | null | undefined): string {
+  if (!unit) return '';
+  return UOM_MAP[unit.toUpperCase()] || unit;
+}
+
+function getTicketStatus(ticket: Ticket) {
+  if (ticket.current_status === 4) return {key: 'dashboard.completed' as const, type: 'completed' as const};
+  if (ticket.active) return {key: 'dashboard.inProcess' as const, type: 'active' as const};
+  return {key: 'dashboard.pending' as const, type: 'warning' as const};
+}
+
+function buildMixInfo(detail: TicketDetail, temperature?: string | null) {
   const {ticket, mix} = detail;
   const statusLabel = STATUS_MAP[ticket.current_status] ?? String(ticket.current_status);
   const paymentLabel = PAYMENT_MAP[ticket.payment_form] ?? (ticket.payment_form || '-');
   const loadsStr = mix.loads.current != null ? `${mix.loads.current} of ${mix.loads.total}` : '-';
+  // Normalize quantity display with corrected UOM
+  const qtyParts = (mix.quantity || '').split(/\s+/);
+  const qtyDisplay = qtyParts.length >= 2
+    ? `${qtyParts[0]} ${normalizeUOM(qtyParts[1])}`
+    : mix.quantity || '-';
+  const tempDisplay = temperature != null ? `${temperature}\u00b0` : '-';
   return [
     {labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science', isLink: true},
+    {labelKey: 'mixInfo.temperature', value: tempDisplay, icon: 'thermostat'},
     {labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category'},
     {labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true},
-    {labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten'},
+    {labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten'},
     {labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers'},
     {labelKey: 'mixInfo.status', value: statusLabel, icon: 'info'},
     {labelKey: 'mixInfo.payment', value: paymentLabel, icon: 'payment'},
@@ -190,6 +214,7 @@ export default function DashboardScreen({navigation}: Props) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeTicket, setActiveTicket] = useState(0);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
+  const [deliveryRecord, setDeliveryRecord] = useState<DeliveryRecord | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -263,13 +288,17 @@ export default function DashboardScreen({navigation}: Props) {
     fetchTickets();
   }, [fetchTickets]);
 
-  // Fetch detail when active ticket changes
+  // Fetch detail + delivery record when active ticket changes
   useEffect(() => {
     const ticket = tickets[activeTicket];
     if (ticket) {
       fetchDetail(ticket.id);
+      ticketsApi.getDeliveryRecord(ticket.id)
+        .then(res => setDeliveryRecord(res.data))
+        .catch(() => setDeliveryRecord(null));
     } else {
       setDetail(null);
+      setDeliveryRecord(null);
     }
   }, [activeTicket, tickets, fetchDetail]);
 
@@ -289,7 +318,8 @@ export default function DashboardScreen({navigation}: Props) {
   const currentTicket = tickets[activeTicket] || null;
   const timeline = detail ? buildTimeline(detail) : [];
   const jobInfo = detail ? buildJobInfo(detail) : [];
-  const mixInfo = detail ? buildMixInfo(detail) : [];
+  const temperature = deliveryRecord?.plant?.temp_at_plant ?? deliveryRecord?.plant?.measured?.temp_at_plant;
+  const mixInfo = detail ? buildMixInfo(detail, temperature != null ? String(temperature) : null) : [];
   const doneCount = detail ? detail.progress.completed : 0;
   const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 
@@ -460,10 +490,7 @@ export default function DashboardScreen({navigation}: Props) {
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1}}>
               <Image source={require('../assets/images/logo.png')} style={{width: 26, height: 26, borderRadius: 8}} />
-              <View>
-                <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{t('app.name')}</Text>
-                <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{t('dashboard.ticketTracking')}</Text>
-              </View>
+              <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{company?.company_name || t('app.name')}</Text>
             </View>
             {/* Weather inline */}
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10}}>
@@ -500,10 +527,7 @@ export default function DashboardScreen({navigation}: Props) {
             <View style={[styles.headerRow, L && {marginBottom: 3}]}>
               <View style={styles.headerLeft}>
                 <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && {width: 30, height: 30, borderRadius: 9}]} />
-                <View style={{marginLeft: L ? 8 : wp(10)}}>
-                  <Text style={[styles.logoTitle, {color: c.textOnPrimary}, L && {fontSize: 15}]}>{t('app.name')}</Text>
-                  <Text style={[styles.logoSub, {color: c.textOnDark60, marginTop: 1}, L && {fontSize: 9}]}>{t('dashboard.ticketTracking')}</Text>
-                </View>
+                <Text style={[styles.logoTitle, {color: c.textOnPrimary, marginLeft: L ? 8 : wp(10)}, L && {fontSize: 17}]}>{company?.company_name || t('app.name')}</Text>
               </View>
               <View style={[styles.headerActions, L && {gap: 5}]}>
                 {/* Weather + Vehicle + Employee — landscape only, before sync */}
@@ -563,12 +587,12 @@ export default function DashboardScreen({navigation}: Props) {
         <View style={{backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10)}}>
           <MaterialIcons name="wb-sunny" size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
           <View style={{flex: 1}}>
-            <Text style={{fontSize: ms(isTablet ? 13 : 12), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-            <Text style={{fontSize: ms(isTablet ? 11 : 10), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85}}>{currentTicket?.location_name || ''}</Text>
+            <Text style={{fontSize: ms(isTablet ? 14 : 12), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+            <Text style={{fontSize: ms(isTablet ? 12 : 10), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85}}>{currentTicket?.location_name || ''}</Text>
           </View>
-          <View style={{backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(4), paddingHorizontal: wp(8), borderRadius: wp(8), gap: wp(2)}}>
-            <Text style={{fontSize: ms(11), fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
-            <Text style={{fontSize: ms(10), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85}}>{driver?.driver_code || '-'}</Text>
+          <View style={{backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(5), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(2)}}>
+            <Text style={{fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
+            <Text style={{fontSize: ms(11), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85}}>{driver?.driver_code || '-'}</Text>
           </View>
         </View>
       )}
@@ -579,12 +603,12 @@ export default function DashboardScreen({navigation}: Props) {
         contentContainerStyle={[
           styles.scrollInner,
           {gap: 0},
-          lt ? {padding: 10, paddingLeft: Math.max(12, insets.left + 6)} : L ? {padding: 8, paddingLeft: Math.max(8, insets.left + 4)} : isTablet ? {padding: 18, paddingLeft: Math.max(22, insets.left + 10), paddingRight: Math.max(22, insets.right + 10)} : {},
+          lt ? {padding: 12, paddingLeft: Math.max(14, insets.left + 6)} : L ? {padding: 8, paddingLeft: Math.max(8, insets.left + 4)} : isTablet ? {padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8)} : {},
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
 
-        <View style={isTablet && !L ? {maxWidth: 900, alignSelf: 'center', width: '100%'} : undefined}>
+        <View style={isTablet && !L ? {maxWidth: 960, alignSelf: 'center', width: '100%'} : undefined}>
 
         {/* ── Landscape: KPI row + ticket chips row ── */}
         {isLandscape ? (
@@ -594,7 +618,6 @@ export default function DashboardScreen({navigation}: Props) {
               {[
                 {icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary},
                 {icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark},
-                {icon: 'local-shipping', val: currentTicket?.truck_code || '-', label: 'TRUCK', color: c.primary},
               ].map((kpi, i, arr) => (
                 <React.Fragment key={kpi.label}>
                   <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5, paddingVertical: lt ? 5 : 4, paddingHorizontal: lt ? 6 : 4}}>
@@ -608,22 +631,22 @@ export default function DashboardScreen({navigation}: Props) {
                 </React.Fragment>
               ))}
               <View style={{flex: 1}} />
-              {currentTicket?.active ? (
-                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                  <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />
-                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.successDark}}>{t('dashboard.active')}</Text>
-                </View>
-              ) : (
-                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                  <MaterialIcons name="warning" size={lt ? 13 : 11} color={c.warningDark} />
-                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.warningDark}}>{t('dashboard.inactive')}</Text>
+              {currentTicket != null && (() => {
+                const status = getTicketStatus(currentTicket);
+                const isCompleted = status.type === 'completed';
+                const isActive = status.type === 'active';
+                return (
+                  <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: isCompleted ? c.primarySurface : isActive ? c.successSurface : c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                    {isActive && <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: c.success}} />}
+                    <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: isCompleted ? c.primary : isActive ? c.successDark : c.warningDark}}>{t(status.key)}</Text>
+                  </View>
+                );
+              })()}
+              {currentTicket != null && (
+                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.primarySurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
+                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.primary}}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
                 </View>
               )}
-              {currentTicket != null ? (
-                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.primarySurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: c.primary}}>{STATUS_MAP[currentTicket.current_status] ?? currentTicket.current_status}</Text>
-                </View>
-              ) : null}
             </View>
             {/* Row 2: Ticket chips */}
             <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? 6 : 4, paddingTop: lt ? 6 : 4}}>
@@ -644,7 +667,6 @@ export default function DashboardScreen({navigation}: Props) {
                 {[
                   {icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary},
                   {icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark},
-                  {icon: 'local-shipping', val: currentTicket?.truck_code || '-', label: 'TRUCK', color: c.primary},
                 ].map((kpi, i, arr) => (
                   <React.Fragment key={kpi.label}>
                     <View style={styles.kpiItem}>
@@ -661,22 +683,22 @@ export default function DashboardScreen({navigation}: Props) {
                 ))}
               </View>
               <View style={[styles.chipRow, {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: wp(8), paddingTop: wp(8)}]}>
-                {currentTicket?.active ? (
-                  <View style={[styles.statusChip, {backgroundColor: c.successSurface}]}>
-                    <View style={[styles.chipDot, {backgroundColor: c.success}]} />
-                    <Text style={[styles.chipLabel, {color: c.successDark}]}>{t('dashboard.active')}</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.statusChip, {backgroundColor: c.warningSurface}]}>
-                    <MaterialIcons name="warning" size={ms(11)} color={c.warningDark} />
-                    <Text style={[styles.chipLabel, {color: c.warningDark}]}>{t('dashboard.inactive')}</Text>
+                {currentTicket != null && (() => {
+                  const status = getTicketStatus(currentTicket);
+                  const isCompleted = status.type === 'completed';
+                  const isActive = status.type === 'active';
+                  return (
+                    <View style={[styles.statusChip, {backgroundColor: isCompleted ? c.primarySurface : isActive ? c.successSurface : c.warningSurface}]}>
+                      {isActive && <View style={[styles.chipDot, {backgroundColor: c.success}]} />}
+                      <Text style={[styles.chipLabel, {color: isCompleted ? c.primary : isActive ? c.successDark : c.warningDark}]}>{t(status.key)}</Text>
+                    </View>
+                  );
+                })()}
+                {currentTicket != null && (
+                  <View style={[styles.statusChip, {backgroundColor: c.primarySurface}]}>
+                    <Text style={[styles.chipLabel, {color: c.primary}]}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
                   </View>
                 )}
-                {currentTicket != null ? (
-                  <View style={[styles.statusChip, {backgroundColor: c.primarySurface}]}>
-                    <Text style={[styles.chipLabel, {color: c.primary}]}>{STATUS_MAP[currentTicket.current_status] ?? currentTicket.current_status}</Text>
-                  </View>
-                ) : null}
               </View>
             </FadeCard>
           </>
@@ -695,9 +717,9 @@ export default function DashboardScreen({navigation}: Props) {
             <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 22 : 18, height: lt ? 22 : 18, borderRadius: lt ? 7 : 6}]}>
               <MaterialIcons name="timeline" size={lt ? 13 : L ? 11 : ms(13)} color={c.textOnPrimary} />
             </View>
-            <Text style={[styles.secTitle, {color: c.textPrimary, fontSize: ms(12)}, L && {fontSize: lt ? 13 : 11}]}>{t('dashboard.deliveryProgress')}</Text>
+            <Text style={[styles.secTitle, {color: c.textPrimary, fontSize: ms(12)}, L && {fontSize: lt ? 15 : 13}]}>{t('dashboard.deliveryProgress')}</Text>
             <View style={[styles.countBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}, L && {paddingHorizontal: lt ? 7 : 5, paddingVertical: lt ? 2 : 1, borderRadius: lt ? 6 : 5}]}>
-              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 10 : 8}]}>{doneCount}/{timeline.length}</Text>
+              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 12 : 10}]}>{doneCount}/{timeline.length}</Text>
             </View>
           </View>
 
@@ -758,10 +780,10 @@ export default function DashboardScreen({navigation}: Props) {
                       </View>
                       {!isLast && <View style={{flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1}} />}
                     </View>
-                    <Text style={{fontSize: 7, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2}} numberOfLines={1}>
+                    <Text style={{fontSize: ms(8), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2}} numberOfLines={1}>
                       {t(item.labelKey)}
                     </Text>
-                    <Text style={{fontSize: 9, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border}}>
+                    <Text style={{fontSize: ms(10), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border}}>
                       {item.time}
                     </Text>
                   </View>
@@ -777,11 +799,11 @@ export default function DashboardScreen({navigation}: Props) {
           <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
             <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
               <MaterialIcons name="work" size={lt ? 16 : L ? 14 : ms(16)} color={c.accent} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.jobDetails')}</Text>
+              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.jobDetails')}</Text>
             </View>
             {jobInfo.map((item, i) => (
               <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 3}, i < jobInfo.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
+                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12, width: '28%'}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isMap ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', {
                     delivery: detail?.location?.delivery,
@@ -790,12 +812,12 @@ export default function DashboardScreen({navigation}: Props) {
                     address: item.value,
                   })} style={common.flex1}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
-                      <Text style={[styles.detailValue, {color: c.accent, flex: 1}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
+                      <Text style={[styles.detailValue, {color: c.accent, flex: 1}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
                       <MaterialIcons name="map" size={L ? 14 : 16} color={c.accent} />
                     </View>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 12 : 11}]} numberOfLines={2}>{item.value}</Text>
+                  <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
                 )}
               </View>
             ))}
@@ -805,23 +827,23 @@ export default function DashboardScreen({navigation}: Props) {
           <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
             <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
               <MaterialIcons name="science" size={lt ? 16 : L ? 14 : ms(16)} color={c.primary} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 12}]}>{t('dashboard.mixDetails')}</Text>
+              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.mixDetails')}</Text>
             </View>
             {mixInfo.map((item, i) => (
               <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 2}, i < mixInfo.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 11 : 10}]} numberOfLines={1}>{t(item.labelKey)}</Text>
+                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12, width: '28%'}]} numberOfLines={1}>{t(item.labelKey)}</Text>
                 {item.isHighlight ? (
                   <View style={[styles.slumpPillInline, {backgroundColor: c.warningSurface, borderColor: c.warningBorder}]}>
                     <Text style={{fontSize: lt ? 12 : L ? 11 : ms(12), fontWeight: '800', color: c.warningDark}}>{item.value}</Text>
                   </View>
                 ) : item.isLink ? (
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
-                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 12 : 11}]}>
+                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 14 : 13}]}>
                       {item.value}
                     </Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: c.textPrimary}, L && {fontSize: lt ? 12 : 11}]}>
+                  <Text style={[styles.detailValue, common.flex1, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 13}]}>
                     {item.value}
                   </Text>
                 )}
@@ -1252,8 +1274,8 @@ const styles = StyleSheet.create({
   headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6)},
   headerLeft: {flexDirection: 'row', alignItems: 'center'},
   logo: {width: wp(34), height: wp(34), borderRadius: wp(11)},
-  logoTitle: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.3},
-  logoSub: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
+  logoTitle: {fontSize: ms(18), fontWeight: '800', letterSpacing: 0.3},
+  logoSub: {fontSize: ms(12), fontWeight: '500', marginTop: 1},
   headerActions: {flexDirection: 'row', alignItems: 'center', gap: wp(6)},
   hdrBtn: {width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center'},
 
@@ -1261,7 +1283,7 @@ const styles = StyleSheet.create({
   tabsRow: {flexDirection: 'row', gap: wp(6)},
   tab: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(4), paddingHorizontal: wp(12), borderRadius: wp(10), borderWidth: 1},
   tabDot: {width: wp(5), height: wp(5), borderRadius: wp(3)},
-  tabText: {fontWeight: '700', fontSize: ms(12), letterSpacing: 0.2},
+  tabText: {fontWeight: '700', fontSize: ms(14), letterSpacing: 0.2},
 
   // Scroll
   scroll: {flex: 1},
@@ -1271,29 +1293,29 @@ const styles = StyleSheet.create({
   kpiRow: {flexDirection: 'row', alignItems: 'center'},
   kpiItem: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingVertical: wp(4), paddingHorizontal: wp(6)},
   kpiIconWrap: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
-  kpiVal: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.1},
-  kpiLabel: {fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3, color: '#9E9E9E', marginTop: 1},
+  kpiVal: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.1},
+  kpiLabel: {fontSize: ms(12), fontWeight: '600', letterSpacing: 0.3, color: '#9E9E9E', marginTop: 1},
   kpiDivider: {width: StyleSheet.hairlineWidth, height: wp(28), marginHorizontal: wp(2)},
 
   // Chips
   chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(6), alignItems: 'center'},
   statusChip: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: wp(10), paddingVertical: wp(4), borderRadius: wp(16), gap: wp(5)},
   chipDot: {width: wp(6), height: wp(6), borderRadius: wp(3)},
-  chipLabel: {fontWeight: '600', fontSize: ms(11)},
+  chipLabel: {fontWeight: '600', fontSize: ms(14)},
   infoChip: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(8), paddingVertical: wp(4), borderRadius: wp(16), borderWidth: 1},
 
   // Section header
   secHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: wp(8), paddingBottom: wp(6), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E0E0E0', gap: wp(6)},
   secIcon: {width: wp(24), height: wp(24), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
-  secTitle: {fontSize: ms(14), fontWeight: '700', letterSpacing: 0.1, flex: 1},
+  secTitle: {fontSize: ms(17), fontWeight: '700', letterSpacing: 0.1, flex: 1},
   countBadge: {paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(8), borderWidth: 1},
-  countText: {fontSize: ms(11), fontWeight: '800'},
+  countText: {fontSize: ms(13), fontWeight: '800'},
 
   // Detail cards
   twoCol: {gap: wp(8)},
-  detailRow: {flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(7), gap: wp(8)},
-  detailLabel: {fontSize: ms(11), fontWeight: '600', letterSpacing: 0.1, width: '34%'},
-  detailValue: {fontSize: ms(12), fontWeight: '700'},
+  detailRow: {flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(9), gap: wp(8)},
+  detailLabel: {fontSize: ms(14), fontWeight: '600', letterSpacing: 0.1, width: '34%'},
+  detailValue: {fontSize: ms(15), fontWeight: '700'},
   slumpPillInline: {paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6), borderWidth: 1},
 
 
