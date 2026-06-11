@@ -456,7 +456,6 @@ export default function DashboardScreen({navigation}: Props) {
           }}>
             <MaterialIcons name={item.icon as any} size={20} color={active ? c.primary : c.textMuted} />
           </View>
-          <Text style={{fontSize: 8, fontWeight: active ? '700' : '500', color: active ? c.primary : c.textMuted, marginTop: 2}} numberOfLines={1}>{t(item.labelKey)}</Text>
         </TouchableOpacity>
       );
     }
@@ -489,7 +488,7 @@ export default function DashboardScreen({navigation}: Props) {
           <>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1}}>
-              <Image source={require('../assets/images/logo.png')} style={{width: 26, height: 26, borderRadius: 8}} />
+              <Image source={require('../assets/images/logo.png')} style={{width: 26, height: 26, borderRadius: 13}} />
               <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{company?.company_name || t('app.name')}</Text>
             </View>
             {/* Weather inline */}
@@ -526,7 +525,7 @@ export default function DashboardScreen({navigation}: Props) {
           <>
             <View style={[styles.headerRow, L && {marginBottom: 3}]}>
               <View style={styles.headerLeft}>
-                <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && {width: 30, height: 30, borderRadius: 9}]} />
+                <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && {width: 30, height: 30, borderRadius: 15}]} />
                 <Text style={[styles.logoTitle, {color: c.textOnPrimary, marginLeft: L ? 8 : wp(10)}, L && {fontSize: 17}]}>{company?.company_name || t('app.name')}</Text>
               </View>
               <View style={[styles.headerActions, L && {gap: 5}]}>
@@ -604,6 +603,7 @@ export default function DashboardScreen({navigation}: Props) {
           styles.scrollInner,
           {gap: 0},
           lt ? {padding: 12, paddingLeft: Math.max(14, insets.left + 6)} : L ? {padding: 8, paddingLeft: Math.max(8, insets.left + 4)} : isTablet ? {padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8)} : {},
+          L && {flexGrow: 1},
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
@@ -794,7 +794,7 @@ export default function DashboardScreen({navigation}: Props) {
         </FadeCard>}
 
         {/* Job + Mix Cards */}
-        {!detailLoading && <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 8 : 5}]}>
+        {!detailLoading && <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 8 : 5, flex: 1}]}>
           {/* Job Details */}
           <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
             <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
@@ -852,7 +852,7 @@ export default function DashboardScreen({navigation}: Props) {
           </FadeCard>
         </View>}
 
-        <View style={{height: L ? wp(4) : wp(14)}} />
+        {!L && <View style={{height: wp(14)}} />}
         </View>
       </ScrollView>
 
@@ -1273,7 +1273,7 @@ const styles = StyleSheet.create({
   header: {paddingBottom: wp(6)},
   headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6)},
   headerLeft: {flexDirection: 'row', alignItems: 'center'},
-  logo: {width: wp(34), height: wp(34), borderRadius: wp(11)},
+  logo: {width: wp(34), height: wp(34), borderRadius: wp(17)},
   logoTitle: {fontSize: ms(18), fontWeight: '800', letterSpacing: 0.3},
   logoSub: {fontSize: ms(12), fontWeight: '500', marginTop: 1},
   headerActions: {flexDirection: 'row', alignItems: 'center', gap: wp(6)},
