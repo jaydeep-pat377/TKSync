@@ -81,8 +81,8 @@ function buildJobInfo(detail: TicketDetail) {
     { labelKey: 'jobInfo.job', value: job.job || '-', icon: 'work' },
     { labelKey: 'orderInfo.timeDue', value: job.time_due_local ? formatLocalTime(job.time_due_local) : (job.time_due ? formatTime(job.time_due) : '-'), icon: 'schedule' },
     { labelKey: 'orderInfo.deliveredTo', value: job.delivered_to || '-', icon: 'place', isLink: true, isMap: true },
-    { labelKey: 'orderInfo.lotBlock', value: job.lot_block || '-', icon: 'grid-view' },
-    { labelKey: 'orderInfo.instructions', value: job.instructions || '-', icon: 'info-outline' },
+    { labelKey: 'orderInfo.lotBlock', value: job.lot_block || '', icon: 'grid-view' },
+    { labelKey: 'orderInfo.instructions', value: job.instructions || '', icon: 'info-outline', isHighlight: !!job.instructions },
   ];
 }
 
@@ -121,32 +121,26 @@ function getTicketStatus(ticket: Ticket) {
 function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
   const { mix } = detail;
   const loadsStr = mix.loads.current != null ? `${mix.loads.current} of ${mix.loads.total}` : '-';
-  const qtyParts = (mix.quantity || '').split(/\s+/);
-  const qtyDisplay = qtyParts.length >= 2
-    ? `${qtyParts[0]} ${normalizeUOM(qtyParts[1])}`
-    : mix.quantity || '-';
   return [
     { labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science' },
     { labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true },
     { labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category' },
     { labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true },
-    { labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten' },
+    { labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten' },
+    { labelKey: 'orderInfo.loadSize', value: mix.load_size || '-', icon: 'square-foot' },
     { labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers' },
   ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
 }
 
 function buildMixInfoFromTicket(ticket: Ticket) {
   const mix = ticket.mix;
-  const qtyParts = (mix?.quantity || '').split(/\s+/);
-  const qtyDisplay = qtyParts.length >= 2
-    ? `${qtyParts[0]} ${normalizeUOM(qtyParts[1])}`
-    : mix?.quantity || '-';
   return [
     { labelKey: 'mixInfo.mixId', value: mix?.mix_code || '-', icon: 'science' },
     { labelKey: 'mixInfo.description', value: mix?.description || '-', icon: 'description', isLink: true },
     { labelKey: 'mixInfo.usage', value: '-', icon: 'category' },
     { labelKey: 'mixInfo.slump', value: mix?.slump || '-', isHighlight: true },
-    { labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten' },
+    { labelKey: 'orderInfo.quantity', value: mix?.quantity || '-', icon: 'straighten' },
+    { labelKey: 'orderInfo.loadSize', value: mix?.load_size || '-', icon: 'square-foot' },
     { labelKey: 'orderInfo.loads', value: '-', icon: 'layers' },
   ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
 }
@@ -860,6 +854,10 @@ export default function DashboardScreen({ navigation }: Props) {
                                     <MaterialIcons name="map" size={L ? ls(14) : 16} color={c.accent} />
                                   </View>
                                 </TouchableOpacity>
+                              ) : jobItem.isHighlight ? (
+                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
+                                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{jobItem.value}</Text>
+                                </View>
                               ) : (
                                 <Text style={[styles.detailValue, common.flex1, { color: jobItem.isLink ? c.accent : c.textPrimary }]} numberOfLines={2}>{jobItem.value}</Text>
                               )}
@@ -872,8 +870,8 @@ export default function DashboardScreen({ navigation }: Props) {
                             <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.primaryMuted }]}>
                               <Text style={[styles.detailLabel, { color: c.textMuted }, L && { width: '28%' }]} numberOfLines={1}>{t(mixItem.labelKey)}</Text>
                               {mixItem.isHighlight ? (
-                                <View style={[styles.slumpPillInline, { backgroundColor: c.warningSurface, borderColor: c.warningBorder }]}>
-                                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.warningDark }}>{mixItem.value}</Text>
+                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
+                                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{mixItem.value}</Text>
                                 </View>
                               ) : mixItem.isLink ? (
                                 <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
@@ -908,6 +906,10 @@ export default function DashboardScreen({ navigation }: Props) {
                           <MaterialIcons name="map" size={16} color={c.accent} />
                         </View>
                       </TouchableOpacity>
+                    ) : item.isHighlight ? (
+                      <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
+                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{item.value}</Text>
+                      </View>
                     ) : (
                       <Text style={[styles.detailValue, common.flex1, { color: item.isLink ? c.accent : c.textPrimary }]} numberOfLines={2}>{item.value}</Text>
                     )}
@@ -923,8 +925,8 @@ export default function DashboardScreen({ navigation }: Props) {
                   <View key={item.labelKey} style={[styles.detailRow, i < mixInfo.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted }]}>
                     <Text style={[styles.detailLabel, { color: c.textMuted }]} numberOfLines={1}>{t(item.labelKey)}</Text>
                     {item.isHighlight ? (
-                      <View style={[styles.slumpPillInline, { backgroundColor: c.warningSurface, borderColor: c.warningBorder }]}>
-                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.warningDark }}>{item.value}</Text>
+                      <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
+                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{item.value}</Text>
                       </View>
                     ) : item.isLink ? (
                       <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>

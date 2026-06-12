@@ -804,7 +804,22 @@ const slumpSt = StyleSheet.create({
 function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const p = data?.plant;
+  const allFieldsFilled = p != null && (
+    p.slump_from_plant != null && p.slump_to_job != null && p.temp_at_plant != null &&
+    p.water_added_full != null && p.water_reason != null && p.truck_start != null &&
+    p.truck_end != null && p.hand_added != null && p.nitrogen_added != null &&
+    p.fibers_added != null && p.load_tested != null && p.notes != null
+  );
+  const hasApiData = p != null && (
+    p.slump_from_plant != null || p.slump_to_job != null || p.temp_at_plant != null ||
+    p.water_added_full != null || p.water_reason != null || p.truck_start != null ||
+    p.truck_end != null || p.hand_added != null || p.nitrogen_added != null ||
+    p.fibers_added != null || p.load_tested != null || p.notes != null
+  );
+  const slumpFromPlantLocked = p?.slump_from_plant != null;
+  const slumpToJobLocked = p?.slump_to_job != null;
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const handleSavePlant = async () => {
     if (!ticketId) return;
     setSaving(true);
@@ -857,6 +872,13 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   const [plantNotes, setPlantNotes] = useState(p?.notes || '');
   const [tempAtPlant, setTempAtPlant] = useState(p?.temp_at_plant != null ? String(p.temp_at_plant) : '');
 
+  const dirtyMountRef = useRef(false);
+  useEffect(() => {
+    if (!dirtyMountRef.current) { dirtyMountRef.current = true; return; }
+    if (hasApiData) setIsDirty(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waterLitres, waterReason, handAdded, nitrogenAdded, fibersAdded, loadTested, truckStart, truckEnd, plantNotes, tempAtPlant, slumpFromPlant, slumpToJob]);
+
   const plantScrollRef = useRef<ScrollView>(null);
   const plantTestAnim = useRef(new Animated.Value(0)).current;
   const {width: _pw, height: _ph} = useWindowDimensions();
@@ -879,16 +901,16 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
 
     const plantLandContent = (
       <>
-        <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSavePlant} /></View>
-        <View style={_pIsPhone ? {gap: wp(8)} : {flex: 1, gap: wp(8)}}>
+        <View style={ls.topBar}><LSaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} /></View>
+        <View style={_pIsPhone ? {gap: wp(8)} : {flex: 1, gap: wp(8)}} pointerEvents={allFieldsFilled ? 'none' : 'auto'}>
           {/* Top: two columns */}
           <View style={[{flexDirection: 'row', gap: wp(10)}, !_pIsPhone && {flex: 3}]}>
             <LCard title="Mix Properties" icon="science">
               <LField label="SLUMP AT PLANT (mm)">
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpFromPlantLocked && setSlumpPickerVisible(true)} disabled={slumpFromPlantLocked}>
                   <YellowInput value={slumpFromPlant} />
                 </TouchableOpacity>
-                <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
+                {!slumpFromPlantLocked && <MoreBtn onPress={() => setSlumpPickerVisible(true)} />}
               </LField>
               <LField label="WATER ADDED (litres)">
                 <View style={common.rowFlex1Gap12}>
@@ -900,7 +922,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                 </View>
               </LField>
               <LField label="SLUMP TO JOB (mm)">
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpToJobLocked && setSlumpToJobPickerVisible(true)} disabled={slumpToJobLocked}>
                   <YellowInput value={slumpToJob} />
                 </TouchableOpacity>
               </LField>
@@ -1033,14 +1055,15 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton disabled={saving} onPress={handleSavePlant} />
+      <SaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
+      <View pointerEvents={allFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Mix Properties" icon="science">
       <Field label="SLUMP AT PLANT (mm)">
-        <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpFromPlantLocked && setSlumpPickerVisible(true)} disabled={slumpFromPlantLocked}>
           <YellowInput value={slumpFromPlant} />
         </TouchableOpacity>
-        <MoreBtn onPress={() => setSlumpPickerVisible(true)} />
+        {!slumpFromPlantLocked && <MoreBtn onPress={() => setSlumpPickerVisible(true)} />}
       </Field>
       <Field label="WATER ADDED (litres)">
         <View style={common.rowFlex1Gap12}>
@@ -1052,7 +1075,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         </View>
       </Field>
       <Field label="SLUMP TO JOB (mm)">
-        <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpToJobPickerVisible(true)}>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpToJobLocked && setSlumpToJobPickerVisible(true)} disabled={slumpToJobLocked}>
           <YellowInput value={slumpToJob} />
         </TouchableOpacity>
       </Field>
@@ -1061,7 +1084,6 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       </Field>
       </FieldCard>
       <FieldCard title="Truck & Additives" icon="local-shipping">
-      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={{maxHeight: hp(45)}}>
       <FieldRow>
         <Field label="TRUCK START" compact>
           <TimePicker
@@ -1114,7 +1136,6 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           </FieldRow>
         </>
       )}
-      </ScrollView>
       </FieldCard>
       <FieldCard title="Plant Notes" icon="edit-note" fullWidth>
       <Field label="NOTES" wide last>
@@ -1122,6 +1143,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       </Field>
       </FieldCard>
       </CardsGrid>
+      </View>
       <SlumpPickerModal
         visible={slumpPickerVisible}
         value={slumpFromPlant}
@@ -1171,7 +1193,27 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
 function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const j = data?.jobsite;
+  const jAllFieldsFilled = j != null && (
+    j.full_load_litres != null && j.full_load_reason != null && j.full_load_mm != null &&
+    j.customer_water_litres != null && j.customer_water_mm != null &&
+    j.maintenance_water_litres != null && j.maintenance_water_mm != null &&
+    j.super_plasticizer != null && j.conveyor != null && j.color != null &&
+    j.fiber != null && j.other != null && j.conveyor_ordered_not_used != null &&
+    j.unloaded_conveyor != null && j.load_disputed != null && j.washout_area != null &&
+    j.load_tested != null && j.notes != null
+  );
+  const jHasApiData = j != null && (
+    j.full_load_litres != null || j.full_load_reason != null || j.full_load_mm != null ||
+    j.customer_water_litres != null || j.customer_water_mm != null ||
+    j.maintenance_water_litres != null || j.maintenance_water_mm != null ||
+    j.super_plasticizer != null || j.conveyor != null || j.color != null ||
+    j.fiber != null || j.other != null || j.conveyor_ordered_not_used != null ||
+    j.unloaded_conveyor != null || j.load_disputed != null || j.washout_area != null ||
+    j.load_tested != null || j.notes != null
+  );
+  const fullLoadLocked = j?.full_load_litres != null;
   const [saving, setSaving] = useState(false);
+  const [jIsDirty, setJIsDirty] = useState(false);
   const handleSaveJobsite = async () => {
     if (!ticketId) return;
     setSaving(true);
@@ -1236,11 +1278,17 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   const [jobLoadSlump, setJobLoadSlump] = useState('');
   const [jobLoadSlumpPickerVisible, setJobLoadSlumpPickerVisible] = useState(false);
   const [jobLoadCylinders, setJobLoadCylinders] = useState(0);
+  const jDirtyMountRef = useRef(false);
+  useEffect(() => {
+    if (!jDirtyMountRef.current) { jDirtyMountRef.current = true; return; }
+    if (jHasApiData) setJIsDirty(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullLoadLitres, fullLoadReason, fullLoadMm, custWaterLitres, custWaterMm, maintWaterLitres, maintWaterMm, addedValues, conveyorOrdered, unloadedConveyor, loadDisputed, washoutArea, jobLoadTested, jobsiteNotes]);
+
   const jobScrollRef = useRef<ScrollView>(null);
   const jobTestAnim = useRef(new Animated.Value(0)).current;
   const {width: _jw, height: _jh} = useWindowDimensions();
   const _jLand = _jw > _jh;
-
 
   const handleJobLoadTested = useCallback((val: 'yes' | 'no') => {
     if (val === 'yes') {
@@ -1258,13 +1306,13 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   if (_jw > _jh) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
-        <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSaveJobsite} /></View>
-        <View style={ls.columns}>
+        <View style={ls.topBar}><LSaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} /></View>
+        <View style={ls.columns} pointerEvents={jAllFieldsFilled ? 'none' : 'auto'}>
           {/* Column 1: Water */}
           <View style={{flex: 1}}>
           <LCard title="Water" icon="water-drop">
             <LField label="FULL LOAD (litres)">
-              <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
+              <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => v + 1)} onDecrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={fullLoadLocked ? undefined : v => setFullLoadLitres(parseInt(v) || 0)} />
             </LField>
             <LField label="REASON">
               <LineInput placeholder="Select" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
@@ -1416,11 +1464,12 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton disabled={saving} onPress={handleSaveJobsite} />
+      <SaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
+      <View pointerEvents={jAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Water" icon="water-drop">
       <Field label="FULL LOAD (litres)">
-        <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={() => setFullLoadLitres(v => v + 1)} onDecrement={() => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={v => setFullLoadLitres(parseInt(v) || 0)} />
+        <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => v + 1)} onDecrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={fullLoadLocked ? undefined : v => setFullLoadLitres(parseInt(v) || 0)} />
       </Field>
       <Field label="REASON">
         <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
@@ -1564,6 +1613,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         onClose={() => setJobsiteNotesModal(false)}
       />
       </CardsGrid>
+      </View>
     </View>
   );
 }
@@ -1764,14 +1814,28 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
   const {width: _rtW, height: _rtH} = useWindowDimensions();
   const _rtLand = _rtW > _rtH;
   const r = data?.returned;
-
+  const rAllFieldsFilled = r != null && (
+    r.returned_concrete_m3 != null && r.disposal_method != null && r.reason_for_return != null
+  );
+  const rHasApiData = r != null && (
+    r.returned_concrete_m3 != null || r.disposal_method != null || r.reason_for_return != null
+  );
+  const concreteLocked = r?.returned_concrete_m3 != null;
 
   const [concreteVal, setConcreteVal] = useState(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
   const [disposalMethod, setDisposalMethod] = useState(r?.disposal_method || '');
   const [returnReason, setReturnReason] = useState(r?.reason_for_return || '');
   const [saving, setSaving] = useState(false);
+  const [rIsDirty, setRIsDirty] = useState(false);
   const [disposalModal, setDisposalModal] = useState(false);
   const [reasonModal, setReasonModal] = useState(false);
+
+  const rDirtyMountRef = useRef(false);
+  useEffect(() => {
+    if (!rDirtyMountRef.current) { rDirtyMountRef.current = true; return; }
+    if (rHasApiData) setRIsDirty(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concreteVal, disposalMethod, returnReason]);
 
   const handleConcreteChange = (text: string) => {
     let cleaned = text.replace(/[^0-9.]/g, '');
@@ -1805,14 +1869,14 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
   const isFormValid = isConcreteValid && isDisposalValid && isReasonValid;
 
   const handleSave = async () => {
-    if (!isFormValid || !ticketId) return;
+    if (!isConcreteValid || !ticketId) return;
     setSaving(true);
     setSavingOverlay?.(true);
     try {
       await ticketsApi.saveDeliveryTab(ticketId, 'returned', {
         returned_concrete_m3: Number(concreteVal),
-        disposal_method: disposalMethod,
-        reason_for_return: returnReason,
+        disposal_method: disposalMethod || null,
+        reason_for_return: returnReason || null,
       });
       await refreshRecord?.();
       onSaveResult?.(true, 'Returned data has been saved successfully.');
@@ -1826,8 +1890,9 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
 
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton disabled={!isFormValid || saving} onPress={handleSave} />
+      <SaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
 
+      <View pointerEvents={rAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Return Details" icon="assignment-return">
       {/* Returned Concrete */}
@@ -1836,7 +1901,8 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
           <TextInput
             style={[st.numericInputText, {color: c.textPrimary}]}
             value={concreteVal}
-            onChangeText={handleConcreteChange}
+            onChangeText={concreteLocked ? undefined : handleConcreteChange}
+            editable={!concreteLocked}
             keyboardType="decimal-pad"
             maxLength={8}
             selectTextOnFocus
@@ -1884,6 +1950,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       </Field>
       </FieldCard>
       </CardsGrid>
+      </View>
 
       {/* Modals */}
       <SelectionModal
@@ -1925,6 +1992,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
   const {width: _tw, height: _th} = useWindowDimensions();
   const _tLand = _tw > _th;
   const timeSteps = data?.time?.steps;
+  const tAllFieldsFilled = timeSteps != null && timeSteps.every(step => step.time != null);
   const [saving, setSaving] = useState(false);
   const handleSaveTime = async () => {
     if (!ticketId) return;
@@ -2006,7 +2074,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
       </View>
 
       {/* Timeline list */}
-      <View style={[tt.listCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
+      <View style={[tt.listCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]} pointerEvents={tAllFieldsFilled ? 'none' : 'auto'}>
         {TIME_EVENTS.map((event, i) => {
           const hasValue = !!selectedTimes[event.key];
           const isLast = i === TIME_EVENTS.length - 1;
@@ -2052,7 +2120,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
       </View>
 
       {/* Save */}
-      <SaveButton disabled={!allFilled || saving} onPress={handleSaveTime} />
+      <SaveButton disabled={tAllFieldsFilled || saving} onPress={handleSaveTime} />
     </>
   );
 
@@ -2115,7 +2183,10 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
   const {width: _codW, height: _codH} = useWindowDimensions();
   const _codLand = _codW > _codH;
   const codData = data?.cod;
-
+  const codAllFieldsFilled = codData != null && (
+    codData.payment_type != null && codData.amount != null &&
+    codData.wait_time_minutes != null && codData.notes != null
+  );
 
   const [saving, setSaving] = useState(false);
   const keyToApiCode: Record<string, string> = {
@@ -2216,8 +2287,9 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
   const codContent = (
     <>
-      <SaveButton disabled={saving} onPress={handleSaveCod} />
+      <SaveButton disabled={codAllFieldsFilled || saving} onPress={handleSaveCod} />
 
+      <View pointerEvents={codAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Payment Details" icon="payments">
       {/* Payment Type Selector */}
@@ -2312,6 +2384,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
       </Field>
       </FieldCard>
       </CardsGrid>
+      </View>
     </>
   );
 

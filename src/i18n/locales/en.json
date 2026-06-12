@@ -84,6 +84,7 @@
     "lotBlock": "LOT / BLOCK",
     "instructions": "INSTRUCTIONS",
     "quantity": "QUANTITY",
+    "loadSize": "LOAD SIZE",
     "loads": "LOADS",
     "trucks": "TRUCKS"
   },
