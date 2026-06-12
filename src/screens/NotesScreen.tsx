@@ -2396,7 +2396,7 @@ export default function NotesScreen({navigation, route}: Props) {
   const {width, height: winHeight} = useWindowDimensions();
   const isTablet = Math.min(width, winHeight) > 600;
   const isLandscape = width > winHeight;
-  const landscapeNoScroll = isLandscape && (activeTab === 0 || activeTab === 1);
+  const landscapeNoScroll = isLandscape;
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -2503,7 +2503,7 @@ export default function NotesScreen({navigation, route}: Props) {
         enabled={!isLandscape}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <Animated.View style={[st.content, {backgroundColor: c.background, transform: [{translateY: slideAnim}]}]}>
-          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right}, landscapeNoScroll && {flex: 1, paddingBottom: 0}]} keyboardShouldPersistTaps="handled">
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={!landscapeNoScroll} scrollEnabled={!landscapeNoScroll} contentContainerStyle={[st.scrollInner, {paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: Math.max(wp(20), insets.bottom)}, landscapeNoScroll && {flex: 1, paddingBottom: insets.bottom}]} keyboardShouldPersistTaps="handled">
             {renderTab()}
           </ScrollView>
         </Animated.View>
@@ -2554,7 +2554,7 @@ const st = StyleSheet.create({
 
   // Cards grid
   cardsGridNarrow: {gap: wp(10)},
-  cardsGridWide: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(10), alignItems: 'stretch'},
+  cardsGridWide: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(10), alignItems: 'stretch', flex: 1, alignContent: 'flex-start'},
 
   // Field card
   fieldCard: {borderRadius: wp(10), paddingHorizontal: wp(10), paddingTop: wp(2), paddingBottom: wp(6), width: '100%'},

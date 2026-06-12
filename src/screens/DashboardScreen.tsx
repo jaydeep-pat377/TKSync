@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef, useCallback} from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,19 +13,19 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useTranslation} from 'react-i18next';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import QRCode from 'react-native-qrcode-svg';
-import {useTheme} from '../contexts/ThemeContext';
-import {useAuth} from '../contexts/AuthContext';
-import {ticketsApi, type Ticket, type TicketDetail, type DeliveryRecord} from '../services/api';
-import {Colors} from '../constants/colors';
-import {common} from '../constants/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { ticketsApi, type Ticket, type TicketDetail, type DeliveryRecord } from '../services/api';
+import { Colors } from '../constants/colors';
+import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
-import {wp, ms} from '../utils/responsive';
+import { wp, ms, ls as lsStatic } from '../utils/responsive';
 
 const TIMELINE_ICONS: Record<string, string> = {
   ticketed: 'receipt-long',
@@ -69,15 +69,15 @@ function buildTimeline(detail: TicketDetail) {
 }
 
 function buildJobInfo(detail: TicketDetail) {
-  const {job} = detail;
+  const { job } = detail;
   return [
-    {labelKey: 'jobInfo.customer', value: job.customer_name || '-', icon: 'people'},
-    {labelKey: 'jobInfo.project', value: job.project_name || '-', icon: 'apartment'},
-    {labelKey: 'jobInfo.job', value: job.job || '-', icon: 'work'},
-    {labelKey: 'orderInfo.timeDue', value: job.time_due ? formatTime(job.time_due) : '-', icon: 'schedule'},
-    {labelKey: 'orderInfo.deliveredTo', value: job.delivered_to || '-', icon: 'place', isLink: true, isMap: true},
-    {labelKey: 'orderInfo.lotBlock', value: job.lot_block || '-', icon: 'grid-view'},
-    {labelKey: 'orderInfo.instructions', value: job.instructions || '-', icon: 'info-outline'},
+    { labelKey: 'jobInfo.customer', value: job.customer_name || '-', icon: 'people' },
+    { labelKey: 'jobInfo.project', value: job.project_name || '-', icon: 'apartment' },
+    { labelKey: 'jobInfo.job', value: job.job || '-', icon: 'work' },
+    { labelKey: 'orderInfo.timeDue', value: job.time_due ? formatTime(job.time_due) : '-', icon: 'schedule' },
+    { labelKey: 'orderInfo.deliveredTo', value: job.delivered_to || '-', icon: 'place', isLink: true, isMap: true },
+    { labelKey: 'orderInfo.lotBlock', value: job.lot_block || '-', icon: 'grid-view' },
+    { labelKey: 'orderInfo.instructions', value: job.instructions || '-', icon: 'info-outline' },
   ];
 }
 
@@ -108,26 +108,26 @@ function normalizeUOM(unit: string | null | undefined): string {
 }
 
 function getTicketStatus(ticket: Ticket) {
-  if (ticket.current_status === 4) return {key: 'dashboard.completed' as const, type: 'completed' as const};
-  if (ticket.active) return {key: 'dashboard.active' as const, type: 'active' as const};
-  return {key: 'dashboard.pending' as const, type: 'warning' as const};
+  if (ticket.current_status === 4) return { key: 'dashboard.completed' as const, type: 'completed' as const };
+  if (ticket.active) return { key: 'dashboard.active' as const, type: 'active' as const };
+  return { key: 'dashboard.pending' as const, type: 'warning' as const };
 }
 
 function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
-  const {mix} = detail;
+  const { mix } = detail;
   const loadsStr = mix.loads.current != null ? `${mix.loads.current} of ${mix.loads.total}` : '-';
   const qtyParts = (mix.quantity || '').split(/\s+/);
   const qtyDisplay = qtyParts.length >= 2
     ? `${qtyParts[0]} ${normalizeUOM(qtyParts[1])}`
     : mix.quantity || '-';
   return [
-    {labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science'},
-    {labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true},
-    {labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category'},
-    {labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true},
-    {labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten'},
-    {labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers'},
-  ] as {labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean}[];
+    { labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science' },
+    { labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true },
+    { labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category' },
+    { labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true },
+    { labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten' },
+    { labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers' },
+  ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
 }
 
 function buildMixInfoFromTicket(ticket: Ticket) {
@@ -137,49 +137,49 @@ function buildMixInfoFromTicket(ticket: Ticket) {
     ? `${qtyParts[0]} ${normalizeUOM(qtyParts[1])}`
     : mix?.quantity || '-';
   return [
-    {labelKey: 'mixInfo.mixId', value: mix?.mix_code || '-', icon: 'science'},
-    {labelKey: 'mixInfo.description', value: mix?.description || '-', icon: 'description', isLink: true},
-    {labelKey: 'mixInfo.usage', value: '-', icon: 'category'},
-    {labelKey: 'mixInfo.slump', value: mix?.slump || '-', isHighlight: true},
-    {labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten'},
-    {labelKey: 'orderInfo.loads', value: '-', icon: 'layers'},
-  ] as {labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean}[];
+    { labelKey: 'mixInfo.mixId', value: mix?.mix_code || '-', icon: 'science' },
+    { labelKey: 'mixInfo.description', value: mix?.description || '-', icon: 'description', isLink: true },
+    { labelKey: 'mixInfo.usage', value: '-', icon: 'category' },
+    { labelKey: 'mixInfo.slump', value: mix?.slump || '-', isHighlight: true },
+    { labelKey: 'orderInfo.quantity', value: qtyDisplay, icon: 'straighten' },
+    { labelKey: 'orderInfo.loads', value: '-', icon: 'layers' },
+  ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
 }
 
 const BOTTOM_ACTIONS = [
-  {icon: 'note-alt', labelKey: 'actions.notes'},
-  {icon: 'label', labelKey: 'actions.tag'},
-  {icon: 'edit', labelKey: 'actions.edit'},
-  {icon: 'local-shipping', labelKey: 'actions.truck'},
-  {icon: 'qr-code-scanner', labelKey: 'actions.qr'},
+  { icon: 'note-alt', labelKey: 'actions.notes' },
+  { icon: 'label', labelKey: 'actions.tag' },
+  { icon: 'edit', labelKey: 'actions.edit' },
+  { icon: 'local-shipping', labelKey: 'actions.truck' },
+  { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
 ];
 
 const MENU_ITEMS_BASE = [
-  {icon: 'local-shipping', labelKey: 'menu.vehicle', actionKey: 'Vehicle', color: ''},
-  {icon: 'person-off', labelKey: 'menu.logoutDriver', actionKey: 'Logout Driver', color: ''},
-  {icon: 'domain-disabled', labelKey: 'menu.logoutTenant', actionKey: 'Logout Tenant', color: 'warn'},
-  {icon: 'translate', labelKey: 'menu.language', actionKey: 'Language', color: ''},
-  {icon: 'info-outline', labelKey: 'menu.about', actionKey: 'About', color: ''},
+  { icon: 'local-shipping', labelKey: 'menu.vehicle', actionKey: 'Vehicle', color: '' },
+  { icon: 'person-off', labelKey: 'menu.logoutDriver', actionKey: 'Logout Driver', color: '' },
+  { icon: 'domain-disabled', labelKey: 'menu.logoutTenant', actionKey: 'Logout Tenant', color: 'warn' },
+  { icon: 'translate', labelKey: 'menu.language', actionKey: 'Language', color: '' },
+  { icon: 'info-outline', labelKey: 'menu.about', actionKey: 'About', color: '' },
 ];
 
 
 // Skeleton shimmer
-function Skeleton({width: w, height: h, radius = 8, style}: any) {
-  const {c} = useTheme();
+function Skeleton({ width: w, height: h, radius = 8, style }: any) {
+  const { c } = useTheme();
   const shimmer = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmer, {toValue: 1, duration: 800, useNativeDriver: true}),
-        Animated.timing(shimmer, {toValue: 0, duration: 800, useNativeDriver: true}),
+        Animated.timing(shimmer, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 800, useNativeDriver: true }),
       ]),
     ).start();
   }, [shimmer]);
   return (
     <Animated.View
       style={[
-        {width: w, height: h, borderRadius: radius, backgroundColor: c.border},
-        {opacity: shimmer.interpolate({inputRange: [0, 1], outputRange: [0.25, 0.6]})},
+        { width: w, height: h, borderRadius: radius, backgroundColor: c.border },
+        { opacity: shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.6] }) },
         style,
       ]}
     />
@@ -187,7 +187,7 @@ function Skeleton({width: w, height: h, radius = 8, style}: any) {
 }
 
 // Animated card with spring entrance
-function FadeCard({children, delay = 0, style}: any) {
+function FadeCard({ children, delay = 0, style }: any) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(anim, {
@@ -205,8 +205,8 @@ function FadeCard({children, delay = 0, style}: any) {
         {
           opacity: anim,
           transform: [
-            {translateY: anim.interpolate({inputRange: [0, 1], outputRange: [24, 0]})},
-            {scale: anim.interpolate({inputRange: [0, 1], outputRange: [0.97, 1]})},
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
           ],
         },
       ]}>
@@ -219,7 +219,7 @@ type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-export default function DashboardScreen({navigation}: Props) {
+export default function DashboardScreen({ navigation }: Props) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeTicket, setActiveTicket] = useState(0);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
@@ -239,13 +239,16 @@ export default function DashboardScreen({navigation}: Props) {
   const [activeBottom, setActiveBottom] = useState(-1);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
-  const {t} = useTranslation();
-  const {isDark, toggle, c} = useTheme();
-  const {driverLogout, companyLogout, driver, company} = useAuth();
+  const { t } = useTranslation();
+  const { isDark, toggle, c } = useTheme();
+  const { driverLogout, companyLogout, driver, company } = useAuth();
   const insets = useSafeAreaInsets();
-  const {width, height: winHeight} = useWindowDimensions();
+  const { width, height: winHeight } = useWindowDimensions();
   const isTablet = Math.min(width, winHeight) > 600;
   const isLandscape = width > winHeight;
+  // Landscape-proportional scale: identical on 810dp ref device, proportional elsewhere
+  const LREF = 810;
+  const ls = (size: number) => Math.round(size * Math.min(width, winHeight) / LREF);
   const menuScale = useRef(new Animated.Value(0)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
   const syncSpin = useRef(new Animated.Value(0)).current;
@@ -268,7 +271,7 @@ export default function DashboardScreen({navigation}: Props) {
     try {
       if (showLoading) setLoading(true);
       setRefreshing(true);
-      const {data} = await ticketsApi.getLatest({page: 1, limit: 20});
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
       setActiveTicket(0);
@@ -284,7 +287,7 @@ export default function DashboardScreen({navigation}: Props) {
   const fetchDetail = useCallback(async (ticketId: number) => {
     setDetailLoading(true);
     try {
-      const {data} = await ticketsApi.getById(ticketId);
+      const { data } = await ticketsApi.getById(ticketId);
       setDetail(data);
     } catch (err) {
       console.log('[TicketDetail] fetch error:', err);
@@ -313,7 +316,7 @@ export default function DashboardScreen({navigation}: Props) {
 
   const handleSync = useCallback(() => {
     syncSpin.setValue(0);
-    Animated.timing(syncSpin, {toValue: 1, duration: 600, useNativeDriver: true}).start();
+    Animated.timing(syncSpin, { toValue: 1, duration: 600, useNativeDriver: true }).start();
     fetchTickets(false);
   }, [syncSpin, fetchTickets]);
 
@@ -321,7 +324,7 @@ export default function DashboardScreen({navigation}: Props) {
     fetchTickets(false);
   }, [fetchTickets]);
 
-  const syncRotate = syncSpin.interpolate({inputRange: [0, 1], outputRange: ['0deg', '360deg']});
+  const syncRotate = syncSpin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   // Derived data from active ticket
   const currentTicket = tickets[activeTicket] || null;
@@ -334,18 +337,21 @@ export default function DashboardScreen({navigation}: Props) {
   const doneCount = detail ? detail.progress.completed : 0;
   const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 
+  // Paired row count for the Job + Mix table layout
+  const pairedRows = Math.max(jobInfo.length, mixInfo.length);
+
   const openMenu = () => {
     setMenuVisible(true);
     Animated.parallel([
-      Animated.spring(menuScale, {toValue: 1, friction: 7, tension: 70, useNativeDriver: true}),
-      Animated.timing(menuOpacity, {toValue: 1, duration: 200, useNativeDriver: true}),
+      Animated.spring(menuScale, { toValue: 1, friction: 7, tension: 70, useNativeDriver: true }),
+      Animated.timing(menuOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
   };
 
   const closeMenu = () => {
     Animated.parallel([
-      Animated.timing(menuScale, {toValue: 0, duration: 150, useNativeDriver: true}),
-      Animated.timing(menuOpacity, {toValue: 0, duration: 150, useNativeDriver: true}),
+      Animated.timing(menuScale, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(menuOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
     ]).start(() => setMenuVisible(false));
   };
 
@@ -383,11 +389,11 @@ export default function DashboardScreen({navigation}: Props) {
 
   const handleNavPress = useCallback((item: typeof BOTTOM_ACTIONS[0], i: number) => {
     setActiveBottom(i);
-    if (item.icon === 'label') {navigation.navigate('MobileTicket', {ticketId: currentTicket?.id});}
-    if (item.icon === 'note-alt') {navigation.navigate('Notes', {ticketId: currentTicket?.id});}
-    if (item.icon === 'edit') {setEditVisible(true);}
-    if (item.icon === 'qr-code-scanner') {setQrVisible(true);}
-    if (item.icon === 'local-shipping') {setPlantsVisible(true);}
+    if (item.icon === 'label') { navigation.navigate('MobileTicket', { ticketId: currentTicket?.id }); }
+    if (item.icon === 'note-alt') { navigation.navigate('Notes', { ticketId: currentTicket?.id }); }
+    if (item.icon === 'edit') { setEditVisible(true); }
+    if (item.icon === 'qr-code-scanner') { setQrVisible(true); }
+    if (item.icon === 'local-shipping') { setPlantsVisible(true); }
   }, [navigation, currentTicket]);
 
   // Shorthand flags
@@ -397,13 +403,13 @@ export default function DashboardScreen({navigation}: Props) {
   const cs = {
     card: {
       backgroundColor: c.white,
-      borderRadius: lt ? 14 : L ? 12 : wp(16),
-      padding: lt ? 12 : L ? 10 : wp(14),
+      borderRadius: lt ? ls(14) : L ? 12 : wp(16),
+      padding: lt ? ls(12) : L ? 10 : wp(14),
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border,
       elevation: isDark ? 0 : 2,
       shadowColor: Colors.shadowColor,
-      shadowOffset: {width: 0, height: 1},
+      shadowOffset: { width: 0, height: 1 },
       shadowOpacity: isDark ? 0 : 0.06,
       shadowRadius: 6,
     },
@@ -412,13 +418,13 @@ export default function DashboardScreen({navigation}: Props) {
   // Skeleton state
   if (loading && !refreshing) {
     return (
-      <View style={[styles.container, {backgroundColor: c.background}]}>
+      <View style={[styles.container, { backgroundColor: c.background }]}>
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-        <View style={[styles.header, {backgroundColor: c.primaryDark, paddingTop: insets.top + (isLandscape ? 2 : wp(3)), paddingLeft: Math.max(isLandscape ? 10 : wp(12), insets.left), paddingRight: Math.max(isLandscape ? 10 : wp(12), insets.right)}, isLandscape && {paddingBottom: 3}]}>
+        <View style={[styles.header, { backgroundColor: c.primaryDark, paddingTop: insets.top + (isLandscape ? 2 : wp(3)), paddingLeft: Math.max(isLandscape ? 10 : wp(12), insets.left), paddingRight: Math.max(isLandscape ? 10 : wp(12), insets.right) }, isLandscape && { paddingBottom: 3 }]}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
               <Skeleton width={wp(40)} height={wp(40)} radius={wp(14)} />
-              <View style={{gap: wp(6), marginLeft: wp(10)}}>
+              <View style={{ gap: wp(6), marginLeft: wp(10) }}>
                 <Skeleton width={wp(72)} height={wp(16)} radius={wp(6)} />
                 <Skeleton width={wp(100)} height={wp(11)} radius={wp(5)} />
               </View>
@@ -429,13 +435,13 @@ export default function DashboardScreen({navigation}: Props) {
               <Skeleton width={wp(36)} height={wp(36)} radius={wp(10)} />
             </View>
           </View>
-          <View style={{flexDirection: 'row', gap: wp(8), marginTop: wp(4)}}>
+          <View style={{ flexDirection: 'row', gap: wp(8), marginTop: wp(4) }}>
             <Skeleton width={wp(105)} height={wp(36)} radius={wp(12)} />
             <Skeleton width={wp(105)} height={wp(36)} radius={wp(12)} />
             <Skeleton width={wp(105)} height={wp(36)} radius={wp(12)} />
           </View>
         </View>
-        <View style={[{padding: wp(16), gap: wp(14), paddingLeft: Math.max(wp(16), insets.left + wp(4)), paddingRight: Math.max(wp(16), insets.right + wp(4))}, isTablet && {padding: 20, maxWidth: 900, alignSelf: 'center', width: '100%'}]}>
+        <View style={[{ padding: wp(16), gap: wp(14), paddingLeft: Math.max(wp(16), insets.left + wp(4)), paddingRight: Math.max(wp(16), insets.right + wp(4)) }, isTablet && { padding: 20, maxWidth: 900, alignSelf: 'center', width: '100%' }]}>
           <Skeleton width="100%" height={wp(86)} radius={wp(18)} />
           <View style={common.rowGap8}>
             <Skeleton width={wp(85)} height={wp(30)} radius={wp(15)} />
@@ -460,12 +466,12 @@ export default function DashboardScreen({navigation}: Props) {
           key={item.labelKey}
           activeOpacity={0.6}
           onPress={() => handleNavPress(item, i)}
-          style={{alignItems: 'center', justifyContent: 'center', paddingVertical: 6}}>
+          style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: ls(12) }}>
           <View style={{
-            width: 38, height: 38, justifyContent: 'center', alignItems: 'center',
-            borderRadius: 12, backgroundColor: active ? c.primarySurface : 'transparent',
+            width: ls(38), height: ls(38), justifyContent: 'center', alignItems: 'center',
+            borderRadius: ls(12), backgroundColor: active ? c.primarySurface : 'transparent',
           }}>
-            <MaterialIcons name={item.icon as any} size={20} color={active ? c.primary : c.textMuted} />
+            <MaterialIcons name={item.icon as any} size={ls(28)} color={active ? c.primary : c.textMuted} />
           </View>
         </TouchableOpacity>
       );
@@ -475,407 +481,471 @@ export default function DashboardScreen({navigation}: Props) {
         key={item.labelKey}
         activeOpacity={0.6}
         onPress={() => handleNavPress(item, i)}
-        style={{alignItems: 'center', justifyContent: 'center', paddingVertical: 4, minWidth: 56}}>
+        style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 4, minWidth: 56 }}>
         <View style={{
           width: 40, height: 32, justifyContent: 'center', alignItems: 'center',
           borderRadius: 12, backgroundColor: active ? c.primarySurface : 'transparent',
         }}>
-          <MaterialIcons name={item.icon as any} size={isTablet ? 21 : 20} color={active ? c.primary : c.textMuted} />
+          <MaterialIcons name={item.icon as any} size={isTablet ? 29 : 28} color={active ? c.primary : c.textMuted} />
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={[styles.container, {backgroundColor: c.background}, L && {flexDirection: 'row'}]}>
+    <View style={[styles.container, { backgroundColor: c.background }, L && { flexDirection: 'row' }]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
       {/* Main content column */}
-      <View style={{flex: 1}}>
-      {/* ─── HEADER ─── */}
-      <View style={[styles.header, {backgroundColor: c.primaryDark, paddingTop: insets.top + (L ? 2 : wp(3)), paddingLeft: Math.max(L ? 8 : wp(12), insets.left), paddingRight: Math.max(L ? 8 : wp(12), insets.right)}, L && {paddingBottom: 2}]}>
-        {lp ? (
-          /* Phone landscape: single compact row — tickets moved to KPI card */
-          <>
-          <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1}}>
-              <Image source={require('../assets/images/logo.png')} style={{width: 26, height: 26, borderRadius: 13}} />
-              <Text style={{fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary}}>{company?.company_name || t('app.name')}</Text>
-            </View>
-            {/* Weather inline */}
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10}}>
-              <MaterialIcons name="wb-sunny" size={14} color={c.textOnPrimary} />
-              <View>
-                <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{currentTicket?.location_name || ''}</Text>
-              </View>
-            </View>
-            {/* Vehicle & Employee stacked */}
-            <View style={{backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, gap: 2}}>
-              <Text style={{fontSize: 9, fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
-              <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{driver?.driver_code || '-'}</Text>
-            </View>
-            {/* Sync pill */}
-            <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12}}>
-              <Animated.View style={{transform: [{rotate: syncRotate}]}}><MaterialIcons name="sync" size={13} color={c.textOnPrimary} /></Animated.View>
-              <View style={{width: 4, height: 4, borderRadius: 2, backgroundColor: refreshing ? c.warning : c.success}} />
-              <Text style={{fontSize: 9, fontWeight: '600', color: c.textOnDark60}}>{syncAgo}</Text>
-            </TouchableOpacity>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
-              <TouchableOpacity style={{width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10}} onPress={toggle} activeOpacity={0.7}>
-                <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={15} color={c.textOnPrimary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={{width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10}} onPress={openMenu} activeOpacity={0.7}>
-                <MaterialIcons name="menu" size={15} color={c.textOnPrimary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-          </>
-        ) : (
-          /* Portrait + tablet landscape: two-row header */
-          <>
-            <View style={[styles.headerRow, L && {marginBottom: 3}]}>
-              <View style={styles.headerLeft}>
-                <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && {width: 30, height: 30, borderRadius: 15}]} />
-                <Text style={[styles.logoTitle, {color: c.textOnPrimary, marginLeft: L ? 8 : wp(10)}, L && {fontSize: 17}]}>{company?.company_name || t('app.name')}</Text>
-              </View>
-              <View style={[styles.headerActions, L && {gap: 5}]}>
-                {/* Weather + Vehicle + Employee — landscape only, before sync */}
-                {L && (
-                  <>
-                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12}}>
-                      <MaterialIcons name="wb-sunny" size={16} color={c.textOnPrimary} />
-                      <View>
-                        <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                        <Text style={{fontSize: 8, fontWeight: '500', color: c.textOnDark60}}>{currentTicket?.location_name || ''}</Text>
-                      </View>
-                    </View>
-                    <View style={{backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, gap: 2}}>
-                      <Text style={{fontSize: 10, fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
-                      <Text style={{fontSize: 9, fontWeight: '500', color: c.textOnDark60}}>{driver?.driver_code || '-'}</Text>
-                    </View>
-                  </>
-                )}
+      <View style={{ flex: 1 }}>
+        {/* ─── HEADER ─── */}
+        <View style={[styles.header, { backgroundColor: c.primaryDark, paddingTop: insets.top + (L ? ls(2) : wp(3)), paddingLeft: Math.max(L ? ls(8) : wp(12), insets.left), paddingRight: Math.max(L ? ls(8) : wp(12), insets.right) }, L && { paddingBottom: ls(2) }]}>
+          {lp ? (
+            /* Phone landscape: single compact row — tickets moved to KPI card */
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Image source={require('../assets/images/logo.png')} style={{ width: 26, height: 26, borderRadius: 13 }} />
+                  <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary }}>{company?.company_name || t('app.name')}</Text>
+                </View>
+                {/* Weather inline */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
+                  <MaterialIcons name="wb-sunny" size={14} color={c.textOnPrimary} />
+                  <View>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                    <Text style={{ fontSize: 8, fontWeight: '500', color: c.textOnDark60 }}>{currentTicket?.location_name || ''}</Text>
+                  </View>
+                </View>
+                {/* Vehicle & Employee stacked */}
+                <View style={{ backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, gap: 2 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
+                  <Text style={{ fontSize: 8, fontWeight: '500', color: c.textOnDark60 }}>{driver?.driver_code || '-'}</Text>
+                </View>
                 {/* Sync pill */}
-                <TouchableOpacity
-                  onPress={handleSync}
-                  activeOpacity={0.7}
-                  style={[{flexDirection: 'row', alignItems: 'center', gap: wp(5), backgroundColor: c.overlay10, paddingHorizontal: wp(10), borderRadius: wp(14)}, L ? {paddingVertical: 5, paddingHorizontal: 8, borderRadius: 12, gap: 4} : {paddingVertical: wp(5)}]}>
-                  <Animated.View style={{transform: [{rotate: syncRotate}]}}>
-                    <MaterialIcons name="sync" size={L ? 15 : ms(16)} color={c.textOnPrimary} />
-                  </Animated.View>
-                  <View style={{width: 5, height: 5, borderRadius: 3, backgroundColor: refreshing ? c.warning : c.success}} />
-                  <Text style={{fontSize: L ? 9 : ms(10), fontWeight: '600', color: c.textOnDark60}}>{syncAgo}</Text>
+                <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }}>
+                  <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><MaterialIcons name="sync" size={13} color={c.textOnPrimary} /></Animated.View>
+                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: refreshing ? c.warning : c.success }} />
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.hdrBtn, {backgroundColor: c.overlay10}, L && {width: 30, height: 30, borderRadius: 9}]} onPress={toggle} activeOpacity={0.7}>
-                  <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={L ? 17 : ms(19)} color={c.textOnPrimary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.hdrBtn, {backgroundColor: c.overlay10}, L && {width: 30, height: 30, borderRadius: 9}]} onPress={openMenu} activeOpacity={0.7}>
-                  <MaterialIcons name="menu" size={L ? 17 : ms(19)} color={c.textOnPrimary} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={toggle} activeOpacity={0.7}>
+                    <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={15} color={c.textOnPrimary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={openMenu} activeOpacity={0.7}>
+                    <MaterialIcons name="menu" size={15} color={c.textOnPrimary} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-            {!L && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-                {tickets.map((ticket, i) => {
-                  const isActive = activeTicket === i;
-                  return (
-                    <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, {borderColor: c.overlay15, backgroundColor: isActive ? c.accent : c.primaryLight}]}>
-                      {isActive && <View style={[styles.tabDot, {backgroundColor: c.textOnPrimary}]} />}
-                      <Text style={[styles.tabText, {color: isActive ? c.textOnPrimary : c.textOnDark70}]}>{ticket.ticket_code}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </>
-        )}
-      </View>
-
-      {/* ─── WEATHER STRIP (portrait only — landscape has it in header) ─── */}
-      {!L && (
-        <View style={{backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10)}}>
-          <MaterialIcons name="wb-sunny" size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
-          <View style={{flex: 1}}>
-            <Text style={{fontSize: ms(isTablet ? 14 : 12), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-            <Text style={{fontSize: ms(isTablet ? 12 : 10), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85}}>{currentTicket?.location_name || ''}</Text>
-          </View>
-          <View style={{backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(5), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(2)}}>
-            <Text style={{fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary}}>{driver?.truck_code || '-'}</Text>
-            <Text style={{fontSize: ms(11), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85}}>{driver?.driver_code || '-'}</Text>
-          </View>
+            </>
+          ) : (
+            /* Portrait + tablet landscape: two-row header */
+            <>
+              <View style={[styles.headerRow, L && { marginBottom: ls(3) }]}>
+                <View style={styles.headerLeft}>
+                  <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && { width: ls(30), height: ls(30), borderRadius: ls(15) }]} />
+                  <Text style={[styles.logoTitle,
+                  { color: c.textOnPrimary, marginLeft: L ? ls(8) : wp(10) }, L && { fontSize: ls(20) }]}>{company?.company_name || t('app.name')}</Text>
+                </View>
+                <View style={[styles.headerActions, L && { gap: ls(5) }]}>
+                  {/* Weather + Vehicle + Employee — landscape only, before sync */}
+                  {L && (
+                    <>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12) }}>
+                        <MaterialIcons name="wb-sunny" size={ls(16)} color={c.textOnPrimary} />
+                        <View>
+                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark60 }}>{currentTicket?.location_name || ''}</Text>
+                        </View>
+                      </View>
+                      <View style={{ backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), gap: ls(2) }}>
+                        <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark60 }}>{driver?.driver_code || '-'}</Text>
+                      </View>
+                    </>
+                  )}
+                  {/* Sync pill */}
+                  <TouchableOpacity
+                    onPress={handleSync}
+                    activeOpacity={0.7}
+                    style={[{ flexDirection: 'row', alignItems: 'center', gap: wp(5), backgroundColor: c.overlay10, paddingHorizontal: wp(10), borderRadius: wp(14) }, L ? { paddingVertical: ls(5), paddingHorizontal: ls(8), borderRadius: ls(12), gap: ls(4) } : { paddingVertical: wp(5) }]}>
+                    <Animated.View style={{ transform: [{ rotate: syncRotate }] }}>
+                      <MaterialIcons name="sync" size={L ? ls(15) : ms(16)} color={c.textOnPrimary} />
+                    </Animated.View>
+                    <View style={{ width: ls(5), height: ls(5), borderRadius: 3, backgroundColor: refreshing ? c.warning : c.success }} />
+                    <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={toggle} activeOpacity={0.7}>
+                    <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={openMenu} activeOpacity={0.7}>
+                    <MaterialIcons name="menu" size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {!L && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+                  {tickets.map((ticket, i) => {
+                    const isActive = activeTicket === i;
+                    return (
+                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isActive ? c.accent : c.primaryLight }]}>
+                        {isActive && <View style={[styles.tabDot, { backgroundColor: c.textOnPrimary }]} />}
+                        <Text style={[styles.tabText, { color: isActive ? c.textOnPrimary : c.textOnDark70 }]}>{ticket.ticket_code}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </>
+          )}
         </View>
-      )}
 
-      {/* ─── CONTENT ─── */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollInner,
-          {gap: 0},
-          lt ? {padding: 12, paddingLeft: Math.max(14, insets.left + 6)} : L ? {padding: 8, paddingLeft: Math.max(8, insets.left + 4)} : isTablet ? {padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8)} : {},
-          L && {flexGrow: 1},
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
+        {/* ─── WEATHER STRIP (portrait only — landscape has it in header) ─── */}
+        {!L && (
+          <View style={{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10) }}>
+            <MaterialIcons name="wb-sunny" size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3 }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+              <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85 }}>{currentTicket?.location_name || ''}</Text>
+            </View>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(5), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(2) }}>
+              <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
+              <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85 }}>{driver?.driver_code || '-'}</Text>
+            </View>
+          </View>
+        )}
 
-        <View style={isTablet && !L ? {maxWidth: 960, alignSelf: 'center', width: '100%'} : undefined}>
+        {/* ─── CONTENT ─── */}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.scrollInner,
+            { gap: 0 },
+            lt ? { padding: ls(12), paddingLeft: Math.max(ls(14), insets.left + ls(6)) } : L ? { padding: 8, paddingLeft: Math.max(8, insets.left + 4) } : isTablet ? { padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8) } : {},
+            L && { flexGrow: 1 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
 
-        {/* ── Landscape: KPI row + ticket chips row ── */}
-        {isLandscape ? (
-          <FadeCard delay={0} style={[cs.card, {marginBottom: lt ? 8 : 4, padding: lt ? 8 : 6}]}>
-            {/* Row 1: KPI items + status badges */}
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 8 : 5}}>
-              {[
-                {icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary},
-                {icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark},
-              ].map((kpi, i, arr) => (
-                <React.Fragment key={kpi.label}>
-                  <View style={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5, paddingVertical: lt ? 5 : 4, paddingHorizontal: lt ? 6 : 4}}>
-                    <MaterialIcons name={kpi.icon as any} size={lt ? 17 : 15} color={kpi.color} />
-                    <View style={{flexShrink: 1}}>
-                      <Text style={{fontSize: lt ? 15 : 13, fontWeight: '800', color: c.textPrimary}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{kpi.val}</Text>
-                      <Text style={{fontSize: lt ? 11 : 10, fontWeight: '600', color: c.textMuted, letterSpacing: 0.3, marginTop: 2}}>{kpi.label}</Text>
+          <View style={isTablet && !L ? { maxWidth: 960, alignSelf: 'center', width: '100%' } : L ? { flex: 1 } : undefined}>
+
+            {/* ── Landscape: KPI row + ticket chips row ── */}
+            {isLandscape ? (
+              <FadeCard delay={0} style={[cs.card, { marginBottom: lt ? ls(8) : 4, padding: lt ? ls(8) : 6 }]}>
+                {/* Row 1: KPI items + status badges */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(8) : 5 }}>
+                  {[
+                    { icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary },
+                    { icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark },
+                  ].map((kpi, i, arr) => (
+                    <React.Fragment key={kpi.label}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(6) : 5, paddingVertical: lt ? ls(5) : 4, paddingHorizontal: lt ? ls(6) : 4 }}>
+                        <MaterialIcons name={kpi.icon as any} size={lt ? ls(17) : 15} color={kpi.color} />
+                        <View style={{ flexShrink: 1 }}>
+                          <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{kpi.val}</Text>
+                          <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.3, marginTop: ls(2) }}>{kpi.label}</Text>
+                        </View>
+                      </View>
+                      {i < arr.length - 1 && <View style={{ width: StyleSheet.hairlineWidth, height: lt ? ls(26) : 22, backgroundColor: c.border }} />}
+                    </React.Fragment>
+                  ))}
+                  <View style={{ flex: 1 }} />
+                  {currentTicket != null && (() => {
+                    const status = getTicketStatus(currentTicket);
+                    const isCompleted = status.type === 'completed';
+                    const isActive = status.type === 'active';
+                    return (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
+                        {isActive && <View style={{ width: lt ? ls(7) : 6, height: lt ? ls(7) : 6, borderRadius: 4, backgroundColor: '#000' }} />}
+                        <Text style={{ fontWeight: '600', fontSize: ms(13), color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark }}>{t(status.key)}</Text>
+                      </View>
+                    );
+                  })()}
+                  {currentTicket != null && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.error, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
+                      <Text style={{ fontWeight: '600', fontSize: ms(13), color: '#fff' }}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
                     </View>
+                  )}
+                </View>
+                {/* Row 2: Ticket chips */}
+                <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? ls(6) : 4, paddingTop: lt ? ls(6) : 4 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(6) : 5 }}>
+                    {tickets.map((ticket, i) => (
+                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{ paddingVertical: lt ? ls(4) : 3, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(8) : 6, backgroundColor: activeTicket === i ? c.accent : c.primaryLight }}>
+                        <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{ticket.ticket_code}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </FadeCard>
+            ) : (
+              <>
+                {/* Portrait: KPI + Status bar */}
+                <FadeCard delay={0} style={[cs.card, { padding: wp(10), marginBottom: wp(8) }]}>
+                  <View style={styles.kpiRow}>
+                    {[
+                      { icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary },
+                      { icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark },
+                    ].map((kpi, i, arr) => (
+                      <React.Fragment key={kpi.label}>
+                        <View style={styles.kpiItem}>
+                          <View style={[styles.kpiIconWrap, { backgroundColor: c.primarySurface }]}>
+                            <MaterialIcons name={kpi.icon as any} size={ms(14)} color={kpi.color} />
+                          </View>
+                          <View>
+                            <Text style={[styles.kpiVal, { color: c.textPrimary }]}>{kpi.val}</Text>
+                            <Text style={[styles.kpiLabel, { color: c.textMuted }]}>{kpi.label}</Text>
+                          </View>
+                        </View>
+                        {i < arr.length - 1 && <View style={[styles.kpiDivider, { backgroundColor: c.border }]} />}
+                      </React.Fragment>
+                    ))}
                   </View>
-                  {i < arr.length - 1 && <View style={{width: StyleSheet.hairlineWidth, height: lt ? 26 : 22, backgroundColor: c.border}} />}
-                </React.Fragment>
-              ))}
-              <View style={{flex: 1}} />
-              {currentTicket != null && (() => {
-                const status = getTicketStatus(currentTicket);
-                const isCompleted = status.type === 'completed';
-                const isActive = status.type === 'active';
-                return (
-                  <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                    {isActive && <View style={{width: lt ? 7 : 6, height: lt ? 7 : 6, borderRadius: 4, backgroundColor: '#000'}} />}
-                    <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark}}>{t(status.key)}</Text>
+                  <View style={[styles.chipRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: wp(8), paddingTop: wp(8) }]}>
+                    {currentTicket != null && (() => {
+                      const status = getTicketStatus(currentTicket);
+                      const isCompleted = status.type === 'completed';
+                      const isActive = status.type === 'active';
+                      return (
+                        <View style={[styles.statusChip, { backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface }]}>
+                          {isActive && <View style={[styles.chipDot, { backgroundColor: '#000' }]} />}
+                          <Text style={[styles.chipLabel, { color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark }]}>{t(status.key)}</Text>
+                        </View>
+                      );
+                    })()}
+                    {currentTicket != null && (
+                      <View style={[styles.statusChip, { backgroundColor: c.error }]}>
+                        <Text style={[styles.chipLabel, { color: '#fff' }]}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
+                      </View>
+                    )}
                   </View>
-                );
-              })()}
-              {currentTicket != null && (
-                <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: c.error, paddingVertical: lt ? 6 : 5, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 10 : 8, gap: lt ? 5 : 4}}>
-                  <Text style={{fontWeight: '600', fontSize: lt ? 13 : 11, color: '#fff'}}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
+                </FadeCard>
+              </>
+            )}
+
+            {/* Detail loading indicator */}
+            {detailLoading && (
+              <View style={{ paddingVertical: wp(12), alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={c.primary} />
+              </View>
+            )}
+
+            {/* Delivery Progress */}
+            {!detailLoading && <FadeCard delay={120} style={[cs.card, L && { padding: lt ? ls(8) : 6 }, { marginBottom: lt ? ls(8) : L ? 4 : wp(8) }]}>
+              <View style={[styles.secHeader, { borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4) }, L && { marginBottom: lt ? ls(3) : 2, paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
+                <View style={[styles.secIcon, { backgroundColor: c.primary }, L && { width: lt ? ls(22) : 18, height: lt ? ls(22) : 18, borderRadius: lt ? ls(7) : 6 }]}>
+                  <MaterialIcons name="timeline" size={lt ? ls(13) : L ? 11 : ms(13)} color={c.textOnPrimary} />
+                </View>
+                <Text style={[styles.secTitle, { color: c.textPrimary, fontSize: ms(10) }]}>{t('dashboard.deliveryProgress')}</Text>
+                <View style={[styles.countBadge, { backgroundColor: c.primarySurface, borderColor: c.primaryBorder }, L && { paddingHorizontal: lt ? ls(7) : 5, paddingVertical: lt ? ls(2) : 1, borderRadius: lt ? ls(6) : 5 }]}>
+                  <Text style={[styles.countText, { color: c.primary, fontSize: ms(9) }]}>{doneCount}/{timeline.length}</Text>
+                </View>
+              </View>
+
+              {/* Steps */}
+              {L ? (
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingTop: ls(2), paddingBottom: ls(1), marginHorizontal: ls(4) }}>
+                  {timeline.map((item, i) => {
+                    const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
+                    const isFirst = i === 0;
+                    const isLast = i === timeline.length - 1;
+                    const dotSz = lt ? (isActive ? ls(20) : ls(16)) : (isActive ? 16 : 12);
+                    const lineDone = item.done && !isLast && timeline[i + 1]?.done;
+                    return (
+                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1, overflow: 'visible' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', height: lt ? ls(22) : 16, width: '100%' }}>
+                          {!isFirst && <View style={{ flex: 1, height: ls(2), backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
+                          <View style={{
+                            width: dotSz, height: dotSz, borderRadius: dotSz / 2,
+                            justifyContent: 'center', alignItems: 'center',
+                            backgroundColor: item.done ? c.primary : c.surface,
+                            borderWidth: isActive ? 2.5 : 1.5,
+                            borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
+                          }}>
+                            {item.done && <MaterialIcons name="check" size={lt ? (isActive ? ls(11) : ls(9)) : (isActive ? 9 : 7)} color={c.textOnPrimary} />}
+                          </View>
+                          {!isLast && <View style={{ flex: 1, height: ls(2), backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
+                        </View>
+                        <Text style={{ fontSize: ms(9), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: ls(2) }} numberOfLines={1}>
+                          {t(item.labelKey)}
+                        </Text>
+                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: ls(1) }}>
+                          {item.time}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(2), paddingBottom: wp(1) }}>
+                  {timeline.map((item, i) => {
+                    const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
+                    const isFirst = i === 0;
+                    const isLast = i === timeline.length - 1;
+                    const dotSz = isActive ? 14 : 10;
+                    const lineDone = item.done && !isLast && timeline[i + 1]?.done;
+                    return (
+                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', height: 16, width: '100%' }}>
+                          {!isFirst && <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
+                          <View style={{
+                            width: dotSz, height: dotSz, borderRadius: dotSz / 2,
+                            justifyContent: 'center', alignItems: 'center',
+                            backgroundColor: item.done ? c.primary : c.surface,
+                            borderWidth: isActive ? 2 : 1.5,
+                            borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
+                          }}>
+                            {item.done && <MaterialIcons name="check" size={isActive ? 8 : 6} color={c.textOnPrimary} />}
+                          </View>
+                          {!isLast && <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
+                        </View>
+                        <Text style={{ fontSize: ms(8), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
+                          {t(item.labelKey)}
+                        </Text>
+                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border }}>
+                          {item.time}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
-            </View>
-            {/* Row 2: Ticket chips */}
-            <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? 6 : 4, paddingTop: lt ? 6 : 4}}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection: 'row', alignItems: 'center', gap: lt ? 6 : 5}}>
-                {tickets.map((ticket, i) => (
-                  <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{paddingVertical: lt ? 4 : 3, paddingHorizontal: lt ? 10 : 8, borderRadius: lt ? 8 : 6, backgroundColor: activeTicket === i ? c.accent : c.primaryLight}}>
-                    <Text style={{fontSize: lt ? 12 : 10, fontWeight: '700', color: c.textOnPrimary}} numberOfLines={1}>{ticket.ticket_code}</Text>
-                  </TouchableOpacity>
+            </FadeCard>}
+
+            {/* Job + Mix Cards — table layout: each row is a shared flex parent so heights auto-sync */}
+            {!detailLoading && (isTablet || L) && (() => {
+              const gap = lt ? ls(8) : L ? 5 : wp(8);
+              const pad = lt ? ls(10) : L ? 6 : wp(14);
+              const radius = cs.card.borderRadius;
+              const bw = StyleSheet.hairlineWidth;
+              const bc = c.border;
+              const cellBase = { flex: 1, paddingHorizontal: pad, borderLeftWidth: bw, borderRightWidth: bw, borderColor: bc };
+              return (
+                <FadeCard delay={200}>
+                  {/* Card headers */}
+                  <View style={{ flexDirection: 'row', gap }}>
+                    <View style={[cs.card, { flex: 1, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }]}>
+                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0 }, L && { paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
+                        <MaterialIcons name="work" size={lt ? ls(16) : L ? 14 : ms(16)} color={c.accent} />
+                        <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.jobDetails')}</Text>
+                      </View>
+                    </View>
+                    <View style={[cs.card, { flex: 1, backgroundColor: c.primarySurface, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }]}>
+                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0 }, L && { paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
+                        <MaterialIcons name="science" size={lt ? ls(16) : L ? 14 : ms(16)} color={c.primary} />
+                        <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.mixDetails')}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {/* Synchronized data rows */}
+                  {Array.from({ length: pairedRows }).map((_, i) => {
+                    const jobItem = jobInfo[i];
+                    const mixItem = mixInfo[i];
+                    const isLast = i === pairedRows - 1;
+                    return (
+                      <View key={i} style={{ flexDirection: 'row', gap }}>
+                        {/* Job cell */}
+                        <View style={[cellBase, { backgroundColor: c.white }, isLast && { borderBottomWidth: bw, borderBottomLeftRadius: radius, borderBottomRightRadius: radius, overflow: 'hidden' }]}>
+                          {jobItem ? (
+                            <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.borderLight }]}>
+                              <Text style={[styles.detailLabel, { color: c.textMuted }, L && { width: '28%' }]} numberOfLines={1}>{t(jobItem.labelKey)}</Text>
+                              {jobItem.isMap ? (
+                                <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: jobItem.value })} style={common.flex1}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(4) }}>
+                                    <Text style={[styles.detailValue, { color: c.accent, flex: 1 }]} numberOfLines={2}>{jobItem.value}</Text>
+                                    <MaterialIcons name="map" size={L ? ls(14) : 16} color={c.accent} />
+                                  </View>
+                                </TouchableOpacity>
+                              ) : (
+                                <Text style={[styles.detailValue, common.flex1, { color: jobItem.isLink ? c.accent : c.textPrimary }]} numberOfLines={2}>{jobItem.value}</Text>
+                              )}
+                            </View>
+                          ) : <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }]} />}
+                        </View>
+                        {/* Mix cell */}
+                        <View style={[cellBase, { backgroundColor: c.primarySurface }, isLast && { borderBottomWidth: bw, borderBottomLeftRadius: radius, borderBottomRightRadius: radius, overflow: 'hidden' }]}>
+                          {mixItem ? (
+                            <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.primaryMuted }]}>
+                              <Text style={[styles.detailLabel, { color: c.textMuted }, L && { width: '28%' }]} numberOfLines={1}>{t(mixItem.labelKey)}</Text>
+                              {mixItem.isHighlight ? (
+                                <View style={[styles.slumpPillInline, { backgroundColor: c.warningSurface, borderColor: c.warningBorder }]}>
+                                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.warningDark }}>{mixItem.value}</Text>
+                                </View>
+                              ) : mixItem.isLink ? (
+                                <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
+                                  <Text style={[styles.detailValue, { color: c.accent }]}>{mixItem.value}</Text>
+                                </TouchableOpacity>
+                              ) : (
+                                <Text style={[styles.detailValue, common.flex1, { color: c.textPrimary }]}>{mixItem.value}</Text>
+                              )}
+                            </View>
+                          ) : <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }]} />}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </FadeCard>
+              );
+            })()}
+            {/* Portrait fallback: stacked cards (no sync needed) */}
+            {!detailLoading && !(isTablet || L) && <View style={styles.twoCol}>
+              <FadeCard delay={200} style={cs.card}>
+                <View style={styles.secHeader}>
+                  <MaterialIcons name="work" size={ms(16)} color={c.accent} />
+                  <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.jobDetails')}</Text>
+                </View>
+                {jobInfo.map((item, i) => (
+                  <View key={item.labelKey} style={[styles.detailRow, i < jobInfo.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }]}>
+                    <Text style={[styles.detailLabel, { color: c.textMuted }]} numberOfLines={1}>{t(item.labelKey)}</Text>
+                    {item.isMap ? (
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: item.value })} style={common.flex1}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Text style={[styles.detailValue, { color: c.accent, flex: 1 }]} numberOfLines={2}>{item.value}</Text>
+                          <MaterialIcons name="map" size={16} color={c.accent} />
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={[styles.detailValue, common.flex1, { color: item.isLink ? c.accent : c.textPrimary }]} numberOfLines={2}>{item.value}</Text>
+                    )}
+                  </View>
                 ))}
-              </ScrollView>
-            </View>
-          </FadeCard>
-        ) : (
-          <>
-            {/* Portrait: KPI + Status bar */}
-            <FadeCard delay={0} style={[cs.card, {padding: wp(10), marginBottom: wp(8)}]}>
-              <View style={styles.kpiRow}>
-                {[
-                  {icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary},
-                  {icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark},
-                ].map((kpi, i, arr) => (
-                  <React.Fragment key={kpi.label}>
-                    <View style={styles.kpiItem}>
-                      <View style={[styles.kpiIconWrap, {backgroundColor: c.primarySurface}]}>
-                        <MaterialIcons name={kpi.icon as any} size={ms(14)} color={kpi.color} />
+              </FadeCard>
+              <FadeCard delay={280} style={[cs.card, { backgroundColor: c.primarySurface }]}>
+                <View style={styles.secHeader}>
+                  <MaterialIcons name="science" size={ms(16)} color={c.primary} />
+                  <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.mixDetails')}</Text>
+                </View>
+                {mixInfo.map((item, i) => (
+                  <View key={item.labelKey} style={[styles.detailRow, i < mixInfo.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted }]}>
+                    <Text style={[styles.detailLabel, { color: c.textMuted }]} numberOfLines={1}>{t(item.labelKey)}</Text>
+                    {item.isHighlight ? (
+                      <View style={[styles.slumpPillInline, { backgroundColor: c.warningSurface, borderColor: c.warningBorder }]}>
+                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.warningDark }}>{item.value}</Text>
                       </View>
-                      <View>
-                        <Text style={[styles.kpiVal, {color: c.textPrimary}]}>{kpi.val}</Text>
-                        <Text style={[styles.kpiLabel, {color: c.textMuted}]}>{kpi.label}</Text>
-                      </View>
-                    </View>
-                    {i < arr.length - 1 && <View style={[styles.kpiDivider, {backgroundColor: c.border}]} />}
-                  </React.Fragment>
+                    ) : item.isLink ? (
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
+                        <Text style={[styles.detailValue, { color: c.accent }]}>{item.value}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={[styles.detailValue, common.flex1, { color: c.textPrimary }]}>{item.value}</Text>
+                    )}
+                  </View>
                 ))}
-              </View>
-              <View style={[styles.chipRow, {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: wp(8), paddingTop: wp(8)}]}>
-                {currentTicket != null && (() => {
-                  const status = getTicketStatus(currentTicket);
-                  const isCompleted = status.type === 'completed';
-                  const isActive = status.type === 'active';
-                  return (
-                    <View style={[styles.statusChip, {backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface}]}>
-                      {isActive && <View style={[styles.chipDot, {backgroundColor: '#000'}]} />}
-                      <Text style={[styles.chipLabel, {color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark}]}>{t(status.key)}</Text>
-                    </View>
-                  );
-                })()}
-                {currentTicket != null && (
-                  <View style={[styles.statusChip, {backgroundColor: c.error}]}>
-                    <Text style={[styles.chipLabel, {color: '#fff'}]}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
-                  </View>
-                )}
-              </View>
-            </FadeCard>
-          </>
-        )}
+              </FadeCard>
+            </View>}
 
-        {/* Detail loading indicator */}
-        {detailLoading && (
-          <View style={{paddingVertical: wp(12), alignItems: 'center'}}>
-            <ActivityIndicator size="small" color={c.primary} />
+            {!L && <View style={{ height: wp(14) }} />}
           </View>
-        )}
-
-        {/* Delivery Progress */}
-        {!detailLoading && <FadeCard delay={120} style={[cs.card, L && {padding: lt ? 8 : 6}, {marginBottom: lt ? 8 : L ? 4 : wp(8)}]}>
-          <View style={[styles.secHeader, {borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4)}, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
-            <View style={[styles.secIcon, {backgroundColor: c.primary}, L && {width: lt ? 22 : 18, height: lt ? 22 : 18, borderRadius: lt ? 7 : 6}]}>
-              <MaterialIcons name="timeline" size={lt ? 13 : L ? 11 : ms(13)} color={c.textOnPrimary} />
-            </View>
-            <Text style={[styles.secTitle, {color: c.textPrimary, fontSize: ms(12)}, L && {fontSize: lt ? 15 : 13}]}>{t('dashboard.deliveryProgress')}</Text>
-            <View style={[styles.countBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}, L && {paddingHorizontal: lt ? 7 : 5, paddingVertical: lt ? 2 : 1, borderRadius: lt ? 6 : 5}]}>
-              <Text style={[styles.countText, {color: c.primary, fontSize: ms(10)}, L && {fontSize: lt ? 12 : 10}]}>{doneCount}/{timeline.length}</Text>
-            </View>
-          </View>
-
-          {/* Steps */}
-          {L ? (
-            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingTop: 2, paddingBottom: 1, marginHorizontal: 4}}>
-              {timeline.map((item, i) => {
-                const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
-                const isFirst = i === 0;
-                const isLast = i === timeline.length - 1;
-                const dotSz = lt ? (isActive ? 20 : 16) : (isActive ? 16 : 12);
-                const lineDone = item.done && !isLast && timeline[i + 1]?.done;
-                return (
-                  <View key={item.labelKey} style={{alignItems: 'center', flex: 1, overflow: 'visible'}}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', height: lt ? 22 : 16, width: '100%'}}>
-                      {!isFirst && <View style={{flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1}} />}
-                      <View style={{
-                        width: dotSz, height: dotSz, borderRadius: dotSz / 2,
-                        justifyContent: 'center', alignItems: 'center',
-                        backgroundColor: item.done ? c.primary : c.surface,
-                        borderWidth: isActive ? 2.5 : 1.5,
-                        borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
-                      }}>
-                        {item.done && <MaterialIcons name="check" size={lt ? (isActive ? 11 : 9) : (isActive ? 9 : 7)} color={c.textOnPrimary} />}
-                      </View>
-                      {!isLast && <View style={{flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1}} />}
-                    </View>
-                    <Text style={{fontSize: lt ? 9 : 8, fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2}} numberOfLines={1}>
-                      {t(item.labelKey)}
-                    </Text>
-                    <Text style={{fontSize: lt ? 10 : 9, fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: 1}}>
-                      {item.time}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(2), paddingBottom: wp(1)}}>
-              {timeline.map((item, i) => {
-                const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
-                const isFirst = i === 0;
-                const isLast = i === timeline.length - 1;
-                const dotSz = isActive ? 14 : 10;
-                const lineDone = item.done && !isLast && timeline[i + 1]?.done;
-                return (
-                  <View key={item.labelKey} style={{alignItems: 'center', flex: 1}}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', height: 16, width: '100%'}}>
-                      {!isFirst && <View style={{flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1}} />}
-                      <View style={{
-                        width: dotSz, height: dotSz, borderRadius: dotSz / 2,
-                        justifyContent: 'center', alignItems: 'center',
-                        backgroundColor: item.done ? c.primary : c.surface,
-                        borderWidth: isActive ? 2 : 1.5,
-                        borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
-                      }}>
-                        {item.done && <MaterialIcons name="check" size={isActive ? 8 : 6} color={c.textOnPrimary} />}
-                      </View>
-                      {!isLast && <View style={{flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1}} />}
-                    </View>
-                    <Text style={{fontSize: ms(8), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2}} numberOfLines={1}>
-                      {t(item.labelKey)}
-                    </Text>
-                    <Text style={{fontSize: ms(10), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border}}>
-                      {item.time}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          )}
-        </FadeCard>}
-
-        {/* Job + Mix Cards */}
-        {!detailLoading && <View style={[styles.twoCol, (isTablet || L) && {flexDirection: 'row'}, L && {gap: lt ? 8 : 5, flex: 1}]}>
-          {/* Job Details */}
-          <FadeCard delay={200} style={[cs.card, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
-              <MaterialIcons name="work" size={lt ? 16 : L ? 14 : ms(16)} color={c.accent} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.jobDetails')}</Text>
-            </View>
-            {jobInfo.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 3}, i < jobInfo.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12, width: '28%'}]} numberOfLines={1}>{t(item.labelKey)}</Text>
-                {item.isMap ? (
-                  <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', {
-                    delivery: detail?.location?.delivery,
-                    plant: detail?.location?.plant,
-                    truck: detail?.location?.truck,
-                    address: item.value,
-                  })} style={common.flex1}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
-                      <Text style={[styles.detailValue, {color: c.accent, flex: 1}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
-                      <MaterialIcons name="map" size={L ? 14 : 16} color={c.accent} />
-                    </View>
-                  </TouchableOpacity>
-                ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: item.isLink ? c.accent : c.textPrimary}, L && {fontSize: lt ? 14 : 13}]} numberOfLines={2}>{item.value}</Text>
-                )}
-              </View>
-            ))}
-          </FadeCard>
-
-          {/* Mix Details */}
-          <FadeCard delay={280} style={[cs.card, {backgroundColor: c.primarySurface}, (isTablet || L) && {flex: 1}, L && {padding: lt ? 10 : 6}]}>
-            <View style={[styles.secHeader, L && {marginBottom: lt ? 3 : 2, paddingBottom: lt ? 3 : 2, gap: lt ? 5 : 4}]}>
-              <MaterialIcons name="science" size={lt ? 16 : L ? 14 : ms(16)} color={c.primary} />
-              <Text style={[styles.secTitle, {color: c.textPrimary}, L && {fontSize: lt ? 16 : 14}]}>{t('dashboard.mixDetails')}</Text>
-            </View>
-            {mixInfo.map((item, i) => (
-              <View key={item.labelKey} style={[styles.detailRow, L && {paddingVertical: lt ? 4 : 2}, i < mixInfo.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted}]}>
-                <Text style={[styles.detailLabel, {color: c.textMuted}, L && {fontSize: lt ? 13 : 12, width: '28%'}]} numberOfLines={1}>{t(item.labelKey)}</Text>
-                {item.isHighlight ? (
-                  <View style={[styles.slumpPillInline, {backgroundColor: c.warningSurface, borderColor: c.warningBorder}]}>
-                    <Text style={{fontSize: lt ? 12 : L ? 11 : ms(12), fontWeight: '800', color: c.warningDark}}>{item.value}</Text>
-                  </View>
-                ) : item.isLink ? (
-                  <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
-                    <Text style={[styles.detailValue, {color: c.accent}, L && {fontSize: lt ? 14 : 13}]}>
-                      {item.value}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Text style={[styles.detailValue, common.flex1, {color: c.textPrimary}, L && {fontSize: lt ? 14 : 13}]}>
-                    {item.value}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </FadeCard>
-        </View>}
-
-        {!L && <View style={{height: wp(14)}} />}
-        </View>
-      </ScrollView>
+        </ScrollView>
 
       </View>{/* end main content column */}
 
       {/* ─── NAV BAR ─── */}
       {L ? (
         <View style={{
-          width: 54 + insets.right,
+          width: ls(54) + insets.right,
           paddingRight: insets.right,
-          paddingTop: insets.top + 10,
-          paddingBottom: Math.max(insets.bottom, 20),
+          paddingTop: insets.top + ls(10),
+          paddingBottom: Math.max(insets.bottom, ls(20)),
           borderLeftWidth: StyleSheet.hairlineWidth,
           borderLeftColor: c.border,
           backgroundColor: c.white,
@@ -898,7 +968,7 @@ export default function DashboardScreen({navigation}: Props) {
           paddingRight: insets.right,
           elevation: 8,
           shadowColor: Colors.shadowColor,
-          shadowOffset: {width: 0, height: -2},
+          shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.04,
           shadowRadius: 4,
         }}>
@@ -909,7 +979,7 @@ export default function DashboardScreen({navigation}: Props) {
       {/* ─── DROPDOWN MENU ─── */}
       {menuVisible && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <Pressable style={[styles.dropdownOverlay, {backgroundColor: c.overlayDropdown}]} onPress={closeMenu} />
+          <Pressable style={[styles.dropdownOverlay, { backgroundColor: c.overlayDropdown }]} onPress={closeMenu} />
           <Animated.View
             style={[
               styles.dropdown,
@@ -921,54 +991,54 @@ export default function DashboardScreen({navigation}: Props) {
                 borderColor: c.border,
                 opacity: menuOpacity,
                 transform: [
-                  {scale: menuScale.interpolate({inputRange: [0, 1], outputRange: [0.85, 1]})},
-                  {translateY: menuScale.interpolate({inputRange: [0, 1], outputRange: [-10, 0]})},
+                  { scale: menuScale.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+                  { translateY: menuScale.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) },
                 ],
               },
             ]}>
             {/* Header */}
-            <View style={[styles.ddHeader, isLandscape && {paddingVertical: 6, paddingHorizontal: wp(12), gap: wp(8)}, {borderBottomColor: c.borderLight}]}>
-              <View style={[styles.ddAvatar, isLandscape && {width: 26, height: 26, borderRadius: 8}, {backgroundColor: c.primarySurface}]}>
-                <MaterialIcons name="person" size={isLandscape ? 14 : ms(18)} color={c.primary} />
+            <View style={[styles.ddHeader, isLandscape && { paddingVertical: ls(6), paddingHorizontal: ls(12), gap: ls(8) }, { borderBottomColor: c.borderLight }]}>
+              <View style={[styles.ddAvatar, isLandscape && { width: ls(26), height: ls(26), borderRadius: ls(8) }, { backgroundColor: c.primarySurface }]}>
+                <MaterialIcons name="person" size={isLandscape ? ls(14) : ms(18)} color={c.primary} />
               </View>
               <View style={common.flex1}>
-                <Text style={[styles.ddName, isLandscape && {fontSize: ms(12)}, {color: c.textPrimary}]}>{driver?.driver_name || `Driver ${driver?.driver_code || ''}`}</Text>
-                <Text style={[styles.ddSub, isLandscape && {fontSize: ms(9)}, {color: c.textMuted}]}>ACME Ready-Mix</Text>
+                <Text style={[styles.ddName, isLandscape && { fontSize: ms(13) }, { color: c.textPrimary }]}>{driver?.driver_name || `Driver ${driver?.driver_code || ''}`}</Text>
+                <Text style={[styles.ddSub, isLandscape && { fontSize: ms(10) }, { color: c.textMuted }]}>ACME Ready-Mix</Text>
               </View>
             </View>
 
             {/* Menu Items */}
             <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-            {MENU_ITEMS_BASE.map((item, i) => {
-              const isWarn = item.color === 'warn';
-              const iconColor = isWarn ? c.error : c.textSecondary;
-              const labelColor = isWarn ? c.error : c.textPrimary;
-              const bgColor = isWarn ? c.errorSurface : c.surface;
-              const label = t(item.labelKey);
-              const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
-              return (
-                <TouchableOpacity
-                  key={item.actionKey}
-                  style={[
-                    styles.ddItem,
-                    isLandscape && {paddingVertical: 6, paddingHorizontal: wp(12), minHeight: 34, gap: wp(8)},
-                    i < MENU_ITEMS_BASE.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight},
-                  ]}
-                  activeOpacity={0.6}
-                  onPress={() => handleMenuItemPress(item.actionKey)}>
-                  <View style={[styles.ddIcon, isLandscape && {width: 24, height: 24, borderRadius: 7}, {backgroundColor: bgColor}]}>
-                    <MaterialIcons name={item.icon as any} size={isLandscape ? 14 : ms(18)} color={iconColor} />
-                  </View>
-                  <Text style={[styles.ddLabel, isLandscape && {fontSize: ms(12)}, {color: labelColor}]}>{label}{suffix}</Text>
-                  <MaterialIcons name="chevron-right" size={isLandscape ? 16 : ms(18)} color={c.textMuted} />
-                </TouchableOpacity>
-              );
-            })}
+              {MENU_ITEMS_BASE.map((item, i) => {
+                const isWarn = item.color === 'warn';
+                const iconColor = isWarn ? c.error : c.textSecondary;
+                const labelColor = isWarn ? c.error : c.textPrimary;
+                const bgColor = isWarn ? c.errorSurface : c.surface;
+                const label = t(item.labelKey);
+                const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
+                return (
+                  <TouchableOpacity
+                    key={item.actionKey}
+                    style={[
+                      styles.ddItem,
+                      isLandscape && { paddingVertical: ls(16), paddingHorizontal: ls(12), minHeight: ls(50), gap: ls(8) },
+                      i < MENU_ITEMS_BASE.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight },
+                    ]}
+                    activeOpacity={0.6}
+                    onPress={() => handleMenuItemPress(item.actionKey)}>
+                    <View style={[styles.ddIcon, isLandscape && { width: ls(24), height: ls(24), borderRadius: ls(7) }, { backgroundColor: bgColor }]}>
+                      <MaterialIcons name={item.icon as any} size={isLandscape ? ls(14) : ms(18)} color={iconColor} />
+                    </View>
+                    <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, { color: labelColor }]}>{label}{suffix}</Text>
+                    <MaterialIcons name="chevron-right" size={isLandscape ? ls(16) : ms(18)} color={c.textMuted} />
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
 
             {/* Version footer */}
-            <View style={[styles.ddFooter, isLandscape && {paddingVertical: 4}, {borderTopColor: c.borderLight}]}>
-              <Text style={[styles.ddVersion, {color: c.textMuted}]}>v1.20.0</Text>
+            <View style={[styles.ddFooter, isLandscape && { paddingVertical: ls(4) }, { borderTopColor: c.borderLight }]}>
+              <Text style={[styles.ddVersion, { color: c.textMuted }]}>v1.20.0</Text>
             </View>
           </Animated.View>
         </View>
@@ -981,47 +1051,47 @@ export default function DashboardScreen({navigation}: Props) {
         maxWidth={lp ? 580 : isTablet ? 440 : 380}
         widthPercent={lp ? 88 : isTablet ? 55 : isLandscape ? 50 : 85}
         maxHeightPercent={lp ? 92 : isLandscape ? 88 : 80}>
-        <View style={{backgroundColor: c.qrBg}}>
+        <View style={{ backgroundColor: c.qrBg }}>
           {/* Header */}
-          <View style={[styles.qrHeader, {borderBottomColor: c.qrFg + '15'}]}>
-            <View style={[styles.qrHeaderIcon, {backgroundColor: c.qrFg + '18'}]}>
+          <View style={[styles.qrHeader, { borderBottomColor: c.qrFg + '15' }]}>
+            <View style={[styles.qrHeaderIcon, { backgroundColor: c.qrFg + '18' }]}>
               <MaterialIcons name="qr-code-2" size={ms(18)} color={c.qrFg} />
             </View>
-            <View style={{flex: 1}}>
-              <Text style={[styles.qrHeaderTitle, {color: c.qrFg}]}>QR Code</Text>
-              <Text style={[styles.qrHeaderSub, {color: c.qrFg + '90'}, lp && {fontSize: ms(8)}]}>Scan to verify delivery</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.qrHeaderTitle, { color: c.qrFg }]}>QR Code</Text>
+              <Text style={[styles.qrHeaderSub, { color: c.qrFg + '90' }, lp && { fontSize: ms(8) }]}>Scan to verify delivery</Text>
             </View>
-            <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.qrFg + '12'}]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.qrFg + '12' }]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <MaterialIcons name="close" size={ms(18)} color={c.qrFg} />
             </TouchableOpacity>
           </View>
 
           {lp ? (
             /* Landscape phone: side-by-side layout */
-            <View style={{flexDirection: 'row', padding: wp(8), paddingBottom: wp(16), gap: wp(10), alignItems: 'center'}}>
-              <View style={{flex: 1, gap: wp(6)}}>
-                <View style={{flexDirection: 'row', gap: wp(6)}}>
-                  <View style={{flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12'}}>
-                    <Text style={{fontSize: ms(8), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80'}}>ORDER</Text>
-                    <Text style={{fontSize: ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1}}>{currentTicket?.order_code || '-'}</Text>
+            <View style={{ flexDirection: 'row', padding: wp(8), paddingBottom: wp(16), gap: wp(10), alignItems: 'center' }}>
+              <View style={{ flex: 1, gap: wp(6) }}>
+                <View style={{ flexDirection: 'row', gap: wp(6) }}>
+                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12' }}>
+                    <Text style={{ fontSize: ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>ORDER</Text>
+                    <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.order_code || '-'}</Text>
                   </View>
-                  <View style={{flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12'}}>
-                    <Text style={{fontSize: ms(8), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80'}}>TICKET</Text>
-                    <Text style={{fontSize: ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1}}>{currentTicket?.ticket_code || '-'}</Text>
+                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12' }}>
+                    <Text style={{ fontSize: ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>TICKET</Text>
+                    <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.ticket_code || '-'}</Text>
                   </View>
                 </View>
-                <View style={{gap: wp(3)}}>
-                  <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
+                <View style={{ gap: wp(3) }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4) }}>
                     <MaterialIcons name="local-shipping" size={ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{fontSize: ms(10), fontWeight: '600', color: c.qrFg + '60'}}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
+                    <Text style={{ fontSize: ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
                   </View>
-                  <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4) }}>
                     <MaterialIcons name="factory" size={ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{fontSize: ms(10), fontWeight: '600', color: c.qrFg + '60'}}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                    <Text style={{ fontSize: ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
                   </View>
                 </View>
               </View>
-              <View style={[styles.qrCodeCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
+              <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor }]}>
                 <QRCode
                   value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
                   size={Math.round(Math.min(Math.max(winHeight - insets.top - insets.bottom - 100, 110), 180))}
@@ -1035,19 +1105,19 @@ export default function DashboardScreen({navigation}: Props) {
             <ScrollView
               bounces={false}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{alignItems: 'center', paddingVertical: wp(6)}}>
+              contentContainerStyle={{ alignItems: 'center', paddingVertical: wp(6) }}>
               <View style={styles.qrChipRow}>
-                <View style={[styles.qrChip, {backgroundColor: c.qrFg + '12'}]}>
-                  <Text style={[styles.qrChipLabel, {color: c.qrFg + '80'}]}>ORDER</Text>
-                  <Text style={[styles.qrChipValue, {color: c.qrFg}]}>{currentTicket?.order_code || '-'}</Text>
+                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }]}>
+                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }]}>ORDER</Text>
+                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{currentTicket?.order_code || '-'}</Text>
                 </View>
-                <View style={[styles.qrChip, {backgroundColor: c.qrFg + '12'}]}>
-                  <Text style={[styles.qrChipLabel, {color: c.qrFg + '80'}]}>TICKET</Text>
-                  <Text style={[styles.qrChipValue, {color: c.qrFg}]}>{currentTicket?.ticket_code || '-'}</Text>
+                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }]}>
+                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }]}>TICKET</Text>
+                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{currentTicket?.ticket_code || '-'}</Text>
                 </View>
               </View>
               <View style={styles.qrCodeSection}>
-                <View style={[styles.qrCodeCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
+                <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor }]}>
                   <QRCode
                     value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
                     size={Math.round(Math.min(Math.max((width - insets.left - insets.right) * 0.45, 150), isTablet ? 260 : 200))}
@@ -1057,13 +1127,13 @@ export default function DashboardScreen({navigation}: Props) {
                 </View>
               </View>
               <View style={styles.qrFooter}>
-                <View style={[styles.qrFooterRow, {borderTopColor: c.qrFg + '12'}]}>
+                <View style={[styles.qrFooterRow, { borderTopColor: c.qrFg + '12' }]}>
                   <MaterialIcons name="local-shipping" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70'}]}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
+                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
                 </View>
                 <View style={styles.qrFooterRow}>
                   <MaterialIcons name="factory" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70'}]}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
                 </View>
               </View>
             </ScrollView>
@@ -1077,9 +1147,9 @@ export default function DashboardScreen({navigation}: Props) {
         onClose={() => setPlantsVisible(false)}
         maxWidth={540}
         maxHeightPercent={70}>
-        <View style={[styles.mHeader, {borderBottomColor: c.border}]}>
-          <Text style={[styles.mHeaderTitle, {color: c.textPrimary}]}>{t('modals.plants')}</Text>
-          <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.surface}]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+        <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
+          <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.plants')}</Text>
+          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -1095,10 +1165,10 @@ export default function DashboardScreen({navigation}: Props) {
           ].map(plant => (
             <TouchableOpacity
               key={plant}
-              style={[styles.plantItem, {borderBottomColor: c.borderLight}]}
+              style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
               activeOpacity={0.6}
               onPress={() => setPlantsVisible(false)}>
-              <Text style={[styles.plantText, {color: c.textPrimary}]}>{plant}</Text>
+              <Text style={[styles.plantText, { color: c.textPrimary }]}>{plant}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -1111,19 +1181,19 @@ export default function DashboardScreen({navigation}: Props) {
         maxWidth={isTablet ? 500 : 420}
         widthPercent={isTablet ? 60 : 85}
         maxHeightPercent={60}>
-        <View style={[styles.mHeader, {borderBottomColor: c.border}]}>
-          <Text style={[styles.mHeaderTitle, {color: c.textPrimary}]}>{t('modals.vehicle', 'Vehicle')}</Text>
-          <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.surface}]} onPress={() => setVehicleVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+        <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
+          <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.vehicle', 'Vehicle')}</Text>
+          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setVehicleVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
-        <View style={{alignItems: 'center', paddingVertical: wp(30), paddingHorizontal: wp(20)}}>
-          <Text style={{fontSize: ms(14), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase'}}>CURRENT VEHICLE ID</Text>
-          <Text style={{fontSize: ms(22), fontWeight: '700', color: c.textPrimary, marginTop: 8}}>{driver?.truck_code || '-'}</Text>
+        <View style={{ alignItems: 'center', paddingVertical: wp(30), paddingHorizontal: wp(20) }}>
+          <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' }}>CURRENT VEHICLE ID</Text>
+          <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: 8 }}>{driver?.truck_code || '-'}</Text>
 
-          <View style={{marginTop: wp(30), alignItems: 'center'}}>
-            <Text style={{fontSize: ms(14), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase'}}>BROADCASTING STATUS</Text>
-            <Text style={{fontSize: ms(14), fontWeight: '500', color: c.textSecondary, marginTop: 8}}>
+          <View style={{ marginTop: wp(30), alignItems: 'center' }}>
+            <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' }}>BROADCASTING STATUS</Text>
+            <Text style={{ fontSize: ms(10), fontWeight: '500', color: c.textSecondary, marginTop: 8 }}>
               {isBroadcasting ? 'BROADCASTING' : 'NOT BROADCASTING'}
             </Text>
             <TouchableOpacity
@@ -1138,7 +1208,7 @@ export default function DashboardScreen({navigation}: Props) {
               }}
               activeOpacity={0.8}
               onPress={() => setIsBroadcasting(b => !b)}>
-              <Text style={{fontSize: ms(15), fontWeight: '700', color: '#fff', letterSpacing: 0.5}}>
+              <Text style={{ fontSize: ms(10), fontWeight: '700', color: '#fff', letterSpacing: 0.5 }}>
                 {isBroadcasting ? 'TURN OFF' : 'TURN ON'}
               </Text>
             </TouchableOpacity>
@@ -1155,12 +1225,12 @@ export default function DashboardScreen({navigation}: Props) {
         maxHeightPercent={80}>
 
         {/* Header */}
-        <View style={[styles.etHeader, {borderBottomColor: c.border}]}>
-          <View style={[styles.etHeaderIcon, {backgroundColor: c.primarySurface}]}>
+        <View style={[styles.etHeader, { borderBottomColor: c.border }]}>
+          <View style={[styles.etHeaderIcon, { backgroundColor: c.primarySurface }]}>
             <MaterialIcons name="edit" size={ms(18)} color={c.primary} />
           </View>
-          <Text style={[styles.etHeaderTitle, {color: c.textPrimary}]}>{t('modals.editTicket')}</Text>
-          <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.surface}]} onPress={() => setEditVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <Text style={[styles.etHeaderTitle, { color: c.textPrimary }]}>{t('modals.editTicket')}</Text>
+          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setEditVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -1169,31 +1239,31 @@ export default function DashboardScreen({navigation}: Props) {
           {/* Actions Section */}
           <View style={styles.etSectionHdr}>
             <MaterialIcons name="touch-app" size={ms(16)} color={c.accent} />
-            <Text style={[styles.etSectionTitle, {color: c.accent}]}>{t('modals.actions')}</Text>
+            <Text style={[styles.etSectionTitle, { color: c.accent }]}>{t('modals.actions')}</Text>
           </View>
 
           {([
-            {label: t('modals.signAccept'), icon: 'check-circle', screen: 'AcceptTicket', iconColor: c.success, bg: c.successSurface},
-            {label: t('modals.disputeLoad'), icon: 'report-problem', screen: 'DisputeTicket', iconColor: c.error, bg: c.errorSurface},
-            {label: t('modals.signCurbline'), icon: 'assignment-turned-in', screen: 'CurblineRelease', iconColor: c.warning, bg: c.warningSurface},
+            { label: t('modals.signAccept'), icon: 'check-circle', screen: 'AcceptTicket', iconColor: c.success, bg: c.successSurface },
+            { label: t('modals.disputeLoad'), icon: 'report-problem', screen: 'DisputeTicket', iconColor: c.error, bg: c.errorSurface },
+            { label: t('modals.signCurbline'), icon: 'assignment-turned-in', screen: 'CurblineRelease', iconColor: c.warning, bg: c.warningSurface },
           ] as const).map((item, i) => (
             <TouchableOpacity
               key={item.label}
-              style={[styles.etActionRow, i < 2 && {borderBottomWidth: 1, borderBottomColor: c.borderLight}]}
+              style={[styles.etActionRow, i < 2 && { borderBottomWidth: 1, borderBottomColor: c.borderLight }]}
               activeOpacity={0.6}
               onPress={() => {
                 setEditVisible(false);
                 navigation.navigate(item.screen);
               }}>
-              <View style={[styles.etActionIcon, {backgroundColor: item.bg}]}>
+              <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
                 <MaterialIcons name={item.icon as any} size={ms(18)} color={item.iconColor} />
               </View>
-              <Text style={[styles.etActionLabel, {color: c.textPrimary}]}>{item.label}</Text>
+              <Text style={[styles.etActionLabel, { color: c.textPrimary }]}>{item.label}</Text>
               <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
             </TouchableOpacity>
           ))}
 
-          <View style={{height: wp(16)}} />
+          <View style={{ height: wp(16) }} />
         </ScrollView>
       </ResponsiveModal>
 
@@ -1203,29 +1273,29 @@ export default function DashboardScreen({navigation}: Props) {
         onClose={() => setProductsVisible(false)}
         maxWidth={560}
         maxHeightPercent={75}>
-        <View style={[styles.pmHeader, {backgroundColor: c.primarySurface, borderBottomColor: c.primaryBorder}]}>
-          <View style={[styles.pmHeaderIcon, {backgroundColor: c.primary}]}>
+        <View style={[styles.pmHeader, { backgroundColor: c.primarySurface, borderBottomColor: c.primaryBorder }]}>
+          <View style={[styles.pmHeaderIcon, { backgroundColor: c.primary }]}>
             <MaterialIcons name="inventory-2" size={ms(16)} color={c.textOnPrimary} />
           </View>
           <View style={common.flex1}>
-            <Text style={[styles.pmTitle, {color: c.textPrimary}]}>{t('productsModal.title')}</Text>
-            <Text style={[styles.pmSubtitle, {color: c.textMuted}]}>30MPA MR - {t('productsModal.subtitle')}</Text>
+            <Text style={[styles.pmTitle, { color: c.textPrimary }]}>{t('productsModal.title')}</Text>
+            <Text style={[styles.pmSubtitle, { color: c.textMuted }]}>30MPA MR - {t('productsModal.subtitle')}</Text>
           </View>
-          <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.white}]} onPress={() => setProductsVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.white }]} onPress={() => setProductsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.pmBody}>
           {/* Table Header */}
-          <View style={[styles.pmRow, styles.pmRowHeader, {borderBottomColor: c.textPrimary}]}>
-            <Text style={[styles.pmColCode, styles.pmTh, {color: c.textPrimary}]}>{t('productsModal.code')}</Text>
-            <Text style={[styles.pmColDesc, styles.pmTh, {color: c.textPrimary}]}>{t('productsModal.description')}</Text>
-            <Text style={[styles.pmColQty, styles.pmTh, {color: c.textPrimary}]}>{t('productsModal.qty')}</Text>
-            <Text style={[styles.pmColUnit, styles.pmTh, {color: c.textPrimary}]}>{t('productsModal.unit')}</Text>
+          <View style={[styles.pmRow, styles.pmRowHeader, { borderBottomColor: c.textPrimary }]}>
+            <Text style={[styles.pmColCode, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.code')}</Text>
+            <Text style={[styles.pmColDesc, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.description')}</Text>
+            <Text style={[styles.pmColQty, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.qty')}</Text>
+            <Text style={[styles.pmColUnit, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.unit')}</Text>
           </View>
           {/* Table Rows */}
-          <View style={{padding: wp(16), alignItems: 'center'}}>
-            <Text style={{color: c.textMuted, fontSize: ms(13)}}>{t('productsModal.noData', 'No product data available')}</Text>
+          <View style={{ padding: wp(16), alignItems: 'center' }}>
+            <Text style={{ color: c.textMuted, fontSize: ms(10) }}>{t('productsModal.noData', 'No product data available')}</Text>
           </View>
         </ScrollView>
       </ResponsiveModal>
@@ -1236,37 +1306,37 @@ export default function DashboardScreen({navigation}: Props) {
         onClose={() => setLogoutType(null)}
         maxWidth={360}
         widthPercent={isLandscape ? 40 : 80}>
-        <View style={{padding: wp(16), alignItems: 'center'}}>
-          <View style={[styles.logoutIconWrap, {backgroundColor: logoutType === 'tenant' ? c.errorSurface : c.warningSurface}]}>
+        <View style={{ padding: wp(16), alignItems: 'center' }}>
+          <View style={[styles.logoutIconWrap, { backgroundColor: logoutType === 'tenant' ? c.errorSurface : c.warningSurface }]}>
             <MaterialIcons
               name={logoutType === 'tenant' ? 'domain-disabled' : 'person-off'}
               size={ms(28)}
               color={logoutType === 'tenant' ? c.error : c.warningDark}
             />
           </View>
-          <Text style={[styles.logoutTitle, {color: c.textPrimary}]}>
+          <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>
             {logoutType === 'tenant' ? t('logout.tenantTitle') : t('logout.driverTitle')}
           </Text>
-          <Text style={[styles.logoutMessage, {color: c.textSecondary}]}>
+          <Text style={[styles.logoutMessage, { color: c.textSecondary }]}>
             {logoutType === 'tenant' ? t('logout.tenantMessage') : t('logout.driverMessage')}
           </Text>
           <View style={styles.logoutButtons}>
             <TouchableOpacity
-              style={[styles.logoutBtn, {backgroundColor: c.surface, borderWidth: 1, borderColor: c.border}]}
+              style={[styles.logoutBtn, { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }]}
               onPress={() => setLogoutType(null)}
               activeOpacity={0.7}
               disabled={loggingOut}>
-              <Text style={[styles.logoutBtnText, {color: c.textPrimary}]}>{t('logout.cancel')}</Text>
+              <Text style={[styles.logoutBtnText, { color: c.textPrimary }]}>{t('logout.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.logoutBtn, {backgroundColor: logoutType === 'tenant' ? c.error : c.warningDark}, loggingOut && {opacity: 0.7}]}
+              style={[styles.logoutBtn, { backgroundColor: logoutType === 'tenant' ? c.error : c.warningDark }, loggingOut && { opacity: 0.7 }]}
               onPress={handleLogoutConfirm}
               activeOpacity={0.7}
               disabled={loggingOut}>
               {loggingOut ? (
                 <ActivityIndicator size="small" color={c.textOnPrimary} />
               ) : (
-                <Text style={[styles.logoutBtnText, {color: c.textOnPrimary}]}>{t('logout.confirm')}</Text>
+                <Text style={[styles.logoutBtnText, { color: c.textOnPrimary }]}>{t('logout.confirm')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1278,125 +1348,125 @@ export default function DashboardScreen({navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1},
+  container: { flex: 1 },
 
   // Header
-  header: {paddingBottom: wp(6)},
-  headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6)},
-  headerLeft: {flexDirection: 'row', alignItems: 'center'},
-  logo: {width: wp(34), height: wp(34), borderRadius: wp(17)},
-  logoTitle: {fontSize: ms(18), fontWeight: '800', letterSpacing: 0.3},
-  logoSub: {fontSize: ms(12), fontWeight: '500', marginTop: 1},
-  headerActions: {flexDirection: 'row', alignItems: 'center', gap: wp(6)},
-  hdrBtn: {width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center'},
+  header: { paddingBottom: wp(6) },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6) },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  logo: { width: wp(34), height: wp(34), borderRadius: wp(17) },
+  logoTitle: { fontSize: ms(14), fontWeight: '800', letterSpacing: 0.3 },
+  logoSub: { fontSize: ms(9), fontWeight: '500', marginTop: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: wp(6) },
+  hdrBtn: { width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center' },
 
   // Tabs
-  tabsRow: {flexDirection: 'row', gap: wp(6)},
-  tab: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(4), paddingHorizontal: wp(12), borderRadius: wp(10), borderWidth: 1},
-  tabDot: {width: wp(5), height: wp(5), borderRadius: wp(3)},
-  tabText: {fontWeight: '700', fontSize: ms(14), letterSpacing: 0.2},
+  tabsRow: { flexDirection: 'row', gap: wp(6) },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(4), paddingHorizontal: wp(12), borderRadius: wp(10), borderWidth: 1 },
+  tabDot: { width: wp(5), height: wp(5), borderRadius: wp(3) },
+  tabText: { fontWeight: '700', fontSize: ms(13), letterSpacing: 0.2 },
 
   // Scroll
-  scroll: {flex: 1},
-  scrollInner: {paddingHorizontal: wp(12), paddingTop: wp(8), paddingBottom: wp(20)},
+  scroll: { flex: 1 },
+  scrollInner: { paddingHorizontal: wp(12), paddingTop: wp(8), paddingBottom: wp(20) },
 
   // KPI
-  kpiRow: {flexDirection: 'row', alignItems: 'center'},
-  kpiItem: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingVertical: wp(4), paddingHorizontal: wp(6)},
-  kpiIconWrap: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
-  kpiVal: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.1},
-  kpiLabel: {fontSize: ms(12), fontWeight: '600', letterSpacing: 0.3, color: '#9E9E9E', marginTop: 1},
-  kpiDivider: {width: StyleSheet.hairlineWidth, height: wp(28), marginHorizontal: wp(2)},
+  kpiRow: { flexDirection: 'row', alignItems: 'center' },
+  kpiItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingVertical: wp(4), paddingHorizontal: wp(6) },
+  kpiIconWrap: { width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
+  kpiVal: { fontSize: ms(10), fontWeight: '800', letterSpacing: 0.1 },
+  kpiLabel: { fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3, color: '#9E9E9E', marginTop: 1 },
+  kpiDivider: { width: StyleSheet.hairlineWidth, height: wp(28), marginHorizontal: wp(2) },
 
   // Chips
-  chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(6), alignItems: 'center'},
-  statusChip: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: wp(10), paddingVertical: wp(4), borderRadius: wp(16), gap: wp(5)},
-  chipDot: {width: wp(6), height: wp(6), borderRadius: wp(3)},
-  chipLabel: {fontWeight: '600', fontSize: ms(14)},
-  infoChip: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(8), paddingVertical: wp(4), borderRadius: wp(16), borderWidth: 1},
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: wp(6), alignItems: 'center' },
+  statusChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: wp(10), paddingVertical: wp(4), borderRadius: wp(16), gap: wp(5) },
+  chipDot: { width: wp(6), height: wp(6), borderRadius: wp(3) },
+  chipLabel: { fontWeight: '600', fontSize: ms(10) },
+  infoChip: { flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(8), paddingVertical: wp(4), borderRadius: wp(16), borderWidth: 1 },
 
   // Section header
-  secHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: wp(8), paddingBottom: wp(6), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E0E0E0', gap: wp(6)},
-  secIcon: {width: wp(24), height: wp(24), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
-  secTitle: {fontSize: ms(17), fontWeight: '700', letterSpacing: 0.1, flex: 1},
-  countBadge: {paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(8), borderWidth: 1},
-  countText: {fontSize: ms(13), fontWeight: '800'},
+  secHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: wp(8), paddingBottom: wp(6), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E0E0E0', gap: wp(6) },
+  secIcon: { width: wp(24), height: wp(24), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
+  secTitle: { fontSize: ms(10), fontWeight: '700', letterSpacing: 0.1, flex: 1 },
+  countBadge: { paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(8), borderWidth: 1 },
+  countText: { fontSize: ms(9), fontWeight: '800' },
 
   // Detail cards
-  twoCol: {gap: wp(8)},
-  detailRow: {flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(9), gap: wp(8)},
-  detailLabel: {fontSize: ms(14), fontWeight: '600', letterSpacing: 0.1, width: '34%'},
-  detailValue: {fontSize: ms(15), fontWeight: '700'},
-  slumpPillInline: {paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6), borderWidth: 1},
+  twoCol: { gap: wp(8) },
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(9), gap: wp(8) },
+  detailLabel: { fontSize: ms(10), fontWeight: '800', letterSpacing: 0.1, width: '34%' },
+  detailValue: { fontSize: ms(10), fontWeight: '700' },
+  slumpPillInline: { paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6), borderWidth: 1 },
 
 
   // Dropdown
-  dropdownOverlay: {position: 'absolute', top: 0, left: 0, right: 0, bottom: 0},
-  dropdown: {position: 'absolute', minWidth: wp(220), maxWidth: wp(280), borderRadius: wp(16), borderWidth: StyleSheet.hairlineWidth, elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.12, shadowRadius: 16, overflow: 'hidden'},
-  ddHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth},
-  ddAvatar: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
-  ddName: {fontSize: ms(14), fontWeight: '700'},
-  ddSub: {fontSize: ms(11), fontWeight: '500', marginTop: 1},
-  ddItem: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(13), minHeight: wp(42)},
-  ddIcon: {width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center'},
-  ddLabel: {flex: 1, fontSize: ms(14), fontWeight: '600'},
-  ddFooter: {alignItems: 'center', paddingVertical: wp(8), borderTopWidth: StyleSheet.hairlineWidth},
-  ddVersion: {fontSize: ms(10), fontWeight: '500'},
+  dropdownOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  dropdown: { position: 'absolute', minWidth: wp(220), maxWidth: wp(280), borderRadius: wp(16), borderWidth: StyleSheet.hairlineWidth, elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, overflow: 'hidden' },
+  ddHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth },
+  ddAvatar: { width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center' },
+  ddName: { fontSize: ms(13), fontWeight: '700' },
+  ddSub: { fontSize: ms(11), fontWeight: '500', marginTop: 1 },
+  ddItem: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(8), minHeight: wp(35) },
+  ddIcon: { width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center' },
+  ddLabel: { flex: 1, fontSize: ms(13), fontWeight: '600' },
+  ddFooter: { alignItems: 'center', paddingVertical: wp(8), borderTopWidth: StyleSheet.hairlineWidth },
+  ddVersion: { fontSize: ms(10), fontWeight: '500' },
 
   // QR Modal
-  qrHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(8), borderBottomWidth: 1},
-  qrHeaderIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
-  qrHeaderTitle: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3},
-  qrHeaderSub: {fontSize: ms(9), fontWeight: '500', marginTop: 1},
-  qrChipRow: {flexDirection: 'row', gap: wp(6), paddingHorizontal: wp(12), alignSelf: 'stretch'},
-  qrChip: {flex: 1, alignItems: 'center', paddingVertical: wp(6), borderRadius: wp(8)},
-  qrChipLabel: {fontSize: ms(8), fontWeight: '700', letterSpacing: 0.8},
-  qrChipValue: {fontSize: ms(15), fontWeight: '900', marginTop: 1},
-  qrCodeSection: {alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(10)},
-  qrCodeCard: {padding: wp(12), borderRadius: wp(12), alignItems: 'center', justifyContent: 'center', elevation: 4, shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.08, shadowRadius: 8},
-  qrFooter: {paddingHorizontal: wp(12), gap: wp(4), alignSelf: 'stretch'},
-  qrFooterRow: {flexDirection: 'row', alignItems: 'center', gap: wp(5), justifyContent: 'center', paddingTop: wp(2)},
-  qrFooterText: {fontSize: ms(10), fontWeight: '600'},
+  qrHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(8), borderBottomWidth: 1 },
+  qrHeaderIcon: { width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
+  qrHeaderTitle: { fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3 },
+  qrHeaderSub: { fontSize: ms(10), fontWeight: '500', marginTop: 1 },
+  qrChipRow: { flexDirection: 'row', gap: wp(6), paddingHorizontal: wp(12), alignSelf: 'stretch' },
+  qrChip: { flex: 1, alignItems: 'center', paddingVertical: wp(6), borderRadius: wp(8) },
+  qrChipLabel: { fontSize: ms(10), fontWeight: '700', letterSpacing: 0.8 },
+  qrChipValue: { fontSize: ms(13), fontWeight: '900', marginTop: 1 },
+  qrCodeSection: { alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(10) },
+  qrCodeCard: { padding: wp(12), borderRadius: wp(12), alignItems: 'center', justifyContent: 'center', elevation: 4, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
+  qrFooter: { paddingHorizontal: wp(12), gap: wp(4), alignSelf: 'stretch' },
+  qrFooterRow: { flexDirection: 'row', alignItems: 'center', gap: wp(5), justifyContent: 'center', paddingTop: wp(2) },
+  qrFooterText: { fontSize: ms(12), fontWeight: '600' },
 
   // Plants Modal
-  plantsList: {paddingHorizontal: wp(16)},
-  plantItem: {paddingVertical: wp(12), borderBottomWidth: 0.5, alignItems: 'center', minHeight: wp(42)},
-  plantText: {fontSize: ms(15), fontWeight: '600', textAlign: 'center'},
-  etHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(10), borderBottomWidth: 1},
-  etHeaderIcon: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
-  etHeaderTitle: {flex: 1, fontSize: ms(16), fontWeight: '800', letterSpacing: 0.5},
-  etSectionHdr: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(16), paddingTop: wp(10), paddingBottom: wp(6)},
-  etSectionTitle: {fontSize: ms(11), fontWeight: '800', letterSpacing: 1},
-  etActionRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(16), gap: wp(10), minHeight: wp(44)},
-  etActionIcon: {width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center'},
-  etActionLabel: {flex: 1, fontSize: ms(13), fontWeight: '700'},
+  plantsList: { paddingHorizontal: wp(16) },
+  plantItem: { paddingVertical: wp(12), borderBottomWidth: 0.5, alignItems: 'center', minHeight: wp(42) },
+  plantText: { fontSize: ms(13), fontWeight: '600', textAlign: 'center' },
+  etHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(10), borderBottomWidth: 1 },
+  etHeaderIcon: { width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center' },
+  etHeaderTitle: { flex: 1, fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5 },
+  etSectionHdr: { flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(16), paddingTop: wp(10), paddingBottom: wp(6) },
+  etSectionTitle: { fontSize: ms(9), fontWeight: '800', letterSpacing: 1 },
+  etActionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(16), gap: wp(10), minHeight: wp(44) },
+  etActionIcon: { width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center' },
+  etActionLabel: { flex: 1, fontSize: ms(10), fontWeight: '700' },
 
   // Unified modal close button
-  mCloseBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center'},
-  mCloseBtnAbsolute: {position: 'absolute', top: wp(8), right: wp(8), zIndex: 10},
-  mHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1},
-  mHeaderTitle: {fontSize: ms(17), fontWeight: '900', letterSpacing: 0.5},
+  mCloseBtn: { width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center' },
+  mCloseBtnAbsolute: { position: 'absolute', top: wp(8), right: wp(8), zIndex: 10 },
+  mHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1 },
+  mHeaderTitle: { fontSize: ms(13), fontWeight: '900', letterSpacing: 0.5 },
 
   // Products Modal
-  pmHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1},
-  pmHeaderIcon: {width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center'},
-  pmTitle: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.3},
-  pmSubtitle: {fontSize: ms(10), fontWeight: '500', marginTop: 1},
-  pmBody: {paddingHorizontal: wp(14), paddingTop: wp(4), paddingBottom: wp(14)},
-  pmRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingHorizontal: wp(4), borderBottomWidth: 0.5, borderRadius: wp(4)},
-  pmRowHeader: {borderBottomWidth: 1.5, paddingBottom: wp(6), marginBottom: wp(2)},
-  pmColCode: {width: wp(60)},
-  pmColDesc: {flex: 1, paddingRight: wp(8)},
-  pmColQty: {width: wp(40), textAlign: 'right'},
-  pmColUnit: {width: wp(35), textAlign: 'center'},
-  pmTh: {fontSize: ms(11), fontWeight: '900', letterSpacing: 0.5},
-  pmTd: {fontSize: ms(12), fontWeight: '500'},
+  pmHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1 },
+  pmHeaderIcon: { width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center' },
+  pmTitle: { fontSize: ms(10), fontWeight: '800', letterSpacing: 0.3 },
+  pmSubtitle: { fontSize: ms(9), fontWeight: '500', marginTop: 1 },
+  pmBody: { paddingHorizontal: wp(14), paddingTop: wp(4), paddingBottom: wp(14) },
+  pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingHorizontal: wp(4), borderBottomWidth: 0.5, borderRadius: wp(4) },
+  pmRowHeader: { borderBottomWidth: 1.5, paddingBottom: wp(6), marginBottom: wp(2) },
+  pmColCode: { width: wp(60) },
+  pmColDesc: { flex: 1, paddingRight: wp(8) },
+  pmColQty: { width: wp(40), textAlign: 'right' },
+  pmColUnit: { width: wp(35), textAlign: 'center' },
+  pmTh: { fontSize: ms(9), fontWeight: '900', letterSpacing: 0.5 },
+  pmTd: { fontSize: ms(10), fontWeight: '500' },
 
   // Logout confirmation modal
-  logoutIconWrap: {width: wp(48), height: wp(48), borderRadius: wp(24), justifyContent: 'center', alignItems: 'center', marginBottom: wp(10)},
-  logoutTitle: {fontSize: ms(17), fontWeight: '700', marginBottom: wp(4)},
-  logoutMessage: {fontSize: ms(12), fontWeight: '400', textAlign: 'center', lineHeight: ms(17), marginBottom: wp(14)},
-  logoutButtons: {flexDirection: 'row', gap: wp(8), width: '100%'},
-  logoutBtn: {flex: 1, paddingVertical: wp(10), borderRadius: wp(10), alignItems: 'center', justifyContent: 'center'},
-  logoutBtnText: {fontSize: ms(14), fontWeight: '600'},
+  logoutIconWrap: { width: wp(48), height: wp(48), borderRadius: wp(24), justifyContent: 'center', alignItems: 'center', marginBottom: wp(10) },
+  logoutTitle: { fontSize: ms(13), fontWeight: '700', marginBottom: wp(4) },
+  logoutMessage: { fontSize: ms(10), fontWeight: '400', textAlign: 'center', lineHeight: ms(15), marginBottom: wp(14) },
+  logoutButtons: { flexDirection: 'row', gap: wp(8), width: '100%' },
+  logoutBtn: { flex: 1, paddingVertical: wp(10), borderRadius: wp(10), alignItems: 'center', justifyContent: 'center' },
+  logoutBtnText: { fontSize: ms(10), fontWeight: '600' },
 });

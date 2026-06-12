@@ -62,6 +62,22 @@ export function hp(size: number): number {
 }
 
 /**
+ * Landscape-proportional scaling.
+ * Scales linearly with the short dimension (screen height in landscape),
+ * referenced to 810dp (iPad 10.2"). Values stay identical on the reference
+ * device and scale proportionally on larger/smaller tablets.
+ *
+ * Use for spacing AND font sizes in landscape layouts where ms() is too
+ * aggressive (due to the 0.6 min factor on tablets).
+ */
+const LANDSCAPE_REF = 810;
+export function ls(size: number): number {
+  const shortDim = getShortDim();
+  const scale = shortDim / LANDSCAPE_REF;
+  return Math.round(PixelRatio.roundToNearestPixel(size * scale));
+}
+
+/**
  * Device type detection with granular breakpoints.
  */
 export type DeviceType = 'smallPhone' | 'phone' | 'tablet' | 'largeTablet';
