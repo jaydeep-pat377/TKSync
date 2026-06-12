@@ -255,7 +255,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
   const cardsContent = (
     <ScrollView
       style={{flex: 1}}
-      contentContainerStyle={[st.scrollContent, {paddingBottom: insets.bottom + wp(24), paddingHorizontal: L ? wp(10) : wp(14)}]}
+      contentContainerStyle={[st.scrollContent, {paddingBottom: insets.bottom + wp(24), paddingHorizontal: L ? wp(10) : wp(14)}, L && {paddingTop: 0}]}
       showsVerticalScrollIndicator={false}>
 
       {/* ── TRIP STATS ── */}
@@ -384,35 +384,51 @@ export default function VehicleTrackingScreen({navigation}: Props) {
     <View style={[st.container, {backgroundColor: c.background}]}>
       <StatusBar barStyle="light-content" backgroundColor={c.primaryDark} />
 
-      {/* ── HEADER ── */}
-      <View style={[st.header, {backgroundColor: c.primaryDark, paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(14), insets.left), paddingRight: Math.max(wp(14), insets.right)}]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={[st.headerBtn, {backgroundColor: 'rgba(255,255,255,0.1)'}]} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <MaterialIcons name="arrow-back" size={ms(18)} color={c.textOnPrimary} />
-        </TouchableOpacity>
-        <View style={{flex: 1, marginLeft: wp(10)}}>
-          <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>Vehicle Tracking</Text>
-          <Text style={[st.headerSub, {color: c.textOnDark60}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
-        </View>
-        <Animated.View style={[st.gpsBadge, {backgroundColor: gpsActive ? '#22C55E' : c.textMuted, transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
-          <MaterialIcons name="gps-fixed" size={ms(10)} color="#fff" />
-        </Animated.View>
-        <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
-      </View>
-
-      {/* ── BODY: portrait = stacked, landscape = side-by-side ── */}
       {L ? (
+        /* ── LANDSCAPE: header embedded in left column, right panel extends from top ── */
         <View style={{flex: 1, flexDirection: 'row'}}>
-          {/* Left panel: speedometer */}
-          <View style={{width: isTablet ? '35%' : '32%', borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(255,255,255,0.08)'}}>
-            {heroBlock}
+          {/* Left column: header + speedometer */}
+          <View style={{width: isTablet ? '35%' : '32%', backgroundColor: c.primaryDark}}>
+            <View style={[st.header, {paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(14), insets.left), paddingRight: wp(8)}]}>
+              <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={[st.headerBtn, {backgroundColor: 'rgba(255,255,255,0.1)'}]} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                <MaterialIcons name="arrow-back" size={ms(18)} color={c.textOnPrimary} />
+              </TouchableOpacity>
+              <View style={{flex: 1, marginLeft: wp(10)}}>
+                <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>Vehicle Tracking</Text>
+                <Text style={[st.headerSub, {color: c.textOnDark60}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
+              </View>
+            </View>
+            <View style={{flex: 1, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(255,255,255,0.08)'}}>
+              {heroBlock}
+            </View>
           </View>
-          {/* Right panel: scrollable cards */}
+          {/* Right column: GPS badge + cards — extends from very top */}
           <View style={{flex: 1, backgroundColor: c.background}}>
+            <View style={{flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingTop: insets.top + wp(6), paddingRight: Math.max(wp(14), insets.right), paddingBottom: wp(4), gap: wp(4)}}>
+              <Animated.View style={[st.gpsBadge, {backgroundColor: gpsActive ? '#22C55E' : c.textMuted, transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
+                <MaterialIcons name="gps-fixed" size={ms(10)} color="#fff" />
+              </Animated.View>
+              <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+            </View>
             {cardsContent}
           </View>
         </View>
       ) : (
+        /* ── PORTRAIT: standard stacked layout ── */
         <>
+          <View style={[st.header, {backgroundColor: c.primaryDark, paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(14), insets.left), paddingRight: Math.max(wp(14), insets.right)}]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={[st.headerBtn, {backgroundColor: 'rgba(255,255,255,0.1)'}]} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+              <MaterialIcons name="arrow-back" size={ms(18)} color={c.textOnPrimary} />
+            </TouchableOpacity>
+            <View style={{flex: 1, marginLeft: wp(10)}}>
+              <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>Vehicle Tracking</Text>
+              <Text style={[st.headerSub, {color: c.textOnDark60}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
+            </View>
+            <Animated.View style={[st.gpsBadge, {backgroundColor: gpsActive ? '#22C55E' : c.textMuted, transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
+              <MaterialIcons name="gps-fixed" size={ms(10)} color="#fff" />
+            </Animated.View>
+            <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+          </View>
           {heroBlock}
           {cardsContent}
         </>
