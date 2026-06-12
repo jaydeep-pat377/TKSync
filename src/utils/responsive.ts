@@ -23,6 +23,8 @@ function getShortDim(): number {
  * consistent scaling regardless of orientation.
  *
  * On phones, scaling is purely linear (1:1 at 390pt).
+ * On small phones (shortDim < 360), a floor of 0.85 prevents UI from
+ * becoming too cramped.
  * On tablets (shortDim > 600), a 10% trim is applied for a more compact UI.
  */
 export function wp(size: number): number {
@@ -30,6 +32,8 @@ export function wp(size: number): number {
   let scale = shortDim / BASE_SHORT;
   if (shortDim > 600) {
     scale *= TABLET_TRIM;
+  } else if (shortDim < 360) {
+    scale = Math.max(scale, 0.85);
   }
   return Math.round(PixelRatio.roundToNearestPixel(size * scale));
 }
@@ -146,12 +150,14 @@ export function orientationLayout(width: number, height: number) {
   const shortDim = Math.min(width, height);
   const tablet = shortDim >= 600;
   const phone = !tablet;
+  const smallPhone = shortDim < 360;
 
   return {
     isLandscape: landscape,
     isPortrait: !landscape,
     isTablet: tablet,
     isPhone: phone,
+    isSmallPhone: smallPhone,
     // In portrait on phone, use full-width stacking; in landscape use side-by-side
     contentDirection: (landscape || tablet) ? 'row' as const : 'column' as const,
     // Cards that should be side-by-side in landscape but stack in portrait
@@ -159,6 +165,8 @@ export function orientationLayout(width: number, height: number) {
     // Available content width for centering cards in portrait tablet
     maxContentWidth: tablet ? Math.min(width * 0.85, 800) : width,
     // Horizontal padding adjustment
-    contentPadding: tablet ? wp(24) : landscape ? wp(16) : wp(14),
+    contentPadding: tablet ? wp(24) : landscape ? wp(16) : smallPhone ? wp(10) : wp(14),
+    // Landscape phone: most space-constrained combo
+    isLandscapePhone: landscape && phone,
   };
 }

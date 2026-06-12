@@ -49,6 +49,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const L = width > height; // landscape
+  const isTablet = Math.min(width, height) > 600;
 
   // GPS state
   const [speed, setSpeed] = useState(0);
@@ -402,7 +403,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
       {L ? (
         <View style={{flex: 1, flexDirection: 'row'}}>
           {/* Left panel: speedometer */}
-          <View style={{width: '35%', borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(255,255,255,0.08)'}}>
+          <View style={{width: isTablet ? '35%' : '32%', borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(255,255,255,0.08)'}}>
             {heroBlock}
           </View>
           {/* Right panel: scrollable cards */}

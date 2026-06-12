@@ -15,7 +15,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
-import {ms} from '../utils/responsive';
+import {ms, wp} from '../utils/responsive';
 
 MapboxGL.setAccessToken(Config.MAPBOX_ACCESS_TOKEN || '');
 
@@ -65,9 +65,9 @@ export default function MapScreen({navigation, route}: Props) {
         styles.header,
         {
           backgroundColor: c.primary,
-          paddingTop: insets.top + 8,
-          paddingLeft: Math.max(16, insets.left + 8),
-          paddingRight: Math.max(16, insets.right + 8),
+          paddingTop: insets.top + wp(6),
+          paddingLeft: Math.max(wp(12), insets.left + wp(6)),
+          paddingRight: Math.max(wp(12), insets.right + wp(6)),
         },
       ]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
@@ -180,12 +180,12 @@ export default function MapScreen({navigation, route}: Props) {
 
 const styles = StyleSheet.create({
   container: {flex: 1},
-  header: {paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, zIndex: 10},
-  backBtn: {width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  header: {paddingBottom: wp(10), flexDirection: 'row', alignItems: 'center', gap: wp(10), elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, zIndex: 10},
+  backBtn: {width: wp(36), height: wp(36), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
   headerCenter: {flex: 1},
-  headerTitle: {fontSize: ms(15), fontWeight: '700'},
-  headerSub: {fontSize: ms(11), marginTop: 1},
-  navBtn: {width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+  headerTitle: {fontSize: ms(14), fontWeight: '700'},
+  headerSub: {fontSize: ms(10), marginTop: 1},
+  navBtn: {width: wp(36), height: wp(36), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
   mapContainer: {flex: 1},
   map: {flex: 1},
   marker: {width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 4},

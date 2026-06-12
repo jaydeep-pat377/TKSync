@@ -49,7 +49,7 @@ export default function CurblineReleaseScreen({navigation}: Props) {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: Math.max(isLandscape ? wp(20) : wp(50), insets.bottom)}]}
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : wp(8)), paddingLeft: Math.max(insets.left, isLandscape && !isTablet ? 12 : 0), paddingRight: Math.max(insets.right, isLandscape && !isTablet ? 12 : 0), paddingBottom: Math.max(isLandscape ? wp(20) : wp(50), insets.bottom)}]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
@@ -130,7 +130,7 @@ const s = StyleSheet.create({
   flex1: {flex: 1},
   scroll: {flex: 1},
   scrollContent: {},
-  card: {marginHorizontal: wp(10), marginBottom: wp(10), borderRadius: wp(14), overflow: 'visible'},
+  card: {marginHorizontal: wp(8), marginBottom: wp(10), borderRadius: wp(12), overflow: 'visible'},
 
   header: {
     flexDirection: 'row',
@@ -148,8 +148,8 @@ const s = StyleSheet.create({
 
   infoSection: {paddingHorizontal: wp(16), paddingVertical: wp(14)},
   infoRow: {flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'wrap', paddingVertical: wp(8), gap: wp(8)},
-  infoLabel: {fontSize: ms(12), fontWeight: '800', minWidth: wp(75), maxWidth: wp(110)},
-  infoValue: {fontSize: ms(12), fontWeight: '500', flex: 1},
+  infoLabel: {fontSize: ms(11), fontWeight: '800', minWidth: wp(68), maxWidth: wp(100)},
+  infoValue: {fontSize: ms(11), fontWeight: '500', flex: 1, minWidth: 80},
 
   divider: {height: StyleSheet.hairlineWidth, marginHorizontal: wp(16)},
 
@@ -158,6 +158,6 @@ const s = StyleSheet.create({
   typeNameLabel: {fontSize: ms(13), fontWeight: '800'},
   typeNameInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(13)},
 
-  submitBtn: {marginTop: wp(12), paddingVertical: wp(8), borderRadius: wp(8), minHeight: wp(36), alignItems: 'center', justifyContent: 'center'},
+  submitBtn: {marginTop: wp(12), paddingVertical: wp(10), borderRadius: wp(10), minHeight: wp(44), alignItems: 'center', justifyContent: 'center'},
   submitBtnText: {fontSize: ms(14), fontWeight: '800', letterSpacing: 0.5},
 });

@@ -143,7 +143,7 @@ const st = StyleSheet.create({
     zIndex: 10,
   },
   clearText: {fontSize: ms(12), fontWeight: '600'},
-  signLine: {position: 'absolute', bottom: wp(34), left: wp(20), right: wp(20), borderBottomWidth: 1, flexDirection: 'row', alignItems: 'flex-end'},
-  signHere: {position: 'absolute', bottom: wp(14), alignSelf: 'center', fontSize: ms(11), fontWeight: '600', letterSpacing: 0.5},
+  signLine: {position: 'absolute', bottom: wp(30), left: wp(16), right: wp(16), borderBottomWidth: 1, flexDirection: 'row', alignItems: 'flex-end'},
+  signHere: {position: 'absolute', bottom: wp(12), alignSelf: 'center', fontSize: ms(10), fontWeight: '600', letterSpacing: 0.5},
   statusBadge: {position: 'absolute', top: wp(10), left: wp(10), width: wp(24), height: wp(24), borderRadius: wp(12), justifyContent: 'center', alignItems: 'center'},
 });

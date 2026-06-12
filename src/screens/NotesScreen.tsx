@@ -131,7 +131,7 @@ function FieldRow({children}: {children: React.ReactNode}) {
 
 function CardsGrid({children}: {children: React.ReactNode}) {
   const {width: sw, height: sh} = useWindowDimensions();
-  const isWide = sw > 680 && sw > sh;
+  const isWide = sw > 600 && sw > sh;
   return (
     <View style={isWide ? st.cardsGridWide : st.cardsGridNarrow}>
       {children}
@@ -142,7 +142,7 @@ function CardsGrid({children}: {children: React.ReactNode}) {
 function FieldCard({children, title, icon, fullWidth}: {children: React.ReactNode; title?: string; icon?: string; fullWidth?: boolean}) {
   const {c} = useTheme();
   const {width: sw, height: sh} = useWindowDimensions();
-  const isWide = sw > 680 && sw > sh;
+  const isWide = sw > 600 && sw > sh;
   return (
     <View style={[
       st.fieldCard,
@@ -875,12 +875,14 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
     }
   }, [plantTestAnim, _pLand]);
   if (_pw > _ph) {
-    return (
-      <View style={[ls.root, {backgroundColor: c.surface}]}>
+    const _pIsPhone = Math.min(_pw, _ph) <= 600;
+
+    const plantLandContent = (
+      <>
         <View style={ls.topBar}><LSaveButton disabled={saving} onPress={handleSavePlant} /></View>
-        <View style={{flex: 1, gap: wp(8)}}>
+        <View style={_pIsPhone ? {gap: wp(8)} : {flex: 1, gap: wp(8)}}>
           {/* Top: two columns */}
-          <View style={{flexDirection: 'row', gap: wp(10), flex: 3}}>
+          <View style={[{flexDirection: 'row', gap: wp(10)}, !_pIsPhone && {flex: 3}]}>
             <LCard title="Mix Properties" icon="science">
               <LField label="SLUMP AT PLANT (mm)">
                 <TouchableOpacity activeOpacity={0.7} onPress={() => setSlumpPickerVisible(true)}>
@@ -964,7 +966,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                 </Animated.View>
               </ScrollView>
               ) : (
-              <View style={{gap: wp(8)}}>
+              <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled contentContainerStyle={{gap: wp(8)}}>
                 <View style={{paddingVertical: wp(4)}}>
                   <LFieldRow>
                     <LField label="TRUCK START" compact>
@@ -993,15 +995,15 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                     <Radio selected={loadTested === 'no'} label="No" onPress={() => handlePlantLoadTested('no')} />
                   </View>
                 </LField>
-              </View>
+              </ScrollView>
               )}
             </LCard>
             </View>
           </View>
           {/* Bottom: Plant Notes — compact */}
-          <LCard title="Plant Notes" icon="edit-note" style={{flex: 1}}>
+          <LCard title="Plant Notes" icon="edit-note" style={_pIsPhone ? {minHeight: wp(80)} : {flex: 1}}>
             <TextInput
-              style={{flex: 1, borderRadius: wp(8), paddingHorizontal: wp(10), paddingVertical: wp(10), fontSize: ms(12), backgroundColor: c.white, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, color: c.textPrimary, textAlignVertical: 'top'}}
+              style={[{borderRadius: wp(8), paddingHorizontal: wp(10), paddingVertical: wp(10), fontSize: ms(12), backgroundColor: c.white, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, color: c.textPrimary, textAlignVertical: 'top'}, !_pIsPhone && {flex: 1}]}
               multiline
               placeholderTextColor={c.textMuted}
               placeholder="Enter plant notes..."
@@ -1010,6 +1012,16 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
             />
           </LCard>
         </View>
+      </>
+    );
+
+    return (
+      <View style={[ls.root, {backgroundColor: c.surface}]}>
+        {_pIsPhone ? (
+          <ScrollView showsVerticalScrollIndicator nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            {plantLandContent}
+          </ScrollView>
+        ) : plantLandContent}
         <SlumpPickerModal visible={slumpPickerVisible} value={slumpFromPlant} title="Slump From Plant" onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }} onClose={() => setSlumpPickerVisible(false)} />
         <SlumpPickerModal visible={loadSlumpPickerVisible} value={loadSlump} title="Load Slump" onConfirm={(val) => { setLoadSlump(val); setLoadSlumpPickerVisible(false); }} onClose={() => setLoadSlumpPickerVisible(false)} />
         <SlumpPickerModal visible={slumpToJobPickerVisible} value={slumpToJob} title="Slump To Job" onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }} onClose={() => setSlumpToJobPickerVisible(false)} />
@@ -1969,8 +1981,8 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
   const filledCount = TIME_EVENTS.filter(e => !!selectedTimes[e.key]).length;
   const allFilled = filledCount === TIME_EVENTS.length;
 
-  return (
-    <View style={[st.tabBody, {backgroundColor: c.surface}]}>
+  const timeContent = (
+    <>
       {/* Header card */}
       <View style={[tt.headerCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
         <View style={tt.headerTop}>
@@ -2041,6 +2053,16 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
 
       {/* Save */}
       <SaveButton disabled={!allFilled || saving} onPress={handleSaveTime} />
+    </>
+  );
+
+  return (
+    <View style={[st.tabBody, {backgroundColor: c.surface}]}>
+      {_tLand ? (
+        <ScrollView showsVerticalScrollIndicator nestedScrollEnabled>
+          {timeContent}
+        </ScrollView>
+      ) : timeContent}
 
       <DateTimePicker
         visible={pickerVisible}
@@ -2192,8 +2214,8 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
     setCodAmount(cleaned);
   };
 
-  return (
-    <View style={[st.tabBody, {backgroundColor: c.surface}]}>
+  const codContent = (
+    <>
       <SaveButton disabled={saving} onPress={handleSaveCod} />
 
       <CardsGrid>
@@ -2290,6 +2312,16 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
       </Field>
       </FieldCard>
       </CardsGrid>
+    </>
+  );
+
+  return (
+    <View style={[st.tabBody, {backgroundColor: c.surface}]}>
+      {_codLand ? (
+        <ScrollView showsVerticalScrollIndicator nestedScrollEnabled keyboardShouldPersistTaps="handled">
+          {codContent}
+        </ScrollView>
+      ) : codContent}
 
       {/* Payment Type Modal */}
       <ResponsiveModal
@@ -2441,23 +2473,23 @@ export default function NotesScreen({navigation, route}: Props) {
 
       {isLandscape ? (
         <View style={[ls.lhRow, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
-          <View>
-            <Text style={[ls.lhTitle, {color: c.textOnPrimary}]}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
-            <Text style={{fontSize: ms(9), fontWeight: '500', color: c.textOnDark60}}>Delivery Notes & Records</Text>
+          <View style={!isTablet ? {flexShrink: 1, minWidth: 0} : undefined}>
+            <Text style={[ls.lhTitle, {color: c.textOnPrimary}]} numberOfLines={1}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
+            {isTablet && <Text style={{fontSize: ms(9), fontWeight: '500', color: c.textOnDark60}}>Delivery Notes & Records</Text>}
           </View>
-          <View style={{flex: 1}} />
+          <View style={{flex: 1, minWidth: isTablet ? undefined : 4}} />
           <View style={[ls.lhTabGroup, {backgroundColor: c.overlay10}]}>
             {TABS.map((tab, i) => {
               const active = activeTab === i;
               return (
-                <TouchableOpacity key={tab.key} style={[ls.lhTab, active && {backgroundColor: c.primary}]} activeOpacity={0.7} onPress={() => setActiveTab(i)}>
+                <TouchableOpacity key={tab.key} style={[ls.lhTab, active && {backgroundColor: c.primary}, !isTablet && {paddingHorizontal: wp(8)}]} activeOpacity={0.7} onPress={() => setActiveTab(i)}>
                   <MaterialIcons name={tab.icon as any} size={ms(13)} color={active ? c.textOnPrimary : c.textOnDark60} />
                   <Text style={[ls.lhTabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>{tab.label}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          <View style={{flex: 1}} />
+          <View style={{flex: 1, minWidth: isTablet ? undefined : 4}} />
           <TouchableOpacity style={[st.closeBtn, {backgroundColor: c.overlay10}]} onPress={() => navigation.goBack()} activeOpacity={0.7}>
             <MaterialIcons name="close" size={ms(18)} color={c.textOnPrimary} />
           </TouchableOpacity>
@@ -2572,7 +2604,7 @@ const st = StyleSheet.create({
   field: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(5), gap: wp(4), borderBottomWidth: 0.5},
   fieldLast: {borderBottomWidth: 0},
   fieldWide: {flexDirection: 'column', alignItems: 'flex-start'},
-  fieldLabel: {fontSize: ms(10), fontWeight: '800', minWidth: wp(70), maxWidth: wp(160), letterSpacing: 0.2},
+  fieldLabel: {fontSize: ms(10), fontWeight: '800', minWidth: wp(60), maxWidth: wp(140), letterSpacing: 0.2},
   fieldLabelWide: {width: '100%', marginBottom: wp(3)},
   fieldBody: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(4), flex: 1},
 

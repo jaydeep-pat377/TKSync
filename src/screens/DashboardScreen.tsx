@@ -471,12 +471,12 @@ export default function DashboardScreen({ navigation }: Props) {
           key={item.labelKey}
           activeOpacity={0.6}
           onPress={() => handleNavPress(item, i)}
-          style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: ls(12) }}>
+          style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: lp ? 6 : ls(12) }}>
           <View style={{
-            width: ls(38), height: ls(38), justifyContent: 'center', alignItems: 'center',
-            borderRadius: ls(12), backgroundColor: active ? c.primarySurface : 'transparent',
+            width: lp ? 36 : ls(38), height: lp ? 36 : ls(38), justifyContent: 'center', alignItems: 'center',
+            borderRadius: lp ? 10 : ls(12), backgroundColor: active ? c.primarySurface : 'transparent',
           }}>
-            <MaterialIcons name={item.icon as any} size={ls(28)} color={active ? c.primary : c.textMuted} />
+            <MaterialIcons name={item.icon as any} size={lp ? 22 : ls(28)} color={active ? c.primary : c.textMuted} />
           </View>
         </TouchableOpacity>
       );
@@ -486,12 +486,12 @@ export default function DashboardScreen({ navigation }: Props) {
         key={item.labelKey}
         activeOpacity={0.6}
         onPress={() => handleNavPress(item, i)}
-        style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 4, minWidth: 56 }}>
+        style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 4, minWidth: wp(48) }}>
         <View style={{
-          width: 40, height: 32, justifyContent: 'center', alignItems: 'center',
-          borderRadius: 12, backgroundColor: active ? c.primarySurface : 'transparent',
+          width: wp(40), height: wp(32), justifyContent: 'center', alignItems: 'center',
+          borderRadius: wp(12), backgroundColor: active ? c.primarySurface : 'transparent',
         }}>
-          <MaterialIcons name={item.icon as any} size={isTablet ? 29 : 28} color={active ? c.primary : c.textMuted} />
+          <MaterialIcons name={item.icon as any} size={isTablet ? 29 : ms(24)} color={active ? c.primary : c.textMuted} />
         </View>
       </TouchableOpacity>
     );
@@ -786,11 +786,11 @@ export default function DashboardScreen({ navigation }: Props) {
                     const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
                     const isFirst = i === 0;
                     const isLast = i === timeline.length - 1;
-                    const dotSz = isActive ? 14 : 10;
+                    const dotSz = isActive ? wp(14) : wp(10);
                     const lineDone = item.done && !isLast && timeline[i + 1]?.done;
                     return (
                       <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', height: 16, width: '100%' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(16), width: '100%' }}>
                           {!isFirst && <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
                           <View style={{
                             width: dotSz, height: dotSz, borderRadius: dotSz / 2,
@@ -799,7 +799,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             borderWidth: isActive ? 2 : 1.5,
                             borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
                           }}>
-                            {item.done && <MaterialIcons name="check" size={isActive ? 8 : 6} color={c.textOnPrimary} />}
+                            {item.done && <MaterialIcons name="check" size={isActive ? ms(8) : ms(6)} color={c.textOnPrimary} />}
                           </View>
                           {!isLast && <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
                         </View>
@@ -947,10 +947,10 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* ─── NAV BAR ─── */}
       {L ? (
         <View style={{
-          width: ls(54) + insets.right,
+          width: (lp ? 52 : ls(54)) + insets.right,
           paddingRight: insets.right,
-          paddingTop: insets.top + ls(10),
-          paddingBottom: Math.max(insets.bottom, ls(20)),
+          paddingTop: insets.top + (lp ? 8 : ls(10)),
+          paddingBottom: Math.max(insets.bottom, lp ? 8 : ls(20)),
           borderLeftWidth: StyleSheet.hairlineWidth,
           borderLeftColor: c.border,
           backgroundColor: c.white,
@@ -1002,9 +1002,9 @@ export default function DashboardScreen({ navigation }: Props) {
               },
             ]}>
             {/* Header */}
-            <View style={[styles.ddHeader, isLandscape && { paddingVertical: ls(6), paddingHorizontal: ls(12), gap: ls(8) }, { borderBottomColor: c.borderLight }]}>
-              <View style={[styles.ddAvatar, isLandscape && { width: ls(26), height: ls(26), borderRadius: ls(8) }, { backgroundColor: c.primarySurface }]}>
-                <MaterialIcons name="person" size={isLandscape ? ls(14) : ms(18)} color={c.primary} />
+            <View style={[styles.ddHeader, isLandscape && { paddingVertical: lp ? 8 : ls(6), paddingHorizontal: lp ? 12 : ls(12), gap: lp ? 8 : ls(8) }, { borderBottomColor: c.borderLight }]}>
+              <View style={[styles.ddAvatar, isLandscape && { width: lp ? 28 : ls(26), height: lp ? 28 : ls(26), borderRadius: lp ? 8 : ls(8) }, { backgroundColor: c.primarySurface }]}>
+                <MaterialIcons name="person" size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={c.primary} />
               </View>
               <View style={common.flex1}>
                 <Text style={[styles.ddName, isLandscape && { fontSize: ms(13) }, { color: c.textPrimary }]}>{driver?.driver_name || `Driver ${driver?.driver_code || ''}`}</Text>
@@ -1026,23 +1026,23 @@ export default function DashboardScreen({ navigation }: Props) {
                     key={item.actionKey}
                     style={[
                       styles.ddItem,
-                      isLandscape && { paddingVertical: ls(16), paddingHorizontal: ls(12), minHeight: ls(50), gap: ls(8) },
+                      isLandscape && { paddingVertical: lp ? 10 : ls(16), paddingHorizontal: lp ? 12 : ls(12), minHeight: lp ? 44 : ls(50), gap: lp ? 8 : ls(8) },
                       i < MENU_ITEMS_BASE.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight },
                     ]}
                     activeOpacity={0.6}
                     onPress={() => handleMenuItemPress(item.actionKey)}>
-                    <View style={[styles.ddIcon, isLandscape && { width: ls(24), height: ls(24), borderRadius: ls(7) }, { backgroundColor: bgColor }]}>
-                      <MaterialIcons name={item.icon as any} size={isLandscape ? ls(14) : ms(18)} color={iconColor} />
+                    <View style={[styles.ddIcon, isLandscape && { width: lp ? 28 : ls(24), height: lp ? 28 : ls(24), borderRadius: lp ? 8 : ls(7) }, { backgroundColor: bgColor }]}>
+                      <MaterialIcons name={item.icon as any} size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={iconColor} />
                     </View>
                     <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, { color: labelColor }]}>{label}{suffix}</Text>
-                    <MaterialIcons name="chevron-right" size={isLandscape ? ls(16) : ms(18)} color={c.textMuted} />
+                    <MaterialIcons name="chevron-right" size={isLandscape ? (lp ? 18 : ls(16)) : ms(18)} color={c.textMuted} />
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
 
             {/* Version footer */}
-            <View style={[styles.ddFooter, isLandscape && { paddingVertical: ls(4) }, { borderTopColor: c.borderLight }]}>
+            <View style={[styles.ddFooter, isLandscape && { paddingVertical: lp ? 6 : ls(4) }, { borderTopColor: c.borderLight }]}>
               <Text style={[styles.ddVersion, { color: c.textMuted }]}>v1.20.0</Text>
             </View>
           </Animated.View>
@@ -1373,15 +1373,15 @@ const styles = StyleSheet.create({
 
   // Scroll
   scroll: { flex: 1 },
-  scrollInner: { paddingHorizontal: wp(12), paddingTop: wp(8), paddingBottom: wp(20) },
+  scrollInner: { paddingHorizontal: wp(10), paddingTop: wp(8), paddingBottom: wp(20) },
 
   // KPI
   kpiRow: { flexDirection: 'row', alignItems: 'center' },
   kpiItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingVertical: wp(4), paddingHorizontal: wp(6) },
   kpiIconWrap: { width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
-  kpiVal: { fontSize: ms(10), fontWeight: '800', letterSpacing: 0.1 },
+  kpiVal: { fontSize: ms(11), fontWeight: '800', letterSpacing: 0.1 },
   kpiLabel: { fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3, color: '#9E9E9E', marginTop: 1 },
-  kpiDivider: { width: StyleSheet.hairlineWidth, height: wp(28), marginHorizontal: wp(2) },
+  kpiDivider: { width: StyleSheet.hairlineWidth, height: wp(26), marginHorizontal: wp(2) },
 
   // Chips
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: wp(6), alignItems: 'center' },
@@ -1398,16 +1398,16 @@ const styles = StyleSheet.create({
   countText: { fontSize: ms(9), fontWeight: '800' },
 
   // Detail cards
-  twoCol: { gap: wp(8) },
-  detailRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(9), gap: wp(8) },
-  detailLabel: { fontSize: ms(10), fontWeight: '800', letterSpacing: 0.1, width: '34%' },
+  twoCol: { gap: wp(6) },
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(8), gap: wp(6) },
+  detailLabel: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.1, width: '32%' },
   detailValue: { fontSize: ms(10), fontWeight: '700' },
   slumpPillInline: { paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6), borderWidth: 1 },
 
 
   // Dropdown
   dropdownOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  dropdown: { position: 'absolute', minWidth: wp(220), maxWidth: wp(280), borderRadius: wp(16), borderWidth: StyleSheet.hairlineWidth, elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, overflow: 'hidden' },
+  dropdown: { position: 'absolute', minWidth: wp(200), maxWidth: wp(260), borderRadius: wp(14), borderWidth: StyleSheet.hairlineWidth, elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, overflow: 'hidden' },
   ddHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth },
   ddAvatar: { width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center' },
   ddName: { fontSize: ms(13), fontWeight: '700' },

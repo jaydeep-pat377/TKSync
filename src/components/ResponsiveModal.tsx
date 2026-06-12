@@ -72,9 +72,12 @@ export default function ResponsiveModal({
   const safeH = insets.left + insets.right;
   const availH = height - safeV;
   const availW = width - safeH;
+  const isPhone = Math.min(width, height) < 600;
   const effectivePercent = isLandscape ? Math.min(Math.max(maxHeightPercent, 85), 95) : maxHeightPercent;
   const modalMaxH = availH * (effectivePercent / 100);
-  const modalW = Math.min(availW * (widthPercent / 100), maxWidth);
+  // On phones, ensure modal uses at least 90% width for usability
+  const effectiveWidthPercent = isPhone ? Math.max(widthPercent, 90) : widthPercent;
+  const modalW = Math.min(availW * (effectiveWidthPercent / 100), maxWidth);
 
   const animatedStyle = animationType === 'scale'
     ? {transform: [{scale}], opacity: fade}

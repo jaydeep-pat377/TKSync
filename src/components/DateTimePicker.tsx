@@ -214,7 +214,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
 
   const safeH = insets.left + insets.right;
   const availW = screenW - safeH;
-  const modalW = Math.min(availW * 0.70, isTabletDevice ? 380 : isLandscape ? 360 : 280);
+  const modalW = Math.min(availW * (isSmall ? 0.88 : 0.78), isTabletDevice ? 380 : isLandscape ? 360 : 300);
   const maxModalH = availH * (isLandscape ? 0.78 : 0.62);
 
   // Wheel widths — tight

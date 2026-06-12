@@ -89,12 +89,12 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : 0), paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: Math.max(isLandscape ? wp(20) : wp(50), insets.bottom)}]}
+        contentContainerStyle={[s.scrollContent, {paddingTop: insets.top + (isLandscape ? 4 : 0), paddingLeft: Math.max(insets.left, isLandscape && !isTablet ? 12 : 0), paddingRight: Math.max(insets.right, isLandscape && !isTablet ? 12 : 0), paddingBottom: Math.max(isLandscape ? wp(20) : wp(50), insets.bottom)}]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {maxWidth: 700, alignSelf: 'center', width: '100%', borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: 14, borderRadius: 10}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {maxWidth: 700, alignSelf: 'center', width: '100%', borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: wp(10), borderRadius: wp(10)}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>
@@ -220,8 +220,8 @@ const s = StyleSheet.create({
   // Info
   infoSection: {paddingHorizontal: wp(12), paddingVertical: wp(14)},
   infoRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(8), gap: wp(8)},
-  infoLabel: {fontSize: ms(12), fontWeight: '800', minWidth: wp(75), maxWidth: wp(110)},
-  infoValue: {fontSize: ms(12), fontWeight: '500', flex: 1},
+  infoLabel: {fontSize: ms(11), fontWeight: '800', minWidth: wp(68), maxWidth: wp(100)},
+  infoValue: {fontSize: ms(11), fontWeight: '500', flex: 1, minWidth: 80},
 
   // Quantity
   qtyRow: {flexDirection: 'row', alignItems: 'center', gap: wp(8)},
@@ -243,9 +243,9 @@ const s = StyleSheet.create({
   // Dispute button
   disputeBtn: {
     marginTop: wp(12),
-    paddingVertical: wp(8),
-    borderRadius: wp(8),
-    minHeight: wp(36),
+    paddingVertical: wp(10),
+    borderRadius: wp(10),
+    minHeight: wp(44),
     alignItems: 'center',
     justifyContent: 'center',
   },
