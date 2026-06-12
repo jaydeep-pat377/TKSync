@@ -59,11 +59,16 @@ function formatTime(dateStr: string | null): string {
   return `${h12}:${m} ${ampm}`;
 }
 
+function formatLocalTime(timeStr: string | null | undefined): string {
+  if (!timeStr) return '--';
+  return timeStr;
+}
+
 function buildTimeline(detail: TicketDetail) {
   return detail.progress.steps.map(step => ({
     labelKey: TIMELINE_LABEL_KEYS[step.key] || step.key,
     icon: TIMELINE_ICONS[step.key] || 'circle',
-    time: formatTime(step.time),
+    time: step.time_local ? formatLocalTime(step.time_local) : formatTime(step.time),
     done: step.done,
   }));
 }
@@ -74,7 +79,7 @@ function buildJobInfo(detail: TicketDetail) {
     { labelKey: 'jobInfo.customer', value: job.customer_name || '-', icon: 'people' },
     { labelKey: 'jobInfo.project', value: job.project_name || '-', icon: 'apartment' },
     { labelKey: 'jobInfo.job', value: job.job || '-', icon: 'work' },
-    { labelKey: 'orderInfo.timeDue', value: job.time_due ? formatTime(job.time_due) : '-', icon: 'schedule' },
+    { labelKey: 'orderInfo.timeDue', value: job.time_due_local ? formatLocalTime(job.time_due_local) : (job.time_due ? formatTime(job.time_due) : '-'), icon: 'schedule' },
     { labelKey: 'orderInfo.deliveredTo', value: job.delivered_to || '-', icon: 'place', isLink: true, isMap: true },
     { labelKey: 'orderInfo.lotBlock', value: job.lot_block || '-', icon: 'grid-view' },
     { labelKey: 'orderInfo.instructions', value: job.instructions || '-', icon: 'info-outline' },
@@ -376,7 +381,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const handleMenuItemPress = (label: string) => {
     closeMenu();
     if (label === 'Vehicle') {
-      setVehicleVisible(true);
+      navigation.navigate('VehicleTracking');
     } else if (label === 'Logout Driver') {
       setLogoutType('driver');
     } else if (label === 'Logout Tenant') {

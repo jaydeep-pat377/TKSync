@@ -12,6 +12,7 @@ import AcceptTicketScreen from '../screens/AcceptTicketScreen';
 import DisputeTicketScreen from '../screens/DisputeTicketScreen';
 import CurblineReleaseScreen from '../screens/CurblineReleaseScreen';
 import MapScreen from '../screens/MapScreen';
+import VehicleTrackingScreen from '../screens/VehicleTrackingScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,6 +79,11 @@ export default function AppNavigator() {
           name="Map"
           component={MapScreen}
           options={{animation: 'slide_from_bottom', contentStyle: {backgroundColor: c.background}}}
+        />
+        <Stack.Screen
+          name="VehicleTracking"
+          component={VehicleTrackingScreen}
+          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.background}}}
         />
       </Stack.Navigator>
     </NavigationContainer>

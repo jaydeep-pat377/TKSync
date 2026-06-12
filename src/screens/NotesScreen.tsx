@@ -1049,6 +1049,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       </Field>
       </FieldCard>
       <FieldCard title="Truck & Additives" icon="local-shipping">
+      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={{maxHeight: hp(45)}}>
       <FieldRow>
         <Field label="TRUCK START" compact>
           <TimePicker
@@ -1101,6 +1102,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           </FieldRow>
         </>
       )}
+      </ScrollView>
       </FieldCard>
       <FieldCard title="Plant Notes" icon="edit-note" fullWidth>
       <Field label="NOTES" wide last>

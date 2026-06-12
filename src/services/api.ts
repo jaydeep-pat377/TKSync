@@ -180,6 +180,17 @@ export type Ticket = {
   on_job_time: string | null;
   unload_time: string | null;
   end_unload: string | null;
+  wash_time: string | null;
+  to_plant_time: string | null;
+  at_plant_time: string | null;
+  load_time_local: string | null;
+  to_job_time_local: string | null;
+  on_job_time_local: string | null;
+  unload_time_local: string | null;
+  end_unload_local: string | null;
+  wash_time_local: string | null;
+  to_plant_time_local: string | null;
+  at_plant_time_local: string | null;
   amount: number;
   total_amount: number;
   tax_amount: number;
@@ -213,6 +224,7 @@ export type ProgressStep = {
   key: string;
   label: string;
   time: string | null;
+  time_local: string | null;
   done: boolean;
 };
 
@@ -248,6 +260,7 @@ export type TicketDetail = {
     project_name: string | null;
     job: string | null;
     time_due: string | null;
+    time_due_local: string | null;
     delivered_to: string | null;
     lot_block: string | null;
     instructions: string | null;
