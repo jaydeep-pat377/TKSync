@@ -53,6 +53,7 @@
     "inactive": "INACTIF",
     "inProcess": "EN COURS",
     "completed": "TERMIN\u00c9",
+    "voided": "ANNUL\u00c9",
     "pending": "EN ATTENTE",
     "onAccount": "SUR COMPTE",
     "deliveryProgress": "Progression de livraison",

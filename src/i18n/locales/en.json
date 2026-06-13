@@ -53,6 +53,7 @@
     "inactive": "INACTIVE",
     "inProcess": "IN PROCESS",
     "completed": "COMPLETED",
+    "voided": "VOIDED",
     "pending": "PENDING",
     "onAccount": "ON ACCOUNT",
     "deliveryProgress": "Delivery Progress",

@@ -112,7 +112,19 @@ function normalizeUOM(unit: string | null | undefined): string {
   return UOM_MAP[unit.toUpperCase()] || unit;
 }
 
-function getTicketStatus(ticket: Ticket) {
+function getTicketStatus(ticket: Ticket, detail?: TicketDetail | null) {
+  // Prefer detail endpoint fields (delivery_state / in_process) when available
+  if (detail?.ticket?.delivery_state) {
+    const state = detail.ticket.delivery_state;
+    if (state === 'completed') return { key: 'dashboard.completed' as const, type: 'completed' as const };
+    if (state === 'voided') return { key: 'dashboard.voided' as const, type: 'voided' as const };
+    if (state === 'active') return { key: 'dashboard.active' as const, type: 'active' as const };
+  }
+  if (detail?.ticket && detail.ticket.in_process != null) {
+    if (detail.ticket.in_process) return { key: 'dashboard.active' as const, type: 'active' as const };
+    return { key: 'dashboard.completed' as const, type: 'completed' as const };
+  }
+  // Fallback to list-level fields
   if (ticket.current_status === 4) return { key: 'dashboard.completed' as const, type: 'completed' as const };
   if (ticket.active) return { key: 'dashboard.active' as const, type: 'active' as const };
   return { key: 'dashboard.pending' as const, type: 'warning' as const };
@@ -121,7 +133,8 @@ function getTicketStatus(ticket: Ticket) {
 function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
   const { mix } = detail;
   const loadsStr = mix.loads.current != null ? `${mix.loads.current} of ${mix.loads.total}` : '-';
-  return [
+  const currentTruck = detail.trucks?.find(t => t.is_current);
+  const items: { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[] = [
     { labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science' },
     { labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true },
     { labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category' },
@@ -129,7 +142,11 @@ function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
     { labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten' },
     { labelKey: 'orderInfo.loadSize', value: mix.load_size || '-', icon: 'square-foot' },
     { labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers' },
-  ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
+  ];
+  if (currentTruck) {
+    items.push({ labelKey: 'mixInfo.truck', value: currentTruck.truck_code, icon: 'local-shipping' });
+  }
+  return items;
 }
 
 function buildMixInfoFromTicket(ticket: Ticket) {
@@ -402,8 +419,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const cs = {
     card: {
       backgroundColor: c.white,
-      borderRadius: lt ? ls(14) : L ? 12 : wp(16),
-      padding: lt ? ls(12) : L ? 10 : wp(14),
+      borderRadius: lt ? ls(14) : L ? 12 : wp(12),
+      padding: lt ? ls(12) : L ? 10 : wp(8),
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border,
       elevation: isDark ? 0 : 2,
@@ -465,12 +482,12 @@ export default function DashboardScreen({ navigation }: Props) {
           key={item.labelKey}
           activeOpacity={0.6}
           onPress={() => handleNavPress(item, i)}
-          style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: lp ? 6 : ls(12) }}>
+          style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: lp ? 14 : ls(18) }}>
           <View style={{
-            width: lp ? 36 : ls(38), height: lp ? 36 : ls(38), justifyContent: 'center', alignItems: 'center',
-            borderRadius: lp ? 10 : ls(12), backgroundColor: active ? c.primarySurface : 'transparent',
+            width: lp ? 52 : ls(56), height: lp ? 52 : ls(56), justifyContent: 'center', alignItems: 'center',
+            borderRadius: lp ? 14 : ls(16), backgroundColor: active ? c.primarySurface : 'transparent',
           }}>
-            <MaterialIcons name={item.icon as any} size={lp ? 22 : ls(28)} color={active ? c.primary : c.textMuted} />
+            <MaterialIcons name={item.icon as any} size={lp ? 30 : ls(38)} color={active ? c.primary : c.textMuted} />
           </View>
         </TouchableOpacity>
       );
@@ -600,7 +617,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
         {/* ─── WEATHER STRIP (portrait only — landscape has it in header) ─── */}
         {!L && (
-          <View style={{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10) }}>
+          <View style={{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10) }}>
             <MaterialIcons name="wb-sunny" size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3 }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
@@ -618,20 +635,29 @@ export default function DashboardScreen({ navigation }: Props) {
           style={styles.scroll}
           contentContainerStyle={[
             styles.scrollInner,
-            { gap: 0 },
-            lt ? { padding: ls(12), paddingLeft: Math.max(ls(14), insets.left + ls(6)) } : L ? { padding: 8, paddingLeft: Math.max(8, insets.left + 4) } : isTablet ? { padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8) } : {},
-            L && { flexGrow: 1 },
+            { gap: 0, flexGrow: 1 },
+            lt ? { padding: ls(12), paddingLeft: Math.max(ls(14), insets.left + ls(6)) } : L ? { padding: 8, paddingLeft: Math.max(8, insets.left + 4) } : isTablet ? { padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8) } : { paddingTop: wp(4), paddingBottom: wp(4) },
           ]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
 
-          <View style={isTablet && !L ? { maxWidth: 960, alignSelf: 'center', width: '100%' } : L ? { flex: 1 } : undefined}>
+          <View style={[{ flex: 1 }, isTablet && !L && { maxWidth: 960, alignSelf: 'center', width: '100%' }]}>
 
             {/* ── Landscape: KPI row + ticket chips row ── */}
             {isLandscape ? (
               <FadeCard delay={0} style={[cs.card, { marginBottom: lt ? ls(8) : 4, padding: lt ? ls(8) : 6 }]}>
-                {/* Row 1: KPI items + status badges */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(8) : 5 }}>
+                {/* Row 1: Ticket chips */}
+                <View style={{ paddingBottom: lt ? ls(6) : 4 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(6) : 5 }}>
+                    {tickets.map((ticket, i) => (
+                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{ paddingVertical: lt ? ls(4) : 3, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(8) : 6, backgroundColor: activeTicket === i ? c.accent : c.primaryLight }}>
+                        <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{ticket.ticket_code}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                {/* Row 2: KPI items + status badges */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(8) : 5, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, paddingTop: lt ? ls(6) : 4 }}>
                   {[
                     { icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary },
                     { icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark },
@@ -649,13 +675,14 @@ export default function DashboardScreen({ navigation }: Props) {
                   ))}
                   <View style={{ flex: 1 }} />
                   {currentTicket != null && (() => {
-                    const status = getTicketStatus(currentTicket);
+                    const status = getTicketStatus(currentTicket, detail);
                     const isCompleted = status.type === 'completed';
                     const isActive = status.type === 'active';
+                    const isVoided = status.type === 'voided';
                     return (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isVoided ? c.error : isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
                         {isActive && <View style={{ width: lt ? ls(7) : 6, height: lt ? ls(7) : 6, borderRadius: 4, backgroundColor: '#000' }} />}
-                        <Text style={{ fontWeight: '600', fontSize: ms(13), color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark }}>{t(status.key)}</Text>
+                        <Text style={{ fontWeight: '600', fontSize: ms(13), color: isVoided ? '#fff' : isCompleted ? c.primary : isActive ? '#000' : c.warningDark }}>{t(status.key)}</Text>
                       </View>
                     );
                   })()}
@@ -665,21 +692,11 @@ export default function DashboardScreen({ navigation }: Props) {
                     </View>
                   )}
                 </View>
-                {/* Row 2: Ticket chips */}
-                <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: lt ? ls(6) : 4, paddingTop: lt ? ls(6) : 4 }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(6) : 5 }}>
-                    {tickets.map((ticket, i) => (
-                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{ paddingVertical: lt ? ls(4) : 3, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(8) : 6, backgroundColor: activeTicket === i ? c.accent : c.primaryLight }}>
-                        <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{ticket.ticket_code}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
               </FadeCard>
             ) : (
               <>
                 {/* Portrait: KPI + Status bar */}
-                <FadeCard delay={0} style={[cs.card, { padding: wp(10), marginBottom: wp(8) }]}>
+                <FadeCard delay={0} style={[cs.card, { padding: wp(6), marginBottom: wp(3) }]}>
                   <View style={styles.kpiRow}>
                     {[
                       { icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary },
@@ -699,15 +716,16 @@ export default function DashboardScreen({ navigation }: Props) {
                       </React.Fragment>
                     ))}
                   </View>
-                  <View style={[styles.chipRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: wp(8), paddingTop: wp(8) }]}>
+                  <View style={[styles.chipRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: wp(4), paddingTop: wp(4) }]}>
                     {currentTicket != null && (() => {
-                      const status = getTicketStatus(currentTicket);
+                      const status = getTicketStatus(currentTicket, detail);
                       const isCompleted = status.type === 'completed';
                       const isActive = status.type === 'active';
+                      const isVoided = status.type === 'voided';
                       return (
-                        <View style={[styles.statusChip, { backgroundColor: isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface }]}>
+                        <View style={[styles.statusChip, { backgroundColor: isVoided ? c.error : isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface }]}>
                           {isActive && <View style={[styles.chipDot, { backgroundColor: '#000' }]} />}
-                          <Text style={[styles.chipLabel, { color: isCompleted ? c.primary : isActive ? '#000' : c.warningDark }]}>{t(status.key)}</Text>
+                          <Text style={[styles.chipLabel, { color: isVoided ? '#fff' : isCompleted ? c.primary : isActive ? '#000' : c.warningDark }]}>{t(status.key)}</Text>
                         </View>
                       );
                     })()}
@@ -729,8 +747,8 @@ export default function DashboardScreen({ navigation }: Props) {
             )}
 
             {/* Delivery Progress */}
-            {!detailLoading && <FadeCard delay={120} style={[cs.card, L && { padding: lt ? ls(8) : 6 }, { marginBottom: lt ? ls(8) : L ? 4 : wp(8) }]}>
-              <View style={[styles.secHeader, { borderBottomColor: c.borderLight, marginBottom: wp(4), paddingBottom: wp(4) }, L && { marginBottom: lt ? ls(3) : 2, paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
+            {!detailLoading && <FadeCard delay={120} style={[cs.card, L && { padding: lt ? ls(8) : 6 }, { marginBottom: lt ? ls(8) : L ? 4 : wp(3) }]}>
+              <View style={[styles.secHeader, { borderBottomColor: c.borderLight, marginBottom: wp(2), paddingBottom: wp(2) }, L && { marginBottom: lt ? ls(3) : 2, paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
                 <View style={[styles.secIcon, { backgroundColor: c.primary }, L && { width: lt ? ls(22) : 18, height: lt ? ls(22) : 18, borderRadius: lt ? ls(7) : 6 }]}>
                   <MaterialIcons name="timeline" size={lt ? ls(13) : L ? 11 : ms(13)} color={c.textOnPrimary} />
                 </View>
@@ -811,9 +829,9 @@ export default function DashboardScreen({ navigation }: Props) {
             </FadeCard>}
 
             {/* Job + Mix Cards — table layout: each row is a shared flex parent so heights auto-sync */}
-            {!detailLoading && (isTablet || L) && (() => {
-              const gap = lt ? ls(8) : L ? 5 : wp(8);
-              const pad = lt ? ls(10) : L ? 6 : wp(14);
+            {!detailLoading && (() => {
+              const gap = lt ? ls(8) : L ? 5 : wp(3);
+              const pad = lt ? ls(10) : L ? 6 : wp(6);
               const radius = cs.card.borderRadius;
               const bw = StyleSheet.hairlineWidth;
               const bc = c.border;
@@ -823,14 +841,14 @@ export default function DashboardScreen({ navigation }: Props) {
                   {/* Card headers */}
                   <View style={{ flexDirection: 'row', gap }}>
                     <View style={[cs.card, { flex: 1, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }]}>
-                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0 }, L && { paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
-                        <MaterialIcons name="work" size={lt ? ls(16) : L ? 14 : ms(16)} color={c.accent} />
+                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0, paddingBottom: lt ? ls(3) : L ? 2 : wp(2), gap: lt ? ls(5) : L ? 4 : wp(4) }]}>
+                        <MaterialIcons name="work" size={lt ? ls(16) : L ? 14 : ms(14)} color={c.accent} />
                         <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.jobDetails')}</Text>
                       </View>
                     </View>
                     <View style={[cs.card, { flex: 1, backgroundColor: c.primarySurface, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }]}>
-                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0 }, L && { paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
-                        <MaterialIcons name="science" size={lt ? ls(16) : L ? 14 : ms(16)} color={c.primary} />
+                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0, paddingBottom: lt ? ls(3) : L ? 2 : wp(2), gap: lt ? ls(5) : L ? 4 : wp(4) }]}>
+                        <MaterialIcons name="science" size={lt ? ls(16) : L ? 14 : ms(14)} color={c.primary} />
                         <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.mixDetails')}</Text>
                       </View>
                     </View>
@@ -845,8 +863,8 @@ export default function DashboardScreen({ navigation }: Props) {
                         {/* Job cell */}
                         <View style={[cellBase, { backgroundColor: c.white }, isLast && { borderBottomWidth: bw, borderBottomLeftRadius: radius, borderBottomRightRadius: radius, overflow: 'hidden' }]}>
                           {jobItem ? (
-                            <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.borderLight }]}>
-                              <Text style={[styles.detailLabel, { color: c.textMuted }, L && { width: '28%' }]} numberOfLines={1}>{t(jobItem.labelKey)}</Text>
+                            <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.borderLight }]}>
+                              <Text style={[styles.detailLabel, { color: c.textMuted, width: '28%' }]} numberOfLines={1}>{t(jobItem.labelKey)}</Text>
                               {jobItem.isMap ? (
                                 <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: jobItem.value })} style={common.flex1}>
                                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(4) }}>
@@ -855,33 +873,33 @@ export default function DashboardScreen({ navigation }: Props) {
                                   </View>
                                 </TouchableOpacity>
                               ) : jobItem.isHighlight ? (
-                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
+                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00', flex: 1, flexShrink: 1 }]}>
                                   <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{jobItem.value}</Text>
                                 </View>
                               ) : (
                                 <Text style={[styles.detailValue, common.flex1, { color: jobItem.isLink ? c.accent : c.textPrimary }]} numberOfLines={2}>{jobItem.value}</Text>
                               )}
                             </View>
-                          ) : <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }]} />}
+                          ) : <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }]} />}
                         </View>
                         {/* Mix cell */}
                         <View style={[cellBase, { backgroundColor: c.primarySurface }, isLast && { borderBottomWidth: bw, borderBottomLeftRadius: radius, borderBottomRightRadius: radius, overflow: 'hidden' }]}>
                           {mixItem ? (
-                            <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.primaryMuted }]}>
-                              <Text style={[styles.detailLabel, { color: c.textMuted }, L && { width: '28%' }]} numberOfLines={1}>{t(mixItem.labelKey)}</Text>
+                            <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.primaryMuted }]}>
+                              <Text style={[styles.detailLabel, { color: c.textMuted, width: '28%' }]} numberOfLines={1}>{t(mixItem.labelKey)}</Text>
                               {mixItem.isHighlight ? (
-                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
+                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00', flexShrink: 1 }]}>
                                   <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{mixItem.value}</Text>
                                 </View>
                               ) : mixItem.isLink ? (
                                 <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
-                                  <Text style={[styles.detailValue, { color: c.accent }]}>{mixItem.value}</Text>
+                                  <Text style={[styles.detailValue, { color: c.accent }]} numberOfLines={2}>{mixItem.value}</Text>
                                 </TouchableOpacity>
                               ) : (
-                                <Text style={[styles.detailValue, common.flex1, { color: c.textPrimary }]}>{mixItem.value}</Text>
+                                <Text style={[styles.detailValue, common.flex1, { color: c.textPrimary }]} numberOfLines={2}>{mixItem.value}</Text>
                               )}
                             </View>
-                          ) : <View style={[styles.detailRow, L && { paddingVertical: lt ? ls(6) : 4 }]} />}
+                          ) : <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }]} />}
                         </View>
                       </View>
                     );
@@ -889,58 +907,6 @@ export default function DashboardScreen({ navigation }: Props) {
                 </FadeCard>
               );
             })()}
-            {/* Portrait fallback: stacked cards (no sync needed) */}
-            {!detailLoading && !(isTablet || L) && <View style={styles.twoCol}>
-              <FadeCard delay={200} style={cs.card}>
-                <View style={styles.secHeader}>
-                  <MaterialIcons name="work" size={ms(16)} color={c.accent} />
-                  <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.jobDetails')}</Text>
-                </View>
-                {jobInfo.map((item, i) => (
-                  <View key={item.labelKey} style={[styles.detailRow, i < jobInfo.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }]}>
-                    <Text style={[styles.detailLabel, { color: c.textMuted }]} numberOfLines={1}>{t(item.labelKey)}</Text>
-                    {item.isMap ? (
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: item.value })} style={common.flex1}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <Text style={[styles.detailValue, { color: c.accent, flex: 1 }]} numberOfLines={2}>{item.value}</Text>
-                          <MaterialIcons name="map" size={16} color={c.accent} />
-                        </View>
-                      </TouchableOpacity>
-                    ) : item.isHighlight ? (
-                      <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
-                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{item.value}</Text>
-                      </View>
-                    ) : (
-                      <Text style={[styles.detailValue, common.flex1, { color: item.isLink ? c.accent : c.textPrimary }]} numberOfLines={2}>{item.value}</Text>
-                    )}
-                  </View>
-                ))}
-              </FadeCard>
-              <FadeCard delay={280} style={[cs.card, { backgroundColor: c.primarySurface }]}>
-                <View style={styles.secHeader}>
-                  <MaterialIcons name="science" size={ms(16)} color={c.primary} />
-                  <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.mixDetails')}</Text>
-                </View>
-                {mixInfo.map((item, i) => (
-                  <View key={item.labelKey} style={[styles.detailRow, i < mixInfo.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.primaryMuted }]}>
-                    <Text style={[styles.detailLabel, { color: c.textMuted }]} numberOfLines={1}>{t(item.labelKey)}</Text>
-                    {item.isHighlight ? (
-                      <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
-                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{item.value}</Text>
-                      </View>
-                    ) : item.isLink ? (
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
-                        <Text style={[styles.detailValue, { color: c.accent }]}>{item.value}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={[styles.detailValue, common.flex1, { color: c.textPrimary }]}>{item.value}</Text>
-                    )}
-                  </View>
-                ))}
-              </FadeCard>
-            </View>}
-
-            {!L && <View style={{ height: wp(14) }} />}
           </View>
         </ScrollView>
 
@@ -949,10 +915,10 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* ─── NAV BAR ─── */}
       {L ? (
         <View style={{
-          width: (lp ? 52 : ls(54)) + insets.right,
+          width: (lp ? 72 : ls(76)) + insets.right,
           paddingRight: insets.right,
           paddingTop: insets.top + (lp ? 8 : ls(10)),
-          paddingBottom: Math.max(insets.bottom, lp ? 8 : ls(20)),
+          paddingBottom: Math.max(insets.bottom, lp ? 8 : ls(16)),
           borderLeftWidth: StyleSheet.hairlineWidth,
           borderLeftColor: c.border,
           backgroundColor: c.white,
@@ -1055,53 +1021,53 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={qrVisible}
         onClose={() => setQrVisible(false)}
-        maxWidth={lp ? 580 : isTablet ? 440 : 380}
-        widthPercent={lp ? 88 : isTablet ? 55 : isLandscape ? 50 : 85}
-        maxHeightPercent={lp ? 92 : isLandscape ? 88 : 80}>
+        maxWidth={L ? (lt ? 700 : 580) : isTablet ? 440 : 380}
+        widthPercent={L ? (lt ? 65 : 88) : isTablet ? 55 : 85}
+        maxHeightPercent={L ? (lt ? 85 : 92) : 80}>
         <View style={{ backgroundColor: c.qrBg }}>
           {/* Header */}
-          <View style={[styles.qrHeader, { borderBottomColor: c.qrFg + '15' }]}>
-            <View style={[styles.qrHeaderIcon, { backgroundColor: c.qrFg + '18' }]}>
-              <MaterialIcons name="qr-code-2" size={ms(18)} color={c.qrFg} />
+          <View style={[styles.qrHeader, { borderBottomColor: c.qrFg + '15' }, L && { paddingVertical: lt ? ls(6) : 6, paddingHorizontal: lt ? ls(10) : 10, gap: lt ? ls(6) : 6 }]}>
+            <View style={[styles.qrHeaderIcon, { backgroundColor: c.qrFg + '18' }, L && { width: lt ? ls(26) : 24, height: lt ? ls(26) : 24, borderRadius: lt ? ls(7) : 7 }]}>
+              <MaterialIcons name="qr-code-2" size={L ? (lt ? ls(16) : 15) : ms(18)} color={c.qrFg} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.qrHeaderTitle, { color: c.qrFg }]}>QR Code</Text>
-              <Text style={[styles.qrHeaderSub, { color: c.qrFg + '90' }, lp && { fontSize: ms(8) }]}>Scan to verify delivery</Text>
+              <Text style={[styles.qrHeaderSub, { color: c.qrFg + '90' }, L && { fontSize: lp ? ms(8) : ms(9) }]}>Scan to verify delivery</Text>
             </View>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.qrFg + '12' }]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <MaterialIcons name="close" size={ms(18)} color={c.qrFg} />
             </TouchableOpacity>
           </View>
 
-          {lp ? (
-            /* Landscape phone: side-by-side layout */
-            <View style={{ flexDirection: 'row', padding: wp(8), paddingBottom: wp(16), gap: wp(10), alignItems: 'center' }}>
-              <View style={{ flex: 1, gap: wp(6) }}>
-                <View style={{ flexDirection: 'row', gap: wp(6) }}>
-                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12' }}>
-                    <Text style={{ fontSize: ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>ORDER</Text>
-                    <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.order_code || '-'}</Text>
+          {L ? (
+            /* Landscape (phone + tablet): side-by-side layout */
+            <View style={{ flexDirection: 'row', padding: lt ? ls(10) : 8, paddingBottom: lt ? ls(12) : 10, gap: lt ? ls(12) : 10, alignItems: 'center' }}>
+              <View style={{ flex: 1, gap: lt ? ls(8) : 6 }}>
+                <View style={{ flexDirection: 'row', gap: lt ? ls(6) : 6 }}>
+                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(6) : 5, borderRadius: lt ? ls(8) : 8, backgroundColor: c.qrFg + '12' }}>
+                    <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>ORDER</Text>
+                    <Text style={{ fontSize: lt ? ms(14) : ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.order_code || '-'}</Text>
                   </View>
-                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: wp(5), borderRadius: wp(8), backgroundColor: c.qrFg + '12' }}>
-                    <Text style={{ fontSize: ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>TICKET</Text>
-                    <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.ticket_code || '-'}</Text>
+                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(6) : 5, borderRadius: lt ? ls(8) : 8, backgroundColor: c.qrFg + '12' }}>
+                    <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>TICKET</Text>
+                    <Text style={{ fontSize: lt ? ms(14) : ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.ticket_code || '-'}</Text>
                   </View>
                 </View>
-                <View style={{ gap: wp(3) }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4) }}>
-                    <MaterialIcons name="local-shipping" size={ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{ fontSize: ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
+                <View style={{ gap: lt ? ls(4) : 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(5) : 4 }}>
+                    <MaterialIcons name="local-shipping" size={lt ? ms(13) : ms(11)} color={c.qrFg + '60'} />
+                    <Text style={{ fontSize: lt ? ms(13) : ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4) }}>
-                    <MaterialIcons name="factory" size={ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{ fontSize: ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(5) : 4 }}>
+                    <MaterialIcons name="factory" size={lt ? ms(13) : ms(11)} color={c.qrFg + '60'} />
+                    <Text style={{ fontSize: lt ? ms(13) : ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
                   </View>
                 </View>
               </View>
-              <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor }]}>
+              <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor, padding: lt ? ls(12) : wp(10) }]}>
                 <QRCode
                   value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
-                  size={Math.round(Math.min(Math.max(winHeight - insets.top - insets.bottom - 100, 110), 180))}
+                  size={Math.round(Math.min(Math.max(winHeight - insets.top - insets.bottom - 100, 110), lt ? 300 : 180))}
                   backgroundColor={c.white}
                   color={c.qrFg}
                 />
@@ -1358,8 +1324,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   // Header
-  header: { paddingBottom: wp(6) },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6) },
+  header: { paddingBottom: wp(4) },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(3) },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   logo: { width: wp(34), height: wp(34), borderRadius: wp(17) },
   logoTitle: { fontSize: ms(14), fontWeight: '800', letterSpacing: 0.3 },
@@ -1375,7 +1341,7 @@ const styles = StyleSheet.create({
 
   // Scroll
   scroll: { flex: 1 },
-  scrollInner: { paddingHorizontal: wp(10), paddingTop: wp(8), paddingBottom: wp(20) },
+  scrollInner: { paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(4) },
 
   // KPI
   kpiRow: { flexDirection: 'row', alignItems: 'center' },
@@ -1393,17 +1359,16 @@ const styles = StyleSheet.create({
   infoChip: { flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(8), paddingVertical: wp(4), borderRadius: wp(16), borderWidth: 1 },
 
   // Section header
-  secHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: wp(8), paddingBottom: wp(6), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E0E0E0', gap: wp(6) },
+  secHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: wp(4), paddingBottom: wp(3), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E0E0E0', gap: wp(6) },
   secIcon: { width: wp(24), height: wp(24), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
   secTitle: { fontSize: ms(10), fontWeight: '700', letterSpacing: 0.1, flex: 1 },
   countBadge: { paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(8), borderWidth: 1 },
   countText: { fontSize: ms(9), fontWeight: '800' },
 
   // Detail cards
-  twoCol: { gap: wp(6) },
-  detailRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(8), gap: wp(6) },
-  detailLabel: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.1, width: '32%' },
-  detailValue: { fontSize: ms(10), fontWeight: '700' },
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(5), gap: wp(4) },
+  detailLabel: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.1, width: '28%', flexShrink: 0 },
+  detailValue: { fontSize: ms(10), fontWeight: '700', flexShrink: 1 },
   slumpPillInline: { paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6), borderWidth: 1 },
 
 

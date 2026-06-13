@@ -238,6 +238,8 @@ export type TicketDetail = {
     driver_code: string;
     driver_name: string;
     active: boolean;
+    in_process?: boolean;
+    delivery_state?: 'active' | 'completed' | 'voided';
     current_status: number;
     order_current_status: number;
     payment_form: string;
@@ -273,6 +275,7 @@ export type TicketDetail = {
     loads: {current: number | null; total: number};
     truck_code: string;
   };
+  trucks?: {truck_code: string; status: string; is_current: boolean}[];
   location?: {
     delivery?: {lat: number; lng: number; radius_m?: number};
     plant?: {lat: number; lng: number};
