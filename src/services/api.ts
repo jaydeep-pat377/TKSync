@@ -274,14 +274,28 @@ export type TicketDetail = {
     quantity: string | null;
     loads: {current: number | null; total: number};
     truck_code: string;
+    products?: {code: string; description: string; is_mix: boolean; slump: number | null; slump_text: string | null; delivered_qty: number | null; delivered_unit: string | null; order_qty: number | null; order_unit: string | null}[];
+    trucks?: {truck_code: string; status: string; is_current: boolean}[];
   };
-  trucks?: {truck_code: string; status: string; is_current: boolean}[];
   location?: {
     delivery?: {lat: number; lng: number; radius_m?: number};
     plant?: {lat: number; lng: number};
     route?: {distance_miles: number | null; duration: number | null; calculated_at: string | null};
     truck?: {lat: number; lng: number; updated_at: string | null};
   };
+  weather?: {
+    captured_at: string;
+    condition: string;
+    description: string;
+    icon: string;
+    temperature_c: number;
+    temperature_f: number;
+    humidity: number;
+    wind_speed_mph: number;
+    wind_direction: string;
+    evaporation_rate: number;
+    evaporation_level: string;
+  } | null;
 };
 
 export type DeliveryRecord = {

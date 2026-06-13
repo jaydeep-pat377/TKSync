@@ -27,6 +27,22 @@ import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
 import { wp, ms, ls as lsStatic } from '../utils/responsive';
 
+const WEATHER_ICONS: Record<string, string> = {
+  '01d': 'wb-sunny', '01n': 'nightlight-round',
+  '02d': 'partly-cloudy-day', '02n': 'nights-stay',
+  '03d': 'cloud', '03n': 'cloud',
+  '04d': 'cloud', '04n': 'cloud',
+  '09d': 'grain', '09n': 'grain',
+  '10d': 'water-drop', '10n': 'water-drop',
+  '11d': 'thunderstorm', '11n': 'thunderstorm',
+  '13d': 'ac-unit', '13n': 'ac-unit',
+  '50d': 'foggy', '50n': 'foggy',
+};
+function getWeatherIcon(icon?: string): string {
+  if (!icon) return 'wb-sunny';
+  return WEATHER_ICONS[icon] || (icon.endsWith('n') ? 'nightlight-round' : 'wb-sunny');
+}
+
 const TIMELINE_ICONS: Record<string, string> = {
   ticketed: 'receipt-long',
   loading: 'hourglass-bottom',
@@ -132,8 +148,7 @@ function getTicketStatus(ticket: Ticket, detail?: TicketDetail | null) {
 
 function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
   const { mix } = detail;
-  const loadsStr = mix.loads.current != null ? `${mix.loads.current} of ${mix.loads.total}` : '-';
-  const currentTruck = detail.trucks?.find(t => t.is_current);
+  const currentTruck = detail.mix.trucks?.find(t => t.is_current);
   const items: { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[] = [
     { labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science' },
     { labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true },
@@ -141,7 +156,6 @@ function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
     { labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true },
     { labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten' },
     { labelKey: 'orderInfo.loadSize', value: mix.load_size || '-', icon: 'square-foot' },
-    { labelKey: 'orderInfo.loads', value: loadsStr, icon: 'layers' },
   ];
   if (currentTruck) {
     items.push({ labelKey: 'mixInfo.truck', value: currentTruck.truck_code, icon: 'local-shipping' });
@@ -158,7 +172,6 @@ function buildMixInfoFromTicket(ticket: Ticket) {
     { labelKey: 'mixInfo.slump', value: mix?.slump || '-', isHighlight: true },
     { labelKey: 'orderInfo.quantity', value: mix?.quantity || '-', icon: 'straighten' },
     { labelKey: 'orderInfo.loadSize', value: mix?.load_size || '-', icon: 'square-foot' },
-    { labelKey: 'orderInfo.loads', value: '-', icon: 'layers' },
   ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
 }
 
@@ -252,6 +265,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [productsVisible, setProductsVisible] = useState(false);
   const [vehicleVisible, setVehicleVisible] = useState(false);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [directionsAlert, setDirectionsAlert] = useState(false);
+  const [languageVisible, setLanguageVisible] = useState(false);
   const [activeBottom, setActiveBottom] = useState(-1);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
@@ -314,6 +329,14 @@ export default function DashboardScreen({ navigation }: Props) {
 
   useEffect(() => {
     fetchTickets();
+  }, [fetchTickets]);
+
+  // Auto-refresh every 2 minutes
+  useEffect(() => {
+    const iv = setInterval(() => {
+      fetchTickets(false);
+    }, 120000);
+    return () => clearInterval(iv);
   }, [fetchTickets]);
 
   // Fetch detail + delivery record when active ticket changes
@@ -398,8 +421,7 @@ export default function DashboardScreen({ navigation }: Props) {
     } else if (label === 'Logout Tenant') {
       setLogoutType('tenant');
     } else if (label === 'Language') {
-      const nextLang = i18n.language === 'en' ? 'fr' : 'en';
-      i18n.changeLanguage(nextLang);
+      setLanguageVisible(true);
     }
   };
 
@@ -525,11 +547,11 @@ export default function DashboardScreen({ navigation }: Props) {
                   <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary }}>{company?.company_name || t('app.name')}</Text>
                 </View>
                 {/* Weather inline */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
-                  <MaterialIcons name="wb-sunny" size={14} color={c.textOnPrimary} />
-                  <View>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                    <Text style={{ fontSize: 8, fontWeight: '500', color: c.textOnDark60 }}>{currentTicket?.location_name || ''}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, flexShrink: 1 }}>
+                  <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={14} color={c.textOnPrimary} />
+                  <View style={{ flexShrink: 1 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                    <Text style={{ fontSize: 8, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                   </View>
                 </View>
                 {/* Vehicle & Employee stacked */}
@@ -566,11 +588,11 @@ export default function DashboardScreen({ navigation }: Props) {
                   {/* Weather + Vehicle + Employee — landscape only, before sync */}
                   {L && (
                     <>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12) }}>
-                        <MaterialIcons name="wb-sunny" size={ls(16)} color={c.textOnPrimary} />
-                        <View>
-                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                          <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark60 }}>{currentTicket?.location_name || ''}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), flexShrink: 1, maxWidth: '40%' }}>
+                        <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={ls(16)} color={c.textOnPrimary} />
+                        <View style={{ flexShrink: 1 }}>
+                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                         </View>
                       </View>
                       <View style={{ backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), gap: ls(2) }}>
@@ -601,11 +623,11 @@ export default function DashboardScreen({ navigation }: Props) {
               {!L && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
                   {tickets.map((ticket, i) => {
-                    const isActive = activeTicket === i;
+                    const isSelected = activeTicket === i;
+                    const isCompleted = ticket.at_plant_time != null;
                     return (
-                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isActive ? c.accent : c.primaryLight }]}>
-                        {isActive && <View style={[styles.tabDot, { backgroundColor: c.textOnPrimary }]} />}
-                        <Text style={[styles.tabText, { color: isActive ? c.textOnPrimary : c.textOnDark70 }]}>{ticket.ticket_code}</Text>
+                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
+                        <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -618,10 +640,10 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* ─── WEATHER STRIP (portrait only — landscape has it in header) ─── */}
         {!L && (
           <View style={{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10) }}>
-            <MaterialIcons name="wb-sunny" size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3 }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-              <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnPrimary, marginTop: 1, opacity: 0.85 }}>{currentTicket?.location_name || ''}</Text>
+            <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
+            <View style={{ flex: 1, flexShrink: 1 }}>
+              <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3 }} numberOfLines={1}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+              <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary, marginTop: 1 }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
             </View>
             <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(5), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(2) }}>
               <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
@@ -636,7 +658,7 @@ export default function DashboardScreen({ navigation }: Props) {
           contentContainerStyle={[
             styles.scrollInner,
             { gap: 0, flexGrow: 1 },
-            lt ? { padding: ls(12), paddingLeft: Math.max(ls(14), insets.left + ls(6)) } : L ? { padding: 8, paddingLeft: Math.max(8, insets.left + 4) } : isTablet ? { padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8) } : { paddingTop: wp(4), paddingBottom: wp(4) },
+            lt ? { padding: ls(12), paddingLeft: Math.max(ls(14), insets.left + ls(6)), paddingRight: Math.max(ls(14), insets.right + ls(6)), paddingBottom: Math.max(ls(12), insets.bottom) } : L ? { padding: 8, paddingLeft: Math.max(8, insets.left + 4), paddingRight: 8, paddingBottom: Math.max(8, insets.bottom) } : isTablet ? { padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8), paddingBottom: Math.max(16, insets.bottom) } : { paddingTop: wp(4), paddingBottom: Math.max(wp(4), insets.bottom), paddingLeft: Math.max(wp(10), insets.left + wp(4)), paddingRight: Math.max(wp(10), insets.right + wp(4)) },
           ]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
@@ -649,11 +671,15 @@ export default function DashboardScreen({ navigation }: Props) {
                 {/* Row 1: Ticket chips */}
                 <View style={{ paddingBottom: lt ? ls(6) : 4 }}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(6) : 5 }}>
-                    {tickets.map((ticket, i) => (
-                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{ paddingVertical: lt ? ls(4) : 3, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(8) : 6, backgroundColor: activeTicket === i ? c.accent : c.primaryLight }}>
-                        <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{ticket.ticket_code}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {tickets.map((ticket, i) => {
+                      const isSelected = activeTicket === i;
+                      const isCompleted = ticket.at_plant_time != null;
+                      return (
+                        <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{ paddingVertical: lt ? ls(4) : 3, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(8) : 6, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }}>
+                          <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{ticket.ticket_code}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </ScrollView>
                 </View>
                 {/* Row 2: KPI items + status badges */}
@@ -866,7 +892,13 @@ export default function DashboardScreen({ navigation }: Props) {
                             <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.borderLight }]}>
                               <Text style={[styles.detailLabel, { color: c.textMuted, width: '28%' }]} numberOfLines={1}>{t(jobItem.labelKey)}</Text>
                               {jobItem.isMap ? (
-                                <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: jobItem.value })} style={common.flex1}>
+                                <TouchableOpacity activeOpacity={0.6} onPress={() => {
+                                  if (currentTicket?.at_plant_time != null) {
+                                    setDirectionsAlert(true);
+                                  } else {
+                                    navigation.navigate('Map', { delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: jobItem.value });
+                                  }
+                                }} style={common.flex1}>
                                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(4) }}>
                                     <Text style={[styles.detailValue, { color: c.accent, flex: 1 }]} numberOfLines={2}>{jobItem.value}</Text>
                                     <MaterialIcons name="map" size={L ? ls(14) : 16} color={c.accent} />
@@ -969,17 +1001,6 @@ export default function DashboardScreen({ navigation }: Props) {
                 ],
               },
             ]}>
-            {/* Header */}
-            <View style={[styles.ddHeader, isLandscape && { paddingVertical: lp ? 8 : ls(6), paddingHorizontal: lp ? 12 : ls(12), gap: lp ? 8 : ls(8) }, { borderBottomColor: c.borderLight }]}>
-              <View style={[styles.ddAvatar, isLandscape && { width: lp ? 28 : ls(26), height: lp ? 28 : ls(26), borderRadius: lp ? 8 : ls(8) }, { backgroundColor: c.primarySurface }]}>
-                <MaterialIcons name="person" size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={c.primary} />
-              </View>
-              <View style={common.flex1}>
-                <Text style={[styles.ddName, isLandscape && { fontSize: ms(13) }, { color: c.textPrimary }]}>{driver?.driver_name || `Driver ${driver?.driver_code || ''}`}</Text>
-                <Text style={[styles.ddSub, isLandscape && { fontSize: ms(10) }, { color: c.textMuted }]}>ACME Ready-Mix</Text>
-              </View>
-            </View>
-
             {/* Menu Items */}
             <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
               {MENU_ITEMS_BASE.map((item, i) => {
@@ -1021,9 +1042,9 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={qrVisible}
         onClose={() => setQrVisible(false)}
-        maxWidth={L ? (lt ? 700 : 580) : isTablet ? 440 : 380}
-        widthPercent={L ? (lt ? 65 : 88) : isTablet ? 55 : 85}
-        maxHeightPercent={L ? (lt ? 85 : 92) : 80}>
+        maxWidth={L ? (lt ? 440 : 380) : isTablet ? 440 : 380}
+        widthPercent={L ? (lt ? 50 : 70) : isTablet ? 55 : 85}
+        maxHeightPercent={L ? 95 : 80}>
         <View style={{ backgroundColor: c.qrBg }}>
           {/* Header */}
           <View style={[styles.qrHeader, { borderBottomColor: c.qrFg + '15' }, L && { paddingVertical: lt ? ls(6) : 6, paddingHorizontal: lt ? ls(10) : 10, gap: lt ? ls(6) : 6 }]}>
@@ -1039,41 +1060,39 @@ export default function DashboardScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
 
-          {L ? (
-            /* Landscape (phone + tablet): side-by-side layout */
-            <View style={{ flexDirection: 'row', padding: lt ? ls(10) : 8, paddingBottom: lt ? ls(12) : 10, gap: lt ? ls(12) : 10, alignItems: 'center' }}>
-              <View style={{ flex: 1, gap: lt ? ls(8) : 6 }}>
-                <View style={{ flexDirection: 'row', gap: lt ? ls(6) : 6 }}>
-                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(6) : 5, borderRadius: lt ? ls(8) : 8, backgroundColor: c.qrFg + '12' }}>
-                    <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>ORDER</Text>
-                    <Text style={{ fontSize: lt ? ms(14) : ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.order_code || '-'}</Text>
-                  </View>
-                  <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(6) : 5, borderRadius: lt ? ls(8) : 8, backgroundColor: c.qrFg + '12' }}>
-                    <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>TICKET</Text>
-                    <Text style={{ fontSize: lt ? ms(14) : ms(13), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.ticket_code || '-'}</Text>
-                  </View>
+          {L ? (() => {
+            const availH = winHeight - insets.top - insets.bottom;
+            const padV = lt ? ls(10) : 8;
+            const qrPad = lt ? ls(10) : 8;
+            // Fit QR within: 95% available height minus header(~44) + chips(~52) + gaps + card padding + modal chrome(~36)
+            const fitH = Math.round(availH * 0.95 - 44 - 52 - padV * 3 - qrPad * 2 - 36);
+            const qrSize = Math.max(Math.min(fitH, lt ? 260 : 180), 80);
+            return (
+            /* Landscape: vertical stack — chips on top, QR below */
+            <View style={{ padding: padV, gap: padV, alignItems: 'center' }}>
+              {/* Top: ORDER + TICKET chips */}
+              <View style={{ flexDirection: 'row', gap: lt ? ls(8) : 6, alignSelf: 'stretch', paddingHorizontal: lt ? ls(4) : 2 }}>
+                <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(8) : 6, borderRadius: lt ? ls(10) : 8, backgroundColor: c.qrFg + '12' }}>
+                  <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>ORDER</Text>
+                  <Text style={{ fontSize: lt ? ms(15) : ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.order_code || '-'}</Text>
                 </View>
-                <View style={{ gap: lt ? ls(4) : 3 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(5) : 4 }}>
-                    <MaterialIcons name="local-shipping" size={lt ? ms(13) : ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{ fontSize: lt ? ms(13) : ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(5) : 4 }}>
-                    <MaterialIcons name="factory" size={lt ? ms(13) : ms(11)} color={c.qrFg + '60'} />
-                    <Text style={{ fontSize: lt ? ms(13) : ms(12), fontWeight: '600', color: c.qrFg + '60' }}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                  </View>
+                <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(8) : 6, borderRadius: lt ? ls(10) : 8, backgroundColor: c.qrFg + '12' }}>
+                  <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>TICKET</Text>
+                  <Text style={{ fontSize: lt ? ms(15) : ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.ticket_code || '-'}</Text>
                 </View>
               </View>
-              <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor, padding: lt ? ls(12) : wp(10) }]}>
+              {/* Bottom: QR code centered */}
+              <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor, padding: qrPad }]}>
                 <QRCode
                   value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
-                  size={Math.round(Math.min(Math.max(winHeight - insets.top - insets.bottom - 100, 110), lt ? 300 : 180))}
+                  size={qrSize}
                   backgroundColor={c.white}
                   color={c.qrFg}
                 />
               </View>
             </View>
-          ) : (
+            );
+          })() : (
             /* Portrait + tablet: vertical layout */
             <ScrollView
               bounces={false}
@@ -1252,7 +1271,7 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
           <View style={common.flex1}>
             <Text style={[styles.pmTitle, { color: c.textPrimary }]}>{t('productsModal.title')}</Text>
-            <Text style={[styles.pmSubtitle, { color: c.textMuted }]}>30MPA MR - {t('productsModal.subtitle')}</Text>
+            <Text style={[styles.pmSubtitle, { color: c.textMuted }]} numberOfLines={1}>{detail?.mix?.products?.find(p => p.is_mix)?.description || t('productsModal.subtitle')}</Text>
           </View>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.white }]} onPress={() => setProductsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
@@ -1267,9 +1286,18 @@ export default function DashboardScreen({ navigation }: Props) {
             <Text style={[styles.pmColUnit, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.unit')}</Text>
           </View>
           {/* Table Rows */}
-          <View style={{ padding: wp(16), alignItems: 'center' }}>
-            <Text style={{ color: c.textMuted, fontSize: ms(10) }}>{t('productsModal.noData', 'No product data available')}</Text>
-          </View>
+          {detail?.mix?.products && detail.mix.products.filter(p => p.is_mix).length > 0 ? detail.mix.products.filter(p => p.is_mix).map((product, i) => (
+            <View key={`${product.code}-${i}`} style={[styles.pmRow, { borderBottomColor: c.borderLight }]}>
+              <Text style={[styles.pmColCode, styles.pmTd, { color: c.textPrimary }]} numberOfLines={1}>{product.code}</Text>
+              <Text style={[styles.pmColDesc, styles.pmTd, { color: c.textPrimary }]} numberOfLines={2}>{product.description}</Text>
+              <Text style={[styles.pmColQty, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
+              <Text style={[styles.pmColUnit, styles.pmTd, { color: c.textPrimary }]}>{product.order_unit || '-'}</Text>
+            </View>
+          )) : (
+            <View style={{ padding: wp(16), alignItems: 'center' }}>
+              <Text style={{ color: c.textMuted, fontSize: ms(10) }}>{t('productsModal.noData', 'No product data available')}</Text>
+            </View>
+          )}
         </ScrollView>
       </ResponsiveModal>
 
@@ -1313,6 +1341,63 @@ export default function DashboardScreen({ navigation }: Props) {
               )}
             </TouchableOpacity>
           </View>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── LANGUAGE SELECTION MODAL ─── */}
+      <ResponsiveModal
+        visible={languageVisible}
+        onClose={() => setLanguageVisible(false)}
+        maxWidth={360}
+        widthPercent={isLandscape ? 40 : 80}>
+        <View style={{ padding: wp(16), alignItems: 'center' }}>
+          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface, position: 'absolute', top: wp(10), right: wp(10), zIndex: 10 }]} onPress={() => setLanguageVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+          </TouchableOpacity>
+          <View style={[styles.logoutIconWrap, { backgroundColor: c.primarySurface }]}>
+            <MaterialIcons name="translate" size={ms(28)} color={c.primary} />
+          </View>
+          <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>{t('menu.language')}</Text>
+          <View style={{ width: '100%', gap: wp(8), marginTop: wp(4) }}>
+            {[
+              { code: 'en', label: 'English', flag: '🇬🇧' },
+              { code: 'fr', label: 'Français', flag: '🇫🇷' },
+            ].map(lang => {
+              const isSelected = i18n.language === lang.code;
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(8), paddingVertical: wp(10), borderRadius: wp(10), backgroundColor: isSelected ? c.primary : c.surface, borderWidth: 1, borderColor: isSelected ? c.primary : c.border }}
+                  activeOpacity={0.7}
+                  onPress={() => { i18n.changeLanguage(lang.code); setLanguageVisible(false); }}>
+                  <Text style={{ fontSize: ms(16) }}>{lang.flag}</Text>
+                  <Text style={{ fontSize: ms(12), fontWeight: '700', color: isSelected ? c.textOnPrimary : c.textPrimary }}>{lang.label}</Text>
+                  {isSelected && <MaterialIcons name="check-circle" size={ms(18)} color={c.textOnPrimary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── DIRECTIONS UNAVAILABLE MODAL ─── */}
+      <ResponsiveModal
+        visible={directionsAlert}
+        onClose={() => setDirectionsAlert(false)}
+        maxWidth={360}
+        widthPercent={isLandscape ? 40 : 80}>
+        <View style={{ padding: wp(16), alignItems: 'center' }}>
+          <View style={[styles.logoutIconWrap, { backgroundColor: c.warningSurface }]}>
+            <MaterialIcons name="directions-off" size={ms(28)} color={c.warningDark} />
+          </View>
+          <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>Directions Unavailable</Text>
+          <Text style={[styles.logoutMessage, { color: c.textSecondary }]}>Directions are not available because this ticket has been completed.</Text>
+          <TouchableOpacity
+            style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: wp(10), borderRadius: wp(10), backgroundColor: c.primary, width: '100%' }}
+            onPress={() => setDirectionsAlert(false)}
+            activeOpacity={0.7}>
+            <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }}>OK</Text>
+          </TouchableOpacity>
         </View>
       </ResponsiveModal>
 

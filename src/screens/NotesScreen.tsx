@@ -1888,6 +1888,45 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
     }
   };
 
+  if (_rtLand) {
+    return (
+      <View style={[ls.root, {backgroundColor: c.surface}]}>
+        <View style={ls.topBar}><LSaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} /></View>
+        <View style={ls.columns} pointerEvents={rAllFieldsFilled ? 'none' : 'auto'}>
+          <LCard title="Return Details" icon="assignment-return">
+            <LField label="RETURNED CONCRETE">
+              <View style={[st.numericInput, {backgroundColor: '#FFFF00', borderColor: c.primaryBorder}]}>
+                <TextInput
+                  style={[st.numericInputText, {color: c.textPrimary}]}
+                  value={concreteVal}
+                  onChangeText={concreteLocked ? undefined : handleConcreteChange}
+                  editable={!concreteLocked}
+                  keyboardType="decimal-pad"
+                  maxLength={8}
+                  selectTextOnFocus
+                  placeholder="0.00"
+                  placeholderTextColor={c.textMuted}
+                />
+              </View>
+              <Text style={[st.unitInline, {color: c.textSecondary}]}>M3</Text>
+            </LField>
+            <LField label="DISPOSAL METHOD">
+              <LineInput placeholder="Select method" value={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || ''} onPress={() => setDisposalModal(true)} />
+              <MoreBtn onPress={() => setDisposalModal(true)} />
+            </LField>
+            <LField label="REASON FOR RETURN" noBorder>
+              <LineInput placeholder="Select reason" value={RETURN_REASONS.find(r => r.key === returnReason)?.label || returnReason || ''} onPress={() => setReasonModal(true)} />
+              <MoreBtn onPress={() => setReasonModal(true)} />
+            </LField>
+          </LCard>
+        </View>
+
+        <SelectionModal visible={disposalModal} title="Disposal Method" subtitle="Select a disposal method" headerIcon="delete-sweep" options={DISPOSAL_METHODS} selected={disposalMethod} onSave={setDisposalMethod} onClose={() => setDisposalModal(false)} />
+        <SelectionModal visible={reasonModal} title="Reason for Return" subtitle="Select a return reason" headerIcon="assignment-return" options={RETURN_REASONS} selected={returnReason} onSave={setReturnReason} onClose={() => setReasonModal(false)} />
+      </View>
+    );
+  }
+
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
       <SaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />

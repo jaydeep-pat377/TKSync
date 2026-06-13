@@ -55,14 +55,14 @@ function LSectionHead({icon, title, color}: {icon: string; title: string; color:
 }
 
 // Landscape info row
-function LRow({label, value, highlight, highlightBg, textColor, labelColor, labelW = 80}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelColor?: string; labelW?: number}) {
+function LRow({label, value, highlight, highlightBg, textColor, labelColor, labelW = 80, wrap}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelColor?: string; labelW?: number; wrap?: boolean}) {
   return (
     <View style={{flexDirection: 'row', paddingVertical: wp(4), flexWrap: 'wrap'}}>
       <Text style={{minWidth: labelW, maxWidth: labelW + 10, fontSize: ms(9), fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
       <Text style={[
         {flex: 1, fontSize: ms(9), fontWeight: '600', color: textColor, minWidth: 60},
         highlight && {paddingHorizontal: 4, paddingVertical: 2, backgroundColor: highlightBg, borderRadius: 3},
-      ]} numberOfLines={2}>{value}</Text>
+      ]} numberOfLines={wrap ? undefined : 2}>{value}</Text>
     </View>
   );
 }
@@ -129,7 +129,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
     {label: 'PROJECT', value: cust.project_name || '-'},
     {label: 'ADDRESS', value: cust.address ? `${cust.address}${cust.map_page ? `\nMapPage:${cust.map_page}` : ''}` : '-'},
     {label: 'ORDERED BY', value: cust.ordered_by || '-'},
-    {label: 'INSTRUCTIONS', value: cust.instructions || '-', highlight: Boolean(cust.instructions)},
+    {label: 'INSTRUCTIONS', value: cust.instructions || '-', highlight: Boolean(cust.instructions), wrap: true},
   ] : [];
 
   const driverCol = dt ? [
@@ -221,7 +221,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
                 <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
                   <LSectionHead icon="people" title="CUSTOMER" color={c.primary} />
                   {customerInfo.map(item => (
-                    <LRow key={item.label} label={item.label} value={item.value} highlight={item.highlight} highlightBg={c.highlight} textColor={c.textPrimary} labelW={isTablet ? 70 : 58} />
+                    <LRow key={item.label} label={item.label} value={item.value} highlight={item.highlight} highlightBg={c.highlight} textColor={c.textPrimary} labelW={isTablet ? 70 : 58} wrap={item.wrap} />
                   ))}
                 </View>
                 <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
