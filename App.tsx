@@ -3,6 +3,7 @@ import {View, StyleSheet} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {ThemeProvider} from './src/contexts/ThemeContext';
 import {AuthProvider} from './src/contexts/AuthContext';
+import {OfflineSyncProvider} from './src/contexts/OfflineSyncContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -11,7 +12,9 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <AppNavigator />
+            <OfflineSyncProvider>
+              <AppNavigator />
+            </OfflineSyncProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>

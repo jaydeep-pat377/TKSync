@@ -1,0 +1,102 @@
+import {createMMKV} from 'react-native-mmkv';
+
+const offlineStore = createMMKV({id: 'tksync-offline-queue'});
+
+const QUEUE_KEY = 'pending_saves';
+const QUEUE_COUNTER_KEY = 'queue_counter';
+
+export type PendingSave = {
+  id: string;
+  ticketId: number;
+  tab: string;
+  body: Record<string, any>;
+  createdAt: string;
+  retryCount: number;
+  lastError?: string;
+};
+
+function getQueue(): PendingSave[] {
+  const raw = offlineStore.getString(QUEUE_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function setQueue(queue: PendingSave[]): void {
+  offlineStore.set(QUEUE_KEY, JSON.stringify(queue));
+}
+
+function nextId(): string {
+  const counter = (offlineStore.getNumber(QUEUE_COUNTER_KEY) ?? 0) + 1;
+  offlineStore.set(QUEUE_COUNTER_KEY, counter);
+  return `save_${counter}_${Date.now()}`;
+}
+
+export const offlineStorage = {
+  enqueue(ticketId: number, tab: string, body: Record<string, any>): PendingSave {
+    const queue = getQueue();
+
+    // Deduplicate: if there's already a pending save for same ticket+tab, replace it
+    const existingIdx = queue.findIndex(
+      item => item.ticketId === ticketId && item.tab === tab,
+    );
+
+    const entry: PendingSave = {
+      id: nextId(),
+      ticketId,
+      tab,
+      body,
+      createdAt: new Date().toISOString(),
+      retryCount: 0,
+    };
+
+    if (existingIdx >= 0) {
+      console.log(
+        `[OfflineStorage] Replacing existing entry for ticket ${ticketId}/${tab}`,
+      );
+      queue[existingIdx] = entry;
+    } else {
+      queue.push(entry);
+    }
+
+    setQueue(queue);
+    console.log(
+      `[OfflineStorage] Enqueued save: ticket ${ticketId}/${tab} (${queue.length} pending)`,
+    );
+    return entry;
+  },
+
+  dequeue(id: string): void {
+    const queue = getQueue().filter(item => item.id !== id);
+    setQueue(queue);
+  },
+
+  updateRetry(id: string, error: string): void {
+    const queue = getQueue();
+    const item = queue.find(i => i.id === id);
+    if (item) {
+      item.retryCount += 1;
+      item.lastError = error;
+      setQueue(queue);
+    }
+  },
+
+  getAll(): PendingSave[] {
+    return getQueue();
+  },
+
+  getPendingCount(): number {
+    return getQueue().length;
+  },
+
+  clear(): void {
+    offlineStore.set(QUEUE_KEY, '[]');
+  },
+
+  hasPending(): boolean {
+    return getQueue().length > 0;
+  },
+};

@@ -457,8 +457,9 @@ export type MobileTicketPrint = {
 };
 
 export const ticketsApi = {
-  getLatest: (params?: {page?: number; limit?: number; date?: string; all?: boolean}) => {
+  getLatest: (params?: {page?: number; limit?: number; date?: string; all?: boolean; status?: string}) => {
     const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.date) query.set('date', params.date);
@@ -487,6 +488,47 @@ export const ticketsApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  getQr: (id: number) =>
+    request<TicketQr>(`/tickets/${id}/qr`),
+};
+
+export type TicketQr = {
+  qr_token: string;
+  order_code: string;
+  ticket_code: string;
+  truck_code: string;
+  driver_code: string;
+  plant_name: string;
+};
+
+export type Plant = {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  address: string | null;
+  phone: string | null;
+  location_code: string;
+  timezone: string;
+  location: { lat: number; lng: number } | null;
+  max_batch_size: number;
+  max_batch_size_unit: string | null;
+};
+
+export type PlantsResponse = {
+  truck: {
+    code: string;
+    assigned_plant_code: string;
+    assigned_plant_name: string;
+    current_plant_code: string;
+    current_plant_name: string;
+  };
+  count: number;
+  plants: Plant[];
+};
+
+export const plantsApi = {
+  getAll: () => request<PlantsResponse>('/plants'),
 };
 
 export const authApi = {

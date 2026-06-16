@@ -21,7 +21,7 @@ import i18n from '../i18n';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { ticketsApi, type Ticket, type TicketDetail, type DeliveryRecord } from '../services/api';
+import { ticketsApi, plantsApi, type Ticket, type TicketDetail, type DeliveryRecord, type Plant, type TicketQr } from '../services/api';
 import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
@@ -256,11 +256,16 @@ export default function DashboardScreen({ navigation }: Props) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [logoutType, setLogoutType] = useState<'driver' | 'tenant' | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [qrVisible, setQrVisible] = useState(false);
+  const [qrData, setQrData] = useState<TicketQr | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
   const [plantsVisible, setPlantsVisible] = useState(false);
+  const [plantsList, setPlantsList] = useState<Plant[]>([]);
+  const [plantsLoading, setPlantsLoading] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [productsVisible, setProductsVisible] = useState(false);
   const [vehicleVisible, setVehicleVisible] = useState(false);
@@ -312,6 +317,7 @@ export default function DashboardScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setInitialLoaded(true);
     }
   }, []);
 
@@ -430,8 +436,22 @@ export default function DashboardScreen({ navigation }: Props) {
     if (item.icon === 'label') { navigation.navigate('MobileTicket', { ticketId: currentTicket?.id }); }
     if (item.icon === 'note-alt') { navigation.navigate('Notes', { ticketId: currentTicket?.id }); }
     if (item.icon === 'edit') { setEditVisible(true); }
-    if (item.icon === 'qr-code-scanner') { setQrVisible(true); }
-    if (item.icon === 'local-shipping') { setPlantsVisible(true); }
+    if (item.icon === 'qr-code-scanner' && currentTicket) {
+      setQrLoading(true);
+      setQrVisible(true);
+      ticketsApi.getQr(currentTicket.id)
+        .then(res => { if (res.data) setQrData(res.data); })
+        .catch(() => {})
+        .finally(() => setQrLoading(false));
+    }
+    if (item.icon === 'local-shipping') {
+      setPlantsLoading(true);
+      setPlantsVisible(true);
+      plantsApi.getAll()
+        .then(res => { if (res.data?.plants) setPlantsList(res.data.plants); })
+        .catch(() => {})
+        .finally(() => setPlantsLoading(false));
+    }
   }, [navigation, currentTicket]);
 
   // Shorthand flags
@@ -453,44 +473,268 @@ export default function DashboardScreen({ navigation }: Props) {
     },
   };
 
-  // Skeleton state
-  if (loading && !refreshing) {
+  // Skeleton state — only during initial API call
+  if (!initialLoaded) {
+    const skPad = { paddingLeft: Math.max(wp(10), insets.left + wp(4)), paddingRight: Math.max(wp(10), insets.right + wp(4)) };
     return (
       <View style={[styles.container, { backgroundColor: c.background }]}>
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-        <View style={[styles.header, { backgroundColor: c.primaryDark, paddingTop: insets.top + (isLandscape ? 2 : wp(3)), paddingLeft: Math.max(isLandscape ? 10 : wp(12), insets.left), paddingRight: Math.max(isLandscape ? 10 : wp(12), insets.right) }, isLandscape && { paddingBottom: 3 }]}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: c.primaryDark, paddingTop: insets.top + wp(3), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right) }]}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <Skeleton width={wp(40)} height={wp(40)} radius={wp(14)} />
-              <View style={{ gap: wp(6), marginLeft: wp(10) }}>
-                <Skeleton width={wp(72)} height={wp(16)} radius={wp(6)} />
-                <Skeleton width={wp(100)} height={wp(11)} radius={wp(5)} />
-              </View>
+              <Skeleton width={wp(36)} height={wp(36)} radius={wp(18)} />
+              <Skeleton width={wp(120)} height={wp(14)} radius={wp(4)} style={{ marginLeft: wp(10) }} />
             </View>
             <View style={common.rowGap8}>
-              <Skeleton width={wp(36)} height={wp(36)} radius={wp(10)} />
-              <Skeleton width={wp(36)} height={wp(36)} radius={wp(10)} />
-              <Skeleton width={wp(36)} height={wp(36)} radius={wp(10)} />
+              <Skeleton width={wp(70)} height={wp(28)} radius={wp(14)} />
+              <Skeleton width={wp(32)} height={wp(32)} radius={wp(10)} />
+              <Skeleton width={wp(32)} height={wp(32)} radius={wp(10)} />
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: wp(8), marginTop: wp(4) }}>
-            <Skeleton width={wp(105)} height={wp(36)} radius={wp(12)} />
-            <Skeleton width={wp(105)} height={wp(36)} radius={wp(12)} />
-            <Skeleton width={wp(105)} height={wp(36)} radius={wp(12)} />
+          {/* Ticket tabs */}
+          <View style={{ flexDirection: 'row', gap: wp(5), marginTop: wp(4), paddingBottom: wp(2) }}>
+            <Skeleton width={wp(80)} height={wp(26)} radius={wp(7)} />
+            <Skeleton width={wp(80)} height={wp(26)} radius={wp(7)} />
+            <Skeleton width={wp(80)} height={wp(26)} radius={wp(7)} />
           </View>
         </View>
-        <View style={[{ padding: wp(16), gap: wp(14), paddingLeft: Math.max(wp(16), insets.left + wp(4)), paddingRight: Math.max(wp(16), insets.right + wp(4)) }, isTablet && { padding: 20, maxWidth: 900, alignSelf: 'center', width: '100%' }]}>
-          <Skeleton width="100%" height={wp(86)} radius={wp(18)} />
-          <View style={common.rowGap8}>
-            <Skeleton width={wp(85)} height={wp(30)} radius={wp(15)} />
-            <Skeleton width={wp(115)} height={wp(30)} radius={wp(15)} />
-            <Skeleton width={wp(55)} height={wp(30)} radius={wp(15)} />
+
+        {/* Weather strip */}
+        <View style={[{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), gap: wp(10) }, skPad]}>
+          <Skeleton width={wp(24)} height={wp(24)} radius={wp(12)} />
+          <View style={{ flex: 1, gap: wp(4) }}>
+            <Skeleton width={wp(100)} height={wp(10)} radius={wp(3)} />
+            <Skeleton width={wp(140)} height={wp(8)} radius={wp(3)} />
           </View>
-          <Skeleton width="100%" height={wp(130)} radius={wp(18)} />
-          <Skeleton width="100%" height={wp(170)} radius={wp(18)} />
-          <Skeleton width="100%" height={wp(170)} radius={wp(18)} />
-          <Skeleton width="100%" height={wp(46)} radius={wp(12)} />
+          <Skeleton width={wp(60)} height={wp(30)} radius={wp(8)} />
         </View>
+
+        {/* Content */}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[{ paddingTop: wp(4), paddingBottom: Math.max(wp(4), insets.bottom), gap: wp(3) }, skPad]}>
+          {/* KPI card */}
+          <View style={[cs.card, { padding: wp(6) }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(12) }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), flex: 1 }}>
+                <Skeleton width={wp(28)} height={wp(28)} radius={wp(8)} />
+                <View style={{ gap: wp(4) }}>
+                  <Skeleton width={wp(70)} height={wp(12)} radius={wp(3)} />
+                  <Skeleton width={wp(40)} height={wp(9)} radius={wp(3)} />
+                </View>
+              </View>
+              <View style={{ width: StyleSheet.hairlineWidth, height: wp(24), backgroundColor: c.border }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), flex: 1 }}>
+                <Skeleton width={wp(28)} height={wp(28)} radius={wp(8)} />
+                <View style={{ gap: wp(4) }}>
+                  <Skeleton width={wp(50)} height={wp(12)} radius={wp(3)} />
+                  <Skeleton width={wp(35)} height={wp(9)} radius={wp(3)} />
+                </View>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: wp(6), marginTop: wp(6), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, paddingTop: wp(6) }}>
+              <Skeleton width={wp(90)} height={wp(22)} radius={wp(8)} />
+              <Skeleton width={wp(80)} height={wp(22)} radius={wp(8)} />
+            </View>
+          </View>
+
+          {/* Delivery Progress card */}
+          <View style={[cs.card]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4), marginBottom: wp(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(4) }}>
+              <Skeleton width={wp(22)} height={wp(22)} radius={wp(7)} />
+              <Skeleton width={wp(110)} height={wp(10)} radius={wp(3)} />
+              <View style={{ flex: 1 }} />
+              <Skeleton width={wp(30)} height={wp(16)} radius={wp(6)} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: wp(2) }}>
+              {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+                <React.Fragment key={i}>
+                  {i > 0 && <View style={{ flex: 1, height: 2, backgroundColor: c.border, borderRadius: 1 }} />}
+                  <Skeleton width={wp(10)} height={wp(10)} radius={wp(5)} />
+                </React.Fragment>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: wp(4), paddingHorizontal: wp(2) }}>
+              {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+                <View key={i} style={{ alignItems: 'center', gap: wp(2) }}>
+                  <Skeleton width={wp(28)} height={wp(7)} radius={wp(2)} />
+                  <Skeleton width={wp(22)} height={wp(8)} radius={wp(2)} />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Job Details + Mix Details cards */}
+          <View style={{ flexDirection: 'row', gap: wp(3) }}>
+            {/* Job Details */}
+            <View style={[cs.card, { flex: 1 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4), marginBottom: wp(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(4) }}>
+                <Skeleton width={wp(16)} height={wp(16)} radius={wp(4)} />
+                <Skeleton width={wp(65)} height={wp(10)} radius={wp(3)} />
+              </View>
+              {[0, 1, 2, 3, 4, 5].map(i => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), borderBottomWidth: i < 5 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                  <Skeleton width={wp(40)} height={wp(8)} radius={wp(2)} />
+                  <View style={{ flex: 1 }} />
+                  <Skeleton width={wp(60)} height={wp(8)} radius={wp(2)} />
+                </View>
+              ))}
+            </View>
+            {/* Mix Details */}
+            <View style={[cs.card, { flex: 1, backgroundColor: c.primarySurface }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4), marginBottom: wp(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(4) }}>
+                <Skeleton width={wp(16)} height={wp(16)} radius={wp(4)} />
+                <Skeleton width={wp(60)} height={wp(10)} radius={wp(3)} />
+              </View>
+              {[0, 1, 2, 3, 4, 5].map(i => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), borderBottomWidth: i < 5 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                  <Skeleton width={wp(40)} height={wp(8)} radius={wp(2)} />
+                  <View style={{ flex: 1 }} />
+                  <Skeleton width={wp(55)} height={wp(8)} radius={wp(2)} />
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Bottom nav */}
+        <View style={{
+          flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center',
+          borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border, backgroundColor: c.white,
+          paddingTop: 4, paddingBottom: insets.bottom || 6, paddingLeft: insets.left, paddingRight: insets.right,
+        }}>
+          {[0, 1, 2, 3, 4].map(i => (
+            <View key={i} style={{ alignItems: 'center', paddingVertical: 4, minWidth: wp(48) }}>
+              <Skeleton width={wp(24)} height={wp(24)} radius={wp(6)} />
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  // ─── EMPTY STATE: no tickets assigned ───
+  if (tickets.length === 0 && initialLoaded) {
+    const handleTruckPress = () => {
+      setPlantsLoading(true);
+      setPlantsVisible(true);
+      plantsApi.getAll()
+        .then(res => { if (res.data?.plants) setPlantsList(res.data.plants); })
+        .catch(() => {})
+        .finally(() => setPlantsLoading(false));
+    };
+    return (
+      <View style={[styles.container, {backgroundColor: '#c8c8c8'}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <View style={{backgroundColor: c.primary, paddingTop: insets.top + (isLandscape ? 2 : wp(4)), paddingBottom: isLandscape ? 4 : wp(6), paddingHorizontal: Math.max(wp(12), insets.right + wp(4)), flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center'}}>
+          <TouchableOpacity style={{width: isLandscape ? 30 : wp(36), height: isLandscape ? 30 : wp(36), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'}} onPress={openMenu} activeOpacity={0.7}>
+            <MaterialIcons name="menu" size={ms(isLandscape ? 18 : 22)} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(20)}}>
+          <Text style={{fontSize: ms(isLandscape ? 12 : 16), fontWeight: '400', color: '#222', textAlign: 'center'}}>
+            COMPANY: {company?.company_name || '-'}
+          </Text>
+          <Text style={{fontSize: ms(isLandscape ? 11 : 15), fontWeight: '400', color: '#222', textAlign: 'center', marginTop: isLandscape ? 1 : wp(6)}}>
+            VEHICLE: {driver?.truck_code || '-'}
+          </Text>
+          <Text style={{fontSize: ms(isLandscape ? 13 : 18), fontWeight: '800', color: '#111', textAlign: 'center', marginTop: isLandscape ? 6 : wp(24)}}>
+            TICKET NOT ASSIGNED
+          </Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#2e7d32" style={{marginTop: isLandscape ? 6 : wp(16)}} />
+          ) : (
+            <>
+              <TouchableOpacity onPress={() => fetchTickets(true)} activeOpacity={0.7} style={{marginTop: isLandscape ? 2 : wp(8)}}>
+                <Text style={{fontSize: ms(isLandscape ? 11 : 15), fontWeight: '600', color: '#2e7d32', textDecorationLine: 'underline', textAlign: 'center'}}>
+                  REFRESH
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleTruckPress} activeOpacity={0.7} style={{marginTop: isLandscape ? 8 : wp(16), alignItems: 'center'}}>
+                <MaterialIcons name="local-shipping" size={ms(isLandscape ? 60 : 80)} color="#555" />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        {/* Dropdown menu */}
+        {menuVisible && (
+          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+            <Pressable style={[styles.dropdownOverlay, {backgroundColor: c.overlayDropdown}]} onPress={closeMenu} />
+            <Animated.View
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: c.white,
+                  top: insets.top + wp(58),
+                  right: Math.max(wp(16), insets.right + wp(4)),
+                  borderColor: c.border,
+                  opacity: menuOpacity,
+                  transform: [
+                    {scale: menuScale.interpolate({inputRange: [0, 1], outputRange: [0.85, 1]})},
+                    {translateY: menuScale.interpolate({inputRange: [0, 1], outputRange: [-10, 0]})},
+                  ],
+                },
+              ]}>
+              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                {MENU_ITEMS_BASE.map((item, i) => {
+                  const isWarn = item.color === 'warn';
+                  const iconColor = isWarn ? c.error : c.textSecondary;
+                  const labelColor = isWarn ? c.error : c.textPrimary;
+                  const bgColor = isWarn ? c.errorSurface : c.surface;
+                  const label = t(item.labelKey);
+                  const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
+                  return (
+                    <TouchableOpacity
+                      key={item.actionKey}
+                      style={[styles.ddItem, i < MENU_ITEMS_BASE.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}
+                      activeOpacity={0.6}
+                      onPress={() => handleMenuItemPress(item.actionKey)}>
+                      <View style={[styles.ddIcon, {backgroundColor: bgColor}]}>
+                        <MaterialIcons name={item.icon as any} size={ms(18)} color={iconColor} />
+                      </View>
+                      <Text style={[styles.ddLabel, {color: labelColor}]}>{label}{suffix}</Text>
+                      <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={[styles.ddFooter, {borderTopColor: c.borderLight}]}>
+                <Text style={[styles.ddVersion, {color: c.textMuted}]}>v1.20.0</Text>
+              </View>
+            </Animated.View>
+          </View>
+        )}
+
+        {/* Plants modal also accessible from empty state */}
+        <ResponsiveModal
+          visible={plantsVisible}
+          onClose={() => setPlantsVisible(false)}
+          maxWidth={540}
+          maxHeightPercent={70}>
+          <View style={[styles.mHeader, {borderBottomColor: c.border}]}>
+            <Text style={[styles.mHeaderTitle, {color: c.textPrimary}]}>{t('modals.plants')}</Text>
+            <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.surface}]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+              <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          {plantsLoading ? (
+            <View style={{paddingVertical: wp(40), alignItems: 'center'}}>
+              <ActivityIndicator size="large" color={c.primary} />
+            </View>
+          ) : (
+            <ScrollView style={styles.plantsList} showsVerticalScrollIndicator={true} bounces={false}>
+              {plantsList.map(plant => (
+                <TouchableOpacity
+                  key={plant.id}
+                  style={[styles.plantItem, {borderBottomColor: c.borderLight}]}
+                  activeOpacity={0.6}
+                  onPress={() => setPlantsVisible(false)}>
+                  <Text style={[styles.plantText, {color: c.textPrimary}]}>{plant.code}-{plant.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </ResponsiveModal>
       </View>
     );
   }
@@ -620,19 +864,17 @@ export default function DashboardScreen({ navigation }: Props) {
                   </TouchableOpacity>
                 </View>
               </View>
-              {!L && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-                  {tickets.map((ticket, i) => {
-                    const isSelected = activeTicket === i;
-                    const isCompleted = ticket.at_plant_time != null;
-                    return (
-                      <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
-                        <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              )}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+                {tickets.map((ticket, i) => {
+                  const isSelected = activeTicket === i;
+                  const isCompleted = ticket.at_plant_time != null;
+                  return (
+                    <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
+                      <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </>
           )}
         </View>
@@ -668,22 +910,8 @@ export default function DashboardScreen({ navigation }: Props) {
             {/* ── Landscape: KPI row + ticket chips row ── */}
             {isLandscape ? (
               <FadeCard delay={0} style={[cs.card, { marginBottom: lt ? ls(8) : 4, padding: lt ? ls(8) : 6 }]}>
-                {/* Row 1: Ticket chips */}
-                <View style={{ paddingBottom: lt ? ls(6) : 4 }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(6) : 5 }}>
-                    {tickets.map((ticket, i) => {
-                      const isSelected = activeTicket === i;
-                      const isCompleted = ticket.at_plant_time != null;
-                      return (
-                        <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={{ paddingVertical: lt ? ls(4) : 3, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(8) : 6, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }}>
-                          <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{ticket.ticket_code}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-                {/* Row 2: KPI items + status badges */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(8) : 5, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, paddingTop: lt ? ls(6) : 4 }}>
+                {/* KPI items + status badges */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(8) : 5 }}>
                   {[
                     { icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary },
                     { icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark },
@@ -1060,40 +1288,11 @@ export default function DashboardScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
 
-          {L ? (() => {
-            const availH = winHeight - insets.top - insets.bottom;
-            const padV = lt ? ls(10) : 8;
-            const qrPad = lt ? ls(10) : 8;
-            // Fit QR within: 95% available height minus header(~44) + chips(~52) + gaps + card padding + modal chrome(~36)
-            const fitH = Math.round(availH * 0.95 - 44 - 52 - padV * 3 - qrPad * 2 - 36);
-            const qrSize = Math.max(Math.min(fitH, lt ? 260 : 180), 80);
-            return (
-            /* Landscape: vertical stack — chips on top, QR below */
-            <View style={{ padding: padV, gap: padV, alignItems: 'center' }}>
-              {/* Top: ORDER + TICKET chips */}
-              <View style={{ flexDirection: 'row', gap: lt ? ls(8) : 6, alignSelf: 'stretch', paddingHorizontal: lt ? ls(4) : 2 }}>
-                <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(8) : 6, borderRadius: lt ? ls(10) : 8, backgroundColor: c.qrFg + '12' }}>
-                  <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>ORDER</Text>
-                  <Text style={{ fontSize: lt ? ms(15) : ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.order_code || '-'}</Text>
-                </View>
-                <View style={{ flex: 1, alignItems: 'center', paddingVertical: lt ? ls(8) : 6, borderRadius: lt ? ls(10) : 8, backgroundColor: c.qrFg + '12' }}>
-                  <Text style={{ fontSize: lt ? ms(11) : ms(10), fontWeight: '700', letterSpacing: 0.6, color: c.qrFg + '80' }}>TICKET</Text>
-                  <Text style={{ fontSize: lt ? ms(15) : ms(14), fontWeight: '900', color: c.qrFg, marginTop: 1 }}>{currentTicket?.ticket_code || '-'}</Text>
-                </View>
-              </View>
-              {/* Bottom: QR code centered */}
-              <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor, padding: qrPad }]}>
-                <QRCode
-                  value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
-                  size={qrSize}
-                  backgroundColor={c.white}
-                  color={c.qrFg}
-                />
-              </View>
+          {qrLoading ? (
+            <View style={{ paddingVertical: wp(40), alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={c.qrFg} />
             </View>
-            );
-          })() : (
-            /* Portrait + tablet: vertical layout */
+          ) : qrData ? (
             <ScrollView
               bounces={false}
               showsVerticalScrollIndicator={false}
@@ -1101,17 +1300,17 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={styles.qrChipRow}>
                 <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }]}>
                   <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }]}>ORDER</Text>
-                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{currentTicket?.order_code || '-'}</Text>
+                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{qrData.order_code || '-'}</Text>
                 </View>
                 <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }]}>
                   <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }]}>TICKET</Text>
-                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{currentTicket?.ticket_code || '-'}</Text>
+                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{qrData.ticket_code || '-'}</Text>
                 </View>
               </View>
               <View style={styles.qrCodeSection}>
                 <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor }]}>
                   <QRCode
-                    value={`ORDER:${currentTicket?.order_code || ''}|TICKET:${currentTicket?.ticket_code || ''}|TRUCK:${driver?.truck_code || ''}|DRIVER:${driver?.driver_code || ''}|PLANT:${currentTicket?.plant_code || ''}`}
+                    value={qrData.qr_token}
                     size={Math.round(Math.min(Math.max((width - insets.left - insets.right) * 0.45, 150), isTablet ? 260 : 200))}
                     backgroundColor={c.white}
                     color={c.qrFg}
@@ -1121,15 +1320,15 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={styles.qrFooter}>
                 <View style={[styles.qrFooterRow, { borderTopColor: c.qrFg + '12' }]}>
                   <MaterialIcons name="local-shipping" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{`TRUCK ${driver?.truck_code || '-'} · DRIVER ${driver?.driver_code || '-'}`}</Text>
+                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{`TRUCK ${qrData.truck_code || '-'} · DRIVER ${qrData.driver_code || '-'}`}</Text>
                 </View>
                 <View style={styles.qrFooterRow}>
                   <MaterialIcons name="factory" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{qrData.plant_name || '-'}</Text>
                 </View>
               </View>
             </ScrollView>
-          )}
+          ) : null}
         </View>
       </ResponsiveModal>
 
@@ -1145,25 +1344,23 @@ export default function DashboardScreen({ navigation }: Props) {
             <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
-        <ScrollView style={styles.plantsList} showsVerticalScrollIndicator={true} bounces={false}>
-          {[
-            '10-BELLEVILLE', '00-BURLINGTON', '01-BRANTFORD R/M', '02-CAMBRIDGE',
-            '05-GUELPH', '07-CAPITAL', '8-NEW HAMBURG R/M', '09-THOROLD',
-            '11-COBOURG', '12-HULL', '13-KANATA', '14-KINGSTON',
-            '31-PORTLANDS', '36-LONDON', '37-SARNIA', '38-ST. THOMAS',
-            '40-WEST LORNE', '41-WINDSOR', '42-WOODSTOCK', '43-NEWMARKET',
-            '44-HAGAN II', '45-WESTON', '54-GP03 BOWMANVILLE PORTABLE',
-            '152-WINDSOR PORTABLE',
-          ].map(plant => (
-            <TouchableOpacity
-              key={plant}
-              style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
-              activeOpacity={0.6}
-              onPress={() => setPlantsVisible(false)}>
-              <Text style={[styles.plantText, { color: c.textPrimary }]}>{plant}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {plantsLoading ? (
+          <View style={{paddingVertical: wp(40), alignItems: 'center'}}>
+            <ActivityIndicator size="large" color={c.primary} />
+          </View>
+        ) : (
+          <ScrollView style={styles.plantsList} showsVerticalScrollIndicator={true} bounces={false}>
+            {plantsList.map(plant => (
+              <TouchableOpacity
+                key={plant.id}
+                style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
+                activeOpacity={0.6}
+                onPress={() => setPlantsVisible(false)}>
+                <Text style={[styles.plantText, { color: c.textPrimary }]}>{plant.code}-{plant.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </ResponsiveModal>
 
       {/* ─── VEHICLE MODAL ─── */}
@@ -1419,10 +1616,10 @@ const styles = StyleSheet.create({
   hdrBtn: { width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center' },
 
   // Tabs
-  tabsRow: { flexDirection: 'row', gap: wp(6) },
-  tab: { flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(4), paddingHorizontal: wp(12), borderRadius: wp(10), borderWidth: 1 },
+  tabsRow: { flexDirection: 'row', gap: wp(5), paddingBottom: wp(2) },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingVertical: wp(2), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1 },
   tabDot: { width: wp(5), height: wp(5), borderRadius: wp(3) },
-  tabText: { fontWeight: '700', fontSize: ms(13), letterSpacing: 0.2 },
+  tabText: { fontWeight: '700', fontSize: ms(11), letterSpacing: 0.2 },
 
   // Scroll
   scroll: { flex: 1 },

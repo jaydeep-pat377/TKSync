@@ -30,6 +30,8 @@ import DateTimePicker from '../components/DateTimePicker';
 import ResponsiveModal from '../components/ResponsiveModal';
 import {wp, ms, hp} from '../utils/responsive';
 import {ticketsApi, type DeliveryRecord} from '../services/api';
+import {useOfflineSync} from '../contexts/OfflineSyncContext';
+import {setForceOffline, getForceOffline} from '../hooks/useNetworkStatus';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -803,6 +805,7 @@ const slumpSt = StyleSheet.create({
 
 function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
+  const {saveDeliveryTab} = useOfflineSync();
   const p = data?.plant;
   const allFieldsFilled = p != null && (
     p.slump_from_plant != null && p.slump_to_job != null && p.temp_at_plant != null &&
@@ -825,7 +828,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
     setSaving(true);
     setSavingOverlay?.(true);
     try {
-      await ticketsApi.saveDeliveryTab(ticketId, 'plant', {
+      const result = await saveDeliveryTab(ticketId, 'plant', {
         slump_from_plant: slumpFromPlant !== '' ? Number(slumpFromPlant) : null,
         slump_to_job: slumpToJob !== '' ? Number(slumpToJob) : null,
         temp_at_plant: tempAtPlant !== '' ? Number(tempAtPlant) : null,
@@ -839,8 +842,8 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         load_tested: loadTested === 'yes' ? true : loadTested === 'no' ? false : null,
         notes: plantNotes || null,
       });
-      await refreshRecord?.();
-      onSaveResult?.(true, 'Plant data has been saved successfully.');
+      if (!result.offline) await refreshRecord?.();
+      onSaveResult?.(result.success, result.message);
     } catch (err: any) {
       onSaveResult?.(false, err.message || 'Failed to save plant data.');
     } finally {
@@ -1192,6 +1195,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
 // ─── JOBSITE TAB ───
 function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
+  const {saveDeliveryTab} = useOfflineSync();
   const j = data?.jobsite;
   const jAllFieldsFilled = j != null && (
     j.full_load_litres != null && j.full_load_reason != null && j.full_load_mm != null &&
@@ -1219,7 +1223,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
     setSaving(true);
     setSavingOverlay?.(true);
     try {
-      await ticketsApi.saveDeliveryTab(ticketId, 'jobsite', {
+      const result = await saveDeliveryTab(ticketId, 'jobsite', {
         full_load_litres: fullLoadLitres,
         full_load_reason: fullLoadReason || null,
         full_load_mm: fullLoadMm !== '' ? Number(fullLoadMm) : null,
@@ -1239,8 +1243,8 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         load_tested: jobLoadTested === 'yes' ? true : jobLoadTested === 'no' ? false : null,
         notes: jobsiteNotes || null,
       });
-      await refreshRecord?.();
-      onSaveResult?.(true, 'Jobsite data has been saved successfully.');
+      if (!result.offline) await refreshRecord?.();
+      onSaveResult?.(result.success, result.message);
     } catch (err: any) {
       onSaveResult?.(false, err.message || 'Failed to save jobsite data.');
     } finally {
@@ -1811,6 +1815,7 @@ const sm = StyleSheet.create({
 // ─── RETURNED TAB ───
 function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
+  const {saveDeliveryTab} = useOfflineSync();
   const {width: _rtW, height: _rtH} = useWindowDimensions();
   const _rtLand = _rtW > _rtH;
   const r = data?.returned;
@@ -1873,13 +1878,13 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
     setSaving(true);
     setSavingOverlay?.(true);
     try {
-      await ticketsApi.saveDeliveryTab(ticketId, 'returned', {
+      const result = await saveDeliveryTab(ticketId, 'returned', {
         returned_concrete_m3: Number(concreteVal),
         disposal_method: disposalMethod || null,
         reason_for_return: returnReason || null,
       });
-      await refreshRecord?.();
-      onSaveResult?.(true, 'Returned data has been saved successfully.');
+      if (!result.offline) await refreshRecord?.();
+      onSaveResult?.(result.success, result.message);
     } catch (err: any) {
       onSaveResult?.(false, err.message || 'Failed to save returned data.');
     } finally {
@@ -2028,6 +2033,7 @@ const TIME_EVENTS = [
 
 function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
+  const {saveDeliveryTab} = useOfflineSync();
   const {width: _tw, height: _th} = useWindowDimensions();
   const _tLand = _tw > _th;
   const timeSteps = data?.time?.steps;
@@ -2053,9 +2059,9 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
     setSaving(true);
     setSavingOverlay?.(true);
     try {
-      await ticketsApi.saveDeliveryTab(ticketId, 'time', body);
-      await refreshRecord?.();
-      onSaveResult?.(true, 'Time data has been saved successfully.');
+      const result = await saveDeliveryTab(ticketId, 'time', body);
+      if (!result.offline) await refreshRecord?.();
+      onSaveResult?.(result.success, result.message);
     } catch (err: any) {
       onSaveResult?.(false, err.message || 'Failed to save time data.');
     } finally {
@@ -2219,6 +2225,7 @@ const PAYMENT_TYPES = [
 // ─── COD TAB ───
 function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
+  const {saveDeliveryTab} = useOfflineSync();
   const {width: _codW, height: _codH} = useWindowDimensions();
   const _codLand = _codW > _codH;
   const codData = data?.cod;
@@ -2239,14 +2246,14 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
     setSaving(true);
     setSavingOverlay?.(true);
     try {
-      await ticketsApi.saveDeliveryTab(ticketId, 'cod', {
+      const result = await saveDeliveryTab(ticketId, 'cod', {
         payment_type: paymentType ? (keyToApiCode[paymentType] || null) : null,
         amount: codAmount !== '' ? Number(codAmount) : null,
         wait_time_minutes: waitTime,
         notes: codNotes || null,
       });
-      await refreshRecord?.();
-      onSaveResult?.(true, 'COD data has been saved successfully.');
+      if (!result.offline) await refreshRecord?.();
+      onSaveResult?.(result.success, result.message);
     } catch (err: any) {
       onSaveResult?.(false, err.message || 'Failed to save COD data.');
     } finally {
@@ -2521,6 +2528,39 @@ const cod = StyleSheet.create({
   modalItemCircle: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2},
 });
 
+// ─── DEV DEBUG BANNER ───
+function OfflineDebugBanner() {
+  const [forced, setForced] = useState(false);
+
+  const handleToggle = useCallback(() => {
+    console.log('[DebugBanner] Toggle tapped, forced was:', forced);
+    const next = !forced;
+    setForced(next);
+    // Defer setForceOffline to avoid batching conflicts with context
+    setTimeout(() => setForceOffline(next), 0);
+  }, [forced]);
+
+  const bg = forced ? '#b71c1c' : '#1b5e20';
+  const label = forced ? 'OFFLINE' : 'ONLINE';
+  const btnLabel = forced ? 'GO ONLINE' : 'FORCE OFFLINE';
+
+  return (
+    <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: bg, paddingHorizontal: 12, paddingVertical: 8, gap: 10}}>
+      <Text style={{color: '#fff', fontSize: 12, fontWeight: '700', flex: 1}}>
+        {label}
+      </Text>
+      <TouchableOpacity
+        style={{backgroundColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4}}
+        onPress={handleToggle}
+        activeOpacity={0.6}>
+        <Text style={{color: '#fff', fontSize: 11, fontWeight: '800'}}>
+          {btnLabel}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── MAIN SCREEN ───
 export default function NotesScreen({navigation, route}: Props) {
   const ticketId = (route.params as any)?.ticketId as number | undefined;
@@ -2554,6 +2594,7 @@ export default function NotesScreen({navigation, route}: Props) {
       .finally(() => setRecordLoading(false));
   }, [ticketId]);
 
+
   useEffect(() => {
     slideAnim.setValue(20);
     Animated.spring(slideAnim, {toValue: 0, friction: 8, tension: 60, useNativeDriver: true}).start();
@@ -2582,6 +2623,7 @@ export default function NotesScreen({navigation, route}: Props) {
   return (
     <View style={[st.container, {backgroundColor: c.primaryDark}]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      {__DEV__ && <OfflineDebugBanner />}
 
       {isLandscape ? (
         <View style={[ls.lhRow, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>

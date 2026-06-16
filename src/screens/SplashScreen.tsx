@@ -238,9 +238,6 @@ export default function SplashScreen({navigation}: Props) {
 
   const smallDim = Math.min(width, height);
   const ringBaseSize = isTablet ? smallDim * 0.5 : smallDim * 0.6;
-  const logoSize = isTablet ? 120 : isLandscape ? 80 : 96;
-  const logoInnerSize = isTablet ? 88 : isLandscape ? 58 : 68;
-  const iconSize = isTablet ? 48 : isLandscape ? 32 : 38;
   const titleSize = isTablet ? 46 : isLandscape ? 32 : 38;
   const taglineSize = isTablet ? 18 : isLandscape ? 13 : 15;
   const dotSize = isTablet ? 10 : 7;
@@ -315,36 +312,11 @@ export default function SplashScreen({navigation}: Props) {
             isLandscape && styles.logoSectionLandscape,
           ]}>
           <Animated.View
-            style={[
-              styles.logoOuter,
-              {
-                backgroundColor: c.overlay12,
-                borderColor: c.overlay20,
-                shadowColor: c.shadowColor,
-                width: logoSize,
-                height: logoSize,
-                borderRadius: logoSize * 0.3,
-                transform: [{scale: logoScale}, {rotate: logoSpin}],
-              },
-            ]}>
-            <View
-              style={[
-                styles.logoInner,
-                {
-                  backgroundColor: c.primaryLight,
-                  shadowColor: c.primaryDark,
-                  width: logoInnerSize,
-                  height: logoInnerSize,
-                  borderRadius: logoInnerSize * 0.28,
-                },
-              ]}>
-              <Animated.View style={{opacity: iconOpacity}}>
-                <Image
-                  source={require('../assets/images/logo.png')}
-                  style={{width: logoInnerSize * 0.85, height: logoInnerSize * 0.85, borderRadius: logoInnerSize * 0.2}}
-                />
-              </Animated.View>
-            </View>
+            style={{
+              opacity: iconOpacity,
+              transform: [{scale: logoScale}],
+            }}>
+            <MaterialIcons name="local-shipping" size={isTablet ? 120 : isLandscape ? 80 : 100} color="#fff" />
           </Animated.View>
         </View>
 

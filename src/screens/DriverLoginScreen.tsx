@@ -21,15 +21,22 @@ import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
 import {useAuth} from '../contexts/AuthContext';
 import {ApiError} from '../services/api';
+import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
+const REMEMBER_KEY = 'remember_driver';
+const SAVED_TRUCK_KEY = 'saved_truck';
+const SAVED_PIN_KEY = 'saved_pin';
+
 export default function DriverLoginScreen({navigation}: Props) {
-  const [truckNumber, setTruckNumber] = useState('');
-  const [driverPin, setDriverPin] = useState('');
+  const savedRemember = storage.getBoolean(REMEMBER_KEY) ?? false;
+  const [truckNumber, setTruckNumber] = useState(savedRemember ? (storage.getString(SAVED_TRUCK_KEY) ?? '') : '');
+  const [driverPin, setDriverPin] = useState(savedRemember ? (storage.getString(SAVED_PIN_KEY) ?? '') : '');
+  const [rememberMe, setRememberMe] = useState(savedRemember);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const {t} = useTranslation();
@@ -98,6 +105,15 @@ export default function DriverLoginScreen({navigation}: Props) {
     setLoading(true);
     try {
       await driverLogin(truck, pin);
+      if (rememberMe) {
+        storage.set(REMEMBER_KEY, true);
+        storage.set(SAVED_TRUCK_KEY, truck);
+        storage.set(SAVED_PIN_KEY, pin);
+      } else {
+        storage.remove(REMEMBER_KEY);
+        storage.remove(SAVED_TRUCK_KEY);
+        storage.remove(SAVED_PIN_KEY);
+      }
       navigation.replace('Dashboard');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -323,6 +339,23 @@ export default function DriverLoginScreen({navigation}: Props) {
                 </View>
               ) : null}
 
+              {/* Remember Me */}
+              <TouchableOpacity
+                style={[styles.rememberRow, landscapePhone && {marginBottom: 4}]}
+                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.7}>
+                <View style={[
+                  styles.checkbox,
+                  {borderColor: rememberMe ? c.primary : c.border},
+                  rememberMe && {backgroundColor: c.primary},
+                ]}>
+                  {rememberMe && <MaterialIcons name="check" size={ms(12)} color={c.textOnPrimary} />}
+                </View>
+                <Text style={[styles.rememberText, {color: c.textSecondary}]}>
+                  {t('driverLogin.rememberMe', 'Remember Me')}
+                </Text>
+              </TouchableOpacity>
+
               {/* Sign In Button */}
               <TouchableOpacity
                 style={[
@@ -384,6 +417,9 @@ const styles = StyleSheet.create({
   input: {flex: 1, paddingVertical: wp(12), fontSize: ms(15), paddingRight: wp(14)},
   errorBox: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(8), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(10)},
   errorText: {fontSize: ms(12), fontWeight: '500', flex: 1},
+  rememberRow: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(10)},
+  checkbox: {width: wp(20), height: wp(20), borderRadius: wp(5), borderWidth: 1.5, justifyContent: 'center', alignItems: 'center'},
+  rememberText: {fontSize: ms(13), fontWeight: '500'},
   loginButton: {flexDirection: 'row', borderRadius: wp(12), paddingVertical: wp(14), alignItems: 'center', justifyContent: 'center', gap: wp(8), marginTop: wp(6), elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
   loginButtonText: {fontSize: ms(16), fontWeight: '700', letterSpacing: 0.5},
   footer: {flexDirection: 'row', alignItems: 'center', marginTop: wp(14), gap: wp(12)},
