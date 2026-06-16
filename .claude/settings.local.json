@@ -30,7 +30,18 @@
       "WebSearch",
       "Bash(adb:*)",
       "Bash(./gradlew assembleDebug)",
-      "Bash(ENVFILE=.env.production ./gradlew assembleRelease)"
+      "Bash(ENVFILE=.env.production ./gradlew assembleRelease)",
+      "Bash(find /Users/admin/Desktop/TKSync/src -name *type* -o -name *interface*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(open -a Simulator)",
+      "Bash(curl:*)",
+      "Bash(find /Users/admin/Desktop/TKSync/src -type f -name *.png -o -name *.jpg -o -name *.svg)",
+      "Bash(find /Users/admin/Desktop/TKSync -name *.svg -o -name *truck* -o -name *cement* -o -name *mixer*)",
+      "Bash(find /Users/admin/Desktop/tksync-mobile-api -name *.svg -o -name *truck* -o -name *Truck* -o -name *cement* -o -name *splash* -o -name *Splash*)",
+      "Bash(find /Users/admin/Desktop/tksync-mobile-api -name *.svg -o -name *.png -o -name *.jpg)",
+      "Bash(find /Users/admin/Desktop -maxdepth 3 -name *CementTruck* -o -name *concreteTruck* -o -name *MixerTruck* -o -name *ReadyMix*)",
+      "Bash(git checkout:*)",
+      "Bash(python3 -m json.tool)"
     ]
   }
 }

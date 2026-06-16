@@ -275,6 +275,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [activeBottom, setActiveBottom] = useState(-1);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
   const { t } = useTranslation();
   const { isDark, toggle, c } = useTheme();
   const { driverLogout, companyLogout, driver, company } = useAuth();
@@ -311,6 +312,7 @@ export default function DashboardScreen({ navigation }: Props) {
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
       setActiveTicket(0);
+      setDateFrom(data.filters?.date_from || null);
       setLastSyncTime(new Date());
     } catch (err) {
       console.log('[Tickets] fetch error:', err);
@@ -791,11 +793,11 @@ export default function DashboardScreen({ navigation }: Props) {
                   <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary }}>{company?.company_name || t('app.name')}</Text>
                 </View>
                 {/* Weather inline */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, flexShrink: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
                   <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={14} color={c.textOnPrimary} />
-                  <View style={{ flexShrink: 1 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                    <Text style={{ fontSize: 8, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                  <View>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                    <Text style={{ fontSize: 8, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                   </View>
                 </View>
                 {/* Vehicle & Employee stacked */}
@@ -832,11 +834,11 @@ export default function DashboardScreen({ navigation }: Props) {
                   {/* Weather + Vehicle + Employee — landscape only, before sync */}
                   {L && (
                     <>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), flexShrink: 1, maxWidth: '40%' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12) }}>
                         <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={ls(16)} color={c.textOnPrimary} />
-                        <View style={{ flexShrink: 1 }}>
-                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                        <View>
+                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                         </View>
                       </View>
                       <View style={{ backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), gap: ls(2) }}>
@@ -884,8 +886,8 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10) }}>
             <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
             <View style={{ flex: 1, flexShrink: 1 }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3 }} numberOfLines={1}>{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-              <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary, marginTop: 1 }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3 }}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+              <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary, marginTop: 1 }}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
             </View>
             <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(5), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(2) }}>
               <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
@@ -945,6 +947,9 @@ export default function DashboardScreen({ navigation }: Props) {
                       <Text style={{ fontWeight: '600', fontSize: ms(13), color: '#fff' }}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
                     </View>
                   )}
+                  {dateFrom ? (
+                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary, marginLeft: lt ? ls(6) : 4 }}>{dateFrom}</Text>
+                  ) : null}
                 </View>
               </FadeCard>
             ) : (
@@ -988,6 +993,12 @@ export default function DashboardScreen({ navigation }: Props) {
                         <Text style={[styles.chipLabel, { color: '#fff' }]}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
                       </View>
                     )}
+                    {dateFrom ? (
+                      <>
+                        <View style={{ flex: 1 }} />
+                        <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary }}>{dateFrom}</Text>
+                      </>
+                    ) : null}
                   </View>
                 </FadeCard>
               </>
@@ -1014,32 +1025,37 @@ export default function DashboardScreen({ navigation }: Props) {
 
               {/* Steps */}
               {L ? (
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingTop: ls(2), paddingBottom: ls(1), marginHorizontal: ls(4) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingTop: ls(1), paddingBottom: ls(1), marginHorizontal: ls(4) }}>
                   {timeline.map((item, i) => {
                     const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
                     const isFirst = i === 0;
                     const isLast = i === timeline.length - 1;
-                    const dotSz = lt ? (isActive ? ls(20) : ls(16)) : (isActive ? 16 : 12);
+                    const dotSz = lt ? (isActive ? ls(14) : ls(10)) : (isActive ? 12 : 9);
                     const lineDone = item.done && !isLast && timeline[i + 1]?.done;
+                    const rowH = lt ? ls(16) : 12;
                     return (
-                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1, overflow: 'visible' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', height: lt ? ls(22) : 16, width: '100%' }}>
-                          {!isFirst && <View style={{ flex: 1, height: ls(2), backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
+                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', height: rowH, width: '100%' }}>
+                          {isFirst
+                            ? <View style={{ flex: 1 }} />
+                            : <View style={{ flex: 1, height: ls(1.5), backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
                           <View style={{
                             width: dotSz, height: dotSz, borderRadius: dotSz / 2,
                             justifyContent: 'center', alignItems: 'center',
                             backgroundColor: item.done ? c.primary : c.surface,
-                            borderWidth: isActive ? 2.5 : 1.5,
+                            borderWidth: isActive ? 2 : 1,
                             borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
                           }}>
-                            {item.done && <MaterialIcons name="check" size={lt ? (isActive ? ls(11) : ls(9)) : (isActive ? 9 : 7)} color={c.textOnPrimary} />}
+                            {item.done && <MaterialIcons name="check" size={lt ? (isActive ? ls(8) : ls(6)) : (isActive ? 7 : 5)} color={c.textOnPrimary} />}
                           </View>
-                          {!isLast && <View style={{ flex: 1, height: ls(2), backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
+                          {isLast
+                            ? <View style={{ flex: 1 }} />
+                            : <View style={{ flex: 1, height: ls(1.5), backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
                         </View>
-                        <Text style={{ fontSize: ms(9), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: ls(2) }} numberOfLines={1}>
+                        <Text style={{ fontSize: ms(9), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: ls(1) }} numberOfLines={1}>
                           {t(item.labelKey)}
                         </Text>
-                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, marginTop: ls(1) }}>
+                        <Text style={{ fontSize: ms(10), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, textAlign: 'center', marginTop: ls(1) }}>
                           {item.time}
                         </Text>
                       </View>
@@ -1047,32 +1063,36 @@ export default function DashboardScreen({ navigation }: Props) {
                   })}
                 </View>
               ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(2), paddingBottom: wp(1) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(1), paddingBottom: wp(1) }}>
                   {timeline.map((item, i) => {
                     const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
                     const isFirst = i === 0;
                     const isLast = i === timeline.length - 1;
-                    const dotSz = isActive ? wp(14) : wp(10);
+                    const dotSz = isActive ? wp(10) : wp(7);
                     const lineDone = item.done && !isLast && timeline[i + 1]?.done;
                     return (
                       <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(16), width: '100%' }}>
-                          {!isFirst && <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(12), width: '100%' }}>
+                          {isFirst
+                            ? <View style={{ flex: 1 }} />
+                            : <View style={{ flex: 1, height: 1.5, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
                           <View style={{
                             width: dotSz, height: dotSz, borderRadius: dotSz / 2,
                             justifyContent: 'center', alignItems: 'center',
                             backgroundColor: item.done ? c.primary : c.surface,
-                            borderWidth: isActive ? 2 : 1.5,
+                            borderWidth: isActive ? 1.5 : 1,
                             borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
                           }}>
-                            {item.done && <MaterialIcons name="check" size={isActive ? ms(8) : ms(6)} color={c.textOnPrimary} />}
+                            {item.done && <MaterialIcons name="check" size={isActive ? ms(6) : ms(4)} color={c.textOnPrimary} />}
                           </View>
-                          {!isLast && <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
+                          {isLast
+                            ? <View style={{ flex: 1 }} />
+                            : <View style={{ flex: 1, height: 1.5, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
                         </View>
-                        <Text style={{ fontSize: ms(8), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
+                        <Text style={{ fontSize: ms(9), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 1 }} numberOfLines={1}>
                           {t(item.labelKey)}
                         </Text>
-                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border }}>
+                        <Text style={{ fontSize: ms(10), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, textAlign: 'center' }}>
                           {item.time}
                         </Text>
                       </View>

