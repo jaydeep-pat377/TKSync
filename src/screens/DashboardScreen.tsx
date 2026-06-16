@@ -267,6 +267,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [plantsList, setPlantsList] = useState<Plant[]>([]);
   const [plantsLoading, setPlantsLoading] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
+  const [detailsVisible, setDetailsVisible] = useState(false);
+  const [pendingDetails, setPendingDetails] = useState(false);
   const [productsVisible, setProductsVisible] = useState(false);
   const [vehicleVisible, setVehicleVisible] = useState(false);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -308,7 +310,7 @@ export default function DashboardScreen({ navigation }: Props) {
     try {
       if (showLoading) setLoading(true);
       setRefreshing(true);
-      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, status: 'active' });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
       setActiveTicket(0);
@@ -353,8 +355,11 @@ export default function DashboardScreen({ navigation }: Props) {
     if (ticket) {
       fetchDetail(ticket.id);
       ticketsApi.getDeliveryRecord(ticket.id)
-        .then(res => setDeliveryRecord(res.data))
-        .catch(() => setDeliveryRecord(null));
+        .then(res => {
+          setDeliveryRecord(res.data);
+          setPendingDetails(prev => { if (prev) { setDetailsVisible(true); } return false; });
+        })
+        .catch(() => { setDeliveryRecord(null); setPendingDetails(false); });
     } else {
       setDetail(null);
       setDeliveryRecord(null);
@@ -871,7 +876,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   const isSelected = activeTicket === i;
                   const isCompleted = ticket.at_plant_time != null;
                   return (
-                    <TouchableOpacity key={ticket.id} onPress={() => setActiveTicket(i)} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
+                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } setActiveTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
                       <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
@@ -930,27 +935,32 @@ export default function DashboardScreen({ navigation }: Props) {
                     </React.Fragment>
                   ))}
                   <View style={{ flex: 1 }} />
-                  {currentTicket != null && (() => {
-                    const status = getTicketStatus(currentTicket, detail);
-                    const isCompleted = status.type === 'completed';
-                    const isActive = status.type === 'active';
-                    const isVoided = status.type === 'voided';
-                    return (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isVoided ? c.error : isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
-                        {isActive && <View style={{ width: lt ? ls(7) : 6, height: lt ? ls(7) : 6, borderRadius: 4, backgroundColor: '#000' }} />}
-                        <Text style={{ fontWeight: '600', fontSize: ms(13), color: isVoided ? '#fff' : isCompleted ? c.primary : isActive ? '#000' : c.warningDark }}>{t(status.key)}</Text>
-                      </View>
-                    );
-                  })()}
-                  {currentTicket != null && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.error, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
-                      <Text style={{ fontWeight: '600', fontSize: ms(13), color: '#fff' }}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
+                  <View style={{ alignItems: 'flex-end', gap: lt ? ls(4) : 3 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(5) : 4 }}>
+                      {currentTicket != null && (() => {
+                        const status = getTicketStatus(currentTicket, detail);
+                        const isCompleted = status.type === 'completed';
+                        const isActive = status.type === 'active';
+                        const isVoided = status.type === 'voided';
+                        return (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isVoided ? c.error : isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
+                            {isActive && <View style={{ width: lt ? ls(7) : 6, height: lt ? ls(7) : 6, borderRadius: 4, backgroundColor: '#000' }} />}
+                            <Text style={{ fontWeight: '600', fontSize: ms(13), color: isVoided ? '#fff' : isCompleted ? c.primary : isActive ? '#000' : c.warningDark }}>{t(status.key)}</Text>
+                          </View>
+                        );
+                      })()}
+                      {currentTicket != null && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.error, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
+                          <Text style={{ fontWeight: '600', fontSize: ms(13), color: '#fff' }}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                  {dateFrom ? (
-                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary, marginLeft: lt ? ls(6) : 4 }}>{dateFrom}</Text>
-                  ) : null}
+                    {dateFrom ? (
+                      <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary }}>{dateFrom}</Text>
+                    ) : null}
+                  </View>
                 </View>
+
               </FadeCard>
             ) : (
               <>
@@ -1594,6 +1604,135 @@ export default function DashboardScreen({ navigation }: Props) {
               );
             })}
           </View>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── MISSING FIELDS MODAL ─── */}
+      <ResponsiveModal
+        visible={detailsVisible}
+        onClose={() => setDetailsVisible(false)}
+        maxWidth={L ? (lt ? 540 : 440) : isTablet ? 540 : 420}
+        widthPercent={L ? (lt ? 50 : 70) : isTablet ? 60 : 90}
+        maxHeightPercent={L ? 95 : 85}>
+        <View style={{ backgroundColor: c.surface }}>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8), padding: wp(12), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+            <View style={{ width: wp(28), height: wp(28), borderRadius: wp(8), backgroundColor: c.warningSurface, justifyContent: 'center', alignItems: 'center' }}>
+              <MaterialIcons name="warning" size={ms(16)} color={c.warningDark} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary }}>Missing Fields</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted }}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
+            </View>
+            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surfaceAlt }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: wp(12), gap: wp(12) }}>
+            {(() => {
+              if (!deliveryRecord) return null;
+              const missing: { section: string; icon: string; fields: string[] }[] = [];
+
+              // Plant
+              if (deliveryRecord.plant) {
+                const p = deliveryRecord.plant;
+                const fields: string[] = [];
+                if (p.slump_from_plant == null) fields.push('Slump From Plant');
+                if (p.slump_to_job == null) fields.push('Slump To Job');
+                if (p.temp_at_plant == null) fields.push('Temp At Plant');
+                if (p.water_added_full == null) fields.push('Water Added');
+                if (!p.water_reason) fields.push('Water Reason');
+                if (!p.truck_start) fields.push('Truck Start');
+                if (!p.truck_end) fields.push('Truck End');
+                if (p.hand_added == null) fields.push('Hand Added');
+                if (p.nitrogen_added == null) fields.push('Nitrogen Added');
+                if (p.fibers_added == null) fields.push('Fibers Added');
+                if (p.load_tested == null) fields.push('Load Tested');
+                if (!p.notes) fields.push('Notes');
+                if (fields.length > 0) missing.push({ section: 'Plant', icon: 'factory', fields });
+              }
+
+              // Jobsite
+              if (deliveryRecord.jobsite) {
+                const j = deliveryRecord.jobsite;
+                const fields: string[] = [];
+                if (j.full_load_litres == null) fields.push('Full Load Litres');
+                if (!j.full_load_reason) fields.push('Full Load Reason');
+                if (j.full_load_mm == null) fields.push('Full Load MM');
+                if (j.customer_water_litres == null) fields.push('Customer Water Litres');
+                if (j.customer_water_mm == null) fields.push('Customer Water MM');
+                if (j.maintenance_water_litres == null) fields.push('Maintenance Water Litres');
+                if (j.maintenance_water_mm == null) fields.push('Maintenance Water MM');
+                if (!j.super_plasticizer) fields.push('Super Plasticizer');
+                if (!j.conveyor) fields.push('Conveyor');
+                if (!j.color) fields.push('Color');
+                if (!j.fiber) fields.push('Fiber');
+                if (!j.other) fields.push('Other');
+                if (j.conveyor_ordered_not_used == null) fields.push('Conveyor Ordered Not Used');
+                if (j.unloaded_conveyor == null) fields.push('Unloaded Conveyor');
+                if (j.load_disputed == null) fields.push('Load Disputed');
+                if (!j.washout_area) fields.push('Washout Area');
+                if (j.load_tested == null) fields.push('Load Tested');
+                if (!j.notes) fields.push('Notes');
+                if (fields.length > 0) missing.push({ section: 'Jobsite', icon: 'location-on', fields });
+              }
+
+              // Returned
+              if (deliveryRecord.returned) {
+                const r = deliveryRecord.returned;
+                const fields: string[] = [];
+                if (r.returned_concrete_m3 == null) fields.push('Returned Concrete');
+                if (!r.disposal_method) fields.push('Disposal Method');
+                if (!r.reason_for_return) fields.push('Reason For Return');
+                if (fields.length > 0) missing.push({ section: 'Returned', icon: 'undo', fields });
+              }
+
+              // Time
+              if (deliveryRecord.time?.steps) {
+                const fields = deliveryRecord.time.steps.filter(s => !s.done).map(s => s.label);
+                if (fields.length > 0) missing.push({ section: 'Time', icon: 'schedule', fields });
+              }
+
+              // COD
+              if (deliveryRecord.cod) {
+                const cd = deliveryRecord.cod;
+                const fields: string[] = [];
+                if (!cd.payment_type) fields.push('Payment Type');
+                if (cd.amount == null) fields.push('Amount');
+                if (cd.wait_time_minutes == null) fields.push('Wait Time');
+                if (!cd.notes) fields.push('Notes');
+                if (fields.length > 0) missing.push({ section: 'COD', icon: 'payments', fields });
+              }
+
+              if (missing.length === 0) {
+                return (
+                  <View style={{ alignItems: 'center', paddingVertical: wp(20) }}>
+                    <MaterialIcons name="check-circle" size={ms(40)} color={c.primary} />
+                    <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(8) }}>All fields are filled</Text>
+                  </View>
+                );
+              }
+
+              return missing.map((group) => (
+                <View key={group.section}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), marginBottom: wp(6) }}>
+                    <MaterialIcons name={group.icon as any} size={ms(14)} color={c.warningDark} />
+                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary }}>{group.section}</Text>
+                    <View style={{ backgroundColor: c.warningSurface, paddingHorizontal: wp(6), paddingVertical: wp(1), borderRadius: wp(8) }}>
+                      <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.warningDark }}>{group.fields.length}</Text>
+                    </View>
+                  </View>
+                  {group.fields.map((field, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingVertical: wp(4), borderBottomWidth: idx < group.fields.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                      <MaterialIcons name="radio-button-unchecked" size={ms(10)} color={c.error} />
+                      <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textSecondary }}>{field}</Text>
+                    </View>
+                  ))}
+                </View>
+              ));
+            })()}
+          </ScrollView>
         </View>
       </ResponsiveModal>
 
