@@ -1,7 +1,8 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useRef, useCallback} from 'react';
 import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import {addBreadcrumb} from '../services/sentry';
 import SplashScreen from '../screens/SplashScreen';
 import CompanyLoginScreen from '../screens/CompanyLoginScreen';
 import DriverLoginScreen from '../screens/DriverLoginScreen';
@@ -28,8 +29,17 @@ export default function AppNavigator() {
     },
   }), [c.primaryDark]);
 
+  const navigationRef = useRef<any>();
+
+  const onStateChange = useCallback(() => {
+    const currentRoute = navigationRef.current?.getCurrentRoute?.()?.name;
+    if (currentRoute) {
+      addBreadcrumb(`Navigate to ${currentRoute}`, 'navigation');
+    }
+  }, []);
+
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme} onStateChange={onStateChange}>
       <Stack.Navigator
         initialRouteName="Splash"
         screenOptions={{

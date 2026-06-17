@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
   View,
   Text,
@@ -21,26 +21,12 @@ import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {ticketsApi} from '../services/api';
+import type {SigningData} from '../services/api';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{AcceptTicket: {ticketId?: number}}, 'AcceptTicket'>;
 };
-
-const PRODUCTS = [
-  {code: '6138506', desc: '32MPA AIR C2 .45 SIDEWALK', qty: '6.00', unit: 'm3'},
-  {code: '14301', desc: 'FLEX FUEL SURCHARGE', qty: '6.00', unit: '/m'},
-  {code: '5843', desc: 'FUEL SURCHARGE - CBM /M3', qty: '6.00', unit: '/m'},
-];
-
-const CAUTION_TEXT =
-  'CEMENT POWDER OR FRESHLY MIXED CONCRETE, GROUT OR MORTAR IS CAUSTIC AND CORROSIVE, AND CAN DESTROY SKIN AND TISSUE. FRESH CONCRETE CAN WET AND PENETRATE CLOTHING. THEREFORE, WATERPROOF CLOTHING SHOULD BE USED, AND IF ANY CLOTHING GETS WET, THE SKIN MUST BE PROMPTLY WASHED WITH WATER AND FRESH, DRY CLOTHING PUT ON. IF ANY CEMENT MIXTURE AS ABOVE GETS INTO EYES, RINSE IMMEDIATELY AND REPEATEDLY WITH WATER AND GET PROMPT MEDICAL ATTENTION. KEEP OUT OF REACH OF CHILDREN.';
-
-const TERMS_EN =
-  'ST. MARYS CEMENT INC. (CANADA) D/B/A CANADA BUILDING MATERIALS IS PLEASED TO DELIVER THE CONCRETE OR CONCRETE PRODUCTS ("PRODUCTS") DESCRIBED ON THIS DELIVERY TICKET. PLEASE BE ADVISED THAT THE\n    PRODUCT IS SUBJECT TO OUR TERMS AND CONDITIONS OF SALE - CONCRETE (AVAILABLE ON OUR WEBSITE AT HTTP://SALESTERMSANDCONDITIONS.VCNAINC.COM/ OR ON REQUEST). ANY PROPOSAL OR ATTEMPT TO MODIFY\n    THESE TERMS, INCLUDING BY ANNOTATION ON THE FACE OF THIS DELIVERY TICKET, IS EXPRESSLY REJECTED.  ANY DISAGREEMENTS WITH THE INFORMATION CONTAINED ON THIS TICKET MUST BE REPORTED WITHIN 24 HOURS OF DELIVERY, OTHERWISE ALL INFORMATION WILL BE DEEMED FINAL.';
-
-const TERMS_FR =
-  '    ST. MARYS CEMENT INC. (CANADA) D/B/A CANADA BUILDING MATERIALS A LE PLAISIR DE LIVRER LE BETON OU LES PRODUITS A BASE DE BETON (LE << PRODUIT >>) DECRITS DANS LA PRESENTE FICHE DE LIVRAISON. VEUILLEZ NOTER QUE LE\n    PRODUIT EST ASSUJETTI A NOS CONDITIONS DE VENTE - BETON (DISPONIBLES SUR NOTRE SITE WEB A L\'ADRESSE HTTP://SALESTERMSANDCONDITIONS.VCNAINC.COM/ OU SUR DEMANDE). TOUTE PROPOSITION OU TENTATIVE DE\n    MODIFICATION DES PRESENTES CONDITIONS, Y COMPRIS PAR ANNOTATION AU RECTO DE LA PRESENTE FICHE DE LIVRAISON, EST EXPRESSEMENT REJETEE.TOUT DESACCORD AVEC LES INFORMATIONS CONTENUES SUR CE BILLET DOIT ETRE SIGNALE DANS LES 24 HEURES SUIVANT LA LIVRAISON, AUTREMENT TOUTES LES INFORMATIONS SERONT CONSIDEREES DEFINITIVES.';
 
 export default function AcceptTicketScreen({navigation, route}: Props) {
   const {c} = useTheme();
@@ -54,6 +40,10 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
   const cardMaxWidth = isTabletLandscape ? undefined : 700;
   const ticketId = route.params?.ticketId;
+
+  const [data, setData] = useState<SigningData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [typeName, setTypeName] = useState('');
@@ -62,15 +52,45 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
 
+  useEffect(() => {
+    if (!ticketId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setLoadError(null);
+        const res = await ticketsApi.getSigning(ticketId);
+        if (!cancelled) {
+          setData(res.data);
+          const accepted = res.data?.status?.accepted;
+          if (accepted) {
+            if (accepted.email) setEmail(accepted.email);
+            if (accepted.customer_notes) setCustomerNotes(accepted.customer_notes);
+            if (accepted.signed_name) setTypeName(accepted.signed_name);
+          }
+        }
+      } catch (err: any) {
+        if (!cancelled) setLoadError(err.message || 'Failed to load signing data.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ticketId]);
+
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
   }, []);
+
+  const alreadySigned = data?.status?.is_signed === true;
+  const alreadyDisputed = data?.status?.is_disputed === true;
+  const isFormDisabled = alreadySigned || alreadyDisputed;
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isNotesValid = customerNotes.trim().length > 0;
   const isNameValid = typeName.trim().length > 0;
   const isSigned = signature !== null && signature.length > 0;
-  const canSubmit = isEmailValid && isNotesValid && isNameValid && isSigned && !submitting;
+  const canSubmit = isEmailValid && isNotesValid && isNameValid && isSigned && !submitting && !isFormDisabled;
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || !ticketId || !signature) return;
@@ -95,6 +115,33 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
     setAlert(null);
     if (wasSuccess) navigation.goBack();
   }, [alert, navigation]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <View style={[s.container, s.centerContent, {backgroundColor: c.white}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <ActivityIndicator size="large" color={c.accent} />
+        <Text style={[s.loadingText, {color: c.textSecondary}]}>Loading ticket...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (loadError || !data) {
+    return (
+      <View style={[s.container, s.centerContent, {backgroundColor: c.white}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <MaterialIcons name="error-outline" size={ms(48)} color={c.error} />
+        <Text style={[s.errorText, {color: c.textPrimary}]}>{loadError || 'No data available.'}</Text>
+        <TouchableOpacity style={[s.retryBtn, {backgroundColor: c.accent}]} onPress={() => navigation.goBack()}>
+          <Text style={[s.retryBtnText, {color: c.textOnPrimary}]}>GO BACK</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const {ticket, products, legal, status} = data;
 
   return (
     <View style={[s.container, {backgroundColor: isLandscape ? c.white : c.accentBg}]}>
@@ -125,10 +172,20 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
             </TouchableOpacity>
           </View>
 
+          {/* Already signed/disputed banner */}
+          {isFormDisabled && (
+            <View style={[s.banner, {backgroundColor: alreadySigned ? c.successSurface : c.errorSurface}]}>
+              <MaterialIcons name={alreadySigned ? 'check-circle' : 'report-problem'} size={ms(18)} color={alreadySigned ? c.success : c.error} />
+              <Text style={[s.bannerText, {color: alreadySigned ? c.success : c.error}]}>
+                {alreadySigned ? 'This ticket has already been signed.' : 'This ticket has been disputed.'}
+              </Text>
+            </View>
+          )}
+
           {/* Caution Section */}
           <View style={[s.section, {borderBottomColor: c.border}]}>
             <Text style={[s.sectionTitle, {color: c.textPrimary}]}>CAUTION</Text>
-            <Text style={[s.bodyText, {color: c.textPrimary}]}>{CAUTION_TEXT}</Text>
+            <Text style={[s.bodyText, {color: c.textPrimary}]}>{legal.caution}</Text>
           </View>
 
           {/* Products Table */}
@@ -144,14 +201,15 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
             </View>
 
             {/* Table Body */}
-            {PRODUCTS.map((row, i) => (
+            {products.map((row, i) => (
               <View key={`${row.code}-${i}`} style={[s.tableRow, {borderBottomColor: c.borderLight}]}>
                 <Text style={[s.colCode, s.tdText, {color: c.textPrimary}]}>{row.code}</Text>
-                <Text style={[s.colDesc, s.tdText, {color: c.textPrimary}]}>{row.desc}</Text>
-                <Text style={[s.colQty, s.tdText, {color: c.textPrimary}]}>{row.qty}</Text>
-                <Text style={[s.colUnit, s.tdText, {color: c.textPrimary}]}>{row.unit}</Text>
+                <Text style={[s.colDesc, s.tdText, {color: c.textPrimary}]}>{row.description}</Text>
+                <Text style={[s.colQty, s.tdText, {color: c.textPrimary}]}>{row.quantity != null ? row.quantity : '-'}</Text>
+                <Text style={[s.colUnit, s.tdText, {color: c.textPrimary}]}>{row.unit || '-'}</Text>
               </View>
             ))}
+
           </View>
 
           {/* Email Mobile Ticket */}
@@ -168,6 +226,7 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
                 autoCapitalize="none"
                 placeholder="Enter email"
                 placeholderTextColor={c.textMuted}
+                editable={!isFormDisabled}
               />
             </View>
 
@@ -179,17 +238,18 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
                 onChangeText={setCustomerNotes}
                 placeholder="Enter notes"
                 placeholderTextColor={c.textMuted}
+                editable={!isFormDisabled}
               />
             </View>
           </View>
 
           {/* Terms & Conditions */}
           <View style={[s.section, {borderBottomColor: c.border}]}>
-            <Text style={[s.termsText, {color: c.textPrimary}]}>{TERMS_EN}</Text>
-            <Text style={[s.termsText, {color: c.textPrimary, marginTop: 12}]}>{TERMS_FR}</Text>
+            <Text style={[s.termsText, {color: c.textPrimary}]}>{legal.terms_en}</Text>
+            <Text style={[s.termsText, {color: c.textPrimary, marginTop: 12}]}>{legal.terms_fr}</Text>
           </View>
 
-          {/* Type Name */}
+          {/* Type Name + Signature + Submit */}
           <View style={s.signSection}>
             <View style={s.inputRow}>
               <Text style={[s.inputLabel, {color: c.textPrimary}]}>TYPE NAME</Text>
@@ -199,24 +259,27 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
                 onChangeText={setTypeName}
                 placeholder="Enter name"
                 placeholderTextColor={c.textMuted}
+                editable={!isFormDisabled}
               />
             </View>
 
-            {/* Signature Pad */}
-            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
+            {!isFormDisabled && (
+              <>
+                <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
 
-            {/* Submit Button */}
-            <TouchableOpacity
-              style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
-              activeOpacity={canSubmit ? 0.8 : 1}
-              disabled={!canSubmit}
-              onPress={handleSubmit}>
-              {submitting ? (
-                <ActivityIndicator size="small" color={c.textOnPrimary} />
-              ) : (
-                <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
+                  activeOpacity={canSubmit ? 0.8 : 1}
+                  disabled={!canSubmit}
+                  onPress={handleSubmit}>
+                  {submitting ? (
+                    <ActivityIndicator size="small" color={c.textOnPrimary} />
+                  ) : (
+                    <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
         </View>
@@ -239,11 +302,18 @@ const s = StyleSheet.create({
   flex1: {flex: 1},
   scroll: {flex: 1},
   scrollContent: {},
+  centerContent: {justifyContent: 'center', alignItems: 'center'},
 
   card: {
     marginBottom: wp(10),
     overflow: 'visible',
   },
+
+  // Loading / Error
+  loadingText: {fontSize: ms(13), marginTop: wp(12)},
+  errorText: {fontSize: ms(14), fontWeight: '600', marginTop: wp(12), textAlign: 'center', paddingHorizontal: wp(20)},
+  retryBtn: {marginTop: wp(16), paddingVertical: wp(10), paddingHorizontal: wp(24), borderRadius: wp(8)},
+  retryBtnText: {fontSize: ms(13), fontWeight: '800'},
 
   // Header
   header: {
@@ -259,6 +329,10 @@ const s = StyleSheet.create({
   },
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
+
+  // Banner
+  banner: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(12), gap: wp(8)},
+  bannerText: {fontSize: ms(12), fontWeight: '700', flex: 1},
 
   // Section
   section: {paddingHorizontal: wp(12), paddingVertical: wp(14), borderBottomWidth: 1},

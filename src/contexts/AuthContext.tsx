@@ -6,6 +6,7 @@ import {
   type CompanyLoginResponse,
   type DriverLoginResponse,
 } from '../services/api';
+import {setSentryUser} from '../services/sentry';
 
 type CompanyInfo = {
   company_id: number;
@@ -114,13 +115,20 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       storage.set('refresh_token', data.refresh_token);
       storage.set('driver', JSON.stringify(driver));
 
+      setSentryUser({
+        id: String(data.driver_id),
+        driverCode: data.driver_code,
+        truckCode: data.truck_code,
+        companyCode: state.company?.company_code,
+      });
+
       setState(prev => ({
         ...prev,
         isDriverLoggedIn: true,
         driver,
       }));
     },
-    [],
+    [state.company],
   );
 
   const driverLogout = useCallback(async () => {
@@ -135,6 +143,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       storage.remove('driver');
     }
 
+    setSentryUser(null);
+
     setState(prev => ({
       ...prev,
       isDriverLoggedIn: false,
@@ -146,6 +156,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     try {
       await authApi.companyLogout();
     } catch {}
+
+    setSentryUser(null);
 
     storage.remove('access_token');
     storage.remove('refresh_token');

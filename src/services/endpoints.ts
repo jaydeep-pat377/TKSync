@@ -15,6 +15,7 @@ export const ENDPOINTS = {
   TICKET_PRINT: (id: number) => `/tickets/${id}/print`,
   TICKET_DELIVERY_RECORD: (id: number) => `/tickets/${id}/delivery-record`,
   TICKET_DELIVERY_TAB: (id: number, tab: string) => `/tickets/${id}/delivery-record/${tab}`,
+  TICKET_SIGNING: (id: number) => `/tickets/${id}/signing`,
   TICKET_SIGN: (id: number) => `/tickets/${id}/sign`,
   TICKET_DISPUTE: (id: number) => `/tickets/${id}/dispute`,
   TICKET_QR: (id: number) => `/tickets/${id}/qr`,

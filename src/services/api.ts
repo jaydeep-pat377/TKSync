@@ -2,6 +2,7 @@ import Config from 'react-native-config';
 import {storage} from './storage';
 import {ENDPOINTS} from './endpoints';
 import {showToast} from '../utils/toast';
+import {captureError, addBreadcrumb} from './sentry';
 
 const BASE_URL = Config.API_BASE_URL || '';
 
@@ -80,14 +81,16 @@ async function request<T = any>(
     const {title, message} = classifyError(err);
     console.warn(`[API] ${method} ${endpoint} — ${title}: ${message}`);
     if (!isSilent) showToast('error', title, message);
+    captureError(err instanceof Error ? err : new Error(String(err)), {endpoint, method});
     throw err;
   }
 
   // Server-level errors (5xx, 408, 429)
   const httpErr = classifyHttpStatus(res.status);
-  if (httpErr && !isSilent) {
+  if (httpErr) {
     console.warn(`[API] ${method} ${endpoint} — HTTP ${res.status}`);
-    showToast('error', httpErr.title, httpErr.message);
+    if (!isSilent) showToast('error', httpErr.title, httpErr.message);
+    captureError(new Error(`HTTP ${res.status}: ${httpErr.title}`), {endpoint, method, status: res.status});
   }
 
   let json: ApiResponse<T>;
@@ -97,6 +100,7 @@ async function request<T = any>(
     const msg = 'Invalid response from server.';
     console.warn(`[API] ${method} ${endpoint} — JSON parse failed`);
     if (!isSilent) showToast('error', 'Server Error', msg);
+    captureError(new Error('API response parse failed'), {endpoint, method, status: res.status});
     throw new ApiError(msg, 'PARSE_ERROR');
   }
 
@@ -109,17 +113,24 @@ async function request<T = any>(
     ...(json.errors ? {errors: json.errors} : {}),
   });
 
+  addBreadcrumb(`${method} ${endpoint}`, 'api', {status: res.status, success: json.success});
+
   if (!json.success) {
     // If token expired, try refresh
     if (res.status === 401 && json.error_code === 'TOKEN_EXPIRED') {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
-        headers.Authorization = `Bearer ${storage.getString('access_token')}`;
-        const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
-          ...options,
-          headers,
-        });
-        return retryRes.json();
+        try {
+          headers.Authorization = `Bearer ${storage.getString('access_token')}`;
+          const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          return retryRes.json();
+        } catch (retryErr) {
+          captureError(retryErr instanceof Error ? retryErr : new Error(String(retryErr)), {endpoint, method, context: 'token_refresh_retry'});
+          throw retryErr;
+        }
       }
     }
 
@@ -129,7 +140,9 @@ async function request<T = any>(
       showToast('error', 'Error', errMsg);
     }
 
-    throw new ApiError(json.message, json.error_code, json.errors);
+    const apiErr = new ApiError(json.message, json.error_code, json.errors);
+    captureError(apiErr, {endpoint, method, status: res.status, error_code: json.error_code});
+    throw apiErr;
   }
 
   return json;
@@ -522,6 +535,52 @@ export type MobileTicketPrint = {
   };
 };
 
+export type SigningData = {
+  ticket: {
+    id: number;
+    ticket_id: number;
+    ticket_code: string;
+    order_code: string;
+    order_date: string;
+    customer_name: string;
+    project_name: string;
+    job: string;
+    address: string;
+    driver_code: string;
+    driver_name: string;
+    truck_code: string;
+    plant_name: string;
+    amount: number;
+    total_amount: number;
+    tax_amount: number;
+  };
+  products: {
+    code: string;
+    product_id: string;
+    description: string;
+    is_mix: boolean;
+    quantity: number;
+    unit: string;
+    price: number;
+    amount: number | null;
+  }[];
+  legal: {
+    caution: string;
+    terms_en: string;
+    terms_fr: string;
+  };
+  status: {
+    is_signed: boolean;
+    is_disputed: boolean;
+    accepted: {
+      email: string | null;
+      customer_notes: string | null;
+      signed_name: string | null;
+    } | null;
+    disputes: any[];
+  };
+};
+
 export const ticketsApi = {
   getLatest: (params?: {page?: number; limit?: number; date?: string; all?: boolean; status?: string}) => {
     const query = new URLSearchParams();
@@ -535,6 +594,8 @@ export const ticketsApi = {
   },
   getById: (id: number) =>
     request<TicketDetail>(ENDPOINTS.TICKET_BY_ID(id)),
+  getSigning: (id: number) =>
+    request<SigningData>(ENDPOINTS.TICKET_SIGNING(id)),
   getPrintable: (id: number) =>
     request<MobileTicketPrint>(ENDPOINTS.TICKET_PRINT(id)),
   getDeliveryRecord: (id: number) =>

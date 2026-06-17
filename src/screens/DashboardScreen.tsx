@@ -1537,7 +1537,7 @@ export default function DashboardScreen({ navigation }: Props) {
               activeOpacity={0.6}
               onPress={() => {
                 setEditVisible(false);
-                navigation.navigate(item.screen);
+                navigation.navigate(item.screen, { ticketId: currentTicket?.id });
               }}>
               <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
                 <MaterialIcons name={item.icon as any} size={ms(18)} color={item.iconColor} />

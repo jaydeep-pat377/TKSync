@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {wp, ms} from '../utils/responsive';
 import SignaturePad from '../components/SignaturePad';
 import ThemedAlert from '../components/ThemedAlert';
 import {ticketsApi} from '../services/api';
+import type {SigningData} from '../services/api';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -39,7 +40,11 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
   const cardMaxWidth = isTabletLandscape ? undefined : 700;
   const ticketId = route.params?.ticketId;
-  const [quantity, setQuantity] = useState('6');
+
+  const [data, setData] = useState<SigningData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
@@ -47,11 +52,41 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
 
+  useEffect(() => {
+    if (!ticketId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setLoadError(null);
+        const res = await ticketsApi.getSigning(ticketId);
+        if (!cancelled) {
+          setData(res.data);
+          const disputes = res.data?.status?.disputes;
+          if (disputes && disputes.length > 0) {
+            const d = disputes[0];
+            if (d.quantity != null) setQuantity(String(d.quantity));
+            if (d.reason) setReason(d.reason);
+            if (d.signed_name) setTypeName(d.signed_name);
+          }
+        }
+      } catch (err: any) {
+        if (!cancelled) setLoadError(err.message || 'Failed to load signing data.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ticketId]);
+
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
   }, []);
 
-  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting;
+  const alreadyDisputed = data?.status?.is_disputed === true;
+  const isFormDisabled = alreadyDisputed;
+
+  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting && !isFormDisabled;
 
   const handleDispute = useCallback(async () => {
     if (!canSubmit || !ticketId || !signature) return;
@@ -80,6 +115,33 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   const handleQuantityChange = (text: string) => {
     setQuantity(text.replace(/[^0-9.]/g, ''));
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <View style={[s.container, s.centerContent, {backgroundColor: c.white}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <ActivityIndicator size="large" color={c.accent} />
+        <Text style={[s.loadingText, {color: c.textSecondary}]}>Loading ticket...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (loadError || !data) {
+    return (
+      <View style={[s.container, s.centerContent, {backgroundColor: c.white}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <MaterialIcons name="error-outline" size={ms(48)} color={c.error} />
+        <Text style={[s.errorText, {color: c.textPrimary}]}>{loadError || 'No data available.'}</Text>
+        <TouchableOpacity style={[s.retryBtn, {backgroundColor: c.accent}]} onPress={() => navigation.goBack()}>
+          <Text style={[s.retryBtnText, {color: c.textOnPrimary}]}>GO BACK</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const {ticket, products} = data;
 
   return (
     <View style={[s.container, {backgroundColor: isLandscape ? c.white : c.accentBg}]}>
@@ -110,15 +172,23 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
             </TouchableOpacity>
           </View>
 
-          {/* Ticket Info */}
+          {/* Already disputed banner */}
+          {alreadyDisputed && (
+            <View style={[s.banner, {backgroundColor: c.errorSurface}]}>
+              <MaterialIcons name="report-problem" size={ms(18)} color={c.error} />
+              <Text style={[s.bannerText, {color: c.error}]}>This ticket has already been disputed.</Text>
+            </View>
+          )}
+
+          {/* Dispute Form */}
           <View style={s.infoSection}>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>TICKET</Text>
-              <Text style={[s.infoValue, {color: c.textPrimary}]}>26209538</Text>
+              <Text style={[s.infoValue, {color: c.textPrimary}]}>{ticket.ticket_code}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>PRODUCT</Text>
-              <Text style={[s.infoValue, {color: c.textPrimary}]}>32MPA AIR C2 .45 SIDEWALK</Text>
+              <Text style={[s.infoValue, {color: c.textPrimary}]}>{products.length > 0 ? products[0].description : '-'}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>QUANTITY</Text>
@@ -129,6 +199,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
                   onChangeText={handleQuantityChange}
                   keyboardType="decimal-pad"
                   maxLength={6}
+                  editable={!isFormDisabled}
                 />
                 <Text style={[s.qtyUnit, {color: c.textPrimary}]}>M3</Text>
               </View>
@@ -141,14 +212,12 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
                 onChangeText={setReason}
                 placeholder="Enter reason"
                 placeholderTextColor={c.textMuted}
+                editable={!isFormDisabled}
               />
             </View>
           </View>
 
-          {/* Divider */}
-          <View style={[s.divider, {backgroundColor: c.border}]} />
-
-          {/* Sign Section */}
+          {/* Type Name + Signature + Submit */}
           <View style={s.signSection}>
             <View style={s.typeNameRow}>
               <Text style={[s.typeNameLabel, {color: c.textPrimary}]}>TYPE NAME</Text>
@@ -158,24 +227,27 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
                 onChangeText={setTypeName}
                 placeholder="Enter name"
                 placeholderTextColor={c.textMuted}
+                editable={!isFormDisabled}
               />
             </View>
 
-            {/* Signature Pad */}
-            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
+            {!isFormDisabled && (
+              <>
+                <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
 
-            {/* Dispute Button */}
-            <TouchableOpacity
-              style={[s.disputeBtn, {backgroundColor: canSubmit ? c.disputeBtn : c.border}]}
-              activeOpacity={canSubmit ? 0.8 : 1}
-              disabled={!canSubmit}
-              onPress={handleDispute}>
-              {submitting ? (
-                <ActivityIndicator size="small" color={c.textOnPrimary} />
-              ) : (
-                <Text style={[s.disputeBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>DISPUTE</Text>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.disputeBtn, {backgroundColor: canSubmit ? c.disputeBtn : c.border}]}
+                  activeOpacity={canSubmit ? 0.8 : 1}
+                  disabled={!canSubmit}
+                  onPress={handleDispute}>
+                  {submitting ? (
+                    <ActivityIndicator size="small" color={c.textOnPrimary} />
+                  ) : (
+                    <Text style={[s.disputeBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>DISPUTE</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
         </View>
@@ -198,11 +270,18 @@ const s = StyleSheet.create({
   flex1: {flex: 1},
   scroll: {flex: 1},
   scrollContent: {},
+  centerContent: {justifyContent: 'center', alignItems: 'center'},
 
   card: {
     marginBottom: wp(10),
     overflow: 'visible',
   },
+
+  // Loading / Error
+  loadingText: {fontSize: ms(13), marginTop: wp(12)},
+  errorText: {fontSize: ms(14), fontWeight: '600', marginTop: wp(12), textAlign: 'center', paddingHorizontal: wp(20)},
+  retryBtn: {marginTop: wp(16), paddingVertical: wp(10), paddingHorizontal: wp(24), borderRadius: wp(8)},
+  retryBtnText: {fontSize: ms(13), fontWeight: '800'},
 
   // Header
   header: {
@@ -219,22 +298,20 @@ const s = StyleSheet.create({
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
+  // Banner
+  banner: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(12), gap: wp(8)},
+  bannerText: {fontSize: ms(12), fontWeight: '700', flex: 1},
+
+
   // Info
   infoSection: {paddingHorizontal: wp(12), paddingVertical: wp(14)},
   infoRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: wp(8), gap: wp(8)},
   infoLabel: {fontSize: ms(11), fontWeight: '800', minWidth: wp(68), maxWidth: wp(100)},
   infoValue: {fontSize: ms(11), fontWeight: '500', flex: 1, minWidth: 80},
-
-  // Quantity
   qtyRow: {flexDirection: 'row', alignItems: 'center', gap: wp(8)},
   qtyInput: {width: wp(80), borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(13), fontWeight: '600'},
   qtyUnit: {fontSize: ms(13), fontWeight: '600'},
-
-  // Reason
   reasonInput: {flex: 1, borderBottomWidth: 1, paddingVertical: wp(4), fontSize: ms(13)},
-
-  // Divider
-  divider: {height: StyleSheet.hairlineWidth, marginHorizontal: wp(12)},
 
   // Sign
   signSection: {paddingHorizontal: wp(12), paddingVertical: wp(16)},

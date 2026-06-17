@@ -2083,6 +2083,30 @@ PODS:
     - Yoga
   - RNSensors (7.3.6):
     - React-Core
+  - RNSentry (8.14.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Sentry (= 9.16.1)
+    - Yoga
   - RNSVG (15.15.5):
     - hermes-engine
     - RCTRequired
@@ -2150,6 +2174,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - Sentry (9.16.1):
+    - Sentry/Core (= 9.16.1)
+  - Sentry/Core (9.16.1)
   - Turf (4.0.0)
   - Yoga (0.0.0)
 
@@ -2240,6 +2267,7 @@ DEPENDENCIES:
   - "rnmapbox-maps (from `../node_modules/@rnmapbox/maps`)"
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSensors (from `../node_modules/react-native-sensors`)
+  - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
@@ -2250,6 +2278,7 @@ SPEC REPOS:
     - MapboxCoreMaps
     - MapboxMaps
     - MMKVCore
+    - Sentry
     - Turf
 
 EXTERNAL SOURCES:
@@ -2424,6 +2453,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNSensors:
     :path: "../node_modules/react-native-sensors"
+  RNSentry:
+    :path: "../node_modules/@sentry/react-native"
   RNSVG:
     :path: "../node_modules/react-native-svg"
   RNVectorIcons:
@@ -2521,8 +2552,10 @@ SPEC CHECKSUMS:
   rnmapbox-maps: 424ce5b089be0d753083b5ad70a3959eb8603891
   RNScreens: 75d04ea58bd7a8e8ac60b7968d0382aa71631a7d
   RNSensors: 111159597ac51505df10413c61b28bcd28e88983
+  RNSentry: 4252d2ca893888e3531af9bf8b83a958e32e2944
   RNSVG: 0e52210d4d43165e7e2cf9c890a9848b27e513ac
   RNVectorIcons: 97f26211c07d69e45b189f9dd0dbbe5e2d2b0b92
+  Sentry: e5d82a3c1f2d951f75c04c57215a0abb1facbd51
   Turf: c9eb11a65d96af58cac523460fd40fec5061b081
   Yoga: 77dfa8673de2874e1855002ae59c68b8be9b007b
 

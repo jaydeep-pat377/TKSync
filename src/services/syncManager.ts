@@ -1,6 +1,7 @@
 import {ticketsApi, checkApiHealth} from './api';
 import {offlineStorage, PendingSave} from './offlineStorage';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
+import {captureError, addBreadcrumb} from './sentry';
 
 const MAX_RETRIES = 5;
 const RETRY_DELAYS = [1000, 3000, 10000, 30000, 60000]; // progressive backoff
@@ -33,6 +34,11 @@ async function syncOne(item: PendingSave): Promise<boolean> {
     console.warn(
       `[SyncManager] Failed: ticket ${item.ticketId}/${item.tab} — ${message}`,
     );
+    captureError(err instanceof Error ? err : new Error(message), {
+      ticketId: item.ticketId,
+      tab: item.tab,
+      retryCount: item.retryCount,
+    });
     offlineStorage.updateRetry(item.id, message);
     return false;
   }
@@ -100,6 +106,7 @@ async function processQueue(): Promise<void> {
   console.log(
     `[SyncManager] Sync complete: ${synced} synced, ${failed} failed, ${remaining} remaining`,
   );
+  addBreadcrumb('Sync complete', 'sync', {synced, failed, remaining});
   emit({type: 'sync_complete', synced, failed});
   emit({type: 'queue_changed', count: remaining});
 }
