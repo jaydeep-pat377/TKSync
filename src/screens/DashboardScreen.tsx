@@ -186,6 +186,7 @@ const BOTTOM_ACTIONS = [
 
 const MENU_ITEMS_BASE = [
   { icon: 'local-shipping', labelKey: 'menu.vehicle', actionKey: 'Vehicle', color: '' },
+  { icon: 'dark-mode', labelKey: 'menu.darkMode', actionKey: 'DarkMode', color: '' },
   { icon: 'person-off', labelKey: 'menu.logoutDriver', actionKey: 'Logout Driver', color: '' },
   { icon: 'domain-disabled', labelKey: 'menu.logoutTenant', actionKey: 'Logout Tenant', color: 'warn' },
   { icon: 'translate', labelKey: 'menu.language', actionKey: 'Language', color: '' },
@@ -433,6 +434,8 @@ export default function DashboardScreen({ navigation }: Props) {
     closeMenu();
     if (label === 'Vehicle') {
       navigation.navigate('VehicleTracking');
+    } else if (label === 'DarkMode') {
+      toggle();
     } else if (label === 'Logout Driver') {
       setLogoutType('driver');
     } else if (label === 'Logout Tenant') {
@@ -696,7 +699,9 @@ export default function DashboardScreen({ navigation }: Props) {
                   const iconColor = isWarn ? c.error : c.textSecondary;
                   const labelColor = isWarn ? c.error : c.textPrimary;
                   const bgColor = isWarn ? c.errorSurface : c.surface;
-                  const label = t(item.labelKey);
+                  const isDarkMode = item.actionKey === 'DarkMode';
+                  const itemIcon = isDarkMode ? (isDark ? 'light-mode' : 'dark-mode') : item.icon;
+                  const label = isDarkMode ? (isDark ? t('menu.lightMode', 'Light Mode') : t('menu.darkMode', 'Dark Mode')) : t(item.labelKey);
                   const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
                   return (
                     <TouchableOpacity
@@ -705,7 +710,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       activeOpacity={0.6}
                       onPress={() => handleMenuItemPress(item.actionKey)}>
                       <View style={[styles.ddIcon, {backgroundColor: bgColor}]}>
-                        <MaterialIcons name={item.icon as any} size={ms(18)} color={iconColor} />
+                        <MaterialIcons name={itemIcon as any} size={ms(18)} color={iconColor} />
                       </View>
                       <Text style={[styles.ddLabel, {color: labelColor}]}>{label}{suffix}</Text>
                       <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
@@ -824,18 +829,12 @@ export default function DashboardScreen({ navigation }: Props) {
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: refreshing ? c.warning : c.success }} />
                   <Text style={{ fontSize: 9, fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
                 </TouchableOpacity>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' }} />
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 8, fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={toggle} activeOpacity={0.7}>
-                    <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={15} color={c.textOnPrimary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={openMenu} activeOpacity={0.7}>
-                    <MaterialIcons name="menu" size={15} color={c.textOnPrimary} />
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={openMenu} activeOpacity={0.7}>
+                  <MaterialIcons name="menu" size={15} color={c.textOnPrimary} />
+                </TouchableOpacity>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsRow, { marginTop: 4 }]}>
                 {tickets.map((ticket, i) => {
@@ -886,13 +885,9 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={{ width: ls(5), height: ls(5), borderRadius: 3, backgroundColor: refreshing ? c.warning : c.success }} />
                     <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
                   </TouchableOpacity>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(4), backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', paddingVertical: L ? ls(4) : wp(4), paddingHorizontal: L ? ls(8) : wp(8), borderRadius: L ? ls(12) : wp(12) }}>
-                    <View style={{ width: L ? ls(6) : wp(6), height: L ? ls(6) : wp(6), borderRadius: L ? ls(3) : wp(3), backgroundColor: '#fff' }} />
-                    <Text style={{ fontSize: L ? ms(9) : ms(10), fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                  <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: L ? ls(10) : wp(10), paddingVertical: L ? ls(4) : wp(4), paddingHorizontal: L ? ls(8) : wp(8), justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: L ? ms(8) : ms(9), fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                   </View>
-                  <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={toggle} activeOpacity={0.7}>
-                    <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
-                  </TouchableOpacity>
                   <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={openMenu} activeOpacity={0.7}>
                     <MaterialIcons name="menu" size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
                   </TouchableOpacity>
@@ -1293,7 +1288,9 @@ export default function DashboardScreen({ navigation }: Props) {
                 const iconColor = isWarn ? c.error : c.textSecondary;
                 const labelColor = isWarn ? c.error : c.textPrimary;
                 const bgColor = isWarn ? c.errorSurface : c.surface;
-                const label = t(item.labelKey);
+                const isDarkMode = item.actionKey === 'DarkMode';
+                const itemIcon = isDarkMode ? (isDark ? 'light-mode' : 'dark-mode') : item.icon;
+                const label = isDarkMode ? (isDark ? t('menu.lightMode', 'Light Mode') : t('menu.darkMode', 'Dark Mode')) : t(item.labelKey);
                 const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
                 return (
                   <TouchableOpacity
@@ -1306,7 +1303,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     activeOpacity={0.6}
                     onPress={() => handleMenuItemPress(item.actionKey)}>
                     <View style={[styles.ddIcon, isLandscape && { width: lp ? 28 : ls(24), height: lp ? 28 : ls(24), borderRadius: lp ? 8 : ls(7) }, { backgroundColor: bgColor }]}>
-                      <MaterialIcons name={item.icon as any} size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={iconColor} />
+                      <MaterialIcons name={itemIcon as any} size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={iconColor} />
                     </View>
                     <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, { color: labelColor }]}>{label}{suffix}</Text>
                     <MaterialIcons name="chevron-right" size={isLandscape ? (lp ? 18 : ls(16)) : ms(18)} color={c.textMuted} />

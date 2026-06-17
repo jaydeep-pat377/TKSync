@@ -33,9 +33,11 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   const {width, height} = useWindowDimensions();
   const isTablet = Math.min(width, height) > 600;
   const isLandscape = width > height;
+  const isTabletLandscape = isTablet && isLandscape;
   const sigHeight = isTablet
     ? Math.min(300, Math.max(200, height * 0.28))
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
+  const cardMaxWidth = isTabletLandscape ? undefined : 700;
   const ticketId = route.params?.ticketId;
   const [quantity, setQuantity] = useState('6');
   const [reason, setReason] = useState('');
@@ -94,7 +96,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {maxWidth: 700, alignSelf: 'center', width: '100%', borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: wp(10), borderRadius: wp(10)}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {maxWidth: cardMaxWidth, alignSelf: 'center', width: '100%', borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: wp(10), borderRadius: wp(10)}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>

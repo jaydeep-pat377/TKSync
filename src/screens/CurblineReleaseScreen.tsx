@@ -54,7 +54,7 @@ export default function CurblineReleaseScreen({navigation}: Props) {
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}>
 
-        <View style={[s.card, {backgroundColor: c.white}, isLandscape && {marginHorizontal: wp(10), borderRadius: wp(14), marginBottom: wp(10)}, isTablet && !isLandscape && {maxWidth: 650, alignSelf: 'center' as const, width: '100%'}]}>
+        <View style={[s.card, {backgroundColor: c.white}, isLandscape ? {maxWidth: isTablet ? undefined : 700, alignSelf: 'center' as const, width: '100%', borderRadius: wp(14), marginBottom: wp(10)} : {marginHorizontal: wp(10), borderRadius: wp(10)}]}>
 
           {/* Header */}
           <View style={[s.header, {borderBottomColor: c.border}]}>
