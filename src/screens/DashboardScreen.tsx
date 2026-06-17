@@ -837,6 +837,17 @@ export default function DashboardScreen({ navigation }: Props) {
                   </TouchableOpacity>
                 </View>
               </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsRow, { marginTop: 4 }]}>
+                {tickets.map((ticket, i) => {
+                  const isSelected = activeTicket === i;
+                  const isCompleted = ticket.at_plant_time != null;
+                  return (
+                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } setActiveTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
+                      <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </>
           ) : (
             /* Portrait + tablet landscape: two-row header */
@@ -902,7 +913,7 @@ export default function DashboardScreen({ navigation }: Props) {
           )}
         </View>
 
-        {/* ─── WEATHER STRIP (portrait only — landscape has it in header) ─── */}
+        {/* ─── WEATHER STRIP (portrait only) ─── */}
         {!L && (
           <View style={{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10) }}>
             <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
