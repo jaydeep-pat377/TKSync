@@ -21,6 +21,7 @@ import i18n from '../i18n';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { ticketsApi, plantsApi, type Ticket, type TicketDetail, type DeliveryRecord, type Plant, type TicketQr } from '../services/api';
 import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
@@ -281,6 +282,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { isDark, toggle, c } = useTheme();
   const { driverLogout, companyLogout, driver, company } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
   const { width, height: winHeight } = useWindowDimensions();
   const isTablet = Math.min(width, winHeight) > 600;
@@ -310,7 +312,7 @@ export default function DashboardScreen({ navigation }: Props) {
     try {
       if (showLoading) setLoading(true);
       setRefreshing(true);
-      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, status: 'active' });
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
       setActiveTicket(0);
@@ -816,6 +818,10 @@ export default function DashboardScreen({ navigation }: Props) {
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: refreshing ? c.warning : c.success }} />
                   <Text style={{ fontSize: 9, fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
                 </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' }} />
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={toggle} activeOpacity={0.7}>
                     <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={15} color={c.textOnPrimary} />
@@ -863,6 +869,10 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={{ width: ls(5), height: ls(5), borderRadius: 3, backgroundColor: refreshing ? c.warning : c.success }} />
                     <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
                   </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(4), backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', paddingVertical: L ? ls(4) : wp(4), paddingHorizontal: L ? ls(8) : wp(8), borderRadius: L ? ls(12) : wp(12) }}>
+                    <View style={{ width: L ? ls(6) : wp(6), height: L ? ls(6) : wp(6), borderRadius: L ? ls(3) : wp(3), backgroundColor: '#fff' }} />
+                    <Text style={{ fontSize: L ? ms(9) : ms(10), fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                  </View>
                   <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={toggle} activeOpacity={0.7}>
                     <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
                   </TouchableOpacity>

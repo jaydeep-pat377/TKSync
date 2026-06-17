@@ -5,6 +5,7 @@ import {ThemeProvider} from './src/contexts/ThemeContext';
 import {AuthProvider} from './src/contexts/AuthContext';
 import {OfflineSyncProvider} from './src/contexts/OfflineSyncContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import NetworkBanner from './src/components/NetworkBanner';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <AuthProvider>
             <OfflineSyncProvider>
               <AppNavigator />
+              <NetworkBanner />
             </OfflineSyncProvider>
           </AuthProvider>
         </ThemeProvider>
