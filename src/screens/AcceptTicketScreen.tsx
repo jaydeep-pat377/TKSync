@@ -25,7 +25,7 @@ import type {SigningData} from '../services/api';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
-  route: RouteProp<{AcceptTicket: {ticketId?: number}}, 'AcceptTicket'>;
+  route: RouteProp<{AcceptTicket: {ticketId?: number; editable?: boolean}}, 'AcceptTicket'>;
 };
 
 export default function AcceptTicketScreen({navigation, route}: Props) {
@@ -40,6 +40,7 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
   const cardMaxWidth = isTabletLandscape ? undefined : 700;
   const ticketId = route.params?.ticketId;
+  const editable = route.params?.editable === true;
 
   const [data, setData] = useState<SigningData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,7 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingSignature, setEditingSignature] = useState(false);
   const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
             if (accepted.email) setEmail(accepted.email);
             if (accepted.customer_notes) setCustomerNotes(accepted.customer_notes);
             if (accepted.signed_name) setTypeName(accepted.signed_name);
+            if (accepted.signature_image) setSignature(accepted.signature_image);
           }
         }
       } catch (err: any) {
@@ -84,7 +87,7 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
 
   const alreadySigned = data?.status?.is_signed === true;
   const alreadyDisputed = data?.status?.is_disputed === true;
-  const isFormDisabled = alreadySigned || alreadyDisputed;
+  const isFormDisabled = !editable && (alreadySigned || alreadyDisputed);
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isNotesValid = customerNotes.trim().length > 0;
@@ -263,22 +266,24 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
               />
             </View>
 
-            {!isFormDisabled && (
-              <>
-                <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
+            {status?.accepted?.signature_image && !editingSignature ? (
+              <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} readOnly initialImage={status.accepted.signature_image} onEditPress={editable ? () => setEditingSignature(true) : undefined} />
+            ) : (
+              <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
+            )}
 
-                <TouchableOpacity
-                  style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
-                  activeOpacity={canSubmit ? 0.8 : 1}
-                  disabled={!canSubmit}
-                  onPress={handleSubmit}>
-                  {submitting ? (
-                    <ActivityIndicator size="small" color={c.textOnPrimary} />
-                  ) : (
-                    <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
-                  )}
-                </TouchableOpacity>
-              </>
+            {!isFormDisabled && (
+              <TouchableOpacity
+                style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
+                activeOpacity={canSubmit ? 0.8 : 1}
+                disabled={!canSubmit}
+                onPress={handleSubmit}>
+                {submitting ? (
+                  <ActivityIndicator size="small" color={c.textOnPrimary} />
+                ) : (
+                  <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
+                )}
+              </TouchableOpacity>
             )}
           </View>
 

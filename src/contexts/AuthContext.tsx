@@ -3,10 +3,12 @@ import {storage} from '../services/storage';
 import {
   authApi,
   ApiError,
+  setOnSessionExpired,
   type CompanyLoginResponse,
   type DriverLoginResponse,
 } from '../services/api';
 import {setSentryUser} from '../services/sentry';
+import {showToast} from '../utils/toast';
 
 type CompanyInfo = {
   company_id: number;
@@ -171,6 +173,25 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       company: null,
       driver: null,
     });
+  }, []);
+
+  useEffect(() => {
+    setOnSessionExpired(() => {
+      setSentryUser(null);
+      storage.remove('access_token');
+      storage.remove('refresh_token');
+      storage.remove('company');
+      storage.remove('driver');
+      setState({
+        isLoading: false,
+        isCompanyLoggedIn: false,
+        isDriverLoggedIn: false,
+        company: null,
+        driver: null,
+      });
+      showToast('error', 'Session Expired', 'Your session has expired. Please log in again.');
+    });
+    return () => setOnSessionExpired(null);
   }, []);
 
   return (

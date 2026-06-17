@@ -25,7 +25,7 @@ import type {SigningData} from '../services/api';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
-  route: RouteProp<{DisputeTicket: {ticketId?: number}}, 'DisputeTicket'>;
+  route: RouteProp<{DisputeTicket: {ticketId?: number; editable?: boolean}}, 'DisputeTicket'>;
 };
 
 export default function DisputeTicketScreen({navigation, route}: Props) {
@@ -40,6 +40,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
   const cardMaxWidth = isTabletLandscape ? undefined : 700;
   const ticketId = route.params?.ticketId;
+  const editable = route.params?.editable === true;
 
   const [data, setData] = useState<SigningData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingSignature, setEditingSignature] = useState(false);
   const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
 
   useEffect(() => {
@@ -62,12 +64,12 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
         const res = await ticketsApi.getSigning(ticketId);
         if (!cancelled) {
           setData(res.data);
-          const disputes = res.data?.status?.disputes;
-          if (disputes && disputes.length > 0) {
-            const d = disputes[0];
+          const d = res.data?.status?.dispute;
+          if (d) {
             if (d.quantity != null) setQuantity(String(d.quantity));
             if (d.reason) setReason(d.reason);
             if (d.signed_name) setTypeName(d.signed_name);
+            if (d.signature_image) setSignature(d.signature_image);
           }
         }
       } catch (err: any) {
@@ -84,7 +86,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   }, []);
 
   const alreadyDisputed = data?.status?.is_disputed === true;
-  const isFormDisabled = alreadyDisputed;
+  const isFormDisabled = !editable && alreadyDisputed;
 
   const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting && !isFormDisabled;
 
@@ -173,7 +175,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
           </View>
 
           {/* Already disputed banner */}
-          {alreadyDisputed && (
+          {alreadyDisputed && !editable && (
             <View style={[s.banner, {backgroundColor: c.errorSurface}]}>
               <MaterialIcons name="report-problem" size={ms(18)} color={c.error} />
               <Text style={[s.bannerText, {color: c.error}]}>This ticket has already been disputed.</Text>
@@ -231,22 +233,24 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
               />
             </View>
 
-            {!isFormDisabled && (
-              <>
-                <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
+            {data?.status?.dispute?.signature_image && !editingSignature ? (
+              <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} readOnly initialImage={data.status.dispute.signature_image} onEditPress={editable ? () => setEditingSignature(true) : undefined} />
+            ) : (
+              <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
+            )}
 
-                <TouchableOpacity
-                  style={[s.disputeBtn, {backgroundColor: canSubmit ? c.disputeBtn : c.border}]}
-                  activeOpacity={canSubmit ? 0.8 : 1}
-                  disabled={!canSubmit}
-                  onPress={handleDispute}>
-                  {submitting ? (
-                    <ActivityIndicator size="small" color={c.textOnPrimary} />
-                  ) : (
-                    <Text style={[s.disputeBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>DISPUTE</Text>
-                  )}
-                </TouchableOpacity>
-              </>
+            {!isFormDisabled && (
+              <TouchableOpacity
+                style={[s.disputeBtn, {backgroundColor: canSubmit ? c.disputeBtn : c.border}]}
+                activeOpacity={canSubmit ? 0.8 : 1}
+                disabled={!canSubmit}
+                onPress={handleDispute}>
+                {submitting ? (
+                  <ActivityIndicator size="small" color={c.textOnPrimary} />
+                ) : (
+                  <Text style={[s.disputeBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>DISPUTE</Text>
+                )}
+              </TouchableOpacity>
             )}
           </View>
 

@@ -6,6 +6,12 @@ import {captureError, addBreadcrumb} from './sentry';
 
 const BASE_URL = Config.API_BASE_URL || '';
 
+let onSessionExpired: (() => void) | null = null;
+
+export function setOnSessionExpired(cb: (() => void) | null) {
+  onSessionExpired = cb;
+}
+
 type ApiResponse<T = any> = {
   success: boolean;
   message: string;
@@ -118,6 +124,7 @@ async function request<T = any>(
   if (!json.success) {
     // If token expired, try refresh
     if (res.status === 401 && json.error_code === 'TOKEN_EXPIRED') {
+      console.log('[API] Access token expired, attempting refresh...');
       const refreshed = await refreshAccessToken();
       if (refreshed) {
         try {
@@ -170,9 +177,11 @@ async function refreshAccessToken(): Promise<boolean> {
     }
   } catch {}
 
-  // Refresh failed — clear tokens
+  // Refresh failed — clear tokens and notify
+  console.log('[API] Refresh token failed — session expired, redirecting to login');
   storage.remove('access_token');
   storage.remove('refresh_token');
+  onSessionExpired?.();
   return false;
 }
 
@@ -576,8 +585,14 @@ export type SigningData = {
       email: string | null;
       customer_notes: string | null;
       signed_name: string | null;
+      signature_image: string | null;
     } | null;
-    disputes: any[];
+    dispute: {
+      quantity: number | null;
+      reason: string | null;
+      signed_name: string | null;
+      signature_image: string | null;
+    } | null;
   };
 };
 

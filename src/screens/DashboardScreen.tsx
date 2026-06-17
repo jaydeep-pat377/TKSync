@@ -284,7 +284,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const { t } = useTranslation();
   const { isDark, toggle, c } = useTheme();
-  const { driverLogout, companyLogout, driver, company } = useAuth();
+  const { driverLogout, companyLogout, driver, company, isCompanyLoggedIn } = useAuth();
   const { isOnline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
   const { width, height: winHeight } = useWindowDimensions();
@@ -296,6 +296,13 @@ export default function DashboardScreen({ navigation }: Props) {
   const menuScale = useRef(new Animated.Value(0)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
   const syncSpin = useRef(new Animated.Value(0)).current;
+
+  // Redirect to login when session expires
+  useEffect(() => {
+    if (!isCompanyLoggedIn) {
+      navigation.reset({index: 0, routes: [{name: 'Login'}]});
+    }
+  }, [isCompanyLoggedIn, navigation]);
 
   // Relative time updater
   useEffect(() => {
@@ -1537,7 +1544,7 @@ export default function DashboardScreen({ navigation }: Props) {
               activeOpacity={0.6}
               onPress={() => {
                 setEditVisible(false);
-                navigation.navigate(item.screen, { ticketId: currentTicket?.id });
+                navigation.navigate(item.screen, { ticketId: currentTicket?.id, editable: true });
               }}>
               <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
                 <MaterialIcons name={item.icon as any} size={ms(18)} color={item.iconColor} />

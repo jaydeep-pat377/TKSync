@@ -1,5 +1,5 @@
 import React, {useRef, useState, useCallback} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
+import {View, Text, Image, TouchableOpacity, StyleSheet, Platform} from 'react-native';
 import SignatureScreen from 'react-native-signature-canvas';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../contexts/ThemeContext';
@@ -10,9 +10,12 @@ type Props = {
   height?: number;
   onTouchStart?: () => void;
   onTouchEnd?: () => void;
+  readOnly?: boolean;
+  initialImage?: string | null;
+  onEditPress?: () => void;
 };
 
-export default function SignaturePad({onSignatureChange, height = 280, onTouchStart, onTouchEnd}: Props) {
+export default function SignaturePad({onSignatureChange, height = 280, onTouchStart, onTouchEnd, readOnly, initialImage, onEditPress}: Props) {
   const {c, isDark} = useTheme();
   const sigRef = useRef<any>(null);
   const [hasSignature, setHasSignature] = useState(false);
@@ -70,6 +73,35 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
     body, html { background-color: ${isDark ? '#1E2230' : '#F1F5F9'}; margin: 0; padding: 0; }
     canvas { width: 100% !important; height: 100% !important; touch-action: none; }
   `;
+
+  if (readOnly && initialImage) {
+    return (
+      <View style={st.wrapper}>
+        <View style={st.labelRow}>
+          <MaterialIcons name="draw" size={ms(16)} color={c.textMuted} />
+          <Text style={[st.label, {color: c.textMuted}]}>Signature</Text>
+        </View>
+        <View style={[st.padOuter, {height, backgroundColor: c.surface, borderColor: c.primary}]}>
+          <Image source={{uri: initialImage}} style={st.readOnlyImage} resizeMode="contain" />
+          <View style={[st.signLine, {borderBottomColor: c.textMuted}]}>
+            <MaterialIcons name="play-arrow" size={ms(14)} color={c.textMuted} />
+          </View>
+          {onEditPress && (
+            <TouchableOpacity
+              style={[st.editBtn, {backgroundColor: c.white, borderColor: c.border}]}
+              onPress={onEditPress}
+              activeOpacity={0.7}>
+              <MaterialIcons name="edit" size={ms(14)} color={c.textSecondary} />
+              <Text style={[st.editText, {color: c.textSecondary}]}>Edit</Text>
+            </TouchableOpacity>
+          )}
+          <View style={[st.statusBadge, {backgroundColor: c.primarySurface}]}>
+            <MaterialIcons name="check" size={ms(12)} color={c.primary} />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={st.wrapper}>
@@ -146,4 +178,19 @@ const st = StyleSheet.create({
   signLine: {position: 'absolute', bottom: wp(30), left: wp(16), right: wp(16), borderBottomWidth: 1, flexDirection: 'row', alignItems: 'flex-end'},
   signHere: {position: 'absolute', bottom: wp(12), alignSelf: 'center', fontSize: ms(10), fontWeight: '600', letterSpacing: 0.5},
   statusBadge: {position: 'absolute', top: wp(10), left: wp(10), width: wp(24), height: wp(24), borderRadius: wp(12), justifyContent: 'center', alignItems: 'center'},
+  editBtn: {
+    position: 'absolute',
+    top: wp(10),
+    right: wp(10),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: wp(4),
+    paddingHorizontal: wp(10),
+    paddingVertical: wp(6),
+    borderRadius: wp(8),
+    borderWidth: 1,
+    zIndex: 10,
+  },
+  editText: {fontSize: ms(12), fontWeight: '600'},
+  readOnlyImage: {width: '100%', height: '100%'},
 });
