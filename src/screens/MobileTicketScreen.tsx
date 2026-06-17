@@ -91,14 +91,17 @@ export default function MobileTicketScreen({navigation, route}: Props) {
   const ticketId = route.params?.ticketId;
   const [data, setData] = useState<MobileTicketPrint | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   const fetchPrintable = useCallback(async (id: number) => {
     setLoading(true);
+    setFetchError(false);
     try {
       const res = await ticketsApi.getPrintable(id);
       setData(res.data);
     } catch (err) {
       console.log('[MobileTicket] fetch error:', err);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -168,6 +171,27 @@ export default function MobileTicketScreen({navigation, route}: Props) {
       <View style={[s.container, {backgroundColor: c.accentBg, justifyContent: 'center', alignItems: 'center'}]}>
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
         <ActivityIndicator size="large" color={c.textOnPrimary} />
+      </View>
+    );
+  }
+
+  if (fetchError && !data) {
+    return (
+      <View style={[s.container, {backgroundColor: c.background, justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(24)}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <MaterialIcons name="error-outline" size={ms(48)} color={c.textSecondary} />
+        <Text style={{fontSize: ms(15), fontWeight: '700', color: c.textPrimary, marginTop: wp(12), textAlign: 'center'}}>Server Error</Text>
+        <Text style={{fontSize: ms(12), color: c.textSecondary, marginTop: wp(6), textAlign: 'center'}}>Unable to connect to the server. Please try again later.</Text>
+        <TouchableOpacity
+          onPress={() => ticketId && fetchPrintable(ticketId)}
+          activeOpacity={0.7}
+          style={{flexDirection: 'row', alignItems: 'center', gap: wp(6), marginTop: wp(20), backgroundColor: c.primary, paddingVertical: wp(10), paddingHorizontal: wp(24), borderRadius: wp(8)}}>
+          <MaterialIcons name="refresh" size={ms(16)} color="#fff" />
+          <Text style={{fontSize: ms(13), fontWeight: '700', color: '#fff'}}>Retry</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={{marginTop: wp(12)}}>
+          <Text style={{fontSize: ms(12), color: c.primary, fontWeight: '600'}}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }

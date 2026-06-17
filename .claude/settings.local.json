@@ -41,7 +41,8 @@
       "Bash(find /Users/admin/Desktop/tksync-mobile-api -name *.svg -o -name *.png -o -name *.jpg)",
       "Bash(find /Users/admin/Desktop -maxdepth 3 -name *CementTruck* -o -name *concreteTruck* -o -name *MixerTruck* -o -name *ReadyMix*)",
       "Bash(git checkout:*)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Read(//Users/admin/Desktop/**)"
     ]
   }
 }

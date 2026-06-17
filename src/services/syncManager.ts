@@ -1,4 +1,4 @@
-import {ticketsApi} from './api';
+import {ticketsApi, checkApiHealth} from './api';
 import {offlineStorage, PendingSave} from './offlineStorage';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 
@@ -49,6 +49,12 @@ async function processQueue(): Promise<void> {
 
   if (!getIsOnline()) {
     console.log('[SyncManager] Still offline, deferring sync');
+    return;
+  }
+
+  const {healthy} = await checkApiHealth();
+  if (!healthy) {
+    console.log('[SyncManager] API unhealthy, deferring sync');
     return;
   }
 

@@ -264,9 +264,11 @@ export default function DashboardScreen({ navigation }: Props) {
   const [qrVisible, setQrVisible] = useState(false);
   const [qrData, setQrData] = useState<TicketQr | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState(false);
   const [plantsVisible, setPlantsVisible] = useState(false);
   const [plantsList, setPlantsList] = useState<Plant[]>([]);
   const [plantsLoading, setPlantsLoading] = useState(false);
+  const [plantsError, setPlantsError] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [pendingDetails, setPendingDetails] = useState(false);
@@ -447,18 +449,22 @@ export default function DashboardScreen({ navigation }: Props) {
     if (item.icon === 'edit') { setEditVisible(true); }
     if (item.icon === 'qr-code-scanner' && currentTicket) {
       setQrLoading(true);
+      setQrError(false);
+      setQrData(null);
       setQrVisible(true);
       ticketsApi.getQr(currentTicket.id)
         .then(res => { if (res.data) setQrData(res.data); })
-        .catch(() => {})
+        .catch(() => { setQrError(true); })
         .finally(() => setQrLoading(false));
     }
     if (item.icon === 'local-shipping') {
       setPlantsLoading(true);
+      setPlantsError(false);
+      setPlantsList([]);
       setPlantsVisible(true);
       plantsApi.getAll()
         .then(res => { if (res.data?.plants) setPlantsList(res.data.plants); })
-        .catch(() => {})
+        .catch(() => { setPlantsError(true); })
         .finally(() => setPlantsLoading(false));
     }
   }, [navigation, currentTicket]);
@@ -1332,6 +1338,27 @@ export default function DashboardScreen({ navigation }: Props) {
             <View style={{ paddingVertical: wp(40), alignItems: 'center' }}>
               <ActivityIndicator size="large" color={c.qrFg} />
             </View>
+          ) : qrError ? (
+            <View style={{ paddingVertical: wp(30), alignItems: 'center', paddingHorizontal: wp(20) }}>
+              <MaterialIcons name="error-outline" size={ms(36)} color={c.qrFg + '60'} />
+              <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.qrFg, marginTop: wp(10), textAlign: 'center' }}>Server Error</Text>
+              <Text style={{ fontSize: ms(11), color: c.qrFg + '80', marginTop: wp(4), textAlign: 'center' }}>Unable to load QR code. Please try again later.</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!currentTicket) return;
+                  setQrLoading(true);
+                  setQrError(false);
+                  ticketsApi.getQr(currentTicket.id)
+                    .then(res => { if (res.data) setQrData(res.data); })
+                    .catch(() => { setQrError(true); })
+                    .finally(() => setQrLoading(false));
+                }}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: wp(5), marginTop: wp(16), backgroundColor: c.qrFg + '18', paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8) }}>
+                <MaterialIcons name="refresh" size={ms(14)} color={c.qrFg} />
+                <Text style={{ fontSize: ms(11), fontWeight: '700', color: c.qrFg }}>Retry</Text>
+              </TouchableOpacity>
+            </View>
           ) : qrData ? (
             <ScrollView
               bounces={false}
@@ -1387,6 +1414,26 @@ export default function DashboardScreen({ navigation }: Props) {
         {plantsLoading ? (
           <View style={{paddingVertical: wp(40), alignItems: 'center'}}>
             <ActivityIndicator size="large" color={c.primary} />
+          </View>
+        ) : plantsError ? (
+          <View style={{ paddingVertical: wp(30), alignItems: 'center', paddingHorizontal: wp(20) }}>
+            <MaterialIcons name="error-outline" size={ms(36)} color={c.textSecondary} />
+            <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(10), textAlign: 'center' }}>Server Error</Text>
+            <Text style={{ fontSize: ms(11), color: c.textSecondary, marginTop: wp(4), textAlign: 'center' }}>Unable to load plants. Please try again later.</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setPlantsLoading(true);
+                setPlantsError(false);
+                plantsApi.getAll()
+                  .then(res => { if (res.data?.plants) setPlantsList(res.data.plants); })
+                  .catch(() => { setPlantsError(true); })
+                  .finally(() => setPlantsLoading(false));
+              }}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: wp(5), marginTop: wp(16), backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8) }}>
+              <MaterialIcons name="refresh" size={ms(14)} color="#fff" />
+              <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Retry</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <ScrollView style={styles.plantsList} showsVerticalScrollIndicator={true} bounces={false}>

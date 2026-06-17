@@ -1,5 +1,7 @@
 import Config from 'react-native-config';
 import {storage} from './storage';
+import {ENDPOINTS} from './endpoints';
+import {showToast} from '../utils/toast';
 
 const BASE_URL = Config.API_BASE_URL || '';
 
@@ -10,6 +12,35 @@ type ApiResponse<T = any> = {
   errors?: Array<{field: string; message: string}>;
   error_code?: string;
 };
+
+const REQUEST_TIMEOUT_MS = 30000;
+
+// Endpoints where errors are handled locally (no global toast)
+const SILENT_ENDPOINTS = [
+  ENDPOINTS.AUTH_COMPANY_LOGIN,
+  ENDPOINTS.AUTH_DRIVER_LOGIN,
+  ENDPOINTS.HEALTH,
+];
+
+function classifyError(err: unknown): {title: string; message: string} {
+  if (err instanceof TypeError && err.message === 'Network request failed') {
+    return {title: 'Server Error', message: 'Unable to connect to the server. Please try again later.'};
+  }
+  if (err instanceof DOMException || (err instanceof Error && err.name === 'AbortError')) {
+    return {title: 'Server Error', message: 'Server took too long to respond. Please try again later.'};
+  }
+  if (err instanceof Error && err.message.includes('Network request failed')) {
+    return {title: 'Server Error', message: 'Unable to connect to the server. Please try again later.'};
+  }
+  return {title: 'Server Error', message: 'Something went wrong. Please try again later.'};
+}
+
+function classifyHttpStatus(status: number): {title: string; message: string} | null {
+  if (status >= 500) return {title: 'Server Error', message: 'The server encountered a problem. Please try again later.'};
+  if (status === 408) return {title: 'Request Timeout', message: 'Server took too long to respond.'};
+  if (status === 429) return {title: 'Too Many Requests', message: 'Please wait a moment and try again.'};
+  return null;
+}
 
 async function request<T = any>(
   endpoint: string,
@@ -28,18 +59,46 @@ async function request<T = any>(
   const url = `${BASE_URL}${endpoint}`;
   const method = options.method || 'GET';
   const body = options.body ? JSON.parse(options.body as string) : undefined;
+  const isSilent = SILENT_ENDPOINTS.some(e => endpoint.startsWith(e));
 
   console.log(`[API Request] ${method} ${url}`, {
     ...(body ? {params: body} : {}),
     token: accessToken || 'none',
   });
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    res = await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+    clearTimeout(timer);
+  } catch (err) {
+    const {title, message} = classifyError(err);
+    console.warn(`[API] ${method} ${endpoint} — ${title}: ${message}`);
+    if (!isSilent) showToast('error', title, message);
+    throw err;
+  }
 
-  const json: ApiResponse<T> = await res.json();
+  // Server-level errors (5xx, 408, 429)
+  const httpErr = classifyHttpStatus(res.status);
+  if (httpErr && !isSilent) {
+    console.warn(`[API] ${method} ${endpoint} — HTTP ${res.status}`);
+    showToast('error', httpErr.title, httpErr.message);
+  }
+
+  let json: ApiResponse<T>;
+  try {
+    json = await res.json();
+  } catch {
+    const msg = 'Invalid response from server.';
+    console.warn(`[API] ${method} ${endpoint} — JSON parse failed`);
+    if (!isSilent) showToast('error', 'Server Error', msg);
+    throw new ApiError(msg, 'PARSE_ERROR');
+  }
 
   console.log(`[API Response] ${method} ${url}`, {
     status: res.status,
@@ -63,6 +122,13 @@ async function request<T = any>(
         return retryRes.json();
       }
     }
+
+    // Toast API-level errors (validation, auth, etc.) — skip silent endpoints
+    if (!isSilent && !httpErr) {
+      const errMsg = json.errors?.map(e => e.message).join(', ') || json.message;
+      showToast('error', 'Error', errMsg);
+    }
+
     throw new ApiError(json.message, json.error_code, json.errors);
   }
 
@@ -76,7 +142,7 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 
   try {
-    const res = await fetch(`${BASE_URL}/auth/refresh-token`, {
+    const res = await fetch(`${BASE_URL}${ENDPOINTS.AUTH_REFRESH_TOKEN}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({refresh_token: refreshToken}),
@@ -465,31 +531,31 @@ export const ticketsApi = {
     if (params?.date) query.set('date', params.date);
     if (params?.all) query.set('all', 'true');
     const qs = query.toString();
-    return request<TicketsResponse>(`/tickets/latest${qs ? `?${qs}` : ''}`);
+    return request<TicketsResponse>(`${ENDPOINTS.TICKETS_LATEST}${qs ? `?${qs}` : ''}`);
   },
   getById: (id: number) =>
-    request<TicketDetail>(`/tickets/${id}`),
+    request<TicketDetail>(ENDPOINTS.TICKET_BY_ID(id)),
   getPrintable: (id: number) =>
-    request<MobileTicketPrint>(`/tickets/${id}/print`),
+    request<MobileTicketPrint>(ENDPOINTS.TICKET_PRINT(id)),
   getDeliveryRecord: (id: number) =>
-    request<DeliveryRecord>(`/tickets/${id}/delivery-record`),
+    request<DeliveryRecord>(ENDPOINTS.TICKET_DELIVERY_RECORD(id)),
   saveDeliveryTab: (id: number, tab: string, body: Record<string, any>) =>
-    request<DeliveryRecord>(`/tickets/${id}/delivery-record/${tab}`, {
+    request<DeliveryRecord>(ENDPOINTS.TICKET_DELIVERY_TAB(id, tab), {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
   sign: (id: number, body: {email?: string; customer_notes?: string; signed_name: string; signature_image: string}) =>
-    request(`/tickets/${id}/sign`, {
+    request(ENDPOINTS.TICKET_SIGN(id), {
       method: 'POST',
       body: JSON.stringify(body),
     }),
   dispute: (id: number, body: {quantity: number; reason: string; signed_name: string; signature_image: string; product_code?: string; product_description?: string; quantity_unit?: string}) =>
-    request(`/tickets/${id}/dispute`, {
+    request(ENDPOINTS.TICKET_DISPUTE(id), {
       method: 'POST',
       body: JSON.stringify(body),
     }),
   getQr: (id: number) =>
-    request<TicketQr>(`/tickets/${id}/qr`),
+    request<TicketQr>(ENDPOINTS.TICKET_QR(id)),
 };
 
 export type TicketQr = {
@@ -528,29 +594,51 @@ export type PlantsResponse = {
 };
 
 export const plantsApi = {
-  getAll: () => request<PlantsResponse>('/plants'),
+  getAll: () => request<PlantsResponse>(ENDPOINTS.PLANTS),
 };
 
 export const authApi = {
   companyLogin: (company_code: string) =>
-    request<CompanyLoginResponse>('/auth/company-login', {
+    request<CompanyLoginResponse>(ENDPOINTS.AUTH_COMPANY_LOGIN, {
       method: 'POST',
       body: JSON.stringify({company_code}),
     }),
 
   driverLogin: (truck_code: string, employee_code: string) =>
-    request<DriverLoginResponse>('/auth/driver-login', {
+    request<DriverLoginResponse>(ENDPOINTS.AUTH_DRIVER_LOGIN, {
       method: 'POST',
       body: JSON.stringify({truck_code, employee_code}),
     }),
 
   driverLogout: () =>
-    request<DriverLogoutResponse>('/auth/driver-logout', {
+    request<DriverLogoutResponse>(ENDPOINTS.AUTH_DRIVER_LOGOUT, {
       method: 'POST',
     }),
 
   companyLogout: () =>
-    request<CompanyLogoutResponse>('/auth/company-logout', {
+    request<CompanyLogoutResponse>(ENDPOINTS.AUTH_COMPANY_LOGOUT, {
       method: 'POST',
     }),
 };
+
+const HEALTH_TIMEOUT_MS = 5000;
+
+export async function checkApiHealth(): Promise<{healthy: boolean; latency: number}> {
+  const start = Date.now();
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+    const res = await fetch(`${BASE_URL}${ENDPOINTS.HEALTH}`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const json = await res.json();
+    const healthy = res.status === 200 && json.status === 'healthy';
+    console.log(`[Health] ${healthy ? 'healthy' : 'unhealthy'} (${Date.now() - start}ms)`);
+    return {healthy, latency: Date.now() - start};
+  } catch {
+    console.log(`[Health] unreachable (${Date.now() - start}ms)`);
+    return {healthy: false, latency: Date.now() - start};
+  }
+}

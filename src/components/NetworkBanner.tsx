@@ -10,6 +10,7 @@ export default function NetworkBanner() {
   const {isOnline} = useNetworkStatus();
   const insets = useSafeAreaInsets();
   const [showRestored, setShowRestored] = useState(false);
+  const [rendered, setRendered] = useState(false);
   const wasOffline = useRef(false);
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const restoredTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -18,12 +19,10 @@ export default function NetworkBanner() {
 
   useEffect(() => {
     if (!isOnline) {
-      // Connection lost
       wasOffline.current = true;
       setShowRestored(false);
       if (restoredTimer.current) clearTimeout(restoredTimer.current);
     } else if (wasOffline.current) {
-      // Connection restored after being offline
       wasOffline.current = false;
       setShowRestored(true);
       restoredTimer.current = setTimeout(() => setShowRestored(false), RESTORED_DISPLAY_MS);
@@ -34,14 +33,21 @@ export default function NetworkBanner() {
   }, [isOnline]);
 
   useEffect(() => {
+    if (visible) {
+      setRendered(true);
+    }
     Animated.timing(slideAnim, {
       toValue: visible ? 0 : -100,
       duration: 300,
       useNativeDriver: true,
-    }).start();
+    }).start(({finished}) => {
+      if (finished && !visible) {
+        setRendered(false);
+      }
+    });
   }, [visible, slideAnim]);
 
-  if (!visible && slideAnim._value !== 0) return null;
+  if (!rendered) return null;
 
   const isOfflineBanner = !isOnline;
   const bg = isOfflineBanner ? '#D32F2F' : '#2E7D32';
