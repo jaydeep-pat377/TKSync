@@ -651,7 +651,7 @@ export default function DashboardScreen({ navigation }: Props) {
       <View style={[styles.container, {backgroundColor: '#c8c8c8'}]}>
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
         <View style={{backgroundColor: c.primary, paddingTop: insets.top + (isLandscape ? 2 : wp(4)), paddingBottom: isLandscape ? 4 : wp(6), paddingHorizontal: Math.max(wp(12), insets.right + wp(4)), flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center'}}>
-          <TouchableOpacity style={{width: isLandscape ? 30 : wp(36), height: isLandscape ? 30 : wp(36), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'}} onPress={openMenu} activeOpacity={0.7}>
+          <TouchableOpacity style={{width: isLandscape ? 30 : Math.max(wp(34), 34), height: isLandscape ? 30 : Math.max(wp(34), 34), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'}} onPress={openMenu} activeOpacity={0.7}>
             <MaterialIcons name="menu" size={ms(isLandscape ? 18 : 22)} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -709,7 +709,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   const isDarkMode = item.actionKey === 'DarkMode';
                   const itemIcon = isDarkMode ? (isDark ? 'light-mode' : 'dark-mode') : item.icon;
                   const label = isDarkMode ? (isDark ? t('menu.lightMode', 'Light Mode') : t('menu.darkMode', 'Dark Mode')) : t(item.labelKey);
-                  const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
+                  const suffix = item.actionKey === 'Language' ? ` (${i18n.language.toUpperCase()})` : '';
                   return (
                     <TouchableOpacity
                       key={item.actionKey}
@@ -861,8 +861,8 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={[styles.headerRow, L && { marginBottom: ls(3) }]}>
                 <View style={styles.headerLeft}>
                   <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && { width: ls(30), height: ls(30), borderRadius: ls(15) }]} />
-                  <Text style={[styles.logoTitle,
-                  { color: c.textOnPrimary, marginLeft: L ? ls(8) : wp(10) }, L && { fontSize: ls(20) }]}>{company?.company_name || t('app.name')}</Text>
+                  <Text numberOfLines={1} style={[styles.logoTitle,
+                  { color: c.textOnPrimary, marginLeft: L ? ls(8) : wp(10), flexShrink: 1 }, L && { fontSize: ls(20) }]}>{company?.company_name || t('app.name')}</Text>
                 </View>
                 <View style={[styles.headerActions, L && { gap: ls(5) }]}>
                   {/* Weather + Vehicle + Employee — landscape only, before sync */}
@@ -1298,7 +1298,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 const isDarkMode = item.actionKey === 'DarkMode';
                 const itemIcon = isDarkMode ? (isDark ? 'light-mode' : 'dark-mode') : item.icon;
                 const label = isDarkMode ? (isDark ? t('menu.lightMode', 'Light Mode') : t('menu.darkMode', 'Dark Mode')) : t(item.labelKey);
-                const suffix = item.actionKey === 'Language' ? ` (${i18n.language === 'en' ? 'FR' : 'EN'})` : '';
+                const suffix = item.actionKey === 'Language' ? ` (${i18n.language.toUpperCase()})` : '';
                 return (
                   <TouchableOpacity
                     key={item.actionKey}
@@ -1839,11 +1839,11 @@ const styles = StyleSheet.create({
   // Header
   header: { paddingBottom: wp(4) },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(3) },
-  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, flexShrink: 1, minWidth: 0 },
   logo: { width: wp(34), height: wp(34), borderRadius: wp(17) },
   logoTitle: { fontSize: ms(14), fontWeight: '800', letterSpacing: 0.3 },
   logoSub: { fontSize: ms(9), fontWeight: '500', marginTop: 1 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: wp(6) },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: wp(6), flexShrink: 0 },
   hdrBtn: { width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center' },
 
   // Tabs
