@@ -4,11 +4,13 @@ const offlineStore = createMMKV({id: 'tksync-offline-queue'});
 
 const QUEUE_KEY = 'pending_saves';
 const QUEUE_COUNTER_KEY = 'queue_counter';
+const CACHE_PREFIX = 'delivery_cache_';
 
 export type PendingSave = {
   id: string;
   ticketId: number;
   tab: string;
+  action?: 'delivery' | 'sign' | 'dispute';
   body: Record<string, any>;
   createdAt: string;
   retryCount: number;
@@ -36,7 +38,7 @@ function nextId(): string {
 }
 
 export const offlineStorage = {
-  enqueue(ticketId: number, tab: string, body: Record<string, any>): PendingSave {
+  enqueue(ticketId: number, tab: string, body: Record<string, any>, action?: PendingSave['action']): PendingSave {
     const queue = getQueue();
 
     // Deduplicate: if there's already a pending save for same ticket+tab, replace it
@@ -48,6 +50,7 @@ export const offlineStorage = {
       id: nextId(),
       ticketId,
       tab,
+      action: action || 'delivery',
       body,
       createdAt: new Date().toISOString(),
       retryCount: 0,
@@ -98,5 +101,40 @@ export const offlineStorage = {
 
   hasPending(): boolean {
     return getQueue().length > 0;
+  },
+
+  // ─── Local delivery record cache ───
+
+  cacheDeliveryRecord(ticketId: number, record: Record<string, any>): void {
+    offlineStore.set(CACHE_PREFIX + ticketId, JSON.stringify(record));
+  },
+
+  getCachedDeliveryRecord(ticketId: number): Record<string, any> | null {
+    const raw = offlineStore.getString(CACHE_PREFIX + ticketId);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+
+  /** Merge a saved tab body into the cached record */
+  updateCachedTab(ticketId: number, tab: string, body: Record<string, any>): void {
+    const cached = this.getCachedDeliveryRecord(ticketId);
+    if (!cached) {
+      // No cache yet — create a minimal one with just this tab
+      this.cacheDeliveryRecord(ticketId, {[tab]: {...body}});
+      return;
+    }
+    cached[tab] = {...(cached[tab] || {}), ...body};
+    this.cacheDeliveryRecord(ticketId, cached);
+  },
+
+  /** Get pending saves for a specific ticket, optionally filtered by tab */
+  getPendingForTicket(ticketId: number, tab?: string): PendingSave[] {
+    return getQueue().filter(
+      item => item.ticketId === ticketId && (!tab || item.tab === tab),
+    );
   },
 };

@@ -22,6 +22,7 @@ import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
+import {useOfflineSync} from '../contexts/OfflineSyncContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -30,6 +31,7 @@ type Props = {
 
 export default function AcceptTicketScreen({navigation, route}: Props) {
   const {c} = useTheme();
+  const {isOnline, enqueueOffline} = useOfflineSync();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const isTablet = Math.min(width, height) > 600;
@@ -98,20 +100,31 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || !ticketId || !signature) return;
     setSubmitting(true);
+    const body = {
+      email: email.trim() || undefined,
+      customer_notes: customerNotes.trim() || undefined,
+      signed_name: typeName.trim(),
+      signature_image: signature,
+    };
     try {
-      await ticketsApi.sign(ticketId, {
-        email: email.trim() || undefined,
-        customer_notes: customerNotes.trim() || undefined,
-        signed_name: typeName.trim(),
-        signature_image: signature,
-      });
-      setAlert({type: 'success', title: 'Success', message: 'Ticket signed successfully.'});
+      if (!isOnline) {
+        enqueueOffline(ticketId, 'sign', body, 'sign');
+        setAlert({type: 'success', title: 'Saved Offline', message: 'Ticket will be signed automatically when connection is restored.'});
+      } else {
+        await ticketsApi.sign(ticketId, body);
+        setAlert({type: 'success', title: 'Success', message: 'Ticket signed successfully.'});
+      }
     } catch (err: any) {
-      setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to sign ticket.'});
+      if (err?.message?.includes('Network request failed')) {
+        enqueueOffline(ticketId, 'sign', body, 'sign');
+        setAlert({type: 'success', title: 'Saved Offline', message: 'Ticket will be signed automatically when connection is restored.'});
+      } else {
+        setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to sign ticket.'});
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, ticketId, email, customerNotes, typeName, signature]);
+  }, [canSubmit, ticketId, email, customerNotes, typeName, signature, isOnline, enqueueOffline]);
 
   const handleAlertClose = useCallback(() => {
     const wasSuccess = alert?.type === 'success';

@@ -22,6 +22,7 @@ import SignaturePad from '../components/SignaturePad';
 import ThemedAlert from '../components/ThemedAlert';
 import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
+import {useOfflineSync} from '../contexts/OfflineSyncContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -30,6 +31,7 @@ type Props = {
 
 export default function DisputeTicketScreen({navigation, route}: Props) {
   const {c} = useTheme();
+  const {isOnline, enqueueOffline} = useOfflineSync();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const isTablet = Math.min(width, height) > 600;
@@ -93,20 +95,31 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   const handleDispute = useCallback(async () => {
     if (!canSubmit || !ticketId || !signature) return;
     setSubmitting(true);
+    const body = {
+      quantity: parseFloat(quantity.trim()) || 0,
+      reason: reason.trim(),
+      signed_name: typeName.trim(),
+      signature_image: signature,
+    };
     try {
-      await ticketsApi.dispute(ticketId, {
-        quantity: parseFloat(quantity.trim()) || 0,
-        reason: reason.trim(),
-        signed_name: typeName.trim(),
-        signature_image: signature,
-      });
-      setAlert({type: 'success', title: 'Success', message: 'Ticket disputed successfully.'});
+      if (!isOnline) {
+        enqueueOffline(ticketId, 'dispute', body, 'dispute');
+        setAlert({type: 'success', title: 'Saved Offline', message: 'Dispute will be submitted automatically when connection is restored.'});
+      } else {
+        await ticketsApi.dispute(ticketId, body);
+        setAlert({type: 'success', title: 'Success', message: 'Ticket disputed successfully.'});
+      }
     } catch (err: any) {
-      setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to dispute ticket.'});
+      if (err?.message?.includes('Network request failed')) {
+        enqueueOffline(ticketId, 'dispute', body, 'dispute');
+        setAlert({type: 'success', title: 'Saved Offline', message: 'Dispute will be submitted automatically when connection is restored.'});
+      } else {
+        setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to dispute ticket.'});
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, ticketId, quantity, reason, typeName, signature]);
+  }, [canSubmit, ticketId, quantity, reason, typeName, signature, isOnline, enqueueOffline]);
 
   const handleAlertClose = useCallback(() => {
     const wasSuccess = alert?.type === 'success';

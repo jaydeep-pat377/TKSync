@@ -31,6 +31,7 @@ type Props = {
 const REMEMBER_KEY = 'remember_driver';
 const SAVED_TRUCK_KEY = 'saved_truck';
 const SAVED_PIN_KEY = 'saved_pin';
+const SAVED_COMPANY_CODE_KEY = 'saved_company_code';
 
 export default function DriverLoginScreen({navigation}: Props) {
   const savedRemember = storage.getBoolean(REMEMBER_KEY) ?? false;
@@ -109,10 +110,14 @@ export default function DriverLoginScreen({navigation}: Props) {
         storage.set(REMEMBER_KEY, true);
         storage.set(SAVED_TRUCK_KEY, truck);
         storage.set(SAVED_PIN_KEY, pin);
+        if (company?.company_code) {
+          storage.set(SAVED_COMPANY_CODE_KEY, company.company_code);
+        }
       } else {
         storage.remove(REMEMBER_KEY);
         storage.remove(SAVED_TRUCK_KEY);
         storage.remove(SAVED_PIN_KEY);
+        storage.remove(SAVED_COMPANY_CODE_KEY);
       }
       navigation.replace('Dashboard');
     } catch (err) {

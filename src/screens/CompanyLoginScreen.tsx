@@ -21,6 +21,7 @@ import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
 import {useAuth} from '../contexts/AuthContext';
 import {ApiError} from '../services/api';
+import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
 
 type Props = {
@@ -28,7 +29,8 @@ type Props = {
 };
 
 export default function CompanyLoginScreen({navigation}: Props) {
-  const [companyCode, setCompanyCode] = useState('');
+  const savedRemember = storage.getBoolean('remember_driver') ?? false;
+  const [companyCode, setCompanyCode] = useState(savedRemember ? (storage.getString('saved_company_code') ?? '') : '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const {t} = useTranslation();

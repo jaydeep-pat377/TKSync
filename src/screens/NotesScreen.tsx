@@ -31,6 +31,7 @@ import ResponsiveModal from '../components/ResponsiveModal';
 import {wp, ms, hp} from '../utils/responsive';
 import {ticketsApi, type DeliveryRecord} from '../services/api';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
+import {offlineStorage} from '../services/offlineStorage';
 import {setForceOffline, getForceOffline} from '../hooks/useNetworkStatus';
 
 type Props = {
@@ -2576,6 +2577,7 @@ export default function NotesScreen({navigation, route}: Props) {
     if (!ticketId) return;
     const res = await ticketsApi.getDeliveryRecord(ticketId);
     setDeliveryRecord(res.data);
+    offlineStorage.cacheDeliveryRecord(ticketId, res.data);
   }, [ticketId]);
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
@@ -2589,8 +2591,23 @@ export default function NotesScreen({navigation, route}: Props) {
     if (!ticketId) return;
     setRecordLoading(true);
     ticketsApi.getDeliveryRecord(ticketId)
-      .then(res => setDeliveryRecord(res.data))
-      .catch(() => {})
+      .then(res => {
+        setDeliveryRecord(res.data);
+        // Cache API data locally for offline fallback
+        offlineStorage.cacheDeliveryRecord(ticketId, res.data);
+      })
+      .catch(() => {
+        // API failed — try local cache + merge any pending offline saves
+        const cached = offlineStorage.getCachedDeliveryRecord(ticketId);
+        if (cached) {
+          const pending = offlineStorage.getPendingForTicket(ticketId);
+          let merged = {...cached};
+          for (const item of pending) {
+            merged[item.tab] = {...(merged[item.tab] || {}), ...item.body};
+          }
+          setDeliveryRecord(merged as DeliveryRecord);
+        }
+      })
       .finally(() => setRecordLoading(false));
   }, [ticketId]);
 
@@ -2738,9 +2755,7 @@ const st = StyleSheet.create({
   scrollInner: {paddingBottom: wp(20), flexGrow: 1},
 
   // Tab body
-  tabBody: {paddingHorizontal: wp(8), paddingTop: wp(8), paddingBottom: wp(10), flex: 1},
-
-  // Cards grid
+tabBody: {paddingHorizontal: wp(8), paddingTop: wp(8), paddingBottom: wp(10), flex: 1},    // Cards grid
   cardsGridNarrow: {gap: wp(10)},
   cardsGridWide: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(10), alignItems: 'stretch', flex: 1, alignContent: 'flex-start'},
 

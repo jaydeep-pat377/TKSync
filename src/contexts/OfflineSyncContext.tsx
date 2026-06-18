@@ -22,6 +22,8 @@ type OfflineSyncContextType = {
     tab: string,
     body: Record<string, any>,
   ) => Promise<{success: boolean; message: string; offline: boolean}>;
+  /** Queue any action for offline sync */
+  enqueueOffline: (ticketId: number, tab: string, body: Record<string, any>, action: 'sign' | 'dispute') => void;
   /** Manually trigger sync */
   triggerSync: () => void;
 };
@@ -97,6 +99,7 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
 
       // Offline or network error — queue locally
       offlineStorage.enqueue(ticketId, tab, body);
+      offlineStorage.updateCachedTab(ticketId, tab, body);
       setPendingCount(offlineStorage.getPendingCount());
       return {
         success: true,
@@ -106,6 +109,11 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     },
     [isOnline],
   );
+
+  const enqueueOffline = useCallback((ticketId: number, tab: string, body: Record<string, any>, action: 'sign' | 'dispute') => {
+    offlineStorage.enqueue(ticketId, tab, body, action);
+    setPendingCount(offlineStorage.getPendingCount());
+  }, []);
 
   const triggerSync = useCallback(() => {
     syncManager.sync();
@@ -119,6 +127,7 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
         isSyncing,
         lastSyncEvent,
         saveDeliveryTab,
+        enqueueOffline,
         triggerSync,
       }}>
       {children}
@@ -139,8 +148,9 @@ function capitalize(s: string): string {
 }
 
 function isNetworkError(err: any): boolean {
-  if (err instanceof TypeError && err.message === 'Network request failed') {
+  if (err instanceof TypeError && err.message?.includes('Network request failed')) {
     return true;
   }
+  if (err?.name === 'AbortError') return true;
   return err?.message?.includes('Network request failed') ?? false;
 }

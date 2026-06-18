@@ -736,7 +736,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <ResponsiveModal
           visible={plantsVisible}
           onClose={() => setPlantsVisible(false)}
-          maxWidth={540}
+          maxWidth={450}
           maxHeightPercent={70}>
           <View style={[styles.mHeader, {borderBottomColor: c.border}]}>
             <Text style={[styles.mHeaderTitle, {color: c.textPrimary}]}>{t('modals.plants')}</Text>
@@ -1418,7 +1418,7 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={plantsVisible}
         onClose={() => setPlantsVisible(false)}
-        maxWidth={540}
+        maxWidth={450}
         maxHeightPercent={70}>
         <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
           <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.plants')}</Text>

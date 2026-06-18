@@ -23,20 +23,28 @@ function emit(event: SyncEvent) {
 
 async function syncOne(item: PendingSave): Promise<boolean> {
   try {
-    await ticketsApi.saveDeliveryTab(item.ticketId, item.tab, item.body);
+    const action = item.action || 'delivery';
+    if (action === 'sign') {
+      await ticketsApi.sign(item.ticketId, item.body as any);
+    } else if (action === 'dispute') {
+      await ticketsApi.dispute(item.ticketId, item.body as any);
+    } else {
+      await ticketsApi.saveDeliveryTab(item.ticketId, item.tab, item.body);
+    }
     console.log(
-      `[SyncManager] Synced: ticket ${item.ticketId}/${item.tab}`,
+      `[SyncManager] Synced: ticket ${item.ticketId}/${action}`,
     );
     offlineStorage.dequeue(item.id);
     return true;
   } catch (err: any) {
     const message = err?.message || 'Unknown error';
     console.warn(
-      `[SyncManager] Failed: ticket ${item.ticketId}/${item.tab} — ${message}`,
+      `[SyncManager] Failed: ticket ${item.ticketId}/${item.action || item.tab} — ${message}`,
     );
     captureError(err instanceof Error ? err : new Error(message), {
       ticketId: item.ticketId,
       tab: item.tab,
+      action: item.action,
       retryCount: item.retryCount,
     });
     offlineStorage.updateRetry(item.id, message);

@@ -136,12 +136,12 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   const driverLogout = useCallback(async () => {
     try {
       const {data} = await authApi.driverLogout();
-
       storage.set('access_token', data.access_token);
       storage.set('refresh_token', data.refresh_token);
       storage.remove('driver');
     } catch {
-      // Even if API fails, clear driver locally
+      // Even if API fails (offline), clear driver locally.
+      // Server session expires naturally via token expiry.
       storage.remove('driver');
     }
 
@@ -157,7 +157,10 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   const companyLogout = useCallback(async () => {
     try {
       await authApi.companyLogout();
-    } catch {}
+    } catch {
+      // Even if API fails (offline), clear everything locally.
+      // Server session expires naturally via token expiry.
+    }
 
     setSentryUser(null);
 
