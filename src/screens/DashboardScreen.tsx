@@ -150,7 +150,7 @@ function getTicketStatus(ticket: Ticket, detail?: TicketDetail | null) {
 function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
   const { mix } = detail;
   const currentTruck = detail.mix.trucks?.find(t => t.is_current);
-  const items: { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[] = [
+  const items: { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean; valueColor?: string; isTruckBehind?: boolean }[] = [
     { labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science' },
     { labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true },
     { labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category' },
@@ -158,8 +158,11 @@ function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
     { labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten' },
     { labelKey: 'orderInfo.loadSize', value: mix.load_size || '-', icon: 'square-foot' },
   ];
-  if (currentTruck) {
-    items.push({ labelKey: 'mixInfo.truck', value: currentTruck.truck_code, icon: 'local-shipping' });
+  const truckParts: string[] = [];
+  if (mix.truck_ahead) truckParts.push(`${mix.truck_ahead.truck_code} ${mix.truck_ahead.status}`);
+  if (mix.truck_behind) truckParts.push(`${mix.truck_behind.truck_code} ${mix.truck_behind.status}`);
+  if (truckParts.length > 0) {
+    items.push({ labelKey: 'orderInfo.trucks', value: truckParts.join(' | '), icon: 'local-shipping', valueColor: 'accent', isLink: true, isTruckBehind: true });
   }
   return items;
 }
@@ -270,6 +273,62 @@ export default function DashboardScreen({ navigation }: Props) {
   const [plantsList, setPlantsList] = useState<Plant[]>([]);
   const [plantsLoading, setPlantsLoading] = useState(false);
   const [plantsError, setPlantsError] = useState(false);
+  const [plantsPage, setPlantsPage] = useState(1);
+  const [plantsHasNext, setPlantsHasNext] = useState(false);
+  const [plantsLoadingMore, setPlantsLoadingMore] = useState(false);
+  const plantsPageRef = useRef(1);
+  const plantsHasNextRef = useRef(false);
+  const plantsLoadingMoreRef = useRef(false);
+
+  const plantsLayoutH = useRef(0);
+  const plantsContentH = useRef(0);
+
+  const loadMorePlants = useCallback(() => {
+    if (!plantsHasNextRef.current || plantsLoadingMoreRef.current) return;
+    plantsLoadingMoreRef.current = true;
+    setPlantsLoadingMore(true);
+    const nextPage = plantsPageRef.current + 1;
+    plantsApi.getAll(nextPage)
+      .then(res => {
+        if (res.data?.plants) {
+          setPlantsList(prev => [...prev, ...res.data.plants]);
+          plantsPageRef.current = nextPage;
+          setPlantsPage(nextPage);
+          plantsHasNextRef.current = res.data.has_next;
+          setPlantsHasNext(res.data.has_next);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        plantsLoadingMoreRef.current = false;
+        setPlantsLoadingMore(false);
+        // After load finishes, check again if content still doesn't fill the view
+        setTimeout(() => {
+          if (plantsLayoutH.current > 0 && plantsContentH.current > 0 &&
+              plantsContentH.current <= plantsLayoutH.current + 20 &&
+              plantsHasNextRef.current && !plantsLoadingMoreRef.current) {
+            loadMorePlants();
+          }
+        }, 100);
+      });
+  }, []);
+
+  const checkPlantsAutoLoad = useCallback(() => {
+    setTimeout(() => {
+      if (plantsLayoutH.current > 0 && plantsContentH.current > 0 &&
+          plantsContentH.current <= plantsLayoutH.current + 20 &&
+          plantsHasNextRef.current && !plantsLoadingMoreRef.current) {
+        loadMorePlants();
+      }
+    }, 50);
+  }, [loadMorePlants]);
+
+  const handlePlantsScrollEnd = useCallback(({nativeEvent}: any) => {
+    const {layoutMeasurement, contentOffset, contentSize} = nativeEvent;
+    if (contentSize.height > 0 && layoutMeasurement.height + contentOffset.y >= contentSize.height - 60) {
+      loadMorePlants();
+    }
+  }, [loadMorePlants]);
   const [editVisible, setEditVisible] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [pendingDetails, setPendingDetails] = useState(false);
@@ -471,9 +530,16 @@ export default function DashboardScreen({ navigation }: Props) {
       setPlantsLoading(true);
       setPlantsError(false);
       setPlantsList([]);
+      setPlantsPage(1);
+      setPlantsHasNext(false);
+      plantsPageRef.current = 1;
+      plantsHasNextRef.current = false;
+      plantsLoadingMoreRef.current = false;
+      plantsLayoutH.current = 0;
+      plantsContentH.current = 0;
       setPlantsVisible(true);
-      plantsApi.getAll()
-        .then(res => { if (res.data?.plants) setPlantsList(res.data.plants); })
+      plantsApi.getAll(1)
+        .then(res => { if (res.data?.plants) { setPlantsList(res.data.plants); setPlantsHasNext(res.data.has_next); plantsHasNextRef.current = res.data.has_next; setPlantsPage(1); plantsPageRef.current = 1; } })
         .catch(() => { setPlantsError(true); })
         .finally(() => setPlantsLoading(false));
     }
@@ -641,9 +707,18 @@ export default function DashboardScreen({ navigation }: Props) {
   if (tickets.length === 0 && initialLoaded) {
     const handleTruckPress = () => {
       setPlantsLoading(true);
+      setPlantsError(false);
+      setPlantsList([]);
+      setPlantsPage(1);
+      setPlantsHasNext(false);
+      plantsPageRef.current = 1;
+      plantsHasNextRef.current = false;
+      plantsLoadingMoreRef.current = false;
+      plantsLayoutH.current = 0;
+      plantsContentH.current = 0;
       setPlantsVisible(true);
-      plantsApi.getAll()
-        .then(res => { if (res.data?.plants) setPlantsList(res.data.plants); })
+      plantsApi.getAll(1)
+        .then(res => { if (res.data?.plants) { setPlantsList(res.data.plants); setPlantsHasNext(res.data.has_next); plantsHasNextRef.current = res.data.has_next; setPlantsPage(1); plantsPageRef.current = 1; } })
         .catch(() => {})
         .finally(() => setPlantsLoading(false));
     };
@@ -749,7 +824,14 @@ export default function DashboardScreen({ navigation }: Props) {
               <ActivityIndicator size="large" color={c.primary} />
             </View>
           ) : (
-            <ScrollView style={styles.plantsList} showsVerticalScrollIndicator={true} bounces={false}>
+            <ScrollView
+              style={styles.plantsList}
+              showsVerticalScrollIndicator={true}
+              bounces={false}
+              onMomentumScrollEnd={handlePlantsScrollEnd}
+              onScrollEndDrag={handlePlantsScrollEnd}
+              onLayout={({nativeEvent}) => { plantsLayoutH.current = nativeEvent.layout.height; checkPlantsAutoLoad(); }}
+              onContentSizeChange={(_w, h) => { plantsContentH.current = h; checkPlantsAutoLoad(); }}>
               {plantsList.map(plant => (
                 <TouchableOpacity
                   key={plant.id}
@@ -759,6 +841,11 @@ export default function DashboardScreen({ navigation }: Props) {
                   <Text style={[styles.plantText, {color: c.textPrimary}]}>{plant.code}-{plant.name}</Text>
                 </TouchableOpacity>
               ))}
+              {plantsLoadingMore && (
+                <View style={{paddingVertical: wp(12), alignItems: 'center'}}>
+                  <ActivityIndicator size="small" color={c.primary} />
+                </View>
+              )}
             </ScrollView>
           )}
         </ResponsiveModal>
@@ -1183,7 +1270,7 @@ export default function DashboardScreen({ navigation }: Props) {
                                   if (currentTicket?.at_plant_time != null) {
                                     setDirectionsAlert(true);
                                   } else {
-                                    navigation.navigate('Map', { delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: jobItem.value });
+                                    navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: jobItem.value });
                                   }
                                 }} style={common.flex1}>
                                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(4) }}>
@@ -1210,12 +1297,16 @@ export default function DashboardScreen({ navigation }: Props) {
                                 <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00', flexShrink: 1 }]}>
                                   <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{mixItem.value}</Text>
                                 </View>
+                              ) : mixItem.isTruckBehind ? (
+                                <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: [...(detail?.location?.truck ? [{ type: 'My Truck', value: `${detail.ticket.truck_code} ${detail.ticket.status_label}`, latitude: detail.location.truck.lat, longitude: detail.location.truck.lng, status: detail.ticket.status_label, is_current: true, directions: true }] : []), ...(detail?.map || [])].sort((a, b) => { const order: Record<string, number> = { 'Plant': 0, 'My Truck': 1, 'Truck Ahead': 2, 'Truck Behind': 3, 'Job Site': 4 }; return (order[a.type] ?? 5) - (order[b.type] ?? 5); }), delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: detail?.job?.delivered_to || '', plantName: currentTicket?.plant_name || '' })} style={common.flex1}>
+                                  <Text style={[styles.detailValue, { color: c.accent }]} numberOfLines={2}>{mixItem.value}</Text>
+                                </TouchableOpacity>
                               ) : mixItem.isLink ? (
                                 <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
                                   <Text style={[styles.detailValue, { color: c.accent }]} numberOfLines={2}>{mixItem.value}</Text>
                                 </TouchableOpacity>
                               ) : (
-                                <Text style={[styles.detailValue, common.flex1, { color: c.textPrimary }]} numberOfLines={2}>{mixItem.value}</Text>
+                                <Text style={[styles.detailValue, common.flex1, { color: mixItem.valueColor === 'accent' ? c.accent : c.textPrimary }]} numberOfLines={2}>{mixItem.value}</Text>
                               )}
                             </View>
                           ) : <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }]} />}
@@ -1439,8 +1530,11 @@ export default function DashboardScreen({ navigation }: Props) {
               onPress={() => {
                 setPlantsLoading(true);
                 setPlantsError(false);
-                plantsApi.getAll()
-                  .then(res => { if (res.data?.plants) setPlantsList(res.data.plants); })
+                setPlantsList([]);
+                setPlantsPage(1);
+                setPlantsHasNext(false);
+                plantsApi.getAll(1)
+                  .then(res => { if (res.data?.plants) { setPlantsList(res.data.plants); setPlantsHasNext(res.data.has_next); plantsHasNextRef.current = res.data.has_next; setPlantsPage(1); plantsPageRef.current = 1; } })
                   .catch(() => { setPlantsError(true); })
                   .finally(() => setPlantsLoading(false));
               }}
@@ -1451,7 +1545,15 @@ export default function DashboardScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         ) : (
-          <ScrollView style={styles.plantsList} showsVerticalScrollIndicator={true} bounces={false}>
+          <ScrollView
+            style={styles.plantsList}
+            showsVerticalScrollIndicator={true}
+            bounces={false}
+            onMomentumScrollEnd={handlePlantsScrollEnd}
+            onScrollEndDrag={handlePlantsScrollEnd}
+            scrollEventThrottle={400}
+            onLayout={({nativeEvent}) => { plantsLayoutH.current = nativeEvent.layout.height; checkPlantsAutoLoad(); }}
+            onContentSizeChange={(_w, h) => { plantsContentH.current = h; checkPlantsAutoLoad(); }}>
             {plantsList.map(plant => (
               <TouchableOpacity
                 key={plant.id}
@@ -1461,6 +1563,11 @@ export default function DashboardScreen({ navigation }: Props) {
                 <Text style={[styles.plantText, { color: c.textPrimary }]}>{plant.code}-{plant.name}</Text>
               </TouchableOpacity>
             ))}
+            {plantsLoadingMore && (
+              <View style={{paddingVertical: wp(12), alignItems: 'center'}}>
+                <ActivityIndicator size="small" color={c.primary} />
+              </View>
+            )}
           </ScrollView>
         )}
       </ResponsiveModal>
@@ -1585,12 +1692,12 @@ export default function DashboardScreen({ navigation }: Props) {
             <Text style={[styles.pmColUnit, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.unit')}</Text>
           </View>
           {/* Table Rows */}
-          {detail?.mix?.products && detail.mix.products.filter(p => p.is_mix).length > 0 ? detail.mix.products.filter(p => p.is_mix).map((product, i) => (
+          {detail?.mix?.products && detail.mix.products.length > 0 ? detail.mix.products.map((product, i) => (
             <View key={`${product.code}-${i}`} style={[styles.pmRow, { borderBottomColor: c.borderLight }]}>
               <Text style={[styles.pmColCode, styles.pmTd, { color: c.textPrimary }]} numberOfLines={1}>{product.code}</Text>
               <Text style={[styles.pmColDesc, styles.pmTd, { color: c.textPrimary }]} numberOfLines={2}>{product.description}</Text>
               <Text style={[styles.pmColQty, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
-              <Text style={[styles.pmColUnit, styles.pmTd, { color: c.textPrimary }]}>{product.order_unit || '-'}</Text>
+              <Text style={[styles.pmColUnit, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_unit || '-'}</Text>
             </View>
           )) : (
             <View style={{ padding: wp(16), alignItems: 'center' }}>

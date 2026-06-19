@@ -101,7 +101,8 @@
     "amount": "MONTANT",
     "tax": "TAXE",
     "total": "TOTAL",
-    "truck": "CAMION"
+    "truck": "CAMION",
+    "truckBehind": "CAMION DERRIÈRE"
   },
   "actions": {
     "notes": "Notes",

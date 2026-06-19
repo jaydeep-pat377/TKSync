@@ -363,7 +363,9 @@ export type TicketDetail = {
     loads: {current: number | null; total: number};
     truck_code: string;
     products?: {code: string; description: string; is_mix: boolean; slump: number | null; slump_text: string | null; delivered_qty: number | null; delivered_unit: string | null; order_qty: number | null; order_unit: string | null}[];
-    trucks?: {truck_code: string; status: string; is_current: boolean}[];
+    trucks?: {truck_code: string; name?: string; status: string; is_current: boolean; position?: {lat: number; lng: number; updated_at: string | null} | null}[];
+    truck_ahead?: {truck_code: string; status: string} | null;
+    truck_behind?: {truck_code: string; status: string} | null;
   };
   location?: {
     delivery?: {lat: number; lng: number; radius_m?: number};
@@ -384,6 +386,17 @@ export type TicketDetail = {
     evaporation_rate: number;
     evaporation_level: string;
   } | null;
+  map?: {
+    type: string;
+    address?: string;
+    value?: string;
+    mapPage?: string;
+    latitude: number | null;
+    longitude: number | null;
+    status: string;
+    is_current: boolean;
+    directions: boolean;
+  }[];
 };
 
 export type DeliveryRecord = {
@@ -666,11 +679,18 @@ export type PlantsResponse = {
     current_plant_name: string;
   };
   count: number;
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
   plants: Plant[];
 };
 
 export const plantsApi = {
-  getAll: () => request<PlantsResponse>(ENDPOINTS.PLANTS),
+  getAll: (page = 1, limit = 20) =>
+    request<PlantsResponse>(`${ENDPOINTS.PLANTS}?page=${page}&limit=${limit}`),
 };
 
 export const authApi = {

@@ -101,7 +101,8 @@
     "amount": "AMOUNT",
     "tax": "TAX",
     "total": "TOTAL",
-    "truck": "TRUCK"
+    "truck": "TRUCK",
+    "truckBehind": "TRUCK BEHIND"
   },
   "actions": {
     "notes": "Notes",
