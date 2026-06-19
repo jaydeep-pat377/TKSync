@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,30 @@ import {
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
+import {useOfflineSync} from '../contexts/OfflineSyncContext';
+import {ticketsApi} from '../services/api';
 import {wp, ms} from '../utils/responsive';
 import SignaturePad from '../components/SignaturePad';
+import ThemedAlert from '../components/ThemedAlert';
 
-type Props = {navigation: NativeStackNavigationProp<any>};
+type Props = {
+  navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<any>;
+};
 
-export default function CurblineReleaseScreen({navigation}: Props) {
+export default function CurblineReleaseScreen({navigation, route}: Props) {
+  const {ticketId} = (route.params || {}) as {ticketId?: number};
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
+  const {isOnline, enqueueOffline} = useOfflineSync();
   const isTablet = Math.min(width, height) > 600;
   const isLandscape = width > height;
   const sigHeight = isTablet
@@ -32,12 +42,76 @@ export default function CurblineReleaseScreen({navigation}: Props) {
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [existingRelease, setExistingRelease] = useState<{id: number; signed_name: string; signature_image: string} | null>(null);
+  const [editingSignature, setEditingSignature] = useState(false);
+  const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
+
+  // Fetch existing curbline release on mount
+  useEffect(() => {
+    if (!ticketId) { setLoading(false); return; }
+    ticketsApi.getCurblineRelease(ticketId)
+      .then(({data}) => {
+        if (data.curbline_release) {
+          setExistingRelease(data.curbline_release as any);
+          setTypeName(data.curbline_release.signed_name || '');
+          setSignature(data.curbline_release.signature_image || null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [ticketId]);
 
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
   }, []);
 
-  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0;
+  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting;
+
+  const handleSubmit = useCallback(async () => {
+    if (!canSubmit || !ticketId) return;
+
+    const body = {name: typeName.trim(), sign: signature!};
+    setSubmitting(true);
+
+    try {
+      if (!isOnline) {
+        enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release' as any);
+        setAlert({type: 'success', title: 'Saved Offline', message: 'Curbline release will be submitted automatically when connection is restored.'});
+      } else if (existingRelease) {
+        await ticketsApi.updateCurblineRelease(ticketId, body);
+        setAlert({type: 'success', title: 'Success', message: 'Curbline release updated successfully.'});
+      } else {
+        await ticketsApi.curblineRelease(ticketId, body);
+        setAlert({type: 'success', title: 'Success', message: 'Curbline release submitted successfully.'});
+      }
+    } catch (err: any) {
+      if (err?.message?.includes('Network request failed') || err?.name === 'AbortError') {
+        enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release' as any);
+        setAlert({type: 'success', title: 'Saved Offline', message: 'Curbline release will be submitted automatically when connection is restored.'});
+      } else {
+        setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to submit curbline release.'});
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }, [canSubmit, ticketId, typeName, signature, isOnline, enqueueOffline, existingRelease]);
+
+  const handleAlertClose = useCallback(() => {
+    const wasSuccess = alert?.type === 'success';
+    setAlert(null);
+    if (wasSuccess) navigation.goBack();
+  }, [alert, navigation]);
+
+  if (loading) {
+    return (
+      <View style={[s.container, s.centerContent, {backgroundColor: c.white}]}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <ActivityIndicator size="large" color={c.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[s.container, {backgroundColor: isLandscape ? c.white : c.accentBg}]}>
@@ -108,19 +182,49 @@ export default function CurblineReleaseScreen({navigation}: Props) {
               />
             </View>
 
-            <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
+            {existingRelease?.signature_image && !editingSignature ? (
+              <SignaturePad
+                onSignatureChange={handleSignatureChange}
+                height={sigHeight}
+                readOnly
+                initialImage={existingRelease.signature_image}
+                onEditPress={() => setEditingSignature(true)}
+              />
+            ) : (
+              <SignaturePad
+                onSignatureChange={handleSignatureChange}
+                height={sigHeight}
+                onTouchStart={() => setScrollEnabled(false)}
+                onTouchEnd={() => setScrollEnabled(true)}
+              />
+            )}
 
             <TouchableOpacity
               style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
               activeOpacity={canSubmit ? 0.8 : 1}
-              disabled={!canSubmit}>
-              <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
+              disabled={!canSubmit}
+              onPress={handleSubmit}>
+              {submitting ? (
+                <ActivityIndicator color={c.textOnPrimary} />
+              ) : (
+                <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>
+                  {existingRelease ? 'UPDATE' : 'SUBMIT'}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
+
+      <ThemedAlert
+        visible={alert !== null}
+        type={alert?.type || 'success'}
+        title={alert?.title || ''}
+        message={alert?.message || ''}
+        onClose={handleAlertClose}
+      />
     </View>
   );
 }
@@ -130,6 +234,7 @@ const s = StyleSheet.create({
   flex1: {flex: 1},
   scroll: {flex: 1},
   scrollContent: {},
+  centerContent: {justifyContent: 'center', alignItems: 'center'},
   card: {marginHorizontal: wp(8), marginBottom: wp(10), borderRadius: wp(12), overflow: 'visible'},
 
   header: {

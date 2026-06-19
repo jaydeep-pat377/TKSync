@@ -10,7 +10,7 @@ export type PendingSave = {
   id: string;
   ticketId: number;
   tab: string;
-  action?: 'delivery' | 'sign' | 'dispute';
+  action?: 'delivery' | 'sign' | 'dispute' | 'curbline-release';
   body: Record<string, any>;
   createdAt: string;
   retryCount: number;

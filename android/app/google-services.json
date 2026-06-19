@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "288939708699",
+    "project_id": "tksync-117f9",
+    "storage_bucket": "tksync-117f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:288939708699:android:0000f2ea08ba1d1583c3be",
+        "android_client_info": {
+          "package_name": "com.tksync"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIbdP-2bkmNWps_zp97MLxX3FGOo3R4dM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

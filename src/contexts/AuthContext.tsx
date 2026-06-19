@@ -9,6 +9,7 @@ import {
 } from '../services/api';
 import {setSentryUser} from '../services/sentry';
 import {showToast} from '../utils/toast';
+import {registerDevice, unregisterDevice, setupTokenRefreshListener, setupForegroundHandler} from '../services/notifications';
 
 type CompanyInfo = {
   company_id: number;
@@ -73,6 +74,10 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
         company,
         driver,
       });
+
+      if (isDriverLoggedIn) {
+        registerDevice();
+      }
     } else {
       setState(prev => ({...prev, isLoading: false}));
     }
@@ -129,11 +134,14 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
         isDriverLoggedIn: true,
         driver,
       }));
+
+      registerDevice();
     },
     [state.company],
   );
 
   const driverLogout = useCallback(async () => {
+    await unregisterDevice();
     try {
       const {data} = await authApi.driverLogout();
       storage.set('access_token', data.access_token);
@@ -177,6 +185,14 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       driver: null,
     });
   }, []);
+
+  // Setup FCM token refresh and foreground push listeners
+  useEffect(() => {
+    if (!state.isDriverLoggedIn) return;
+    const unsubRefresh = setupTokenRefreshListener();
+    const unsubForeground = setupForegroundHandler();
+    return () => { unsubRefresh(); unsubForeground(); };
+  }, [state.isDriverLoggedIn]);
 
   useEffect(() => {
     setOnSessionExpired(() => {

@@ -8,6 +8,7 @@ import {
   Linking,
   ScrollView,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
@@ -63,6 +64,7 @@ export default function MapScreen({navigation, route}: Props) {
   const isTablet = Math.min(width, height) > 600;
   const [isSatellite, setIsSatellite] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(14);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const cameraRef = useRef<MapboxGL.Camera>(null);
 
   const hasMapItems = mapItems && mapItems.length > 0;
@@ -173,12 +175,18 @@ export default function MapScreen({navigation, route}: Props) {
 
   const mapView = (
     <View style={styles.mapContainer}>
+      {!mapLoaded && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      )}
       <MapboxGL.MapView
         style={styles.map}
         styleURL={isSatellite ? MapboxGL.StyleURL.SatelliteStreet : MapboxGL.StyleURL.Street}
         logoEnabled={false}
         attributionEnabled={false}
-        scaleBarEnabled={false}>
+        scaleBarEnabled={false}
+        onDidFinishLoadingMap={() => setMapLoaded(true)}>
         <MapboxGL.Camera
           ref={cameraRef}
           {...(bounds
@@ -346,6 +354,7 @@ const styles = StyleSheet.create({
   headerSub: {fontSize: ms(10), marginTop: 1},
   navBtn: {width: wp(36), height: wp(36), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
   mapContainer: {flex: 1},
+  loader: {position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 10},
   map: {flex: 1},
   marker: {width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 4},
 

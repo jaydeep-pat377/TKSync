@@ -22,4 +22,11 @@ export const ENDPOINTS = {
 
   // Plants
   PLANTS: '/plants',
+
+  // Curbline Release
+  TICKET_CURBLINE_RELEASE: (id: number) => `/tickets/${id}/curbline-release`,
+
+  // Notifications
+  NOTIFICATION_REGISTER: '/notifications/register-device',
+  NOTIFICATION_UNREGISTER: '/notifications/unregister-device',
 } as const;

@@ -156,7 +156,6 @@ function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
     { labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category' },
     { labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true },
     { labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten' },
-    { labelKey: 'orderInfo.loadSize', value: mix.load_size || '-', icon: 'square-foot' },
   ];
   const truckParts: string[] = [];
   if (mix.truck_ahead) truckParts.push(`${mix.truck_ahead.truck_code} ${mix.truck_ahead.status}`);
@@ -175,7 +174,6 @@ function buildMixInfoFromTicket(ticket: Ticket) {
     { labelKey: 'mixInfo.usage', value: '-', icon: 'category' },
     { labelKey: 'mixInfo.slump', value: mix?.slump || '-', isHighlight: true },
     { labelKey: 'orderInfo.quantity', value: mix?.quantity || '-', icon: 'straighten' },
-    { labelKey: 'orderInfo.loadSize', value: mix?.load_size || '-', icon: 'square-foot' },
   ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
 }
 

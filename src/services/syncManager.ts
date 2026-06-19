@@ -28,6 +28,8 @@ async function syncOne(item: PendingSave): Promise<boolean> {
       await ticketsApi.sign(item.ticketId, item.body as any);
     } else if (action === 'dispute') {
       await ticketsApi.dispute(item.ticketId, item.body as any);
+    } else if (action === 'curbline-release') {
+      await ticketsApi.curblineRelease(item.ticketId, item.body as any);
     } else {
       await ticketsApi.saveDeliveryTab(item.ticketId, item.tab, item.body);
     }

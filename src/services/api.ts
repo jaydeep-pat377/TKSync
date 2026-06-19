@@ -27,6 +27,8 @@ const SILENT_ENDPOINTS = [
   ENDPOINTS.AUTH_COMPANY_LOGIN,
   ENDPOINTS.AUTH_DRIVER_LOGIN,
   ENDPOINTS.HEALTH,
+  ENDPOINTS.NOTIFICATION_REGISTER,
+  ENDPOINTS.NOTIFICATION_UNREGISTER,
 ];
 
 function classifyError(err: unknown): {title: string; message: string} {
@@ -645,6 +647,18 @@ export const ticketsApi = {
     }),
   getQr: (id: number) =>
     request<TicketQr>(ENDPOINTS.TICKET_QR(id)),
+  curblineRelease: (id: number, body: {name: string; sign: string}) =>
+    request(ENDPOINTS.TICKET_CURBLINE_RELEASE(id), {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getCurblineRelease: (id: number) =>
+    request<{curbline_release: {id: number; signed_name: string; signature_image: string; signed_at: string} | null; ticket_id: number; ticket_code: string}>(ENDPOINTS.TICKET_CURBLINE_RELEASE(id)),
+  updateCurblineRelease: (id: number, body: {name: string; sign: string}) =>
+    request(ENDPOINTS.TICKET_CURBLINE_RELEASE(id), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
 };
 
 export type TicketQr = {
@@ -691,6 +705,19 @@ export type PlantsResponse = {
 export const plantsApi = {
   getAll: (page = 1, limit = 20) =>
     request<PlantsResponse>(`${ENDPOINTS.PLANTS}?page=${page}&limit=${limit}`),
+};
+
+export const notificationsApi = {
+  registerDevice: (fcm_token: string, platform: string) =>
+    request(ENDPOINTS.NOTIFICATION_REGISTER, {
+      method: 'POST',
+      body: JSON.stringify({fcm_token, platform}),
+    }),
+  unregisterDevice: (fcm_token: string) =>
+    request(ENDPOINTS.NOTIFICATION_UNREGISTER, {
+      method: 'DELETE',
+      body: JSON.stringify({fcm_token}),
+    }),
 };
 
 export const authApi = {
