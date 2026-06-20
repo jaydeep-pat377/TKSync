@@ -1649,7 +1649,18 @@ export default function DashboardScreen({ navigation }: Props) {
               activeOpacity={0.6}
               onPress={() => {
                 setEditVisible(false);
-                navigation.navigate(item.screen, { ticketId: currentTicket?.id, editable: true });
+                const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true };
+                if (currentTicket) {
+                  params.ticketInfo = {
+                    customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
+                    customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
+                    project_name: detail?.job?.project_name || currentTicket.project_name || '',
+                    project_code: detail?.job?.project_code || currentTicket.project_code || '',
+                    order_code: currentTicket.order_code || '',
+                    ticket_code: currentTicket.ticket_code || '',
+                  };
+                }
+                navigation.navigate(item.screen, params);
               }}>
               <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
                 <MaterialIcons name={item.icon as any} size={ms(18)} color={item.iconColor} />

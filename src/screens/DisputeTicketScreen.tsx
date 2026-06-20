@@ -22,11 +22,12 @@ import SignaturePad from '../components/SignaturePad';
 import ThemedAlert from '../components/ThemedAlert';
 import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
+import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
-  route: RouteProp<{DisputeTicket: {ticketId?: number; editable?: boolean}}, 'DisputeTicket'>;
+  route: RouteProp<any>;
 };
 
 export default function DisputeTicketScreen({navigation, route}: Props) {
@@ -41,8 +42,12 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
     ? Math.min(300, Math.max(200, height * 0.28))
     : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
   const cardMaxWidth = isTabletLandscape ? undefined : 700;
-  const ticketId = route.params?.ticketId;
-  const editable = route.params?.editable === true;
+  const {ticketId, editable: routeEditable, ticketInfo: routeTicketInfo} = (route.params || {}) as {
+    ticketId?: number;
+    editable?: boolean;
+    ticketInfo?: {customer_name: string; customer_code: string; project_name: string; project_code: string; order_code: string; ticket_code: string};
+  };
+  const editable = routeEditable === true;
 
   const [data, setData] = useState<SigningData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,33 +60,80 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [editingSignature, setEditingSignature] = useState(false);
   const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
+  const [loadedFromOffline, setLoadedFromOffline] = useState(false);
+  const [loadedSignature, setLoadedSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ticketId) return;
     let cancelled = false;
+
     (async () => {
       try {
         setLoading(true);
         setLoadError(null);
         const res = await ticketsApi.getSigning(ticketId);
-        if (!cancelled) {
-          setData(res.data);
-          const d = res.data?.status?.dispute;
+        if (cancelled) return;
+        setData(res.data);
+        // Cache full signing data for offline use
+        offlineStorage.cacheSigningData(ticketId, res.data);
+        // Cache ticket info
+        if (routeTicketInfo) {
+          offlineStorage.cacheCurblineTicketInfo(ticketId, routeTicketInfo);
+        }
+        const d = res.data?.status?.dispute;
+        if (d) {
+          if (d.quantity != null) setQuantity(String(d.quantity));
+          if (d.reason) setReason(d.reason);
+          if (d.signed_name) setTypeName(d.signed_name);
+          if (d.signature_image) {
+            setSignature(d.signature_image);
+            setLoadedSignature(d.signature_image);
+          }
+        }
+        // Overlay any pending offline submit
+        applyPendingOfflineData(ticketId);
+      } catch (err: any) {
+        if (cancelled) return;
+        // API failed — try local cache
+        const cached = offlineStorage.getCachedSigningData(ticketId) as SigningData | null;
+        if (cached) {
+          setData(cached);
+          const d = cached.status?.dispute;
           if (d) {
             if (d.quantity != null) setQuantity(String(d.quantity));
             if (d.reason) setReason(d.reason);
             if (d.signed_name) setTypeName(d.signed_name);
-            if (d.signature_image) setSignature(d.signature_image);
+            if (d.signature_image) {
+              setSignature(d.signature_image);
+              setLoadedSignature(d.signature_image);
+            }
           }
+          applyPendingOfflineData(ticketId);
+          setLoadedFromOffline(true);
+        } else {
+          setLoadError(err.message || 'Failed to load signing data.');
         }
-      } catch (err: any) {
-        if (!cancelled) setLoadError(err.message || 'Failed to load signing data.');
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
   }, [ticketId]);
+
+  function applyPendingOfflineData(tid: number) {
+    const pending = offlineStorage.getPendingForTicket(tid, 'dispute');
+    if (pending.length > 0) {
+      const latest = pending[pending.length - 1];
+      if (latest.body.quantity != null) setQuantity(String(latest.body.quantity));
+      if (latest.body.reason) setReason(latest.body.reason);
+      if (latest.body.signed_name) setTypeName(latest.body.signed_name);
+      if (latest.body.signature_image) {
+        setSignature(latest.body.signature_image);
+        setLoadedSignature(latest.body.signature_image);
+      }
+      setLoadedFromOffline(true);
+    }
+  }
 
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
@@ -101,17 +153,27 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
       signed_name: typeName.trim(),
       signature_image: signature,
     };
+    const updateSigningCache = () => {
+      const cached = offlineStorage.getCachedSigningData(ticketId) as SigningData | null;
+      if (cached) {
+        cached.status = {...cached.status, is_disputed: true, dispute: {quantity: body.quantity, reason: body.reason, signed_name: body.signed_name, signature_image: body.signature_image}};
+        offlineStorage.cacheSigningData(ticketId, cached);
+      }
+    };
     try {
       if (!isOnline) {
         enqueueOffline(ticketId, 'dispute', body, 'dispute');
+        updateSigningCache();
         setAlert({type: 'success', title: 'Saved Offline', message: 'Dispute will be submitted automatically when connection is restored.'});
       } else {
         await ticketsApi.dispute(ticketId, body);
+        updateSigningCache();
         setAlert({type: 'success', title: 'Success', message: 'Ticket disputed successfully.'});
       }
     } catch (err: any) {
-      if (err?.message?.includes('Network request failed')) {
+      if (err?.message?.includes('Network request failed') || err?.name === 'AbortError') {
         enqueueOffline(ticketId, 'dispute', body, 'dispute');
+        updateSigningCache();
         setAlert({type: 'success', title: 'Saved Offline', message: 'Dispute will be submitted automatically when connection is restored.'});
       } else {
         setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to dispute ticket.'});
@@ -142,7 +204,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
     );
   }
 
-  // Error state
+  // Error state — only when no cached data available
   if (loadError || !data) {
     return (
       <View style={[s.container, s.centerContent, {backgroundColor: c.white}]}>
@@ -186,6 +248,14 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
               <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
+
+          {/* Offline banner */}
+          {loadedFromOffline && (
+            <View style={[s.offlineBanner, {backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}]}>
+              <MaterialIcons name="cloud-off" size={ms(14)} color={c.warningDark} />
+              <Text style={[s.offlineBannerText, {color: c.warningDark}]}>Loaded from local data</Text>
+            </View>
+          )}
 
           {/* Already disputed banner */}
           {alreadyDisputed && !editable && (
@@ -246,8 +316,8 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
               />
             </View>
 
-            {data?.status?.dispute?.signature_image && !editingSignature ? (
-              <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} readOnly initialImage={data.status.dispute.signature_image} onEditPress={editable ? () => setEditingSignature(true) : undefined} />
+            {loadedSignature && !editingSignature ? (
+              <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} readOnly initialImage={loadedSignature} onEditPress={() => setEditingSignature(true)} />
             ) : (
               <SignaturePad onSignatureChange={handleSignatureChange} height={sigHeight} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
             )}
@@ -315,10 +385,11 @@ const s = StyleSheet.create({
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
 
-  // Banner
+  // Banners
+  offlineBanner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(6), paddingVertical: wp(6), borderBottomWidth: 1},
+  offlineBannerText: {fontSize: ms(11), fontWeight: '600'},
   banner: {flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(12), gap: wp(8)},
   bannerText: {fontSize: ms(12), fontWeight: '700', flex: 1},
-
 
   // Info
   infoSection: {paddingHorizontal: wp(12), paddingVertical: wp(14)},

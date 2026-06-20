@@ -19,9 +19,19 @@ import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
 import {ticketsApi} from '../services/api';
+import {offlineStorage} from '../services/offlineStorage';
 import {wp, ms} from '../utils/responsive';
 import SignaturePad from '../components/SignaturePad';
 import ThemedAlert from '../components/ThemedAlert';
+
+type TicketInfo = {
+  customer_name: string;
+  customer_code: string;
+  project_name: string;
+  project_code: string;
+  order_code: string;
+  ticket_code: string;
+};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -29,7 +39,10 @@ type Props = {
 };
 
 export default function CurblineReleaseScreen({navigation, route}: Props) {
-  const {ticketId} = (route.params || {}) as {ticketId?: number};
+  const {ticketId, ticketInfo: routeTicketInfo} = (route.params || {}) as {
+    ticketId?: number;
+    ticketInfo?: TicketInfo;
+  };
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
@@ -47,21 +60,77 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
   const [existingRelease, setExistingRelease] = useState<{id: number; signed_name: string; signature_image: string} | null>(null);
   const [editingSignature, setEditingSignature] = useState(false);
   const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
+  const [ticketInfo, setTicketInfo] = useState<TicketInfo | null>(routeTicketInfo || null);
+  const [loadedFromOffline, setLoadedFromOffline] = useState(false);
+  const [loadedSignature, setLoadedSignature] = useState<string | null>(null);
 
-  // Fetch existing curbline release on mount
+  // Cache ticket info when received from route params
+  useEffect(() => {
+    if (ticketId && routeTicketInfo) {
+      offlineStorage.cacheCurblineTicketInfo(ticketId, routeTicketInfo);
+    }
+  }, [ticketId, routeTicketInfo]);
+
+  // Fetch existing curbline release on mount — with offline fallback
   useEffect(() => {
     if (!ticketId) { setLoading(false); return; }
+
+    // Try API first
     ticketsApi.getCurblineRelease(ticketId)
       .then(({data}) => {
         if (data.curbline_release) {
-          setExistingRelease(data.curbline_release as any);
-          setTypeName(data.curbline_release.signed_name || '');
-          setSignature(data.curbline_release.signature_image || null);
+          const release = data.curbline_release;
+          setExistingRelease(release as any);
+          setTypeName(release.signed_name || '');
+          setSignature(release.signature_image || null);
+          if (release.signature_image) setLoadedSignature(release.signature_image);
+          // Cache for offline use
+          offlineStorage.cacheCurblineRelease(ticketId, release);
         }
+        // Check if there's a pending offline save on top of the API data
+        applyPendingOfflineData(ticketId);
       })
-      .catch(() => {})
+      .catch(() => {
+        // API failed (offline) — load from local sources
+        loadFromLocalStorage(ticketId);
+      })
       .finally(() => setLoading(false));
   }, [ticketId]);
+
+  function loadFromLocalStorage(tid: number) {
+    // 1. Load cached API response
+    const cached = offlineStorage.getCachedCurblineRelease(tid);
+    if (cached) {
+      setExistingRelease(cached as any);
+      setTypeName(cached.signed_name || '');
+      setSignature(cached.signature_image || null);
+      if (cached.signature_image) setLoadedSignature(cached.signature_image);
+    }
+
+    // 2. Load cached ticket info if not from route params
+    if (!routeTicketInfo) {
+      const cachedInfo = offlineStorage.getCachedCurblineTicketInfo(tid);
+      if (cachedInfo) setTicketInfo(cachedInfo);
+    }
+
+    // 3. Overlay any pending offline save
+    applyPendingOfflineData(tid);
+
+    setLoadedFromOffline(true);
+  }
+
+  function applyPendingOfflineData(tid: number) {
+    const pending = offlineStorage.getPendingForTicket(tid, 'curbline-release');
+    if (pending.length > 0) {
+      const latest = pending[pending.length - 1];
+      if (latest.body.name) setTypeName(latest.body.name);
+      if (latest.body.sign) {
+        setSignature(latest.body.sign);
+        setLoadedSignature(latest.body.sign);
+      }
+      setLoadedFromOffline(true);
+    }
+  }
 
   const handleSignatureChange = useCallback((sig: string | null) => {
     setSignature(sig);
@@ -78,17 +147,39 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
     try {
       if (!isOnline) {
         enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release' as any);
+        // Cache locally so reopening the screen shows the pending data
+        offlineStorage.cacheCurblineRelease(ticketId, {
+          id: existingRelease?.id || -1,
+          signed_name: body.name,
+          signature_image: body.sign,
+        });
         setAlert({type: 'success', title: 'Saved Offline', message: 'Curbline release will be submitted automatically when connection is restored.'});
-      } else if (existingRelease) {
+      } else if (existingRelease && existingRelease.id > 0) {
         await ticketsApi.updateCurblineRelease(ticketId, body);
+        // Update cache with new data
+        offlineStorage.cacheCurblineRelease(ticketId, {
+          id: existingRelease.id,
+          signed_name: body.name,
+          signature_image: body.sign,
+        });
         setAlert({type: 'success', title: 'Success', message: 'Curbline release updated successfully.'});
       } else {
         await ticketsApi.curblineRelease(ticketId, body);
+        offlineStorage.cacheCurblineRelease(ticketId, {
+          id: -1,
+          signed_name: body.name,
+          signature_image: body.sign,
+        });
         setAlert({type: 'success', title: 'Success', message: 'Curbline release submitted successfully.'});
       }
     } catch (err: any) {
       if (err?.message?.includes('Network request failed') || err?.name === 'AbortError') {
         enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release' as any);
+        offlineStorage.cacheCurblineRelease(ticketId, {
+          id: existingRelease?.id || -1,
+          signed_name: body.name,
+          signature_image: body.sign,
+        });
         setAlert({type: 'success', title: 'Saved Offline', message: 'Curbline release will be submitted automatically when connection is restored.'});
       } else {
         setAlert({type: 'error', title: 'Error', message: err.message || 'Failed to submit curbline release.'});
@@ -103,6 +194,13 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
     setAlert(null);
     if (wasSuccess) navigation.goBack();
   }, [alert, navigation]);
+
+  // Resolved ticket info: route params > cached
+  const info = ticketInfo;
+  const customerLabel = info ? `${info.customer_name}${info.customer_code ? ` (${info.customer_code})` : ''}` : '-';
+  const projectLabel = info ? `${info.project_name}${info.project_code ? ` (${info.project_code})` : ''}` : '-';
+  const orderLabel = info?.order_code || '-';
+  const ticketLabel = info?.ticket_code || '-';
 
   if (loading) {
     return (
@@ -142,23 +240,31 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
             </TouchableOpacity>
           </View>
 
+          {/* Offline indicator */}
+          {loadedFromOffline && (
+            <View style={[s.offlineBanner, {backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}]}>
+              <MaterialIcons name="cloud-off" size={ms(14)} color={c.warningDark} />
+              <Text style={[s.offlineBannerText, {color: c.warningDark}]}>Loaded from local data</Text>
+            </View>
+          )}
+
           {/* Info Section */}
           <View style={s.infoSection}>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>CUSTOMER</Text>
-              <Text style={[s.infoValue, {color: c.textPrimary}]}>GILLAM CONSTRUCTION GROUP (5902227)</Text>
+              <Text style={[s.infoValue, {color: c.textPrimary}]}>{customerLabel}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>PROJECT</Text>
-              <Text style={[s.infoValue, {color: c.textPrimary}]}>BLDG A - SEWELLS ROAD RESIDENTIAL (5000157438)</Text>
+              <Text style={[s.infoValue, {color: c.textPrimary}]}>{projectLabel}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>ORDER</Text>
-              <Text style={[s.infoValue, {color: c.textPrimary}]}>2605</Text>
+              <Text style={[s.infoValue, {color: c.textPrimary}]}>{orderLabel}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>TICKET</Text>
-              <Text style={[s.infoValue, {color: c.textPrimary}]}>26209538</Text>
+              <Text style={[s.infoValue, {color: c.textPrimary}]}>{ticketLabel}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, {color: c.textPrimary}]}>RELEASED</Text>
@@ -182,12 +288,12 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
               />
             </View>
 
-            {existingRelease?.signature_image && !editingSignature ? (
+            {loadedSignature && !editingSignature ? (
               <SignaturePad
                 onSignatureChange={handleSignatureChange}
                 height={sigHeight}
                 readOnly
-                initialImage={existingRelease.signature_image}
+                initialImage={loadedSignature}
                 onEditPress={() => setEditingSignature(true)}
               />
             ) : (
@@ -208,7 +314,7 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
                 <ActivityIndicator color={c.textOnPrimary} />
               ) : (
                 <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>
-                  {existingRelease ? 'UPDATE' : 'SUBMIT'}
+                  {existingRelease && existingRelease.id > 0 ? 'UPDATE' : 'SUBMIT'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -250,6 +356,9 @@ const s = StyleSheet.create({
   },
   headerTitle: {fontSize: ms(15), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center'},
   closeBtn: {width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: wp(8)},
+
+  offlineBanner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(6), paddingVertical: wp(6), borderBottomWidth: 1},
+  offlineBannerText: {fontSize: ms(11), fontWeight: '600'},
 
   infoSection: {paddingHorizontal: wp(16), paddingVertical: wp(14)},
   infoRow: {flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'wrap', paddingVertical: wp(8), gap: wp(8)},

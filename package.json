@@ -33,7 +33,8 @@
     "react-native-sensors": "^7.3.6",
     "react-native-signature-canvas": "^5.0.2",
     "react-native-svg": "^15.15.5",
-    "react-native-vector-icons": "^10.3.0"
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-webview": "^13.16.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

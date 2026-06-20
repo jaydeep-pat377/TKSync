@@ -5,6 +5,9 @@ const offlineStore = createMMKV({id: 'tksync-offline-queue'});
 const QUEUE_KEY = 'pending_saves';
 const QUEUE_COUNTER_KEY = 'queue_counter';
 const CACHE_PREFIX = 'delivery_cache_';
+const CURBLINE_CACHE_PREFIX = 'curbline_cache_';
+const CURBLINE_INFO_PREFIX = 'curbline_info_';
+const SIGNING_CACHE_PREFIX = 'signing_cache_';
 
 export type PendingSave = {
   id: string;
@@ -136,5 +139,51 @@ export const offlineStorage = {
     return getQueue().filter(
       item => item.ticketId === ticketId && (!tab || item.tab === tab),
     );
+  },
+
+  // ─── Curbline release cache ───
+
+  cacheCurblineRelease(ticketId: number, data: {id: number; signed_name: string; signature_image: string; signed_at?: string}): void {
+    offlineStore.set(CURBLINE_CACHE_PREFIX + ticketId, JSON.stringify(data));
+  },
+
+  getCachedCurblineRelease(ticketId: number): {id: number; signed_name: string; signature_image: string; signed_at?: string} | null {
+    const raw = offlineStore.getString(CURBLINE_CACHE_PREFIX + ticketId);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+
+  cacheCurblineTicketInfo(ticketId: number, info: {customer_name: string; customer_code: string; project_name: string; project_code: string; order_code: string; ticket_code: string}): void {
+    offlineStore.set(CURBLINE_INFO_PREFIX + ticketId, JSON.stringify(info));
+  },
+
+  getCachedCurblineTicketInfo(ticketId: number): {customer_name: string; customer_code: string; project_name: string; project_code: string; order_code: string; ticket_code: string} | null {
+    const raw = offlineStore.getString(CURBLINE_INFO_PREFIX + ticketId);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+
+  // ─── Signing data cache (Accept / Dispute) ───
+
+  cacheSigningData(ticketId: number, data: Record<string, any>): void {
+    offlineStore.set(SIGNING_CACHE_PREFIX + ticketId, JSON.stringify(data));
+  },
+
+  getCachedSigningData(ticketId: number): Record<string, any> | null {
+    const raw = offlineStore.getString(SIGNING_CACHE_PREFIX + ticketId);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   },
 };
