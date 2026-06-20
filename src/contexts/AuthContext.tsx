@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useState, useCallback, useEffect} from 'react';
+import React, {createContext, useContext, useState, useCallback, useEffect, useMemo} from 'react';
 import {storage} from '../services/storage';
 import {
   authApi,
@@ -213,9 +213,12 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     return () => setOnSessionExpired(null);
   }, []);
 
+  const value = useMemo(() => ({
+    ...state, companyLogin, driverLogin, driverLogout, companyLogout,
+  }), [state, companyLogin, driverLogin, driverLogout, companyLogout]);
+
   return (
-    <AuthContext.Provider
-      value={{...state, companyLogin, driverLogin, driverLogout, companyLogout}}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

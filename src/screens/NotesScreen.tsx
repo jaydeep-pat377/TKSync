@@ -28,7 +28,7 @@ import {Colors} from '../constants/colors';
 import {common} from '../constants/commonStyles';
 import DateTimePicker from '../components/DateTimePicker';
 import ResponsiveModal from '../components/ResponsiveModal';
-import {wp, ms, hp} from '../utils/responsive';
+import {wp, ms} from '../utils/responsive';
 import {ticketsApi, type DeliveryRecord} from '../services/api';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
 import {offlineStorage} from '../services/offlineStorage';

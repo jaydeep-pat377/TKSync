@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,7 @@ import { ticketsApi, plantsApi, type Ticket, type TicketDetail, type DeliveryRec
 import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
-import { wp, ms, ls as lsStatic } from '../utils/responsive';
+import { wp, ms } from '../utils/responsive';
 
 const WEATHER_ICONS: Record<string, string> = {
   '01d': 'wb-sunny', '01n': 'nightlight-round',
@@ -449,12 +449,12 @@ export default function DashboardScreen({ navigation }: Props) {
 
   // Derived data from active ticket
   const currentTicket = tickets[activeTicket] || null;
-  const timeline = detail ? buildTimeline(detail) : [];
-  const jobInfo = detail ? buildJobInfo(detail) : [];
+  const timeline = useMemo(() => detail ? buildTimeline(detail) : [], [detail]);
+  const jobInfo = useMemo(() => detail ? buildJobInfo(detail) : [], [detail]);
   const temperature = deliveryRecord?.plant?.temp_at_plant ?? deliveryRecord?.plant?.measured?.temp_at_plant;
-  const mixInfo = detail
+  const mixInfo = useMemo(() => detail
     ? buildMixInfo(detail, currentTicket?.mix?.description || null)
-    : currentTicket ? buildMixInfoFromTicket(currentTicket) : [];
+    : currentTicket ? buildMixInfoFromTicket(currentTicket) : [], [detail, currentTicket]);
   const doneCount = detail ? detail.progress.completed : 0;
   const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 

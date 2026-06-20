@@ -8,7 +8,6 @@ import {
   StatusBar,
   Platform,
   PermissionsAndroid,
-  AppState,
   Animated,
   useWindowDimensions,
 } from 'react-native';
@@ -197,10 +196,6 @@ export default function VehicleTrackingScreen({navigation}: Props) {
 
   useEffect(() => { return () => { stopTracking(); }; }, [stopTracking]);
 
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', () => {});
-    return () => sub.remove();
-  }, []);
 
   const speedKmh = toKmh(speed);
   const maxSpeedKmh = toKmh(maxSpeed);

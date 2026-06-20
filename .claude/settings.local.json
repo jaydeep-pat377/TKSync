@@ -42,7 +42,11 @@
       "Bash(find /Users/admin/Desktop -maxdepth 3 -name *CementTruck* -o -name *concreteTruck* -o -name *MixerTruck* -o -name *ReadyMix*)",
       "Bash(git checkout:*)",
       "Bash(python3 -m json.tool)",
-      "Read(//Users/admin/Desktop/**)"
+      "Read(//Users/admin/Desktop/**)",
+      "Bash(kill:*)",
+      "Bash(./gradlew assembleRelease --stacktrace)",
+      "Bash(find /Users/admin/Desktop/TKSync/src -name *i18n* -o -name *lang* -o -name *.json)",
+      "Bash(xxd -p -r)"
     ]
   }
 }

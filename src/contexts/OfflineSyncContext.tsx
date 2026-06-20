@@ -5,6 +5,7 @@ import React, {
   useState,
   useCallback,
   useRef,
+  useMemo,
 } from 'react';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {syncManager, SyncEvent} from '../services/syncManager';
@@ -119,17 +120,18 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     syncManager.sync();
   }, []);
 
+  const value = useMemo(() => ({
+    isOnline,
+    pendingCount,
+    isSyncing,
+    lastSyncEvent,
+    saveDeliveryTab,
+    enqueueOffline,
+    triggerSync,
+  }), [isOnline, pendingCount, isSyncing, lastSyncEvent, saveDeliveryTab, enqueueOffline, triggerSync]);
+
   return (
-    <OfflineSyncContext.Provider
-      value={{
-        isOnline,
-        pendingCount,
-        isSyncing,
-        lastSyncEvent,
-        saveDeliveryTab,
-        enqueueOffline,
-        triggerSync,
-      }}>
+    <OfflineSyncContext.Provider value={value}>
       {children}
     </OfflineSyncContext.Provider>
   );
