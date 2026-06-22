@@ -1,4 +1,5 @@
 import {Dimensions, PixelRatio} from 'react-native';
+import {getFontScale} from '../contexts/FontSizeContext';
 
 // Base design dimensions (standard phone: 390pt short dimension - iPhone 14 logical)
 const BASE_SHORT = 390;
@@ -52,7 +53,7 @@ export function ms(size: number, factor: number = 0.45): number {
   const scale = shortDim / BASE_SHORT;
   const effectiveFactor = shortDim > 600 ? Math.max(factor, 0.6) : factor;
   const newSize = size + (size * scale - size) * effectiveFactor;
-  return Math.round(PixelRatio.roundToNearestPixel(newSize));
+  return Math.round(PixelRatio.roundToNearestPixel(newSize * getFontScale()));
 }
 
 /**

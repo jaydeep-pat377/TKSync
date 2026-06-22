@@ -23,12 +23,15 @@ import {useAuth} from '../contexts/AuthContext';
 import {ApiError} from '../services/api';
 import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 export default function CompanyLoginScreen({navigation}: Props) {
+  useFontScaleRefresh();
+  const styles = createStyles();
   const savedRemember = storage.getBoolean('remember_driver') ?? false;
   const [companyCode, setCompanyCode] = useState(savedRemember ? (storage.getString('saved_company_code') ?? '') : '');
   const [loading, setLoading] = useState(false);
@@ -324,7 +327,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: {flex: 1, overflow: 'hidden'},
   bgTop: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},
   bgBottom: {position: 'absolute', bottom: 0, left: -5, right: -5, height: '50%'},

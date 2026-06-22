@@ -13,12 +13,15 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 export default function SplashScreen({navigation}: Props) {
+  useFontScaleRefresh();
+  const styles = createStyles();
   const {c} = useTheme();
   const {width, height} = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -402,7 +405,7 @@ export default function SplashScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: {flex: 1, overflow: 'hidden'},
   bgBase: {...StyleSheet.absoluteFill},
   bgTopGradient: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},

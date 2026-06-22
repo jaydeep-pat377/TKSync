@@ -23,6 +23,7 @@ import {offlineStorage} from '../services/offlineStorage';
 import {wp, ms} from '../utils/responsive';
 import SignaturePad from '../components/SignaturePad';
 import ThemedAlert from '../components/ThemedAlert';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type TicketInfo = {
   customer_name: string;
@@ -39,6 +40,8 @@ type Props = {
 };
 
 export default function CurblineReleaseScreen({navigation, route}: Props) {
+  useFontScaleRefresh();
+  const s = createS();
   const {ticketId, ticketInfo: routeTicketInfo} = (route.params || {}) as {
     ticketId?: number;
     ticketInfo?: TicketInfo;
@@ -335,7 +338,7 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
   );
 }
 
-const s = StyleSheet.create({
+const createS = () => StyleSheet.create({
   container: {flex: 1},
   flex1: {flex: 1},
   scroll: {flex: 1},

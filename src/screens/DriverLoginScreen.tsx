@@ -23,6 +23,7 @@ import {useAuth} from '../contexts/AuthContext';
 import {ApiError} from '../services/api';
 import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -34,6 +35,8 @@ const SAVED_PIN_KEY = 'saved_pin';
 const SAVED_COMPANY_CODE_KEY = 'saved_company_code';
 
 export default function DriverLoginScreen({navigation}: Props) {
+  useFontScaleRefresh();
+  const styles = createStyles();
   const savedRemember = storage.getBoolean(REMEMBER_KEY) ?? false;
   const [truckNumber, setTruckNumber] = useState(savedRemember ? (storage.getString(SAVED_TRUCK_KEY) ?? '') : '');
   const [driverPin, setDriverPin] = useState(savedRemember ? (storage.getString(SAVED_PIN_KEY) ?? '') : '');
@@ -396,7 +399,7 @@ export default function DriverLoginScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: {flex: 1, overflow: 'hidden'},
   bgTop: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},
   bgBottom: {position: 'absolute', bottom: 0, left: -5, right: -5, height: '50%'},

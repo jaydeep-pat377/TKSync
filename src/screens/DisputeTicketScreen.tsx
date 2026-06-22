@@ -24,6 +24,7 @@ import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -31,6 +32,8 @@ type Props = {
 };
 
 export default function DisputeTicketScreen({navigation, route}: Props) {
+  useFontScaleRefresh();
+  const s = createS();
   const {c} = useTheme();
   const {isOnline, enqueueOffline} = useOfflineSync();
   const insets = useSafeAreaInsets();
@@ -352,7 +355,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   );
 }
 
-const s = StyleSheet.create({
+const createS = () => StyleSheet.create({
   container: {flex: 1},
   flex1: {flex: 1},
   scroll: {flex: 1},

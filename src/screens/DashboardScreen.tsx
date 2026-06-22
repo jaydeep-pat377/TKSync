@@ -27,6 +27,7 @@ import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
 import { wp, ms } from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 const WEATHER_ICONS: Record<string, string> = {
   '01d': 'wb-sunny', '01n': 'nightlight-round',
@@ -252,6 +253,8 @@ type Props = {
 };
 
 export default function DashboardScreen({ navigation }: Props) {
+  useFontScaleRefresh();
+  const styles = createStyles();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeTicket, setActiveTicket] = useState(0);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
@@ -1956,7 +1959,7 @@ export default function DashboardScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: { flex: 1 },
 
   // Header

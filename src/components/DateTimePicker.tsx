@@ -42,6 +42,7 @@ type WheelProps = {
 };
 
 function Wheel({data, selected, onSelect, width, itemH}: WheelProps) {
+  const wS = createWS();
   const {c} = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const fromUser = useRef(false);
@@ -134,7 +135,7 @@ function Wheel({data, selected, onSelect, width, itemH}: WheelProps) {
   );
 }
 
-const wS = StyleSheet.create({
+const createWS = () => StyleSheet.create({
   bar: {
     position: 'absolute',
     left: wp(2),
@@ -158,6 +159,7 @@ type Props = {
 };
 
 export default function DateTimePicker({visible, value, onConfirm, onCancel}: Props) {
+  const ps = createPs();
   const {c} = useTheme();
   const {width: screenW, height: screenH} = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -337,7 +339,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
   );
 }
 
-const ps = StyleSheet.create({
+const createPs = () => StyleSheet.create({
   overlay: {flex: 1, justifyContent: 'center', alignItems: 'center'},
   overlayTouch: {...StyleSheet.absoluteFill},
   card: {

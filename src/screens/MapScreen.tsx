@@ -18,6 +18,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms, wp} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 MapboxGL.setAccessToken(Config.MAPBOX_ACCESS_TOKEN || '');
 
@@ -48,6 +49,8 @@ const TYPE_COLORS: Record<string, {icon: string; bg: string; marker: string}> = 
 const DEFAULT_COLOR = {icon: '#616161', bg: '#F5F5F5', marker: '#616161'};
 
 export default function MapScreen({navigation, route}: Props) {
+  useFontScaleRefresh();
+  const styles = createStyles();
   const params = (route.params || {}) as {
     mapItems?: MapItem[];
     delivery?: {lat: number; lng: number};
@@ -345,7 +348,7 @@ export default function MapScreen({navigation, route}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: {flex: 1},
   header: {paddingBottom: wp(10), flexDirection: 'row', alignItems: 'center', gap: wp(10), elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, zIndex: 10},
   backBtn: {width: wp(36), height: wp(36), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},

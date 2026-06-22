@@ -33,6 +33,7 @@ import {ticketsApi, type DeliveryRecord} from '../services/api';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
 import {offlineStorage} from '../services/offlineStorage';
 import {setForceOffline, getForceOffline} from '../hooks/useNetworkStatus';
+import {getFontScale, useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -415,8 +416,28 @@ function NoteInput({placeholder, borderColor, bgColor, textColor, value, onChang
   );
 }
 
+// ─── STYLE REFRESH (font scale) ───
+let ls = _createLs();
+let slumpSt = _createSlumpSt();
+let sm = _createSm();
+let tt = _createTt();
+let cod = _createCod();
+let st = _createSt();
+let _cachedFontScale = getFontScale();
+function refreshStylesIfNeeded() {
+  const current = getFontScale();
+  if (current === _cachedFontScale) return;
+  _cachedFontScale = current;
+  ls = _createLs();
+  slumpSt = _createSlumpSt();
+  sm = _createSm();
+  tt = _createTt();
+  cod = _createCod();
+  st = _createSt();
+}
+
 // ─── LANDSCAPE LAYOUT COMPONENTS ───
-const ls = StyleSheet.create({
+function _createLs() { return StyleSheet.create({
   root: {flex: 1, paddingHorizontal: wp(10), paddingTop: wp(4), paddingBottom: wp(4)},
   topBar: {flexDirection: 'row', justifyContent: 'flex-end', marginBottom: wp(4)},
   columns: {flex: 1, flexDirection: 'row', gap: wp(10), alignItems: 'flex-start'},
@@ -445,7 +466,7 @@ const ls = StyleSheet.create({
   lhTabGroup: {flexDirection: 'row', borderRadius: wp(10), padding: wp(2), gap: wp(2)},
   lhTab: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(5), paddingHorizontal: wp(12), borderRadius: wp(8)},
   lhTabLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
-});
+}); }
 
 function LField({label, children, wide, compact, noBorder}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean; noBorder?: boolean}) {
   const {c} = useTheme();
@@ -789,7 +810,7 @@ function SlumpPickerModal({
   );
 }
 
-const slumpSt = StyleSheet.create({
+function _createSlumpSt() { return StyleSheet.create({
   gridWrap: {paddingHorizontal: wp(10), paddingTop: wp(8), paddingBottom: wp(4)},
   grid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(5)},
   gridItem: {width: '22%', flexGrow: 1, minWidth: wp(60), maxWidth: wp(95), paddingVertical: wp(7), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center', position: 'relative', minHeight: wp(32)},
@@ -802,7 +823,7 @@ const slumpSt = StyleSheet.create({
   customInputWrap: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(8), borderWidth: 1.5, paddingHorizontal: wp(10), height: wp(34)},
   customInput: {flex: 1, fontSize: ms(14), fontWeight: '700', padding: 0},
   customUnit: {fontSize: ms(10), fontWeight: '600', marginLeft: wp(5)},
-});
+}); }
 
 function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
@@ -1794,7 +1815,7 @@ function SelectionModal({
   );
 }
 
-const sm = StyleSheet.create({
+function _createSm() { return StyleSheet.create({
   header: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(6), borderBottomWidth: 1},
   headerIcon: {width: wp(26), height: wp(26), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   headerTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.3},
@@ -1811,7 +1832,7 @@ const sm = StyleSheet.create({
   footerBtnText: {fontSize: ms(12), fontWeight: '700'},
   cancelBtn: {borderWidth: 1.5},
   confirmBtn: {elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.18, shadowRadius: 8},
-});
+}); }
 
 // ─── RETURNED TAB ───
 function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
@@ -2193,7 +2214,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
   );
 }
 
-const tt = StyleSheet.create({
+function _createTt() { return StyleSheet.create({
   headerCard: {borderRadius: wp(10), padding: wp(10), marginBottom: wp(8)},
   headerTop: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(6)},
   headerIconWrap: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
@@ -2213,7 +2234,7 @@ const tt = StyleSheet.create({
   label: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
   value: {fontSize: ms(9), fontWeight: '600', marginTop: 1},
   editBtn: {width: wp(24), height: wp(24), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
-});
+}); }
 
 // ─── COD PAYMENT TYPES ───
 const PAYMENT_TYPES = [
@@ -2510,7 +2531,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
   );
 }
 
-const cod = StyleSheet.create({
+function _createCod() { return StyleSheet.create({
   selectorBtn: {flexDirection: 'row', alignItems: 'center', flex: 1, height: wp(30), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1.5, gap: wp(4), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4},
   selectorIcon: {width: wp(20), height: wp(20), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
   selectorText: {fontSize: ms(10), fontWeight: '700', flex: 1},
@@ -2527,7 +2548,7 @@ const cod = StyleSheet.create({
   modalItemIcon: {width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'},
   modalItemText: {fontSize: ms(12), fontWeight: '700', flex: 1, letterSpacing: 0.2},
   modalItemCircle: {width: wp(18), height: wp(18), borderRadius: wp(9), borderWidth: 2},
-});
+}); }
 
 // ─── DEV DEBUG BANNER ───
 function OfflineDebugBanner() {
@@ -2564,6 +2585,8 @@ function OfflineDebugBanner() {
 
 // ─── MAIN SCREEN ───
 export default function NotesScreen({navigation, route}: Props) {
+  useFontScaleRefresh();
+  refreshStylesIfNeeded();
   const ticketId = (route.params as any)?.ticketId as number | undefined;
   const [activeTab, setActiveTab] = useState(0);
   const [deliveryRecord, setDeliveryRecord] = useState<DeliveryRecord | null>(null);
@@ -2732,7 +2755,7 @@ export default function NotesScreen({navigation, route}: Props) {
   );
 }
 
-const st = StyleSheet.create({
+function _createSt() { return StyleSheet.create({
   container: {flex: 1},
   flex1: {flex: 1},
 
@@ -2878,4 +2901,4 @@ tabBody: {paddingHorizontal: wp(8), paddingTop: wp(8), paddingBottom: wp(10), fl
   tableCellDesc: {flex: 1, fontSize: ms(13)},
   tableCellQty: {width: wp(50), fontSize: ms(13), textAlign: 'right'},
   tableCellUnit: {width: wp(45), fontSize: ms(13), textAlign: 'right'},
-});
+}); }

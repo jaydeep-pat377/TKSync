@@ -5,26 +5,39 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {ThemeProvider} from './src/contexts/ThemeContext';
 import {AuthProvider} from './src/contexts/AuthContext';
 import {OfflineSyncProvider} from './src/contexts/OfflineSyncContext';
+import {FontSizeProvider, useFontSize} from './src/contexts/FontSizeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import NetworkBanner from './src/components/NetworkBanner';
 import ToastContainer from './src/components/ToastContainer';
+import FontSizeSlider from './src/components/FontSizeSlider';
 import {initSentry} from './src/services/sentry';
 
 initSentry();
+
+function AppContent() {
+  // Subscribe so child tree re-renders when fontScale changes
+  useFontSize();
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <OfflineSyncProvider>
+          <AppNavigator />
+          <NetworkBanner />
+          <ToastContainer />
+          <FontSizeSlider />
+        </OfflineSyncProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
 
 function App() {
   return (
     <View style={s.root}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <OfflineSyncProvider>
-              <AppNavigator />
-              <NetworkBanner />
-              <ToastContainer />
-            </OfflineSyncProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <FontSizeProvider>
+          <AppContent />
+        </FontSizeProvider>
       </SafeAreaProvider>
     </View>
   );

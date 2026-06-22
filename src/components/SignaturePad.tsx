@@ -4,6 +4,7 @@ import SignatureScreen from 'react-native-signature-canvas';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   onSignatureChange: (signature: string | null) => void;
@@ -16,6 +17,8 @@ type Props = {
 };
 
 export default function SignaturePad({onSignatureChange, height = 280, onTouchStart, onTouchEnd, readOnly, initialImage, onEditPress}: Props) {
+  useFontScaleRefresh();
+  const st = createSt();
   const {c, isDark} = useTheme();
   const sigRef = useRef<any>(null);
   const [hasSignature, setHasSignature] = useState(false);
@@ -156,7 +159,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
   );
 }
 
-const st = StyleSheet.create({
+const createSt = () => StyleSheet.create({
   wrapper: {marginTop: wp(8)},
   labelRow: {flexDirection: 'row', alignItems: 'center', gap: wp(6), marginBottom: wp(10)},
   label: {fontSize: ms(12), fontWeight: '600'},

@@ -16,6 +16,7 @@ import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {ticketsApi, type MobileTicketPrint} from '../services/api';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -78,6 +79,8 @@ function SLabel({text, icon, color}: {text: string; icon?: string; color: string
 }
 
 export default function MobileTicketScreen({navigation, route}: Props) {
+  useFontScaleRefresh();
+  const s = createS();
   const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height: winHeight} = useWindowDimensions();
@@ -429,7 +432,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
 // Landscape card style
 const lCard = {borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 10, overflow: 'hidden' as const};
 
-const s = StyleSheet.create({
+const createS = () => StyleSheet.create({
   container: {flex: 1},
   topBar: {height: 0},
   scroll: {flex: 1},

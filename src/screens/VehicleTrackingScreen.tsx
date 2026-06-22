@@ -22,6 +22,7 @@ import {wp, ms} from '../utils/responsive';
 import {showToast} from '../utils/toast';
 import {gpsStorage} from '../services/gpsStorage';
 import {gpsSyncManager} from '../services/gpsSyncManager';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -46,6 +47,8 @@ const formatDuration = (seconds: number): string => {
 };
 
 export default function VehicleTrackingScreen({navigation}: Props) {
+  useFontScaleRefresh();
+  const st = createSt();
   const {c} = useTheme();
   const {driver} = useAuth();
   const insets = useSafeAreaInsets();
@@ -456,7 +459,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
   );
 }
 
-const st = StyleSheet.create({
+const createSt = () => StyleSheet.create({
   container: {flex: 1},
 
   // Header

@@ -4,6 +4,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import ResponsiveModal from './ResponsiveModal';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   visible: boolean;
@@ -15,6 +16,8 @@ type Props = {
 };
 
 export default function ThemedAlert({visible, type, title, message, onClose, buttonText = 'OK'}: Props) {
+  useFontScaleRefresh();
+  const s = createS();
   const {c} = useTheme();
 
   const isSuccess = type === 'success';
@@ -42,7 +45,7 @@ export default function ThemedAlert({visible, type, title, message, onClose, but
   );
 }
 
-const s = StyleSheet.create({
+const createS = () => StyleSheet.create({
   content: {padding: wp(16), alignItems: 'center'},
   iconWrap: {width: wp(48), height: wp(48), borderRadius: wp(24), justifyContent: 'center', alignItems: 'center', marginBottom: wp(10)},
   title: {fontSize: ms(17), fontWeight: '700', marginBottom: wp(4)},
