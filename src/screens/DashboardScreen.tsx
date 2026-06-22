@@ -458,6 +458,13 @@ export default function DashboardScreen({ navigation }: Props) {
   const doneCount = detail ? detail.progress.completed : 0;
   const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 
+  // Only show Vehicle Tracking menu when there's an in-process ticket
+  const hasActiveTicket = detail?.ticket?.in_process === true;
+  const menuItems = useMemo(
+    () => hasActiveTicket ? MENU_ITEMS_BASE : MENU_ITEMS_BASE.filter(i => i.actionKey !== 'Vehicle'),
+    [hasActiveTicket],
+  );
+
   // Paired row count for the Job + Mix table layout
   const pairedRows = Math.max(jobInfo.length, mixInfo.length);
 
@@ -774,7 +781,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 },
               ]}>
               <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-                {MENU_ITEMS_BASE.map((item, i) => {
+                {menuItems.map((item, i) => {
                   const isWarn = item.color === 'warn';
                   const iconColor = isWarn ? c.error : c.textSecondary;
                   const labelColor = isWarn ? c.error : c.textPrimary;
@@ -786,7 +793,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   return (
                     <TouchableOpacity
                       key={item.actionKey}
-                      style={[styles.ddItem, i < MENU_ITEMS_BASE.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}
+                      style={[styles.ddItem, i < menuItems.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}
                       activeOpacity={0.6}
                       onPress={() => handleMenuItemPress(item.actionKey)}>
                       <View style={[styles.ddIcon, {backgroundColor: bgColor}]}>
@@ -1379,7 +1386,7 @@ export default function DashboardScreen({ navigation }: Props) {
             ]}>
             {/* Menu Items */}
             <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-              {MENU_ITEMS_BASE.map((item, i) => {
+              {menuItems.map((item, i) => {
                 const isWarn = item.color === 'warn';
                 const iconColor = isWarn ? c.error : c.textSecondary;
                 const labelColor = isWarn ? c.error : c.textPrimary;
@@ -1394,7 +1401,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     style={[
                       styles.ddItem,
                       isLandscape && { paddingVertical: lp ? 10 : ls(16), paddingHorizontal: lp ? 12 : ls(12), minHeight: lp ? 44 : ls(50), gap: lp ? 8 : ls(8) },
-                      i < MENU_ITEMS_BASE.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight },
+                      i < menuItems.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight },
                     ]}
                     activeOpacity={0.6}
                     onPress={() => handleMenuItemPress(item.actionKey)}>

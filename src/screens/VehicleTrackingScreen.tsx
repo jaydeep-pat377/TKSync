@@ -19,6 +19,9 @@ import {accelerometer, SensorTypes, setUpdateIntervalForType} from 'react-native
 import {useTheme} from '../contexts/ThemeContext';
 import {useAuth} from '../contexts/AuthContext';
 import {wp, ms} from '../utils/responsive';
+import {showToast} from '../utils/toast';
+import {gpsStorage} from '../services/gpsStorage';
+import {gpsSyncManager} from '../services/gpsSyncManager';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -124,6 +127,14 @@ export default function VehicleTrackingScreen({navigation}: Props) {
   const startTracking = useCallback(async () => {
     const hasPermission = await requestPermission();
     if (!hasPermission) return;
+
+    // Resolve ticket_id — block tracking if no in-process ticket
+    const hasTicket = await gpsSyncManager.start();
+    if (!hasTicket) {
+      showToast('error', 'No Active Ticket', 'GPS tracking requires an in-process delivery.');
+      return;
+    }
+
     setIsTracking(true);
     setGpsActive(true);
     tripStartTime.current = Date.now();
@@ -172,6 +183,18 @@ export default function VehicleTrackingScreen({navigation}: Props) {
           setIsIdle(false);
           setIdleTime(0);
         }
+
+        // Store GPS record locally (keeps last 50)
+        gpsStorage.addRecord({
+          ticket_id: gpsSyncManager.getTicketId(),
+          latitude: lat,
+          longitude: lng,
+          speed: currentSpeed,
+          heading: hdg || 0,
+          altitude: alt || null,
+          accuracy: acc || null,
+          recorded_at: new Date(position.timestamp).toISOString(),
+        });
       },
       (error) => { console.warn('GPS Error:', error.message); setGpsActive(false); },
       {enableHighAccuracy: true, distanceFilter: 5, interval: 2000, fastestInterval: 1000, showLocationDialog: true, forceRequestLocation: true},
@@ -190,6 +213,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
     if (watchId.current !== null) { Geolocation.clearWatch(watchId.current); watchId.current = null; }
     if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
     if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
+    gpsSyncManager.stop();
     setIsTracking(false);
     setGpsActive(false);
   }, []);

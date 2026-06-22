@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {syncManager, SyncEvent} from '../services/syncManager';
+import {gpsSyncManager} from '../services/gpsSyncManager';
 import {offlineStorage} from '../services/offlineStorage';
 import {ticketsApi} from '../services/api';
 
@@ -44,6 +45,7 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     if (initialized.current) return;
     initialized.current = true;
     syncManager.init();
+    gpsSyncManager.flushUnsynced();
 
     const unsub = syncManager.addListener((event: SyncEvent) => {
       setLastSyncEvent(event);
