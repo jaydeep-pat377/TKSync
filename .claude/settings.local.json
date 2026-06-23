@@ -46,7 +46,9 @@
       "Bash(kill:*)",
       "Bash(./gradlew assembleRelease --stacktrace)",
       "Bash(find /Users/admin/Desktop/TKSync/src -name *i18n* -o -name *lang* -o -name *.json)",
-      "Bash(xxd -p -r)"
+      "Bash(xxd -p -r)",
+      "Bash(npm info:*)",
+      "Bash(./gradlew app:installDebug -x lint -PreactNativeDevServerPort=8081)"
     ]
   }
 }

@@ -34,6 +34,7 @@ import {useOfflineSync} from '../contexts/OfflineSyncContext';
 import {offlineStorage} from '../services/offlineStorage';
 import {setForceOffline, getForceOffline} from '../hooks/useNetworkStatus';
 import {getFontScale, useFontScaleRefresh} from '../contexts/FontSizeContext';
+import VoiceFormWizard, {type VoiceField, type VoiceResults} from '../components/VoiceFormWizard';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -896,6 +897,43 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   const [truckPickerVisible, setTruckPickerVisible] = useState(false);
   const [plantNotes, setPlantNotes] = useState(p?.notes || '');
   const [tempAtPlant, setTempAtPlant] = useState(p?.temp_at_plant != null ? String(p.temp_at_plant) : '');
+  const [voiceWizardVisible, setVoiceWizardVisible] = useState(false);
+
+  const PLANT_VOICE_FIELDS: VoiceField[] = [
+    {key: 'slumpFromPlant', label: 'Slump at Plant (mm)', prompt: 'Say the slump value at the plant in millimeters.', type: 'number', skip: slumpFromPlantLocked, required: true, min: 0, max: 300},
+    {key: 'waterLitres', label: 'Water Added (litres)', prompt: 'How many litres of water were added?', type: 'number', min: 0, max: 999},
+    {key: 'waterReason', label: 'Water Reason', prompt: 'Why was water added?', type: 'choice', choices: ['NOT ADDED', 'EXCEEDED', 'BRING UP TO']},
+    {key: 'slumpToJob', label: 'Slump to Job (mm)', prompt: 'Say the slump value to the job in millimeters.', type: 'number', skip: slumpToJobLocked, required: true, min: 0, max: 300},
+    {key: 'tempAtPlant', label: 'Temp at Plant (°c)', prompt: 'What is the temperature at the plant in degrees?', type: 'number', min: -40, max: 60},
+    {key: 'handAdded', label: 'Hand-Added Items', prompt: 'Were any items hand-added? Say yes or no.', type: 'boolean'},
+    {key: 'nitrogenAdded', label: 'Nitrogen Added', prompt: 'Was nitrogen added? Say yes or no.', type: 'boolean'},
+    {key: 'fibersAdded', label: 'Fibers Added', prompt: 'Were fibers added? Say yes or no.', type: 'boolean'},
+    {key: 'loadTested', label: 'Load Tested', prompt: 'Was the load tested? Say yes or no.', type: 'boolean'},
+    {key: 'loadTemp', label: 'Test Temp (°c)', prompt: 'What is the test temperature in degrees?', type: 'number', min: 0, max: 100, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'loadAir', label: 'Test Air (%)', prompt: 'What is the air percentage?', type: 'number', min: 0, max: 100, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'loadSlump', label: 'Test Slump (mm)', prompt: 'What is the test slump value in millimeters?', type: 'number', min: 0, max: 300, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'loadCylinders', label: 'Cylinders', prompt: 'How many cylinders?', type: 'number', min: 0, max: 50, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'plantNotes', label: 'Plant Notes', prompt: 'Dictate any plant notes.', type: 'text'},
+  ];
+
+  const PLANT_KEYWORDS = ['slump', 'nitrogen', 'fibers', 'bring up to', 'exceeded', 'not added', 'litres', 'cylinders'];
+
+  const handleVoiceComplete = useCallback((voiceResults: VoiceResults) => {
+    if (voiceResults.slumpFromPlant && !slumpFromPlantLocked) setSlumpFromPlant(voiceResults.slumpFromPlant);
+    if (voiceResults.waterLitres) setWaterLitres(parseInt(voiceResults.waterLitres) || 0);
+    if (voiceResults.waterReason) setWaterReason(voiceResults.waterReason);
+    if (voiceResults.slumpToJob && !slumpToJobLocked) setSlumpToJob(voiceResults.slumpToJob);
+    if (voiceResults.tempAtPlant) setTempAtPlant(voiceResults.tempAtPlant);
+    if (voiceResults.handAdded) setHandAdded(voiceResults.handAdded.toLowerCase() === 'yes');
+    if (voiceResults.nitrogenAdded) setNitrogenAdded(voiceResults.nitrogenAdded.toLowerCase() === 'yes');
+    if (voiceResults.fibersAdded) setFibersAdded(voiceResults.fibersAdded.toLowerCase() === 'yes');
+    if (voiceResults.loadTested) setLoadTested(voiceResults.loadTested.toLowerCase() === 'yes' ? 'yes' : 'no');
+    if (voiceResults.loadTemp) setLoadTemp(parseInt(voiceResults.loadTemp) || 0);
+    if (voiceResults.loadAir) setLoadAir(parseInt(voiceResults.loadAir) || 0);
+    if (voiceResults.loadSlump) setLoadSlump(voiceResults.loadSlump);
+    if (voiceResults.loadCylinders) setLoadCylinders(parseInt(voiceResults.loadCylinders) || 0);
+    if (voiceResults.plantNotes) setPlantNotes(voiceResults.plantNotes);
+  }, [slumpFromPlantLocked, slumpToJobLocked]);
 
   const dirtyMountRef = useRef(false);
   useEffect(() => {
@@ -926,7 +964,14 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
 
     const plantLandContent = (
       <>
-        <View style={ls.topBar}><LSaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} /></View>
+        <View style={[ls.topBar, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
+          {!allFieldsFilled ? (
+            <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setVoiceWizardVisible(true)} activeOpacity={0.7}>
+              <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+            </TouchableOpacity>
+          ) : <View />}
+          <LSaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
+        </View>
         <View style={_pIsPhone ? {gap: wp(8)} : {flex: 1, gap: wp(8)}} pointerEvents={allFieldsFilled ? 'none' : 'auto'}>
           {/* Top: two columns */}
           <View style={[{flexDirection: 'row', gap: wp(10)}, !_pIsPhone && {flex: 3}]}>
@@ -1047,10 +1092,10 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
             </LCard>
             </View>
           </View>
-          {/* Bottom: Plant Notes — compact */}
+          {/* Bottom: Plant Notes */}
           <LCard title="Plant Notes" icon="edit-note" style={_pIsPhone ? {minHeight: wp(80)} : {flex: 1}}>
             <TextInput
-              style={[{borderRadius: wp(8), paddingHorizontal: wp(10), paddingVertical: wp(10), fontSize: ms(12), backgroundColor: c.white, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, color: c.textPrimary, textAlignVertical: 'top'}, !_pIsPhone && {flex: 1}]}
+              style={[{borderRadius: wp(8), paddingHorizontal: wp(10), paddingVertical: wp(6), fontSize: ms(12), backgroundColor: c.white, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, color: c.textPrimary, textAlignVertical: 'top', minHeight: wp(34)}, !_pIsPhone && {flex: 1}]}
               multiline
               placeholderTextColor={c.textMuted}
               placeholder="Enter plant notes..."
@@ -1075,12 +1120,23 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         <ReasonListModal visible={reasonModalVisible} onSelect={setWaterReason} onClose={() => setReasonModalVisible(false)} />
         <ProductsModal visible={productsModalVisible} onClose={() => setProductsModalVisible(false)} products={p?.products} />
         <DateTimePicker visible={truckPickerVisible} value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()} onConfirm={(date) => { if (truckPickerField === 'start') {setTruckStart(date);} else if (truckPickerField === 'end') {setTruckEnd(date);} setTruckPickerVisible(false); }} onCancel={() => setTruckPickerVisible(false)} />
+        <VoiceFormWizard visible={voiceWizardVisible} onClose={() => setVoiceWizardVisible(false)} fields={PLANT_VOICE_FIELDS} onComplete={handleVoiceComplete} keywords={PLANT_KEYWORDS} speakPrompts />
       </View>
     );
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+        {!allFieldsFilled ? (
+          <TouchableOpacity
+            style={[st.voiceBtn, {backgroundColor: c.primary}]}
+            onPress={() => setVoiceWizardVisible(true)}
+            activeOpacity={0.7}>
+            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+          </TouchableOpacity>
+        ) : <View />}
+        <SaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
+      </View>
       <View pointerEvents={allFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Mix Properties" icon="science">
@@ -1209,6 +1265,14 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           setTruckPickerVisible(false);
         }}
         onCancel={() => setTruckPickerVisible(false)}
+      />
+      <VoiceFormWizard
+        visible={voiceWizardVisible}
+        onClose={() => setVoiceWizardVisible(false)}
+        fields={PLANT_VOICE_FIELDS}
+        onComplete={handleVoiceComplete}
+        keywords={PLANT_KEYWORDS}
+        speakPrompts
       />
     </View>
   );
@@ -2789,7 +2853,7 @@ tabBody: {paddingHorizontal: wp(8), paddingTop: wp(8), paddingBottom: wp(10), fl
   fieldCardTitle: {fontSize: ms(10), fontWeight: '800', letterSpacing: 0.3},
 
   // Save
-  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(8), elevation: 6, shadowColor: '#000', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.20, shadowRadius: 10},
+  saveBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6), elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.15, shadowRadius: 4},
   saveBtnText: {fontSize: ms(10), fontWeight: '700'},
 
   // Field
@@ -2901,4 +2965,7 @@ tabBody: {paddingHorizontal: wp(8), paddingTop: wp(8), paddingBottom: wp(10), fl
   tableCellDesc: {flex: 1, fontSize: ms(13)},
   tableCellQty: {width: wp(50), fontSize: ms(13), textAlign: 'right'},
   tableCellUnit: {width: wp(45), fontSize: ms(13), textAlign: 'right'},
+
+  // Voice button
+  voiceBtn: {width: wp(28), height: wp(28), borderRadius: wp(14), justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4},
 }); }
