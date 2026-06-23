@@ -1368,6 +1368,60 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   const [jobLoadSlump, setJobLoadSlump] = useState('');
   const [jobLoadSlumpPickerVisible, setJobLoadSlumpPickerVisible] = useState(false);
   const [jobLoadCylinders, setJobLoadCylinders] = useState(0);
+  const [jVoiceWizardVisible, setJVoiceWizardVisible] = useState(false);
+
+  const JOBSITE_VOICE_FIELDS: VoiceField[] = [
+    {key: 'fullLoadLitres', label: 'Full Load (litres)', prompt: 'How many litres for the full load?', type: 'number', min: 0, max: 999},
+    {key: 'fullLoadReason', label: 'Full Load Reason', prompt: 'What is the reason?', type: 'choice', choices: ['NOT ADDED', 'EXCEEDED', 'BRING UP TO']},
+    {key: 'fullLoadMm', label: 'Full Load Slump (mm)', prompt: 'What is the full load slump in millimeters?', type: 'number', min: 0, max: 300},
+    {key: 'custWaterLitres', label: 'Customer Water (litres)', prompt: 'How many litres of customer requested water?', type: 'number', min: 0, max: 999},
+    {key: 'custWaterMm', label: 'Customer Water (mm)', prompt: 'Customer water slump in millimeters?', type: 'number', min: 0, max: 300},
+    {key: 'maintWaterLitres', label: 'Maintenance Water (litres)', prompt: 'How many litres of maintenance water?', type: 'number', min: 0, max: 999},
+    {key: 'maintWaterMm', label: 'Maintenance Water (mm)', prompt: 'Maintenance water slump in millimeters?', type: 'number', min: 0, max: 300},
+    {key: 'superPlasticizer', label: 'Super Plasticizer', prompt: 'Super plasticizer? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'conveyor', label: 'Conveyor', prompt: 'Conveyor? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'color', label: 'Color', prompt: 'Color? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'fiber', label: 'Fiber', prompt: 'Fiber? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'other', label: 'Other', prompt: 'Any other items to add?', type: 'text'},
+    {key: 'conveyorOrdered', label: 'Conveyor Ordered Not Used', prompt: 'Was conveyor ordered but not used? Say yes or no.', type: 'boolean'},
+    {key: 'unloadedConveyor', label: 'Unloaded Over Conveyor', prompt: 'Was it unloaded over conveyor? Say yes or no.', type: 'boolean'},
+    {key: 'loadDisputed', label: 'Load Disputed', prompt: 'Was the load disputed? Say yes or no.', type: 'boolean'},
+    {key: 'washoutArea', label: 'Washout Area', prompt: 'What is the washout area?', type: 'choice', choices: ['WHEELBARROW', 'DUMPSTER', 'BEHIND CURB LINE', 'STONE PILE ON JOB SITE', 'TRUCK MOUNTED WASHOUT', 'PUMP', 'OTHER']},
+    {key: 'jobLoadTested', label: 'Load Tested', prompt: 'Was the load tested? Say yes or no.', type: 'boolean'},
+    {key: 'jobLoadTemp', label: 'Test Temp (°c)', prompt: 'What is the test temperature?', type: 'number', min: 0, max: 100, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobLoadAir', label: 'Test Air (%)', prompt: 'What is the air percentage?', type: 'number', min: 0, max: 100, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobLoadSlump', label: 'Test Slump (mm)', prompt: 'What is the test slump in millimeters?', type: 'number', min: 0, max: 300, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobLoadCylinders', label: 'Cylinders', prompt: 'How many cylinders?', type: 'number', min: 0, max: 50, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobsiteNotes', label: 'Jobsite Notes', prompt: 'Dictate any jobsite notes.', type: 'text'},
+  ];
+
+  const JOBSITE_KEYWORDS = ['slump', 'litres', 'plasticizer', 'conveyor', 'fiber', 'wheelbarrow', 'dumpster', 'curb', 'cylinders', 'maintenance', 'customer', 'driver', 'not added'];
+
+  const handleJobsiteVoiceComplete = useCallback((voiceResults: VoiceResults) => {
+    if (voiceResults.fullLoadLitres && !fullLoadLocked) setFullLoadLitres(parseInt(voiceResults.fullLoadLitres) || 0);
+    if (voiceResults.fullLoadReason) setFullLoadReason(voiceResults.fullLoadReason);
+    if (voiceResults.fullLoadMm) setFullLoadMm(voiceResults.fullLoadMm);
+    if (voiceResults.custWaterLitres) setCustWaterLitres(parseInt(voiceResults.custWaterLitres) || 0);
+    if (voiceResults.custWaterMm) setCustWaterMm(voiceResults.custWaterMm);
+    if (voiceResults.maintWaterLitres) setMaintWaterLitres(parseInt(voiceResults.maintWaterLitres) || 0);
+    if (voiceResults.maintWaterMm) setMaintWaterMm(voiceResults.maintWaterMm);
+    if (voiceResults.superPlasticizer) setAddedValues(prev => ({...prev, 'SUPER PLASTICIZER': voiceResults.superPlasticizer}));
+    if (voiceResults.conveyor) setAddedValues(prev => ({...prev, 'CONVEYOR (IF NOT ON TICKET)': voiceResults.conveyor}));
+    if (voiceResults.color) setAddedValues(prev => ({...prev, 'COLOR': voiceResults.color}));
+    if (voiceResults.fiber) setAddedValues(prev => ({...prev, 'FIBER': voiceResults.fiber}));
+    if (voiceResults.other) setAddedValues(prev => ({...prev, 'Other': voiceResults.other}));
+    if (voiceResults.conveyorOrdered) setConveyorOrdered(voiceResults.conveyorOrdered.toLowerCase() === 'yes');
+    if (voiceResults.unloadedConveyor) setUnloadedConveyor(voiceResults.unloadedConveyor.toLowerCase() === 'yes');
+    if (voiceResults.loadDisputed) setLoadDisputed(voiceResults.loadDisputed.toLowerCase() === 'yes');
+    if (voiceResults.washoutArea) setWashoutArea(voiceResults.washoutArea);
+    if (voiceResults.jobLoadTested) setJobLoadTested(voiceResults.jobLoadTested.toLowerCase() === 'yes' ? 'yes' : 'no');
+    if (voiceResults.jobLoadTemp) setJobLoadTemp(parseInt(voiceResults.jobLoadTemp) || 0);
+    if (voiceResults.jobLoadAir) setJobLoadAir(parseInt(voiceResults.jobLoadAir) || 0);
+    if (voiceResults.jobLoadSlump) setJobLoadSlump(voiceResults.jobLoadSlump);
+    if (voiceResults.jobLoadCylinders) setJobLoadCylinders(parseInt(voiceResults.jobLoadCylinders) || 0);
+    if (voiceResults.jobsiteNotes) setJobsiteNotes(voiceResults.jobsiteNotes);
+  }, [fullLoadLocked]);
+
   const jDirtyMountRef = useRef(false);
   useEffect(() => {
     if (!jDirtyMountRef.current) { jDirtyMountRef.current = true; return; }
@@ -1396,7 +1450,14 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   if (_jw > _jh) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
-        <View style={ls.topBar}><LSaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} /></View>
+        <View style={[ls.topBar, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
+          {!jAllFieldsFilled ? (
+            <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setJVoiceWizardVisible(true)} activeOpacity={0.7}>
+              <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+            </TouchableOpacity>
+          ) : <View />}
+          <LSaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
+        </View>
         <View style={ls.columns} pointerEvents={jAllFieldsFilled ? 'none' : 'auto'}>
           {/* Column 1: Water */}
           <View style={{flex: 1}}>
@@ -1549,12 +1610,20 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         {jobLoadTested === 'yes' && (
           <SlumpPickerModal visible={jobLoadSlumpPickerVisible} title="Load Slump" value={jobLoadSlump} onConfirm={(val) => { setJobLoadSlump(val); setJobLoadSlumpPickerVisible(false); }} onClose={() => setJobLoadSlumpPickerVisible(false)} />
         )}
+        <VoiceFormWizard visible={jVoiceWizardVisible} onClose={() => setJVoiceWizardVisible(false)} fields={JOBSITE_VOICE_FIELDS} onComplete={handleJobsiteVoiceComplete} keywords={JOBSITE_KEYWORDS} speakPrompts />
       </View>
     );
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+        {!jAllFieldsFilled ? (
+          <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setJVoiceWizardVisible(true)} activeOpacity={0.7}>
+            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+          </TouchableOpacity>
+        ) : <View />}
+        <SaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
+      </View>
       <View pointerEvents={jAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Water" icon="water-drop">
@@ -1704,6 +1773,14 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       />
       </CardsGrid>
       </View>
+      <VoiceFormWizard
+        visible={jVoiceWizardVisible}
+        onClose={() => setJVoiceWizardVisible(false)}
+        fields={JOBSITE_VOICE_FIELDS}
+        onComplete={handleJobsiteVoiceComplete}
+        keywords={JOBSITE_KEYWORDS}
+        speakPrompts
+      />
     </View>
   );
 }
@@ -1920,6 +1997,27 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
   const [rIsDirty, setRIsDirty] = useState(false);
   const [disposalModal, setDisposalModal] = useState(false);
   const [reasonModal, setReasonModal] = useState(false);
+  const [rVoiceWizardVisible, setRVoiceWizardVisible] = useState(false);
+
+  const RETURNED_VOICE_FIELDS: VoiceField[] = [
+    {key: 'concreteVal', label: 'Returned Concrete (M3)', prompt: 'How much concrete was returned in cubic meters?', type: 'number', skip: concreteLocked, required: true, min: 0, max: 999},
+    {key: 'disposalMethod', label: 'Disposal Method', prompt: 'What was the disposal method?', type: 'choice', choices: DISPOSAL_METHODS.map(m => m.label)},
+    {key: 'returnReason', label: 'Reason for Return', prompt: 'What was the reason for the return?', type: 'choice', choices: RETURN_REASONS.map(r => r.label)},
+  ];
+
+  const RETURNED_KEYWORDS = ['concrete', 'reshipped', 'dumped', 'blocks', 'granulize', 'rejected', 'slump', 'temperature', 'balling', 'pour complete'];
+
+  const handleReturnedVoiceComplete = useCallback((voiceResults: VoiceResults) => {
+    if (voiceResults.concreteVal && !concreteLocked) setConcreteVal(voiceResults.concreteVal);
+    if (voiceResults.disposalMethod) {
+      const match = DISPOSAL_METHODS.find(m => m.label.toLowerCase() === voiceResults.disposalMethod.toLowerCase());
+      setDisposalMethod(match ? match.key : voiceResults.disposalMethod);
+    }
+    if (voiceResults.returnReason) {
+      const match = RETURN_REASONS.find(r => r.label.toLowerCase() === voiceResults.returnReason.toLowerCase());
+      setReturnReason(match ? match.key : voiceResults.returnReason);
+    }
+  }, [concreteLocked]);
 
   const rDirtyMountRef = useRef(false);
   useEffect(() => {
@@ -1982,7 +2080,14 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
   if (_rtLand) {
     return (
       <View style={[ls.root, {backgroundColor: c.surface}]}>
-        <View style={ls.topBar}><LSaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} /></View>
+        <View style={[ls.topBar, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
+          {!rAllFieldsFilled ? (
+            <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setRVoiceWizardVisible(true)} activeOpacity={0.7}>
+              <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+            </TouchableOpacity>
+          ) : <View />}
+          <LSaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
+        </View>
         <View style={ls.columns} pointerEvents={rAllFieldsFilled ? 'none' : 'auto'}>
           <LCard title="Return Details" icon="assignment-return">
             <LField label="RETURNED CONCRETE">
@@ -2014,13 +2119,21 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
 
         <SelectionModal visible={disposalModal} title="Disposal Method" subtitle="Select a disposal method" headerIcon="delete-sweep" options={DISPOSAL_METHODS} selected={disposalMethod} onSave={setDisposalMethod} onClose={() => setDisposalModal(false)} />
         <SelectionModal visible={reasonModal} title="Reason for Return" subtitle="Select a return reason" headerIcon="assignment-return" options={RETURN_REASONS} selected={returnReason} onSave={setReturnReason} onClose={() => setReasonModal(false)} />
+        <VoiceFormWizard visible={rVoiceWizardVisible} onClose={() => setRVoiceWizardVisible(false)} fields={RETURNED_VOICE_FIELDS} onComplete={handleReturnedVoiceComplete} keywords={RETURNED_KEYWORDS} speakPrompts />
       </View>
     );
   }
 
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <SaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+        {!rAllFieldsFilled ? (
+          <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setRVoiceWizardVisible(true)} activeOpacity={0.7}>
+            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+          </TouchableOpacity>
+        ) : <View />}
+        <SaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
+      </View>
 
       <View pointerEvents={rAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
@@ -2102,6 +2215,14 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
         selected={returnReason}
         onSave={setReturnReason}
         onClose={() => setReasonModal(false)}
+      />
+      <VoiceFormWizard
+        visible={rVoiceWizardVisible}
+        onClose={() => setRVoiceWizardVisible(false)}
+        fields={RETURNED_VOICE_FIELDS}
+        onComplete={handleReturnedVoiceComplete}
+        keywords={RETURNED_KEYWORDS}
+        speakPrompts
       />
     </View>
   );
@@ -2361,6 +2482,26 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
   const [codNotes, setCodNotes] = useState(codData?.notes || '');
   const [codAmount, setCodAmount] = useState(codData?.amount != null ? String(codData.amount) : '');
   const [notesFocused, setNotesFocused] = useState(false);
+  const [codVoiceWizardVisible, setCodVoiceWizardVisible] = useState(false);
+
+  const COD_VOICE_FIELDS: VoiceField[] = [
+    {key: 'paymentType', label: 'Payment Type', prompt: 'What is the payment type? Say prepaid credit card, cash, check, or other.', type: 'choice', choices: PAYMENT_TYPES.map(p => p.label)},
+    {key: 'codAmount', label: 'COD Amount ($)', prompt: 'What is the COD amount in dollars?', type: 'number', min: 0, max: 99999},
+    {key: 'waitTime', label: 'Wait Time (minutes)', prompt: 'How many minutes was the wait time?', type: 'number', min: 0, max: 999},
+    {key: 'codNotes', label: 'COD Notes', prompt: 'Dictate any COD notes.', type: 'text'},
+  ];
+
+  const COD_KEYWORDS = ['prepaid', 'credit card', 'cash', 'check', 'minutes', 'wait'];
+
+  const handleCodVoiceComplete = useCallback((voiceResults: VoiceResults) => {
+    if (voiceResults.paymentType) {
+      const match = PAYMENT_TYPES.find(p => p.label.toLowerCase() === voiceResults.paymentType.toLowerCase());
+      if (match) setPaymentType(match.key);
+    }
+    if (voiceResults.codAmount) setCodAmount(voiceResults.codAmount);
+    if (voiceResults.waitTime) setWaitTime(parseInt(voiceResults.waitTime) || 0);
+    if (voiceResults.codNotes) setCodNotes(voiceResults.codNotes);
+  }, []);
 
   const scaleMinus = useRef(new Animated.Value(1)).current;
   const scalePlus = useRef(new Animated.Value(1)).current;
@@ -2419,7 +2560,14 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
   const codContent = (
     <>
-      <SaveButton disabled={codAllFieldsFilled || saving} onPress={handleSaveCod} />
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+        {!codAllFieldsFilled ? (
+          <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setCodVoiceWizardVisible(true)} activeOpacity={0.7}>
+            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+          </TouchableOpacity>
+        ) : <View />}
+        <SaveButton disabled={codAllFieldsFilled || saving} onPress={handleSaveCod} />
+      </View>
 
       <View pointerEvents={codAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
@@ -2591,6 +2739,14 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
           })}
         </ScrollView>
       </ResponsiveModal>
+      <VoiceFormWizard
+        visible={codVoiceWizardVisible}
+        onClose={() => setCodVoiceWizardVisible(false)}
+        fields={COD_VOICE_FIELDS}
+        onComplete={handleCodVoiceComplete}
+        keywords={COD_KEYWORDS}
+        speakPrompts
+      />
     </View>
   );
 }

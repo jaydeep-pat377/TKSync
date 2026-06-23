@@ -139,16 +139,17 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
   const [phase, setPhase] = useState<WizardPhase>('ready');
   const [currentIdx, setCurrentIdx] = useState(0);
   const [results, setResults] = useState<VoiceResults>({});
-  const activeFields = fields.filter(f => {
-    if (f.skip) return false;
-    if (f.dependsOn) return results[f.dependsOn.key] === f.dependsOn.value;
-    return true;
-  });
   const [partialResult, setPartialResult] = useState('');
   const [error, setError] = useState('');
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isSpeakingPrompt, setIsSpeakingPrompt] = useState(false);
+
+  const activeFields = fields.filter(f => {
+    if (f.skip) return false;
+    if (f.dependsOn) return results[f.dependsOn.key] === f.dependsOn.value;
+    return true;
+  });
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -474,7 +475,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
   // ─── RENDER ───
 
   return (
-    <ResponsiveModal visible={visible} onClose={handleCancel} maxWidth={400} maxHeightPercent={60}>
+    <ResponsiveModal visible={visible} onClose={handleCancel} maxWidth={400} maxHeightPercent={75}>
       <Animated.View style={[styles.container, {backgroundColor: c.white, opacity: fadeAnim}]}>
         {/* Header with real-time title + subtitle */}
         <View style={[styles.header, {borderBottomColor: c.border}]}>
@@ -597,55 +598,55 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               )}
             </View>
             <ScrollView style={styles.reviewScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {activeFields.map((field, idx) => {
-                const val = results[field.key];
-                const v = validations[field.key];
-                const isEditing = editingKey === field.key;
-                return (
-                  <View key={field.key} style={[styles.reviewRow, {borderBottomColor: c.borderLight}]}>
-                    <View style={styles.reviewRowHeader}>
-                      <VI status={v.status} />
-                      <Text style={[styles.reviewLabel, {color: c.textSecondary}]}>{field.label}</Text>
-                    </View>
-                    {isEditing ? (
-                      <View style={styles.editRow}>
-                        <TextInput
-                          style={[styles.editInput, {color: c.textPrimary, borderColor: c.primary, backgroundColor: c.surface}]}
-                          value={editValue}
-                          onChangeText={setEditValue}
-                          autoFocus
-                          keyboardType={field.type === 'number' ? 'numeric' : 'default'}
-                          returnKeyType="done"
-                          onSubmitEditing={handleSaveEdit}
-                          placeholderTextColor={c.textMuted}
-                          placeholder={`Enter ${field.label.toLowerCase()}`}
-                        />
-                        <TouchableOpacity onPress={handleSaveEdit} style={[styles.editActionBtn, {backgroundColor: c.primary}]}>
-                          <MaterialIcons name="check" size={ms(14)} color="#FFF" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={handleCancelEdit} style={[styles.editActionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]}>
-                          <MaterialIcons name="close" size={ms(14)} color={c.textMuted} />
-                        </TouchableOpacity>
+                {activeFields.map((field, idx) => {
+                  const val = results[field.key];
+                  const v = validations[field.key];
+                  const isEditing = editingKey === field.key;
+                  return (
+                    <View key={field.key} style={[styles.reviewRow, {borderBottomColor: c.borderLight}]}>
+                      <View style={styles.reviewRowHeader}>
+                        <VI status={v.status} />
+                        <Text style={[styles.reviewLabel, {color: c.textSecondary}]}>{field.label}</Text>
                       </View>
-                    ) : (
-                      <View style={styles.reviewValueRow}>
-                        <Text style={[styles.reviewValue, {color: val ? (v.status === 'invalid' ? c.error : c.textPrimary) : c.textMuted}]} numberOfLines={2}>{val || 'Skipped'}</Text>
-                        <View style={styles.reviewActions}>
-                          <TouchableOpacity onPress={() => handleStartEdit(field.key, val || '')} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-                            <MaterialIcons name="edit" size={ms(15)} color={c.textMuted} />
+                      {isEditing ? (
+                        <View style={styles.editRow}>
+                          <TextInput
+                            style={[styles.editInput, {color: c.textPrimary, borderColor: c.primary, backgroundColor: c.surface}]}
+                            value={editValue}
+                            onChangeText={setEditValue}
+                            autoFocus
+                            keyboardType={field.type === 'number' ? 'numeric' : 'default'}
+                            returnKeyType="done"
+                            onSubmitEditing={handleSaveEdit}
+                            placeholderTextColor={c.textMuted}
+                            placeholder={`Enter ${field.label.toLowerCase()}`}
+                          />
+                          <TouchableOpacity onPress={handleSaveEdit} style={[styles.editActionBtn, {backgroundColor: c.primary}]}>
+                            <MaterialIcons name="check" size={ms(14)} color="#FFF" />
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleReRecordField(idx)} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-                            <MaterialIcons name="mic" size={ms(15)} color={c.primary} />
+                          <TouchableOpacity onPress={handleCancelEdit} style={[styles.editActionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]}>
+                            <MaterialIcons name="close" size={ms(14)} color={c.textMuted} />
                           </TouchableOpacity>
                         </View>
-                      </View>
-                    )}
-                    {v.status === 'invalid' && v.message && !isEditing && (
-                      <Text style={[styles.validationMsg, {color: c.error}]}>{v.message}</Text>
-                    )}
-                  </View>
-                );
-              })}
+                      ) : (
+                        <View style={styles.reviewValueRow}>
+                          <Text style={[styles.reviewValue, {color: val ? (v.status === 'invalid' ? c.error : c.textPrimary) : c.textMuted}]} numberOfLines={2}>{val || 'Skipped'}</Text>
+                          <View style={styles.reviewActions}>
+                            <TouchableOpacity onPress={() => handleStartEdit(field.key, val || '')} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                              <MaterialIcons name="edit" size={ms(15)} color={c.textMuted} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleReRecordField(idx)} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                              <MaterialIcons name="mic" size={ms(15)} color={c.primary} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                      {v.status === 'invalid' && v.message && !isEditing && (
+                        <Text style={[styles.validationMsg, {color: c.error}]}>{v.message}</Text>
+                      )}
+                    </View>
+                  );
+                })}
             </ScrollView>
             <View style={styles.reviewButtons}>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]} onPress={handleCancel} activeOpacity={0.7}>
@@ -661,7 +662,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
         {/* ═══ FIELD PROMPT ═══ */}
         {(phase === 'ready' || phase === 'listening' || phase === 'processing') && (
-          <View style={styles.promptContainer}>
+          <ScrollView contentContainerStyle={styles.promptContainer} showsVerticalScrollIndicator={false} bounces={false}>
             <Text style={[styles.stepText, {color: c.textMuted}]}>Field {currentIdx + 1} of {activeFields.length}{results[currentField?.key] ? ' (re-record)' : ''}</Text>
             <Text style={[styles.fieldLabel, {color: c.textPrimary}]}>{currentField?.label}</Text>
             <Text style={[styles.promptText, {color: c.textSecondary}]}>{currentField?.prompt}</Text>
@@ -722,7 +723,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               <Text style={[styles.skipText, {color: c.textMuted}]}>Skip this field</Text>
               <MaterialIcons name="skip-next" size={ms(14)} color={c.textMuted} />
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         )}
       </Animated.View>
     </ResponsiveModal>
