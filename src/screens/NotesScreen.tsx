@@ -43,10 +43,13 @@ type Props = {
 
 function formatPickerTime(date: Date | undefined): string {
   if (!date) return '';
-  const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const h = date.getHours();
-  const m = date.getMinutes();
-  return `${mons[date.getMonth()]} ${date.getDate()}, ${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
+  const Y = date.getFullYear();
+  const M = (date.getMonth() + 1).toString().padStart(2, '0');
+  const D = date.getDate().toString().padStart(2, '0');
+  const h = date.getHours().toString().padStart(2, '0');
+  const m = date.getMinutes().toString().padStart(2, '0');
+  const s = date.getSeconds().toString().padStart(2, '0');
+  return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 }
 
 const TABS = [

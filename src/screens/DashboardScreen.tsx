@@ -27,7 +27,7 @@ import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
 import { wp, ms } from '../utils/responsive';
-import {useFontScaleRefresh} from '../contexts/FontSizeContext';
+import {useFontScaleRefresh, useFontSize} from '../contexts/FontSizeContext';
 
 const WEATHER_ICONS: Record<string, string> = {
   '01d': 'wb-sunny', '01n': 'nightlight-round',
@@ -70,11 +70,13 @@ const TIMELINE_LABEL_KEYS: Record<string, string> = {
 function formatTime(dateStr: string | null): string {
   if (!dateStr) return '--';
   const d = new Date(dateStr);
-  const h = d.getHours();
+  const Y = d.getFullYear();
+  const M = (d.getMonth() + 1).toString().padStart(2, '0');
+  const D = d.getDate().toString().padStart(2, '0');
+  const h = d.getHours().toString().padStart(2, '0');
   const m = d.getMinutes().toString().padStart(2, '0');
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${m} ${ampm}`;
+  const s = d.getSeconds().toString().padStart(2, '0');
+  return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 }
 
 function formatLocalTime(timeStr: string | null | undefined): string {
@@ -184,6 +186,7 @@ const BOTTOM_ACTIONS = [
   { icon: 'edit', labelKey: 'actions.edit' },
   { icon: 'local-shipping', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
+  { icon: 'text-fields', labelKey: 'actions.fontSize' },
 ];
 
 const MENU_ITEMS_BASE = [
@@ -339,6 +342,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [directionsAlert, setDirectionsAlert] = useState(false);
   const [languageVisible, setLanguageVisible] = useState(false);
   const [activeBottom, setActiveBottom] = useState(-1);
+  const [fontSizeVisible, setFontSizeVisible] = useState(false);
+  const {fontScale, increase: fontIncrease, decrease: fontDecrease, reset: fontReset} = useFontSize();
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
   const [dateFrom, setDateFrom] = useState<string | null>(null);
@@ -397,15 +402,15 @@ export default function DashboardScreen({ navigation }: Props) {
     }
   }, []);
 
-  const fetchDetail = useCallback(async (ticketId: number) => {
-    setDetailLoading(true);
+  const fetchDetail = useCallback(async (ticketId: number, showLoading = true) => {
+    if (showLoading) setDetailLoading(true);
     try {
       const { data } = await ticketsApi.getById(ticketId);
       setDetail(data);
     } catch (err) {
       console.log('[TicketDetail] fetch error:', err);
     } finally {
-      setDetailLoading(false);
+      if (showLoading) setDetailLoading(false);
     }
   }, []);
 
@@ -413,13 +418,20 @@ export default function DashboardScreen({ navigation }: Props) {
     fetchTickets();
   }, [fetchTickets]);
 
-  // Auto-refresh every 2 minutes
+  // Auto-refresh every 2 minutes (silent — no loader)
   useEffect(() => {
     const iv = setInterval(() => {
       fetchTickets(false);
+      const ticket = tickets[activeTicket];
+      if (ticket) {
+        fetchDetail(ticket.id, false);
+        ticketsApi.getDeliveryRecord(ticket.id)
+          .then(res => setDeliveryRecord(res.data))
+          .catch(() => {});
+      }
     }, 120000);
     return () => clearInterval(iv);
-  }, [fetchTickets]);
+  }, [fetchTickets, fetchDetail, tickets, activeTicket]);
 
   // Fetch detail + delivery record when active ticket changes
   useEffect(() => {
@@ -524,6 +536,7 @@ export default function DashboardScreen({ navigation }: Props) {
     if (item.icon === 'label') { navigation.navigate('MobileTicket', { ticketId: currentTicket?.id }); }
     if (item.icon === 'note-alt') { navigation.navigate('Notes', { ticketId: currentTicket?.id }); }
     if (item.icon === 'edit') { setEditVisible(true); }
+    if (item.icon === 'text-fields') { setFontSizeVisible(true); }
     if (item.icon === 'qr-code-scanner' && currentTicket) {
       setQrLoading(true);
       setQrError(false);
@@ -864,6 +877,11 @@ export default function DashboardScreen({ navigation }: Props) {
   // ─── NAVIGATION BAR ───
   const renderNavBtn = (item: typeof BOTTOM_ACTIONS[0], i: number) => {
     const active = activeBottom === i;
+    const isFontBtn = item.icon === 'text-fields';
+    const iconEl = (size: number, color: string) =>
+      isFontBtn
+        ? <Text style={{ fontSize: size * 0.85, fontWeight: '900', color }}>A</Text>
+        : <MaterialIcons name={item.icon as any} size={size} color={color} />;
     if (L) {
       return (
         <TouchableOpacity
@@ -875,7 +893,7 @@ export default function DashboardScreen({ navigation }: Props) {
             width: lp ? 52 : ls(56), height: lp ? 52 : ls(56), justifyContent: 'center', alignItems: 'center',
             borderRadius: lp ? 14 : ls(16), backgroundColor: active ? c.primarySurface : 'transparent',
           }}>
-            <MaterialIcons name={item.icon as any} size={lp ? 30 : ls(38)} color={active ? c.primary : c.textMuted} />
+            {iconEl(lp ? 30 : ls(38), active ? c.primary : c.textMuted)}
           </View>
         </TouchableOpacity>
       );
@@ -890,7 +908,7 @@ export default function DashboardScreen({ navigation }: Props) {
           width: wp(40), height: wp(32), justifyContent: 'center', alignItems: 'center',
           borderRadius: wp(12), backgroundColor: active ? c.primarySurface : 'transparent',
         }}>
-          <MaterialIcons name={item.icon as any} size={isTablet ? 29 : ms(24)} color={active ? c.primary : c.textMuted} />
+          {iconEl(isTablet ? 29 : ms(24), active ? c.primary : c.textMuted)}
         </View>
       </TouchableOpacity>
     );
@@ -1306,7 +1324,7 @@ export default function DashboardScreen({ navigation }: Props) {
                                   <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{mixItem.value}</Text>
                                 </View>
                               ) : mixItem.isTruckBehind ? (
-                                <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: [...(detail?.location?.truck ? [{ type: 'My Truck', value: `${detail.ticket.truck_code} ${detail.ticket.status_label}`, latitude: detail.location.truck.lat, longitude: detail.location.truck.lng, status: detail.ticket.status_label, is_current: true, directions: true }] : []), ...(detail?.map || [])].sort((a, b) => { const order: Record<string, number> = { 'Plant': 0, 'My Truck': 1, 'Truck Ahead': 2, 'Truck Behind': 3, 'Job Site': 4 }; return (order[a.type] ?? 5) - (order[b.type] ?? 5); }), delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: detail?.job?.delivered_to || '', plantName: currentTicket?.plant_name || '' })} style={common.flex1}>
+                                <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: [...(detail?.location?.truck ? [{ type: 'My Truck', value: `${detail.ticket.truck_code}`, latitude: detail.location.truck.lat, longitude: detail.location.truck.lng, status: detail.ticket.status_label, is_current: true, directions: true, driverCode: detail.ticket.driver_code, deliveryState: detail.ticket.delivery_state, gpsUpdatedAt: detail.location.truck.updated_at, distanceMiles: detail.location?.route?.distance_miles ?? null, durationSeconds: detail.location?.route?.duration ?? null, deliveredTo: detail.job?.delivered_to ?? null }] : []), ...(detail?.map || [])].sort((a, b) => { const order: Record<string, number> = { 'Plant': 0, 'My Truck': 1, 'Truck Ahead': 2, 'Truck Behind': 3, 'Job Site': 4 }; return (order[a.type] ?? 5) - (order[b.type] ?? 5); }), delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: detail?.job?.delivered_to || '', plantName: currentTicket?.plant_name || '' })} style={common.flex1}>
                                   <Text style={[styles.detailValue, { color: c.accent }]} numberOfLines={2}>{mixItem.value}</Text>
                                 </TouchableOpacity>
                               ) : mixItem.isLink ? (
@@ -1951,6 +1969,50 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => setDirectionsAlert(false)}
             activeOpacity={0.7}>
             <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── FONT SIZE MODAL ─── */}
+      <ResponsiveModal
+        visible={fontSizeVisible}
+        onClose={() => setFontSizeVisible(false)}
+        maxWidth={320}
+        widthPercent={isLandscape ? 35 : 75}>
+        <View style={{ padding: wp(16), alignItems: 'center' }}>
+          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface, position: 'absolute', top: wp(10), right: wp(10), zIndex: 10 }]} onPress={() => setFontSizeVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+          </TouchableOpacity>
+          <View style={{ width: wp(44), height: wp(44), borderRadius: wp(22), backgroundColor: c.primarySurface, justifyContent: 'center', alignItems: 'center', marginBottom: wp(8) }}>
+            <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary }}>A</Text>
+          </View>
+          <Text style={{ fontSize: ms(14), fontWeight: '800', color: c.textPrimary, marginBottom: wp(4) }}>Font Size</Text>
+          <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary, marginBottom: wp(12) }}>{Math.round(fontScale * 100)}%</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(12), marginBottom: wp(12) }}>
+            <TouchableOpacity
+              onPress={fontDecrease}
+              disabled={fontScale <= 0.85}
+              activeOpacity={0.7}
+              style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale <= 0.85 ? c.surfaceAlt : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+              <Text style={{ fontSize: ms(14), fontWeight: '800', color: fontScale <= 0.85 ? c.textMuted : c.textPrimary }}>A-</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: c.surfaceAlt, overflow: 'hidden' }}>
+              <View style={{ width: `${((fontScale - 0.85) / (1.30 - 0.85)) * 100}%`, height: '100%', borderRadius: 3, backgroundColor: c.primary }} />
+            </View>
+            <TouchableOpacity
+              onPress={fontIncrease}
+              disabled={fontScale >= 1.30}
+              activeOpacity={0.7}
+              style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale >= 1.30 ? c.surfaceAlt : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+              <Text style={{ fontSize: ms(18), fontWeight: '800', color: fontScale >= 1.30 ? c.textMuted : c.textPrimary }}>A+</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            onPress={() => { fontReset(); }}
+            disabled={Math.round(fontScale * 100) === 100}
+            activeOpacity={0.7}
+            style={{ paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8), backgroundColor: Math.round(fontScale * 100) === 100 ? c.surfaceAlt : c.primary }}>
+            <Text style={{ fontSize: ms(12), fontWeight: '700', color: Math.round(fontScale * 100) === 100 ? c.textMuted : c.textOnPrimary }}>Reset to 100%</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>

@@ -32,6 +32,12 @@ type MapItem = {
   status: string;
   is_current: boolean;
   directions: boolean;
+  driverCode?: string;
+  deliveryState?: string;
+  gpsUpdatedAt?: string | null;
+  distanceMiles?: number | null;
+  durationSeconds?: number | null;
+  deliveredTo?: string | null;
 };
 
 type Props = {
@@ -68,6 +74,7 @@ export default function MapScreen({navigation, route}: Props) {
   const [isSatellite, setIsSatellite] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(14);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [selectedMarker, setSelectedMarker] = useState<number | null>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
 
   const hasMapItems = mapItems && mapItems.length > 0;
@@ -149,7 +156,7 @@ export default function MapScreen({navigation, route}: Props) {
         const colors = TYPE_COLORS[item.type] || DEFAULT_COLOR;
         const displayValue = item.type === 'Job Site'
           ? [item.address, item.mapPage ? `MapPage: ${item.mapPage}` : ''].filter(Boolean).join('\n')
-          : item.value || item.status;
+          : item.type === 'My Truck' ? (item.value || '') : (item.value || item.status);
         const hasCoords = item.latitude != null && item.longitude != null;
         return (
           <TouchableOpacity
@@ -185,7 +192,7 @@ export default function MapScreen({navigation, route}: Props) {
       )}
       <MapboxGL.MapView
         style={styles.map}
-        styleURL={isSatellite ? MapboxGL.StyleURL.SatelliteStreet : MapboxGL.StyleURL.Street}
+        styleURL={isSatellite ? MapboxGL.StyleURL.SatelliteStreet : 'mapbox://styles/mapbox/traffic-day-v2'}
         logoEnabled={false}
         attributionEnabled={false}
         scaleBarEnabled={false}
@@ -205,15 +212,41 @@ export default function MapScreen({navigation, route}: Props) {
           if (item.latitude == null || item.longitude == null) return null;
           const colors = TYPE_COLORS[item.type] || DEFAULT_COLOR;
           const iconName = item.type === 'Plant' ? 'factory' : item.type === 'Job Site' ? 'place' : 'local-shipping';
+          const displayValue = item.type === 'Job Site'
+            ? [item.address, item.mapPage ? `MapPage: ${item.mapPage}` : ''].filter(Boolean).join('\n')
+            : item.type === 'My Truck' ? (item.value || '') : (item.value || item.status);
+          const isSelected = selectedMarker === idx;
           return (
             <MapboxGL.PointAnnotation
               key={`marker-${item.type}-${idx}`}
               id={`marker-${item.type}-${idx}`}
               coordinate={[item.longitude, item.latitude]}
-              title={item.type}>
+              title={item.type}
+              onSelected={() => setSelectedMarker(idx)}
+              onDeselected={() => { if (selectedMarker === idx) setSelectedMarker(null); }}>
               <View style={[styles.marker, {backgroundColor: colors.marker}]}>
                 <MaterialIcons name={iconName} size={18} color="#fff" />
               </View>
+              <MapboxGL.Callout title="">
+                <View style={styles.callout}>
+                  <View style={styles.calloutHeader}>
+                    <View style={[styles.calloutIcon, {backgroundColor: colors.bg}]}>
+                      <MaterialIcons name={iconName} size={16} color={colors.icon} />
+                    </View>
+                    <Text style={styles.calloutTitle}>{item.type}</Text>
+                  </View>
+                  {displayValue ? <Text style={styles.calloutValue}>{displayValue}</Text> : null}
+                  {item.type === 'My Truck' && (
+                    <View style={styles.calloutDetails}>
+                      {item.driverCode ? <Text style={styles.calloutDetail}>Driver: {item.driverCode}</Text> : null}
+                      {item.deliveredTo ? <Text style={styles.calloutDetail}>To: {item.deliveredTo}</Text> : null}
+                      {item.distanceMiles != null ? <Text style={styles.calloutDetail}>Distance: {item.distanceMiles.toFixed(1)} mi</Text> : null}
+                      {item.durationSeconds != null ? <Text style={styles.calloutDetail}>ETA: {item.durationSeconds >= 3600 ? `${Math.floor(item.durationSeconds / 3600)}h ${Math.round((item.durationSeconds % 3600) / 60)}m` : `${Math.round(item.durationSeconds / 60)} min`}</Text> : null}
+                      {item.gpsUpdatedAt ? <Text style={styles.calloutDetail}>GPS: {new Date(item.gpsUpdatedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</Text> : null}
+                    </View>
+                  )}
+                </View>
+              </MapboxGL.Callout>
             </MapboxGL.PointAnnotation>
           );
         })}
@@ -241,6 +274,17 @@ export default function MapScreen({navigation, route}: Props) {
           </MapboxGL.PointAnnotation>
         )}
       </MapboxGL.MapView>
+
+      {/* Traffic legend */}
+      {!isSatellite && (
+        <View style={styles.trafficLegend}>
+          <Text style={styles.legendTitle}>Traffic</Text>
+          <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#4CAF50'}]} /><Text style={styles.legendLabel}>Low</Text></View>
+          <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#FFEB3B'}]} /><Text style={styles.legendLabel}>Moderate</Text></View>
+          <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#FF9800'}]} /><Text style={styles.legendLabel}>Heavy</Text></View>
+          <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#F44336'}]} /><Text style={styles.legendLabel}>Severe</Text></View>
+        </View>
+      )}
 
       {/* Satellite toggle */}
       <TouchableOpacity
@@ -375,6 +419,22 @@ const createStyles = () => StyleSheet.create({
   panelTitle: {fontWeight: '800'},
   panelValue: {fontWeight: '500', lineHeight: 21, marginBottom: 6},
   panelDirections: {fontWeight: '700', color: '#1976D2', textDecorationLine: 'underline'},
+
+  // Callout popup
+  callout: {width: 220, backgroundColor: '#fff', borderRadius: 10, padding: 12, elevation: 6, shadowColor: '#000', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.2, shadowRadius: 6},
+  calloutHeader: {flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6},
+  calloutIcon: {width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center'},
+  calloutTitle: {fontSize: 14, fontWeight: '800', color: '#222'},
+  calloutValue: {fontSize: 12, fontWeight: '500', color: '#444', lineHeight: 18, marginBottom: 6},
+  calloutDetails: {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e0e0e0', paddingTop: 6, gap: 3},
+  calloutDetail: {fontSize: 11, fontWeight: '500', color: '#555', lineHeight: 16},
+
+  // Traffic legend
+  trafficLegend: {position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 8, padding: 8, paddingHorizontal: 10, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, gap: 4},
+  legendTitle: {fontSize: 14, fontWeight: '800', color: '#333', marginBottom: 2},
+  legendRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
+  legendLine: {width: 20, height: 5, borderRadius: 2},
+  legendLabel: {fontSize: 13, fontWeight: '600', color: '#555'},
 
   // Map overlay buttons
   mapBtn: {position: 'absolute', width: 40, height: 40, borderRadius: 6, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc'},

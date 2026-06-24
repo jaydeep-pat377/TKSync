@@ -26,11 +26,13 @@ type Props = {
 const fmtTime = (t: string | null) => {
   if (!t) return '--';
   const d = new Date(t);
-  const h = d.getHours();
+  const Y = d.getFullYear();
+  const M = (d.getMonth() + 1).toString().padStart(2, '0');
+  const D = d.getDate().toString().padStart(2, '0');
+  const h = d.getHours().toString().padStart(2, '0');
   const m = d.getMinutes().toString().padStart(2, '0');
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${m} ${ampm}`;
+  const s = d.getSeconds().toString().padStart(2, '0');
+  return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 };
 
 const fmtAmount = (v: number | null, onAccount: boolean) => {
@@ -127,7 +129,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
   const orderCode = header?.order_code || '-';
   const ticketCode = header?.ticket_code || '-';
   const orderDate = header?.order_date
-    ? new Date(header.order_date).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'})
+    ? fmtTime(header.order_date)
     : '-';
 
   const customerInfo = cust ? [

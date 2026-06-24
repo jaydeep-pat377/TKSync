@@ -9,7 +9,6 @@ import {FontSizeProvider, useFontSize} from './src/contexts/FontSizeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import NetworkBanner from './src/components/NetworkBanner';
 import ToastContainer from './src/components/ToastContainer';
-import FontSizeSlider from './src/components/FontSizeSlider';
 import {initSentry} from './src/services/sentry';
 
 initSentry();
@@ -24,7 +23,6 @@ function AppContent() {
           <AppNavigator />
           <NetworkBanner />
           <ToastContainer />
-          <FontSizeSlider />
         </OfflineSyncProvider>
       </AuthProvider>
     </ThemeProvider>
