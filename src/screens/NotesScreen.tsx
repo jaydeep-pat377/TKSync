@@ -2560,7 +2560,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
   const codContent = (
     <>
-      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6)}}>
         {!codAllFieldsFilled ? (
           <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setCodVoiceWizardVisible(true)} activeOpacity={0.7}>
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />

@@ -8,6 +8,7 @@ import {
   ScrollView,
   Linking,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import ResponsiveModal from './ResponsiveModal';
@@ -135,6 +136,9 @@ function spokenToNumber(text: string): string {
 
 export default function VoiceFormWizard({visible, onClose, fields, onComplete, keywords, speakPrompts}: Props) {
   const {c} = useTheme();
+  const {height: screenHeight} = useWindowDimensions();
+  // Available height for scrollable content: 85% of screen minus header (~50px) and progress bar
+  const scrollableHeight = screenHeight * 0.85 - wp(60);
 
   const [phase, setPhase] = useState<WizardPhase>('ready');
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -475,7 +479,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
   // ─── RENDER ───
 
   return (
-    <ResponsiveModal visible={visible} onClose={handleCancel} maxWidth={400} maxHeightPercent={75}>
+    <ResponsiveModal visible={visible} onClose={handleCancel} maxWidth={400} maxHeightPercent={85}>
       <Animated.View style={[styles.container, {backgroundColor: c.white, opacity: fadeAnim}]}>
         {/* Header with real-time title + subtitle */}
         <View style={[styles.header, {borderBottomColor: c.border}]}>
@@ -553,7 +557,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
             )}
 
             {/* Field list */}
-            <ScrollView style={styles.confirmScrollOuter} showsVerticalScrollIndicator contentContainerStyle={styles.confirmScrollInner}>
+            <ScrollView style={[styles.confirmScrollOuter, {maxHeight: scrollableHeight - wp(200)}]} showsVerticalScrollIndicator contentContainerStyle={styles.confirmScrollInner}>
               {activeFields.map(f => {
                 const val = results[f.key];
                 const v = validations[f.key];
@@ -597,7 +601,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                 </View>
               )}
             </View>
-            <ScrollView style={styles.reviewScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView style={[styles.reviewScroll, {maxHeight: scrollableHeight - wp(80)}]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {activeFields.map((field, idx) => {
                   const val = results[field.key];
                   const v = validations[field.key];
@@ -662,7 +666,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
         {/* ═══ FIELD PROMPT ═══ */}
         {(phase === 'ready' || phase === 'listening' || phase === 'processing') && (
-          <ScrollView contentContainerStyle={styles.promptContainer} showsVerticalScrollIndicator={false} bounces={false}>
+          <ScrollView style={{maxHeight: scrollableHeight}} contentContainerStyle={styles.promptContainer} showsVerticalScrollIndicator={false} bounces={false}>
             <Text style={[styles.stepText, {color: c.textMuted}]}>Field {currentIdx + 1} of {activeFields.length}{results[currentField?.key] ? ' (re-record)' : ''}</Text>
             <Text style={[styles.fieldLabel, {color: c.textPrimary}]}>{currentField?.label}</Text>
             <Text style={[styles.promptText, {color: c.textSecondary}]}>{currentField?.prompt}</Text>
@@ -745,7 +749,7 @@ const styles = StyleSheet.create({
   progressTrack: {height: 2, width: '100%'},
   progressFill: {height: '100%', borderRadius: 1},
 
-  promptContainer: {alignItems: 'center', paddingHorizontal: wp(16), paddingTop: wp(12), paddingBottom: wp(10)},
+  promptContainer: {alignItems: 'center', paddingHorizontal: wp(16), paddingTop: wp(12), paddingBottom: wp(30)},
   stepText: {fontSize: ms(9), fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5},
   fieldLabel: {fontSize: ms(15), fontWeight: '700', marginTop: wp(4), textAlign: 'center'},
   promptText: {fontSize: ms(11), marginTop: wp(4), textAlign: 'center', lineHeight: ms(15)},
