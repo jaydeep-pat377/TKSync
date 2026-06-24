@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
+import React, {useState, useRef, useEffect, useCallback, createContext, useContext} from 'react';
 import {
   View,
   Text,
@@ -64,13 +64,15 @@ const TABS = [
 
 function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: string; unit: string; highlight?: boolean; onIncrement?: () => void; onDecrement?: () => void; onChangeValue?: (val: string) => void; pickerValues?: string[]}) {
   const {c} = useTheme();
+  const isMandatory = useMandatory();
+  const isHL = highlight || isMandatory;
   const {width: _sw, height: _sh} = useWindowDimensions();
   const _land = _sw > _sh;
   const [pickerOpen, setPickerOpen] = useState(false);
   const defaults = pickerValues || ['0','5','10','15','20','25','30','40','50','60','70','80','90','100'];
   return (
     <View style={[st.stepperWrap, _land && {gap: wp(2)}]}>
-      <View style={[st.numInput, _land && {minWidth: wp(32), height: wp(22), borderRadius: wp(5), paddingHorizontal: wp(4)}, {backgroundColor: highlight ? c.highlight : c.surface, borderColor: highlight ? c.primaryBorder : 'transparent'}]}>
+      <View style={[st.numInput, _land && {minWidth: wp(32), height: wp(22), borderRadius: wp(5), paddingHorizontal: wp(4)}, {backgroundColor: isHL ? c.highlight : c.surface, borderColor: isHL ? c.primaryBorder : 'transparent'}]}>
         {onChangeValue ? (
           <TextInput
             style={[st.numInputText, _land && {fontSize: ms(9), minWidth: wp(16)}, {color: c.textPrimary}]}
@@ -115,20 +117,24 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
   );
 }
 
-function Field({label, children, wide, compact, last}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean; last?: boolean}) {
+const MandatoryCtx = createContext(false);
+const useMandatory = () => useContext(MandatoryCtx);
+
+function Field({label, children, wide, compact, last, mandatory}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean; last?: boolean; mandatory?: boolean}) {
   const {c} = useTheme();
+  const content = mandatory ? <MandatoryCtx.Provider value={true}>{children}</MandatoryCtx.Provider> : children;
   if (compact) {
     return (
       <View style={[st.fieldCompact, {borderBottomColor: c.borderLight}]}>
         <Text style={[st.fieldCompactLabel, {color: c.textMuted}]}>{label}</Text>
-        <View style={st.fieldCompactBody}>{children}</View>
+        <View style={st.fieldCompactBody}>{content}</View>
       </View>
     );
   }
   return (
     <View style={[st.field, {borderBottomColor: c.borderLight}, wide && st.fieldWide, last && {borderBottomWidth: 0}]}>
       <Text style={[st.fieldLabel, {color: c.textPrimary}, wide && st.fieldLabelWide]} numberOfLines={1}>{label}</Text>
-      <View style={st.fieldBody}>{children}</View>
+      <View style={st.fieldBody}>{content}</View>
     </View>
   );
 }
@@ -179,6 +185,7 @@ function MoreBtn({onPress}: {onPress?: () => void}) {
 
 function Check({checked, label, onPress}: {checked: boolean; label?: string; onPress?: () => void}) {
   const {c} = useTheme();
+  const isMandatory = useMandatory();
   const {width: _cw, height: _ch} = useWindowDimensions();
   const _land = _cw > _ch;
   const scale = useRef(new Animated.Value(1)).current;
@@ -190,11 +197,11 @@ function Check({checked, label, onPress}: {checked: boolean; label?: string; onP
     onPress?.();
   };
   return (
-    <TouchableOpacity style={[st.checkTap, _land && {gap: wp(5), paddingRight: wp(2)}]} activeOpacity={0.7} onPress={tap}>
+    <TouchableOpacity style={[st.checkTap, _land && {gap: wp(5), paddingRight: wp(2)}, isMandatory && !checked && {backgroundColor: '#FFFF00', borderRadius: 6, paddingHorizontal: 4}]} activeOpacity={0.7} onPress={tap}>
       <Animated.View style={[
         st.checkBox,
         _land && {width: wp(12), height: wp(12), borderRadius: wp(3), borderWidth: 1},
-        {borderColor: checked ? c.primary : c.border, backgroundColor: checked ? c.primary : c.white},
+        {borderColor: checked ? c.primary : isMandatory ? '#CCCC00' : c.border, backgroundColor: checked ? c.primary : isMandatory ? '#FFFF00' : c.white},
         {transform: [{scale}]},
       ]}>
         {checked && <MaterialIcons name="check" size={_land ? ms(8) : ms(11)} color={c.textOnPrimary} />}
@@ -238,11 +245,13 @@ function GrayInput({placeholder}: {placeholder?: string}) {
 
 function LineInput({width: w, placeholder, value, onPress, editable, keyboardType, onChangeText}: {width?: number; placeholder?: string; value?: string; onPress?: () => void; editable?: boolean; keyboardType?: 'default' | 'number-pad' | 'numeric'; onChangeText?: (text: string) => void}) {
   const {c} = useTheme();
+  const isMandatory = useMandatory();
   const sizeStyle = w ? {width: wp(w)} : {flex: 1};
+  const hlStyle = isMandatory ? {backgroundColor: '#FFFF00', borderRadius: wp(4)} : undefined;
   // Read-only dropdown trigger: use Text so selected value is always visible
   if (onPress && !onChangeText) {
     return (
-      <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={[st.lineInput, {borderBottomColor: c.border, justifyContent: 'center'}, sizeStyle]}>
+      <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={[st.lineInput, {borderBottomColor: c.border, justifyContent: 'center'}, sizeStyle, hlStyle]}>
         <Text style={[st.lineInputText, {color: value ? c.textPrimary : c.textMuted}]} numberOfLines={1}>
           {value || placeholder || ''}
         </Text>
@@ -251,7 +260,7 @@ function LineInput({width: w, placeholder, value, onPress, editable, keyboardTyp
   }
   return (
     <TextInput
-      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary}, sizeStyle]}
+      style={[st.lineInput, {borderBottomColor: c.border, color: c.textPrimary}, sizeStyle, hlStyle]}
       placeholderTextColor={c.textMuted}
       placeholder={placeholder || ''}
       value={value}
@@ -372,6 +381,7 @@ function SubHeader({labels}: {labels: string[]}) {
 
 function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPress?: () => void}) {
   const {c} = useTheme();
+  const isMandatory = useMandatory();
   const hasValue = !!value;
   const displayText = hasValue ? formatPickerTime(value) : (label || 'Select Time');
   return (
@@ -379,8 +389,8 @@ function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPr
       style={[
         st.timePick,
         {
-          backgroundColor: hasValue ? c.primarySurface : c.white,
-          borderColor: hasValue ? c.primary : c.border,
+          backgroundColor: isMandatory && !hasValue ? '#FFFF00' : hasValue ? c.primarySurface : c.white,
+          borderColor: isMandatory && !hasValue ? '#CCCC00' : hasValue ? c.primary : c.border,
         },
       ]}
       activeOpacity={0.6}
@@ -396,15 +406,16 @@ function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPr
 
 function NoteInput({placeholder, borderColor, bgColor, textColor, value, onChangeText}: any) {
   const {c} = useTheme();
+  const isMandatory = useMandatory();
   const [focused, setFocused] = useState(false);
   return (
     <TextInput
       style={[
         st.textArea,
         {
-          borderColor: focused ? c.primary : (borderColor || c.border),
+          borderColor: focused ? c.primary : isMandatory ? '#CCCC00' : (borderColor || c.border),
           color: textColor || c.textPrimary,
-          backgroundColor: bgColor || c.white,
+          backgroundColor: isMandatory ? '#FFFF00' : (bgColor || c.white),
           borderWidth: focused ? 2 : 1.5,
         },
       ]}
@@ -472,20 +483,21 @@ function _createLs() { return StyleSheet.create({
   lhTabLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
 }); }
 
-function LField({label, children, wide, compact, noBorder}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean; noBorder?: boolean}) {
+function LField({label, children, wide, compact, noBorder, mandatory}: {label: string; children: React.ReactNode; wide?: boolean; compact?: boolean; noBorder?: boolean; mandatory?: boolean}) {
   const {c} = useTheme();
+  const content = mandatory ? <MandatoryCtx.Provider value={true}>{children}</MandatoryCtx.Provider> : children;
   if (compact) {
     return (
       <View style={[ls.fieldCompact, {borderBottomColor: c.borderLight}]}>
         <Text style={[ls.fieldCompactLabel, {color: c.textSecondary}]}>{label}</Text>
-        <View style={ls.fieldCompactBody}>{children}</View>
+        <View style={ls.fieldCompactBody}>{content}</View>
       </View>
     );
   }
   return (
     <View style={[ls.field, {borderBottomColor: c.borderLight}, wide && ls.fieldWide, noBorder && {borderBottomWidth: 0}]}>
       <Text style={[ls.fieldLabel, {color: c.textSecondary}, wide && [ls.fieldLabelWide, {maxWidth: undefined}]]} numberOfLines={wide ? undefined : 1}>{label}</Text>
-      <View style={ls.fieldBody}>{children}</View>
+      <View style={ls.fieldBody}>{content}</View>
     </View>
   );
 }
@@ -832,6 +844,7 @@ function _createSlumpSt() { return StyleSheet.create({
 function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
+  const mf = (field: string) => data?.mandatory_fields?.plant?.includes(field) ?? false;
   const p = data?.plant;
   const allFieldsFilled = p != null && (
     p.slump_from_plant != null && p.slump_to_job != null && p.temp_at_plant != null &&
@@ -849,6 +862,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   const slumpToJobLocked = p?.slump_to_job != null;
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const mandatoryPlantFields = data?.mandatory_fields?.plant || [];
   const handleSavePlant = async () => {
     if (!ticketId) return;
     setSaving(true);
@@ -901,6 +915,18 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   const [plantNotes, setPlantNotes] = useState(p?.notes || '');
   const [tempAtPlant, setTempAtPlant] = useState(p?.temp_at_plant != null ? String(p.temp_at_plant) : '');
   const [voiceWizardVisible, setVoiceWizardVisible] = useState(false);
+
+  const plantFieldValues: Record<string, any> = {
+    slump_from_plant: slumpFromPlant?.trim?.(), slump_to_job: slumpToJob?.trim?.(),
+    temp_at_plant: tempAtPlant?.trim?.(), water_added_full: waterLitres,
+    water_reason: waterReason, truck_start: truckStart, truck_end: truckEnd,
+    hand_added: handAdded, nitrogen_added: nitrogenAdded, fibers_added: fibersAdded,
+    load_tested: loadTested, notes: plantNotes,
+  };
+  const mandatoryPlantMissing = mandatoryPlantFields.some(f => {
+    const v = plantFieldValues[f];
+    return v === '' || v === null || v === undefined;
+  });
 
   const PLANT_VOICE_FIELDS: VoiceField[] = [
     {key: 'slumpFromPlant', label: 'Slump at Plant (mm)', prompt: 'Say the slump value at the plant in millimeters.', type: 'number', skip: slumpFromPlantLocked, required: true, min: 0, max: 300},
@@ -973,19 +999,19 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
               <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
             </TouchableOpacity>
           ) : <View />}
-          <LSaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
+          <LSaveButton disabled={allFieldsFilled || mandatoryPlantMissing || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
         </View>
         <View style={_pIsPhone ? {gap: wp(8)} : {flex: 1, gap: wp(8)}} pointerEvents={allFieldsFilled ? 'none' : 'auto'}>
           {/* Top: two columns */}
           <View style={[{flexDirection: 'row', gap: wp(10)}, !_pIsPhone && {flex: 3}]}>
             <LCard title="Mix Properties" icon="science">
-              <LField label="SLUMP AT PLANT (mm)">
+              <LField label="SLUMP AT PLANT (mm)" mandatory={mf('slump_from_plant')}>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpFromPlantLocked && setSlumpPickerVisible(true)} disabled={slumpFromPlantLocked}>
                   <YellowInput value={slumpFromPlant} />
                 </TouchableOpacity>
                 {!slumpFromPlantLocked && <MoreBtn onPress={() => setSlumpPickerVisible(true)} />}
               </LField>
-              <LField label="WATER ADDED (litres)">
+              <LField label="WATER ADDED (litres)" mandatory={mf('water_added_full')}>
                 <View style={common.rowFlex1Gap12}>
                   <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
                   <View style={[common.rowCenterGap8, {flex: 1}]}>
@@ -994,12 +1020,12 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                   </View>
                 </View>
               </LField>
-              <LField label="SLUMP TO JOB (mm)">
+              <LField label="SLUMP TO JOB (mm)" mandatory={mf('slump_to_job')}>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpToJobLocked && setSlumpToJobPickerVisible(true)} disabled={slumpToJobLocked}>
                   <YellowInput value={slumpToJob} />
                 </TouchableOpacity>
               </LField>
-              <LField label="TEMP AT PLANT (°c)" noBorder>
+              <LField label="TEMP AT PLANT (°c)" noBorder mandatory={mf('temp_at_plant')}>
                 <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
               </LField>
             </LCard>
@@ -1009,15 +1035,15 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
               <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled contentContainerStyle={{gap: wp(8)}}>
                 <View style={{paddingVertical: wp(4)}}>
                   <LFieldRow>
-                    <LField label="TRUCK START" compact>
+                    <LField label="TRUCK START" compact mandatory={mf('truck_start')}>
                       <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
                     </LField>
-                    <LField label="TRUCK END" compact>
+                    <LField label="TRUCK END" compact mandatory={mf('truck_end')}>
                       <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
                     </LField>
                   </LFieldRow>
                 </View>
-                <LField label="HAND-ADDED">
+                <LField label="HAND-ADDED" mandatory={mf('hand_added')}>
                   <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
                     <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
@@ -1025,11 +1051,11 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                 </LField>
                 <View style={{paddingVertical: wp(4)}}>
                   <LFieldRow>
-                    <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
-                    <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+                    <LField label="NITROGEN" compact mandatory={mf('nitrogen_added')}><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                    <LField label="FIBERS" compact mandatory={mf('fibers_added')}><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
                   </LFieldRow>
                 </View>
-                <LField label="LOAD TESTED">
+                <LField label="LOAD TESTED" mandatory={mf('load_tested')}>
                   <View style={[st.radioRow, {justifyContent: 'center'}]}>
                     <Radio selected={true} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
                     <Radio selected={false} label="No" onPress={() => handlePlantLoadTested('no')} />
@@ -1064,15 +1090,15 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
               <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled contentContainerStyle={{gap: wp(8)}}>
                 <View style={{paddingVertical: wp(4)}}>
                   <LFieldRow>
-                    <LField label="TRUCK START" compact>
+                    <LField label="TRUCK START" compact mandatory={mf('truck_start')}>
                       <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
                     </LField>
-                    <LField label="TRUCK END" compact>
+                    <LField label="TRUCK END" compact mandatory={mf('truck_end')}>
                       <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
                     </LField>
                   </LFieldRow>
                 </View>
-                <LField label="HAND-ADDED">
+                <LField label="HAND-ADDED" mandatory={mf('hand_added')}>
                   <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
                     <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
@@ -1080,11 +1106,11 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                 </LField>
                 <View style={{paddingVertical: wp(4)}}>
                   <LFieldRow>
-                    <LField label="NITROGEN" compact><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
-                    <LField label="FIBERS" compact><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+                    <LField label="NITROGEN" compact mandatory={mf('nitrogen_added')}><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                    <LField label="FIBERS" compact mandatory={mf('fibers_added')}><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
                   </LFieldRow>
                 </View>
-                <LField label="LOAD TESTED">
+                <LField label="LOAD TESTED" mandatory={mf('load_tested')}>
                   <View style={[st.radioRow, {justifyContent: 'center'}]}>
                     <Radio selected={false} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
                     <Radio selected={loadTested === 'no'} label="No" onPress={() => handlePlantLoadTested('no')} />
@@ -1138,18 +1164,18 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
-        <SaveButton disabled={allFieldsFilled || !slumpFromPlant.trim() || !slumpToJob.trim() || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
+        <SaveButton disabled={allFieldsFilled || mandatoryPlantMissing || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
       </View>
       <View pointerEvents={allFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Mix Properties" icon="science">
-      <Field label="SLUMP AT PLANT (mm)">
+      <Field label="SLUMP AT PLANT (mm)" mandatory={mf('slump_from_plant')}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpFromPlantLocked && setSlumpPickerVisible(true)} disabled={slumpFromPlantLocked}>
           <YellowInput value={slumpFromPlant} />
         </TouchableOpacity>
         {!slumpFromPlantLocked && <MoreBtn onPress={() => setSlumpPickerVisible(true)} />}
       </Field>
-      <Field label="WATER ADDED (litres)">
+      <Field label="WATER ADDED (litres)" mandatory={mf('water_added_full')}>
         <View style={common.rowFlex1Gap12}>
           <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
           <View style={[common.rowCenterGap8, {flex: 1}]}>
@@ -1158,25 +1184,25 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           </View>
         </View>
       </Field>
-      <Field label="SLUMP TO JOB (mm)">
+      <Field label="SLUMP TO JOB (mm)" mandatory={mf('slump_to_job')}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpToJobLocked && setSlumpToJobPickerVisible(true)} disabled={slumpToJobLocked}>
           <YellowInput value={slumpToJob} />
         </TouchableOpacity>
       </Field>
-      <Field label="TEMP AT PLANT (°c)" last>
+      <Field label="TEMP AT PLANT (°c)" last mandatory={mf('temp_at_plant')}>
         <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
       </Field>
       </FieldCard>
       <FieldCard title="Truck & Additives" icon="local-shipping">
       <FieldRow>
-        <Field label="TRUCK START" compact>
+        <Field label="TRUCK START" compact mandatory={mf('truck_start')}>
           <TimePicker
             label="Select"
             value={truckStart}
             onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
           />
         </Field>
-        <Field label="TRUCK END" compact>
+        <Field label="TRUCK END" compact mandatory={mf('truck_end')}>
           <TimePicker
             label="Select"
             value={truckEnd}
@@ -1184,17 +1210,17 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           />
         </Field>
       </FieldRow>
-      <Field label="HAND-ADDED ITEMS">
+      <Field label="HAND-ADDED ITEMS" mandatory={mf('hand_added')}>
         <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
         <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
           <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
         </TouchableOpacity>
       </Field>
       <FieldRow>
-        <Field label="NITROGEN ADDED" compact><Check checked={nitrogenAdded} label="If not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
-        <Field label="FIBERS ADDED" compact><Check checked={fibersAdded} label="If not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></Field>
+        <Field label="NITROGEN ADDED" compact mandatory={mf('nitrogen_added')}><Check checked={nitrogenAdded} label="If not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
+        <Field label="FIBERS ADDED" compact mandatory={mf('fibers_added')}><Check checked={fibersAdded} label="If not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></Field>
       </FieldRow>
-      <Field label="LOAD TESTED" last={loadTested !== 'yes'}>
+      <Field label="LOAD TESTED" last={loadTested !== 'yes'} mandatory={mf('load_tested')}>
         <View style={st.radioRow}>
           <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => setLoadTested('yes')} />
           <Radio selected={loadTested === 'no'} label="No" onPress={() => setLoadTested('no')} />
@@ -1222,7 +1248,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       )}
       </FieldCard>
       <FieldCard title="Plant Notes" icon="edit-note" fullWidth>
-      <Field label="NOTES" wide last>
+      <Field label="NOTES" wide last mandatory={mf('notes')}>
         <NoteInput placeholder="Enter plant notes..." value={plantNotes} onChangeText={setPlantNotes} />
       </Field>
       </FieldCard>
@@ -1285,6 +1311,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
 function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
+  const mf = (field: string) => data?.mandatory_fields?.jobsite?.includes(field) ?? false;
   const j = data?.jobsite;
   const jAllFieldsFilled = j != null && (
     j.full_load_litres != null && j.full_load_reason != null && j.full_load_mm != null &&
@@ -1373,6 +1400,23 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   const [jobLoadCylinders, setJobLoadCylinders] = useState(0);
   const [jVoiceWizardVisible, setJVoiceWizardVisible] = useState(false);
 
+  const mandatoryJobFields = data?.mandatory_fields?.jobsite || [];
+  const jobFieldValues: Record<string, any> = {
+    full_load_litres: fullLoadLitres, full_load_reason: fullLoadReason,
+    full_load_mm: fullLoadMm?.trim?.(), customer_water_litres: custWaterLitres,
+    customer_water_mm: custWaterMm?.trim?.(), maintenance_water_litres: maintWaterLitres,
+    maintenance_water_mm: maintWaterMm?.trim?.(), super_plasticizer: addedValues['SUPER PLASTICIZER'],
+    conveyor: addedValues['CONVEYOR (IF NOT ON TICKET)'], color: addedValues['COLOR'],
+    fiber: addedValues['FIBER'], other: addedValues['Other'],
+    conveyor_ordered_not_used: conveyorOrdered, unloaded_conveyor: unloadedConveyor,
+    load_disputed: loadDisputed, washout_area: washoutArea,
+    load_tested: jobLoadTested, notes: jobsiteNotes,
+  };
+  const mandatoryJobMissing = mandatoryJobFields.some(f => {
+    const v = jobFieldValues[f];
+    return v === '' || v === null || v === undefined;
+  });
+
   const JOBSITE_VOICE_FIELDS: VoiceField[] = [
     {key: 'fullLoadLitres', label: 'Full Load (litres)', prompt: 'How many litres for the full load?', type: 'number', min: 0, max: 999},
     {key: 'fullLoadReason', label: 'Full Load Reason', prompt: 'What is the reason?', type: 'choice', choices: ['NOT ADDED', 'EXCEEDED', 'BRING UP TO']},
@@ -1459,24 +1503,24 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
             </TouchableOpacity>
           ) : <View />}
-          <LSaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
+          <LSaveButton disabled={jAllFieldsFilled || mandatoryJobMissing || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
         </View>
         <View style={ls.columns} pointerEvents={jAllFieldsFilled ? 'none' : 'auto'}>
           {/* Column 1: Water */}
           <View style={{flex: 1}}>
           <LCard title="Water" icon="water-drop">
-            <LField label="FULL LOAD (litres)">
+            <LField label="FULL LOAD (litres)" mandatory={mf('full_load_litres')}>
               <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => v + 1)} onDecrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={fullLoadLocked ? undefined : v => setFullLoadLitres(parseInt(v) || 0)} />
             </LField>
-            <LField label="REASON">
+            <LField label="REASON" mandatory={mf('full_load_reason')}>
               <LineInput placeholder="Select" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
               <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
             </LField>
-            <LField label="SLUMP">
+            <LField label="SLUMP" mandatory={mf('full_load_mm')}>
               <LineInput placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
               <MoreBtn onPress={() => setMmModalField('fullLoad')} />
             </LField>
-            <LField label="CUSTOMER REQUESTED WATER(litres)" wide noBorder>
+            <LField label="CUSTOMER REQUESTED WATER(litres)" wide noBorder mandatory={mf('customer_water_litres')}>
               <View style={common.rowCenterGap8}>
                 <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
                 <LineInput placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
@@ -1484,7 +1528,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               </View>
             </LField>
             <View style={{marginTop: wp(8)}} />
-            <LField label="MAINTENANCE WATER(litres)" wide noBorder>
+            <LField label="MAINTENANCE WATER(litres)" wide noBorder mandatory={mf('maintenance_water_litres')}>
               <View style={common.rowCenterGap8}>
                 <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
                 <LineInput placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
@@ -1497,14 +1541,14 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           {/* Column 2: Added, Not Ordered (moved from Water & Additives) */}
           <View style={{flex: 1}}>
           <LCard title="Added, Not Ordered" icon="playlist-add" style={{flex: 0, alignSelf: 'flex-start', width: '100%'}}>
-            <LField label="SUPER PLASTICIZER" wide noBorder>
+            <LField label="SUPER PLASTICIZER" wide noBorder mandatory={mf('super_plasticizer')}>
               <View style={common.rowCenterGap8}>
                 <LineInput placeholder="Select" value={addedValues['SUPER PLASTICIZER'] || ''} onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
                 <MoreBtn onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
               </View>
             </LField>
             <View style={{marginTop: wp(12)}} />
-            <LField label="CONVEYOR(if not on ticket)" wide noBorder>
+            <LField label="CONVEYOR(if not on ticket)" wide noBorder mandatory={mf('conveyor')}>
               <View style={common.rowCenterGap8}>
                 <LineInput placeholder="Select" value={addedValues['CONVEYOR (IF NOT ON TICKET)'] || ''} onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
                 <MoreBtn onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
@@ -1515,12 +1559,12 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               {key: 'COLOR', label: 'COLOR', apiKey: 'color'},
               {key: 'FIBER', label: 'FIBER', apiKey: 'fiber'},
             ].map(item => (
-              <LField key={item.key} label={item.label}>
+              <LField key={item.key} label={item.label} mandatory={mf(item.apiKey)}>
                 <LineInput placeholder="Select" value={addedValues[item.key] || ''} onPress={() => setAddedModalItem(item.key)} />
                 <MoreBtn onPress={() => setAddedModalItem(item.key)} />
               </LField>
             ))}
-            <LField label="OTHER">
+            <LField label="OTHER" mandatory={mf('other')}>
               <LineInput placeholder="Enter value" value={addedValues['Other'] || ''} onChangeText={(text) => setAddedValues(prev => ({...prev, Other: text}))} />
             </LField>
           </LCard>
@@ -1529,16 +1573,16 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           {/* Column 3: Options & Testing + Jobsite Notes (moved to last) */}
           <LCard title="Options & Testing" icon="checklist" style={{flex: 1}}>
             <ScrollView ref={jobScrollRef} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
-              <LField label="CONVEYOR ORDERED" compact>
+              <LField label="CONVEYOR ORDERED" compact mandatory={mf('conveyor_ordered_not_used')}>
                 <Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} />
               </LField>
-              <LField label="UNLOAD OVER CONVEYOR" compact>
+              <LField label="UNLOAD OVER CONVEYOR" compact mandatory={mf('unloaded_conveyor')}>
                 <Check checked={unloadedConveyor} label="Not used" onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
               </LField>
-              <LField label="LOAD DISPUTED">
+              <LField label="LOAD DISPUTED" mandatory={mf('load_disputed')}>
                 <Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
               </LField>
-              <LField label="WASHOUT" noBorder>
+              <LField label="WASHOUT" noBorder mandatory={mf('washout_area')}>
                 <LineInput placeholder="Select area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
                 <MoreBtn onPress={() => setWashoutModalVisible(true)} />
               </LField>
@@ -1546,7 +1590,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               <View style={[ls.sectionDivider, {borderTopColor: c.borderLight}]}>
                 <Text style={[ls.sectionLabel, {color: c.textMuted}]}>LOAD TESTING</Text>
               </View>
-              <LField label="LOAD TESTED" noBorder>
+              <LField label="LOAD TESTED" noBorder mandatory={mf('load_tested')}>
                 <View style={st.radioRow}>
                   <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => handleJobLoadTested('yes')} />
                   <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => handleJobLoadTested('no')} />
@@ -1625,28 +1669,28 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
-        <SaveButton disabled={jAllFieldsFilled || !fullLoadLitres || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
+        <SaveButton disabled={jAllFieldsFilled || mandatoryJobMissing || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
       </View>
       <View pointerEvents={jAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Water" icon="water-drop">
-      <Field label="FULL LOAD (litres)">
+      <Field label="FULL LOAD (litres)" mandatory={mf('full_load_litres')}>
         <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => v + 1)} onDecrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={fullLoadLocked ? undefined : v => setFullLoadLitres(parseInt(v) || 0)} />
       </Field>
-      <Field label="REASON">
+      <Field label="REASON" mandatory={mf('full_load_reason')}>
         <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
         <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
       </Field>
-      <Field label="SLUMP(mm)">
+      <Field label="SLUMP(mm)" mandatory={mf('full_load_mm')}>
         <LineInput width={80} placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
         <MoreBtn onPress={() => setMmModalField('fullLoad')} />
       </Field>
-      <Field label="CUSTOMER REQUESTED WATER(litres)">
+      <Field label="CUSTOMER REQUESTED WATER(litres)" mandatory={mf('customer_water_litres')}>
         <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
         <LineInput width={80} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
         <MoreBtn onPress={() => setMmModalField('custWater')} />
       </Field>
-      <Field label="MAINTENANCE WATER(litres)" last>
+      <Field label="MAINTENANCE WATER(litres)" last mandatory={mf('maintenance_water_litres')}>
         <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
         <LineInput width={80} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
         <MoreBtn onPress={() => setMmModalField('maintWater')} />
@@ -1671,11 +1715,11 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       />
 
       <FieldCard title="Added, Not Ordered" icon="playlist-add">
-      <Field label="SUPER PLASTICIZER">
+      <Field label="SUPER PLASTICIZER" mandatory={mf('super_plasticizer')}>
         <LineInput placeholder="Value" value={addedValues['SUPER PLASTICIZER'] || ''} onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
         <MoreBtn onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
       </Field>
-      <Field label="CONVEYOR(if not on ticket)">
+      <Field label="CONVEYOR(if not on ticket)" mandatory={mf('conveyor')}>
         <LineInput placeholder="Value" value={addedValues['CONVEYOR (IF NOT ON TICKET)'] || ''} onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
         <MoreBtn onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
       </Field>
@@ -1684,7 +1728,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         {key: 'FIBER', apiKey: 'fiber'},
         {key: 'Other', apiKey: 'other'},
       ].map(item => (
-        <Field key={item.key} label={item.key} last={item.key === 'Other'}>
+        <Field key={item.key} label={item.key} last={item.key === 'Other'} mandatory={mf(item.apiKey)}>
           <LineInput placeholder="Value" value={addedValues[item.key] || ''} onPress={item.key !== 'Other' ? () => setAddedModalItem(item.key) : undefined} onChangeText={item.key === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item.key]: text})) : undefined} />
           {item.key !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item.key)} />}
         </Field>
@@ -1699,8 +1743,8 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
 
       <FieldCard title="Options & Testing" icon="checklist">
       <FieldRow>
-        <Field label="CONVEYOR ORDERED" compact><Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
-        <Field label="WASHOUT AREA" compact>
+        <Field label="CONVEYOR ORDERED" compact mandatory={mf('conveyor_ordered_not_used')}><Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
+        <Field label="WASHOUT AREA" compact mandatory={mf('washout_area')}>
           <LineInput placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
           <MoreBtn onPress={() => setWashoutModalVisible(true)} />
         </Field>
@@ -1715,7 +1759,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           <Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
         </View>
       </View>
-      <Field label="LOAD TESTED" last={jobLoadTested !== 'yes'}>
+      <Field label="LOAD TESTED" last={jobLoadTested !== 'yes'} mandatory={mf('load_tested')}>
         <View style={st.radioRow}>
           <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => setJobLoadTested('yes')} />
           <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => setJobLoadTested('no')} />
@@ -1757,7 +1801,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         onClose={() => setWashoutModalVisible(false)}
       />
       <FieldCard title="Internal Jobsite Notes" icon="edit-note" fullWidth>
-      <Field label="NOTES" wide last>
+      <Field label="NOTES" wide last mandatory={mf('notes')}>
         <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
       </Field>
       </FieldCard>
@@ -1982,6 +2026,7 @@ function _createSm() { return StyleSheet.create({
 function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
+  const mf = (field: string) => data?.mandatory_fields?.returned?.includes(field) ?? false;
   const {width: _rtW, height: _rtH} = useWindowDimensions();
   const _rtLand = _rtW > _rtH;
   const r = data?.returned;
@@ -2001,6 +2046,15 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
   const [disposalModal, setDisposalModal] = useState(false);
   const [reasonModal, setReasonModal] = useState(false);
   const [rVoiceWizardVisible, setRVoiceWizardVisible] = useState(false);
+
+  const mandatoryRetFields = data?.mandatory_fields?.returned || [];
+  const retFieldValues: Record<string, any> = {
+    returned_concrete_m3: concreteVal?.trim?.(), disposal_method: disposalMethod, reason_for_return: returnReason,
+  };
+  const mandatoryRetMissing = mandatoryRetFields.some(f => {
+    const v = retFieldValues[f];
+    return v === '' || v === null || v === undefined;
+  });
 
   const RETURNED_VOICE_FIELDS: VoiceField[] = [
     {key: 'concreteVal', label: 'Returned Concrete (M3)', prompt: 'How much concrete was returned in cubic meters?', type: 'number', skip: concreteLocked, required: true, min: 0, max: 999},
@@ -2061,7 +2115,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
   const isFormValid = isConcreteValid && isDisposalValid && isReasonValid;
 
   const handleSave = async () => {
-    if (!isConcreteValid || !ticketId) return;
+    if (mandatoryRetMissing || !isConcreteValid || !ticketId) return;
     setSaving(true);
     setSavingOverlay?.(true);
     try {
@@ -2089,11 +2143,11 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
               <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
             </TouchableOpacity>
           ) : <View />}
-          <LSaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
+          <LSaveButton disabled={rAllFieldsFilled || mandatoryRetMissing || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
         </View>
         <View style={ls.columns} pointerEvents={rAllFieldsFilled ? 'none' : 'auto'}>
           <LCard title="Return Details" icon="assignment-return">
-            <LField label="RETURNED CONCRETE">
+            <LField label="RETURNED CONCRETE" mandatory={mf('returned_concrete_m3')}>
               <View style={[st.numericInput, {backgroundColor: '#FFFF00', borderColor: c.primaryBorder}]}>
                 <TextInput
                   style={[st.numericInputText, {color: c.textPrimary}]}
@@ -2109,11 +2163,11 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
               </View>
               <Text style={[st.unitInline, {color: c.textSecondary}]}>M3</Text>
             </LField>
-            <LField label="DISPOSAL METHOD">
+            <LField label="DISPOSAL METHOD" mandatory={mf('disposal_method')}>
               <LineInput placeholder="Select method" value={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || ''} onPress={() => setDisposalModal(true)} />
               <MoreBtn onPress={() => setDisposalModal(true)} />
             </LField>
-            <LField label="REASON FOR RETURN" noBorder>
+            <LField label="REASON FOR RETURN" noBorder mandatory={mf('reason_for_return')}>
               <LineInput placeholder="Select reason" value={RETURN_REASONS.find(r => r.key === returnReason)?.label || returnReason || ''} onPress={() => setReasonModal(true)} />
               <MoreBtn onPress={() => setReasonModal(true)} />
             </LField>
@@ -2135,14 +2189,14 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
-        <SaveButton disabled={rAllFieldsFilled || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
+        <SaveButton disabled={rAllFieldsFilled || mandatoryRetMissing || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
       </View>
 
       <View pointerEvents={rAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Return Details" icon="assignment-return">
       {/* Returned Concrete */}
-      <Field label="RETURNED CONCRETE">
+      <Field label="RETURNED CONCRETE" mandatory={mf('returned_concrete_m3')}>
         <View style={[st.numericInput, {backgroundColor: '#FFFF00', borderColor: c.primaryBorder}]}>
           <TextInput
             style={[st.numericInputText, {color: c.textPrimary}]}
@@ -2160,7 +2214,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       </Field>
 
       {/* Disposal Method */}
-      <Field label="DISPOSAL METHOD">
+      <Field label="DISPOSAL METHOD" mandatory={mf('disposal_method')}>
         <TouchableOpacity
           style={[st.selectorBtn, common.selectorCompact, {backgroundColor: isDisposalValid ? c.primarySurface : c.surface, borderColor: isDisposalValid ? c.primary : c.border}]}
           activeOpacity={0.6}
@@ -2178,7 +2232,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       </Field>
 
       {/* Reason for Return */}
-      <Field label="REASON FOR RETURN" last>
+      <Field label="REASON FOR RETURN" last mandatory={mf('reason_for_return')}>
         <TouchableOpacity
           style={[st.selectorBtn, common.selectorCompact, {backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
           activeOpacity={0.6}
@@ -2436,6 +2490,7 @@ const PAYMENT_TYPES = [
 function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
+  const mf = (field: string) => data?.mandatory_fields?.cod?.includes(field) ?? false;
   const {width: _codW, height: _codH} = useWindowDimensions();
   const _codLand = _codW > _codH;
   const codData = data?.cod;
@@ -2486,6 +2541,16 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
   const [codAmount, setCodAmount] = useState(codData?.amount != null ? String(codData.amount) : '');
   const [notesFocused, setNotesFocused] = useState(false);
   const [codVoiceWizardVisible, setCodVoiceWizardVisible] = useState(false);
+
+  const mandatoryCodFields = data?.mandatory_fields?.cod || [];
+  const codFieldValues: Record<string, any> = {
+    payment_type: paymentType, amount: codAmount?.trim?.(),
+    wait_time_minutes: waitTime, notes: codNotes,
+  };
+  const mandatoryCodMissing = mandatoryCodFields.some(f => {
+    const v = codFieldValues[f];
+    return v === '' || v === null || v === undefined;
+  });
 
   const COD_VOICE_FIELDS: VoiceField[] = [
     {key: 'paymentType', label: 'Payment Type', prompt: 'What is the payment type? Say prepaid credit card, cash, check, or other.', type: 'choice', choices: PAYMENT_TYPES.map(p => p.label)},
@@ -2569,14 +2634,14 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
-        <SaveButton disabled={codAllFieldsFilled || saving} onPress={handleSaveCod} />
+        <SaveButton disabled={codAllFieldsFilled || mandatoryCodMissing || saving} onPress={handleSaveCod} />
       </View>
 
       <View pointerEvents={codAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Payment Details" icon="payments">
       {/* Payment Type Selector */}
-      <Field label="PAYMENT">
+      <Field label="PAYMENT" mandatory={mf('payment_type')}>
         <TouchableOpacity
           style={[cod.selectorBtn, common.selectorCompact, {
             backgroundColor: paymentType ? c.primarySurface : c.white,
@@ -2602,7 +2667,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
       {/* COD Amount */}
       {/* Wait Time */}
-      <Field label="WAIT TIME">
+      <Field label="WAIT TIME" mandatory={mf('wait_time_minutes')}>
         <View style={st.stepperWrap}>
           <View style={[st.numInput, {backgroundColor: waitTime > 0 ? c.primarySurface : c.surface, borderColor: waitTime > 0 ? c.primaryBorder : 'transparent'}]}>
             <TextInput
@@ -2645,7 +2710,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
       <FieldCard fullWidth>
       {/* COD Notes */}
-      <Field label="COD NOTES" wide last>
+      <Field label="COD NOTES" wide last mandatory={mf('notes')}>
         <TextInput
           style={[st.textArea, {
             borderColor: notesFocused ? c.primary : c.border,

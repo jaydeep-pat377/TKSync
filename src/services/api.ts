@@ -485,6 +485,13 @@ export type DeliveryRecord = {
       payment_types: {code: string; label: string}[];
     };
   };
+  mandatory_fields?: {
+    plant: string[];
+    jobsite: string[];
+    returned: string[];
+    time: string[];
+    cod: string[];
+  };
 };
 
 export type MobileTicketPrint = {
