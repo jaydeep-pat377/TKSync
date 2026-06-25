@@ -287,6 +287,7 @@ export type Ticket = {
   total_amount: number;
   tax_amount: number;
   active: boolean;
+  status_label?: string;
   mix?: {
     mix_code: string | null;
     description: string | null;
@@ -332,6 +333,7 @@ export type TicketDetail = {
     active: boolean;
     in_process?: boolean;
     delivery_state?: 'active' | 'completed' | 'voided';
+    status_label?: string;
     current_status: number;
     order_current_status: number;
     payment_form: string;
@@ -768,7 +770,7 @@ export const authApi = {
 
 const HEALTH_TIMEOUT_MS = 5000;
 
-export async function checkApiHealth(): Promise<{healthy: boolean; latency: number}> {
+export async function checkApiHealth(): Promise<{healthy: boolean; latency: number; version?: string}> {
   const start = Date.now();
   try {
     const controller = new AbortController();
@@ -781,7 +783,7 @@ export async function checkApiHealth(): Promise<{healthy: boolean; latency: numb
     const json = await res.json();
     const healthy = res.status === 200 && json.status === 'healthy';
     console.log(`[Health] ${healthy ? 'healthy' : 'unhealthy'} (${Date.now() - start}ms)`);
-    return {healthy, latency: Date.now() - start};
+    return {healthy, latency: Date.now() - start, version: json.version || undefined};
   } catch {
     console.log(`[Health] unreachable (${Date.now() - start}ms)`);
     return {healthy: false, latency: Date.now() - start};

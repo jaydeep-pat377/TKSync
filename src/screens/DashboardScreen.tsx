@@ -22,7 +22,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { ticketsApi, plantsApi, type Ticket, type TicketDetail, type DeliveryRecord, type Plant, type TicketQr } from '../services/api';
+import { ticketsApi, plantsApi, checkApiHealth, type Ticket, type TicketDetail, type DeliveryRecord, type Plant, type TicketQr } from '../services/api';
 import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
@@ -87,6 +87,7 @@ function formatLocalTime(timeStr: string | null | undefined): string {
 function buildTimeline(detail: TicketDetail) {
   return detail.progress.steps.map(step => ({
     labelKey: TIMELINE_LABEL_KEYS[step.key] || step.key,
+    label: step.label || step.key,
     icon: TIMELINE_ICONS[step.key] || 'circle',
     time: step.time_local ? formatLocalTime(step.time_local) : formatTime(step.time),
     done: step.done,
@@ -132,22 +133,30 @@ function normalizeUOM(unit: string | null | undefined): string {
   return UOM_MAP[unit.toUpperCase()] || unit;
 }
 
+function stripUnit(value: string | number | null | undefined): string {
+  if (value == null) return '-';
+  const s = String(value).trim();
+  // Remove trailing unit text (e.g., "611.40 m3" → "611.40")
+  return s.replace(/\s*[a-zA-Z³²]+\s*$/, '') || s;
+}
+
 function getTicketStatus(ticket: Ticket, detail?: TicketDetail | null) {
-  // Prefer detail endpoint fields (delivery_state / in_process) when available
+  // Use API status_label when available
+  const apiLabel = detail?.ticket?.status_label || ticket.status_label;
   if (detail?.ticket?.delivery_state) {
     const state = detail.ticket.delivery_state;
-    if (state === 'completed') return { key: 'dashboard.completed' as const, type: 'completed' as const };
-    if (state === 'voided') return { key: 'dashboard.voided' as const, type: 'voided' as const };
-    if (state === 'active') return { key: 'dashboard.active' as const, type: 'active' as const };
+    if (state === 'completed') return { label: apiLabel || 'COMPLETED', type: 'completed' as const };
+    if (state === 'voided') return { label: apiLabel || 'VOIDED', type: 'voided' as const };
+    if (state === 'active') return { label: apiLabel || 'ACTIVE', type: 'active' as const };
   }
   if (detail?.ticket && detail.ticket.in_process != null) {
-    if (detail.ticket.in_process) return { key: 'dashboard.active' as const, type: 'active' as const };
-    return { key: 'dashboard.completed' as const, type: 'completed' as const };
+    if (detail.ticket.in_process) return { label: apiLabel || 'ACTIVE', type: 'active' as const };
+    return { label: apiLabel || 'COMPLETED', type: 'completed' as const };
   }
   // Fallback to list-level fields
-  if (ticket.current_status === 4) return { key: 'dashboard.completed' as const, type: 'completed' as const };
-  if (ticket.active) return { key: 'dashboard.active' as const, type: 'active' as const };
-  return { key: 'dashboard.pending' as const, type: 'warning' as const };
+  if (ticket.current_status === 4) return { label: apiLabel || 'COMPLETED', type: 'completed' as const };
+  if (ticket.active) return { label: apiLabel || 'ACTIVE', type: 'active' as const };
+  return { label: apiLabel || 'PENDING', type: 'warning' as const };
 }
 
 function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
@@ -184,7 +193,7 @@ const BOTTOM_ACTIONS = [
   { icon: 'note-alt', labelKey: 'actions.notes' },
   { icon: 'label', labelKey: 'actions.tag' },
   { icon: 'edit', labelKey: 'actions.edit' },
-  { icon: 'local-shipping', labelKey: 'actions.truck' },
+  { icon: 'person', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
   { icon: 'text-fields', labelKey: 'actions.fontSize' },
 ];
@@ -342,7 +351,22 @@ export default function DashboardScreen({ navigation }: Props) {
   const [directionsAlert, setDirectionsAlert] = useState(false);
   const [languageVisible, setLanguageVisible] = useState(false);
   const [activeBottom, setActiveBottom] = useState(-1);
+  const [leftColScrollable, setLeftColScrollable] = useState(false);
+  const [leftColScrollPct, setLeftColScrollPct] = useState(0);
+  const leftColLayoutH = useRef(0);
+  const leftColContentH = useRef(0);
+  const [rightColScrollable, setRightColScrollable] = useState(false);
+  const [rightColScrollPct, setRightColScrollPct] = useState(0);
+  const rightColLayoutH = useRef(0);
+  const rightColContentH = useRef(0);
   const [fontSizeVisible, setFontSizeVisible] = useState(false);
+  const [customerExpanded, setCustomerExpanded] = useState(true);
+  const [deliveryExpanded, setDeliveryExpanded] = useState(true);
+  const [appVersion, setAppVersion] = useState('');
+
+  useEffect(() => {
+    checkApiHealth().then(r => { if (r.version) setAppVersion(r.version); }).catch(() => {});
+  }, []);
   const {fontScale, increase: fontIncrease, decrease: fontDecrease, reset: fontReset} = useFontSize();
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
@@ -547,7 +571,8 @@ export default function DashboardScreen({ navigation }: Props) {
         .catch(() => { setQrError(true); })
         .finally(() => setQrLoading(false));
     }
-    if (item.icon === 'local-shipping') {
+    if (item.icon === 'help-outline') { setFontSizeVisible(true); return; }
+    if (item.icon === 'person' || item.icon === 'local-shipping') {
       setPlantsLoading(true);
       setPlantsError(false);
       setPlantsList([]);
@@ -822,7 +847,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 })}
               </ScrollView>
               <View style={[styles.ddFooter, {borderTopColor: c.borderLight}]}>
-                <Text style={[styles.ddVersion, {color: c.textMuted}]}>v1.20.0</Text>
+                <Text style={[styles.ddVersion, {color: c.textMuted}]}>{appVersion ? `v${appVersion}` : '...'}</Text>
               </View>
             </Animated.View>
           </View>
@@ -878,50 +903,122 @@ export default function DashboardScreen({ navigation }: Props) {
   const renderNavBtn = (item: typeof BOTTOM_ACTIONS[0], i: number) => {
     const active = activeBottom === i;
     const isFontBtn = item.icon === 'text-fields';
-    const iconEl = (size: number, color: string) =>
-      isFontBtn
-        ? <Text style={{ fontSize: size * 0.85, fontWeight: '900', color }}>A</Text>
-        : <MaterialIcons name={item.icon as any} size={size} color={color} />;
-    if (L) {
-      return (
-        <TouchableOpacity
-          key={item.labelKey}
-          activeOpacity={0.6}
-          onPress={() => handleNavPress(item, i)}
-          style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: lp ? 14 : ls(18) }}>
-          <View style={{
-            width: lp ? 52 : ls(56), height: lp ? 52 : ls(56), justifyContent: 'center', alignItems: 'center',
-            borderRadius: lp ? 14 : ls(16), backgroundColor: active ? c.primarySurface : 'transparent',
-          }}>
-            {iconEl(lp ? 30 : ls(38), active ? c.primary : c.textMuted)}
-          </View>
-        </TouchableOpacity>
-      );
-    }
+    const sz = L ? 20 : isTablet ? 24 : ms(20);
+    const iconEl = isFontBtn
+      ? <Text style={{ fontSize: sz * 0.85, fontWeight: '900', color: active ? c.primary : c.textMuted }}>A</Text>
+      : <MaterialIcons name={item.icon as any} size={sz} color={active ? c.primary : c.textMuted} />;
     return (
       <TouchableOpacity
         key={item.labelKey}
         activeOpacity={0.6}
         onPress={() => handleNavPress(item, i)}
-        style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 4, minWidth: wp(48) }}>
-        <View style={{
-          width: wp(40), height: wp(32), justifyContent: 'center', alignItems: 'center',
-          borderRadius: wp(12), backgroundColor: active ? c.primarySurface : 'transparent',
-        }}>
-          {iconEl(isTablet ? 29 : ms(24), active ? c.primary : c.textMuted)}
-        </View>
+        style={{ width: L ? 40 : wp(40), height: L ? 40 : wp(36), justifyContent: 'center', alignItems: 'center', borderRadius: 10, backgroundColor: active ? c.primarySurface : 'transparent' }}>
+        {iconEl}
       </TouchableOpacity>
     );
   };
 
+  // Mandatory fields completion data for right panel
+  const mandatoryFields = deliveryRecord?.mandatory_fields;
+  const getMandatoryStatus = (tab: string, fields: string[]) => {
+    if (!deliveryRecord || !fields.length) return { filled: 0, total: 0, items: [] as {name: string; filled: boolean; value?: string}[] };
+    const tabData = (deliveryRecord as any)[tab];
+    const items = fields.map(f => {
+      const val = tabData?.[f];
+      const filled = val !== null && val !== undefined && val !== '';
+      return { name: f.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()), filled, value: filled ? String(val) : undefined };
+    });
+    return { filled: items.filter(i => i.filled).length, total: items.length, items };
+  };
+  const plantMandatory = (() => {
+    const p = deliveryRecord?.plant;
+    const mFields = mandatoryFields?.plant || [];
+    const items = mFields.map(f => {
+      const val = (p as any)?.[f];
+      const filled = val !== null && val !== undefined && val !== '';
+      let display = filled ? String(val) : undefined;
+      if (filled && (f === 'slump_from_plant' || f === 'slump_to_job')) display = `${val} mm`;
+      return { name: f.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase()), filled, value: display };
+    });
+    return { filled: items.filter(i => i.filled).length, total: items.length, items };
+  })();
+  const jobsiteMandatory = (() => {
+    const j = deliveryRecord?.jobsite;
+    const mFields = mandatoryFields?.jobsite || [];
+    const items: {name: string; filled: boolean; value?: string}[] = [];
+    // Group water fields: show "Customer Requested Water" with combined L / mm
+    if (mFields.includes('full_load_litres') || mFields.includes('customer_water_litres')) {
+      const cwL = j?.customer_water_litres;
+      const cwMm = j?.customer_water_mm;
+      items.push({ name: 'Customer Requested Water', filled: cwL != null, value: cwL != null ? `${cwL} L${cwMm != null ? ` / ${cwMm} mm` : ''}` : undefined });
+    }
+    // Remaining jobsite mandatory fields
+    mFields.filter(f => f !== 'full_load_litres' && f !== 'customer_water_litres').forEach(f => {
+      const val = (j as any)?.[f];
+      const filled = val !== null && val !== undefined && val !== '';
+      items.push({ name: f.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase()), filled, value: filled ? String(val) : undefined });
+    });
+    return { filled: items.filter(i => i.filled).length, total: items.length, items };
+  })();
+  const returnedMandatory = (() => {
+    const r = deliveryRecord?.returned;
+    const items = [
+      { name: 'Qty · Reason · Disposal', filled: r?.returned_concrete_m3 != null && !!r?.disposal_method && !!r?.reason_for_return, value: r ? [r.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '-', r.disposal_method || '-', r.reason_for_return || '-'].join(' · ') : undefined },
+    ];
+    // Add washout from jobsite if available
+    const ws = deliveryRecord?.jobsite?.washout_area;
+    if (ws) items[0].value = (items[0].value || '') + ' · ' + ws;
+    return { filled: items.filter(i => i.filled).length, total: items.length, items };
+  })();
+  const timeMandatory = (() => {
+    const steps = deliveryRecord?.time?.steps || [];
+    const items = steps.map(s => ({ name: s.label, filled: s.done, value: s.done && s.time ? s.time.substring(11, 16) : undefined }));
+    return { filled: items.filter(i => i.filled).length, total: items.length, items };
+  })();
+  const totalMandatoryFilled = plantMandatory.filled + jobsiteMandatory.filled + returnedMandatory.filled + timeMandatory.filled;
+  const totalMandatoryCount = plantMandatory.total + jobsiteMandatory.total + returnedMandatory.total + timeMandatory.total;
+
   return (
-    <View style={[styles.container, { backgroundColor: c.background }, L && { flexDirection: 'row' }]}>
+    <View style={[styles.container, { backgroundColor: c.background }]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* Main content column */}
+      {/* Main content */}
       <View style={{ flex: 1 }}>
-        {/* ─── HEADER ─── */}
-        <View style={[styles.header, { backgroundColor: c.primaryDark, paddingTop: insets.top + (L ? ls(2) : wp(3)), paddingLeft: Math.max(L ? ls(8) : wp(12), insets.left), paddingRight: Math.max(L ? ls(8) : wp(12), insets.right) }, L && { paddingBottom: ls(2) }]}>
+        {/* ─── TOP BAR: TODAY + Tickets + Right Icons ─── */}
+        <View style={{ backgroundColor: c.background, paddingTop: insets.top + (L ? 2 : 4), paddingBottom: L ? 3 : 6, paddingLeft: Math.max(L ? ls(12) : wp(12), insets.left + 4), paddingRight: Math.max(L ? ls(12) : wp(12), insets.right + 4), flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ marginRight: 16 }}>
+            <Text style={{ fontSize: ms(11), fontWeight: '900', color: c.textPrimary, letterSpacing: 0.5 }}>TODAY</Text>
+            <Text style={{ fontSize: ms(9), fontWeight: '500', color: c.textMuted, fontFamily: 'monospace' }}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 6, alignItems: 'center' }}>
+            {tickets.map((ticket, i) => {
+              const isSelected = activeTicket === i;
+              const isCompleted = ticket.at_plant_time != null;
+              return (
+                <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); setActiveTicket(i); }} activeOpacity={0.7}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: isDark ? '#2E7D32' : (isCompleted ? '#2E7D32' : c.accent), borderBottomWidth: isSelected ? 3 : 0, borderBottomColor: c.textPrimary }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' }} />
+                  <Text style={{ fontSize: ms(10), fontWeight: '700', color: '#fff', fontFamily: 'monospace' }}>{ticket.ticket_code}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 12 }}>
+            <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: 14, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <MaterialIcons name="wifi" size={12} color="#fff" />
+              <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+            </View>
+            <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+              <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={16} color={c.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#6B21A8', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 11, fontWeight: '900', color: '#fff' }}>{(driver?.driver_code || 'U').substring(0, 2).toUpperCase()}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ─── OLD HEADER (hidden, kept for phone landscape compat) ─── */}
+        <View style={[styles.header, { backgroundColor: c.primaryDark, paddingTop: 0, paddingLeft: Math.max(L ? ls(8) : wp(12), insets.left), paddingRight: Math.max(L ? ls(8) : wp(12), insets.right), display: 'none' }, L && { paddingBottom: ls(2) }]}>
           {lp ? (
             /* Phone landscape: single compact row — tickets moved to KPI card */
             <>
@@ -1028,362 +1125,407 @@ export default function DashboardScreen({ navigation }: Props) {
           )}
         </View>
 
-        {/* ─── WEATHER STRIP (portrait only) ─── */}
-        {!L && (
-          <View style={{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), paddingLeft: Math.max(wp(14), insets.left + wp(4)), paddingRight: Math.max(wp(14), insets.right + wp(4)), gap: wp(10) }}>
-            <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={ms(isTablet ? 28 : 24)} color={c.textOnPrimary} />
-            <View style={{ flex: 1, flexShrink: 1 }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textOnPrimary, letterSpacing: 0.3 }}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-              <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary, marginTop: 1 }}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
-            </View>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: wp(5), paddingHorizontal: wp(10), borderRadius: wp(8), gap: wp(2) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
-              <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnPrimary, opacity: 0.85 }}>{driver?.driver_code || '-'}</Text>
-            </View>
-          </View>
-        )}
 
         {/* ─── CONTENT ─── */}
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.scrollInner,
-            { gap: 0, flexGrow: 1 },
-            lt ? { padding: ls(12), paddingLeft: Math.max(ls(14), insets.left + ls(6)), paddingRight: Math.max(ls(14), insets.right + ls(6)), paddingBottom: Math.max(ls(12), insets.bottom) } : L ? { padding: 8, paddingLeft: Math.max(8, insets.left + 4), paddingRight: 8, paddingBottom: Math.max(8, insets.bottom) } : isTablet ? { padding: 16, paddingLeft: Math.max(18, insets.left + 8), paddingRight: Math.max(18, insets.right + 8), paddingBottom: Math.max(16, insets.bottom) } : { paddingTop: wp(4), paddingBottom: Math.max(wp(4), insets.bottom), paddingLeft: Math.max(wp(10), insets.left + wp(4)), paddingRight: Math.max(wp(10), insets.right + wp(4)) },
-          ]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
-
-          <View style={[{ flex: 1 }, isTablet && !L && { maxWidth: 960, alignSelf: 'center', width: '100%' }]}>
-
-            {/* ── Landscape: KPI row + ticket chips row ── */}
-            {isLandscape ? (
-              <FadeCard delay={0} style={[cs.card, { marginBottom: lt ? ls(8) : 4, padding: lt ? ls(8) : 6 }]}>
-                {/* KPI items + status badges */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(8) : 5 }}>
-                  {[
-                    { icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary },
-                    { icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark },
-                  ].map((kpi, i, arr) => (
-                    <React.Fragment key={kpi.label}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(6) : 5, paddingVertical: lt ? ls(5) : 4, paddingHorizontal: lt ? ls(6) : 4 }}>
-                        <MaterialIcons name={kpi.icon as any} size={lt ? ls(17) : 15} color={kpi.color} />
-                        <View style={{ flexShrink: 1 }}>
-                          <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{kpi.val}</Text>
-                          <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.3, marginTop: ls(2) }}>{kpi.label}</Text>
-                        </View>
-                      </View>
-                      {i < arr.length - 1 && <View style={{ width: StyleSheet.hairlineWidth, height: lt ? ls(26) : 22, backgroundColor: c.border }} />}
-                    </React.Fragment>
-                  ))}
-                  <View style={{ flex: 1 }} />
-                  <View style={{ alignItems: 'flex-end', gap: lt ? ls(4) : 3 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: lt ? ls(5) : 4 }}>
-                      {currentTicket != null && (() => {
-                        const status = getTicketStatus(currentTicket, detail);
-                        const isCompleted = status.type === 'completed';
-                        const isActive = status.type === 'active';
-                        const isVoided = status.type === 'voided';
-                        return (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isVoided ? c.error : isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
-                            {isActive && <View style={{ width: lt ? ls(7) : 6, height: lt ? ls(7) : 6, borderRadius: 4, backgroundColor: '#000' }} />}
-                            <Text style={{ fontWeight: '600', fontSize: ms(13), color: isVoided ? '#fff' : isCompleted ? c.primary : isActive ? '#000' : c.warningDark }}>{t(status.key)}</Text>
-                          </View>
-                        );
-                      })()}
-                      {currentTicket != null && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.error, paddingVertical: lt ? ls(6) : 5, paddingHorizontal: lt ? ls(10) : 8, borderRadius: lt ? ls(10) : 8, gap: lt ? ls(5) : 4 }}>
-                          <Text style={{ fontWeight: '600', fontSize: ms(13), color: '#fff' }}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
-                        </View>
-                      )}
-                    </View>
-                    {dateFrom ? (
-                      <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary }}>{dateFrom}</Text>
-                    ) : null}
-                  </View>
-                </View>
-
-              </FadeCard>
-            ) : (
-              <>
-                {/* Portrait: KPI + Status bar */}
-                <FadeCard delay={0} style={[cs.card, { padding: wp(6), marginBottom: wp(3) }]}>
-                  <View style={styles.kpiRow}>
-                    {[
-                      { icon: 'receipt-long', val: currentTicket?.ticket_code || '-', label: t('dashboard.ticket'), color: c.primary },
-                      { icon: 'tag', val: currentTicket?.order_code || '-', label: t('dashboard.order'), color: c.primaryDark },
-                    ].map((kpi, i, arr) => (
-                      <React.Fragment key={kpi.label}>
-                        <View style={styles.kpiItem}>
-                          <View style={[styles.kpiIconWrap, { backgroundColor: c.primarySurface }]}>
-                            <MaterialIcons name={kpi.icon as any} size={ms(14)} color={kpi.color} />
-                          </View>
-                          <View>
-                            <Text style={[styles.kpiVal, { color: c.textPrimary }]}>{kpi.val}</Text>
-                            <Text style={[styles.kpiLabel, { color: c.textMuted }]}>{kpi.label}</Text>
-                          </View>
-                        </View>
-                        {i < arr.length - 1 && <View style={[styles.kpiDivider, { backgroundColor: c.border }]} />}
-                      </React.Fragment>
-                    ))}
-                  </View>
-                  <View style={[styles.chipRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: wp(4), paddingTop: wp(4) }]}>
-                    {currentTicket != null && (() => {
-                      const status = getTicketStatus(currentTicket, detail);
-                      const isCompleted = status.type === 'completed';
-                      const isActive = status.type === 'active';
-                      const isVoided = status.type === 'voided';
-                      return (
-                        <View style={[styles.statusChip, { backgroundColor: isVoided ? c.error : isCompleted ? c.primarySurface : isActive ? '#FFFF00' : c.warningSurface }]}>
-                          {isActive && <View style={[styles.chipDot, { backgroundColor: '#000' }]} />}
-                          <Text style={[styles.chipLabel, { color: isVoided ? '#fff' : isCompleted ? c.primary : isActive ? '#000' : c.warningDark }]}>{t(status.key)}</Text>
-                        </View>
-                      );
-                    })()}
-                    {currentTicket != null && (
-                      <View style={[styles.statusChip, { backgroundColor: c.error }]}>
-                        <Text style={[styles.chipLabel, { color: '#fff' }]}>{PAYMENT_MAP[currentTicket.payment_form] || t('dashboard.onAccount')}</Text>
-                      </View>
-                    )}
-                    {dateFrom ? (
-                      <>
-                        <View style={{ flex: 1 }} />
-                        <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary }}>{dateFrom}</Text>
-                      </>
-                    ) : null}
-                  </View>
-                </FadeCard>
-              </>
-            )}
-
-            {/* Detail loading indicator */}
-            {detailLoading && (
-              <View style={{ paddingVertical: wp(12), alignItems: 'center' }}>
-                <ActivityIndicator size="small" color={c.primary} />
+        {L ? (() => {
+        /* ═══ LANDSCAPE: Adaptive viewport, no scroll ═══ */
+        // Responsive scale factor based on screen height (phone ~320pt, tablet ~700pt+)
+        const lh = winHeight - insets.top - insets.bottom;
+        const isSmallLandscape = lh < 400;
+        const s = Math.max(0.65, Math.min(1, lh / 600)); // 0.65–1.0 scale
+        const fs = (base: number) => Math.round(base * s);
+        return (
+        <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(6), paddingBottom: fs(2) }}>
+          {/* Info Bar */}
+          <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(4) : fs(6), paddingHorizontal: fs(12), marginBottom: fs(3), flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1 }}>
+              <MaterialIcons name="local-shipping" size={fs(16)} color={c.primary} />
+              <View>
+                <Text style={{ fontSize: fs(11), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
+                <Text style={{ fontSize: fs(9), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
               </View>
-            )}
-
-            {/* Delivery Progress */}
-            {!detailLoading && <FadeCard delay={120} style={[cs.card, L && { padding: lt ? ls(8) : 6 }, { marginBottom: lt ? ls(8) : L ? 4 : wp(3) }]}>
-              <View style={[styles.secHeader, { borderBottomColor: c.borderLight, marginBottom: wp(2), paddingBottom: wp(2) }, L && { marginBottom: lt ? ls(3) : 2, paddingBottom: lt ? ls(3) : 2, gap: lt ? ls(5) : 4 }]}>
-                <View style={[styles.secIcon, { backgroundColor: c.primary }, L && { width: lt ? ls(22) : 18, height: lt ? ls(22) : 18, borderRadius: lt ? ls(7) : 6 }]}>
-                  <MaterialIcons name="timeline" size={lt ? ls(13) : L ? 11 : ms(13)} color={c.textOnPrimary} />
-                </View>
-                <Text style={[styles.secTitle, { color: c.textPrimary, fontSize: ms(10) }]}>{t('dashboard.deliveryProgress')}</Text>
-                <View style={[styles.countBadge, { backgroundColor: c.primarySurface, borderColor: c.primaryBorder }, L && { paddingHorizontal: lt ? ls(7) : 5, paddingVertical: lt ? ls(2) : 1, borderRadius: lt ? ls(6) : 5 }]}>
-                  <Text style={[styles.countText, { color: c.primary, fontSize: ms(9) }]}>{doneCount}/{timeline.length}</Text>
+            </View>
+            <View style={{ alignItems: 'center', flex: 2 }}>
+              <Text style={{ fontSize: fs(14), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+              <Text style={{ fontSize: fs(10), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(10), flex: 1.5, justifyContent: 'flex-end' }}>
+              <View style={{ backgroundColor: c.overlay15, paddingVertical: fs(5), paddingHorizontal: fs(10), borderRadius: fs(8), flexDirection: 'row', alignItems: 'center', gap: fs(6) }}>
+                <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={fs(14)} color={c.textOnPrimary} />
+                <View>
+                  <Text style={{ fontSize: fs(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
+                  <Text style={{ fontSize: fs(9), fontWeight: '600', color: c.textOnDark60 }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : '-'}</Text>
                 </View>
               </View>
-
-              {/* Steps */}
-              {L ? (
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingTop: ls(1), paddingBottom: ls(1), marginHorizontal: ls(4) }}>
-                  {timeline.map((item, i) => {
-                    const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
-                    const isFirst = i === 0;
-                    const isLast = i === timeline.length - 1;
-                    const dotSz = lt ? (isActive ? ls(14) : ls(10)) : (isActive ? 12 : 9);
-                    const lineDone = item.done && !isLast && timeline[i + 1]?.done;
-                    const rowH = lt ? ls(16) : 12;
-                    return (
-                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', height: rowH, width: '100%' }}>
-                          {isFirst
-                            ? <View style={{ flex: 1 }} />
-                            : <View style={{ flex: 1, height: ls(1.5), backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
-                          <View style={{
-                            width: dotSz, height: dotSz, borderRadius: dotSz / 2,
-                            justifyContent: 'center', alignItems: 'center',
-                            backgroundColor: item.done ? c.primary : c.surface,
-                            borderWidth: isActive ? 2 : 1,
-                            borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
-                          }}>
-                            {item.done && <MaterialIcons name="check" size={lt ? (isActive ? ls(8) : ls(6)) : (isActive ? 7 : 5)} color={c.textOnPrimary} />}
-                          </View>
-                          {isLast
-                            ? <View style={{ flex: 1 }} />
-                            : <View style={{ flex: 1, height: ls(1.5), backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
-                        </View>
-                        <Text style={{ fontSize: ms(9), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: ls(1) }} numberOfLines={1}>
-                          {t(item.labelKey)}
-                        </Text>
-                        <Text style={{ fontSize: ms(10), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, textAlign: 'center', marginTop: ls(1) }}>
-                          {item.time}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(2), paddingTop: wp(1), paddingBottom: wp(1) }}>
-                  {timeline.map((item, i) => {
-                    const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
-                    const isFirst = i === 0;
-                    const isLast = i === timeline.length - 1;
-                    const dotSz = isActive ? wp(10) : wp(7);
-                    const lineDone = item.done && !isLast && timeline[i + 1]?.done;
-                    return (
-                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(12), width: '100%' }}>
-                          {isFirst
-                            ? <View style={{ flex: 1 }} />
-                            : <View style={{ flex: 1, height: 1.5, backgroundColor: item.done ? c.primary : c.border, borderRadius: 1 }} />}
-                          <View style={{
-                            width: dotSz, height: dotSz, borderRadius: dotSz / 2,
-                            justifyContent: 'center', alignItems: 'center',
-                            backgroundColor: item.done ? c.primary : c.surface,
-                            borderWidth: isActive ? 1.5 : 1,
-                            borderColor: isActive ? c.primaryMuted : item.done ? c.primary : c.border,
-                          }}>
-                            {item.done && <MaterialIcons name="check" size={isActive ? ms(6) : ms(4)} color={c.textOnPrimary} />}
-                          </View>
-                          {isLast
-                            ? <View style={{ flex: 1 }} />
-                            : <View style={{ flex: 1, height: 1.5, backgroundColor: lineDone ? c.primary : c.border, borderRadius: 1 }} />}
-                        </View>
-                        <Text style={{ fontSize: ms(9), fontWeight: isActive ? '800' : '600', color: isActive ? c.primary : item.done ? c.textSecondary : c.textMuted, textAlign: 'center', marginTop: 1 }} numberOfLines={1}>
-                          {t(item.labelKey)}
-                        </Text>
-                        <Text style={{ fontSize: ms(10), fontWeight: '800', color: isActive ? c.primaryDark : item.done ? c.primary : c.border, textAlign: 'center' }}>
-                          {item.time}
-                        </Text>
-                      </View>
-                    );
-                  })}
+              {currentTicket != null && (
+                <View style={{ alignItems: 'flex-end', gap: fs(3) }}>
+                  {(() => { const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
+                    <View style={{ backgroundColor: isActive ? '#1E40AF' : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: fs(5) }}>
+                      <View style={{ width: fs(6), height: fs(6), borderRadius: fs(3), backgroundColor: '#fff' }} />
+                      <Text style={{ fontSize: fs(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
+                    </View>); })()}
+                  <View style={{ backgroundColor: '#E53935', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4 }}>
+                    <Text style={{ fontSize: fs(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+                  </View>
                 </View>
               )}
-            </FadeCard>}
-
-            {/* Job + Mix Cards — table layout: each row is a shared flex parent so heights auto-sync */}
-            {!detailLoading && (() => {
-              const gap = lt ? ls(8) : L ? 5 : wp(3);
-              const pad = lt ? ls(10) : L ? 6 : wp(6);
-              const radius = cs.card.borderRadius;
-              const bw = StyleSheet.hairlineWidth;
-              const bc = c.border;
-              const cellBase = { flex: 1, paddingHorizontal: pad, borderLeftWidth: bw, borderRightWidth: bw, borderColor: bc };
-              return (
-                <FadeCard delay={200}>
-                  {/* Card headers */}
-                  <View style={{ flexDirection: 'row', gap }}>
-                    <View style={[cs.card, { flex: 1, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }]}>
-                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0, paddingBottom: lt ? ls(3) : L ? 2 : wp(2), gap: lt ? ls(5) : L ? 4 : wp(4) }]}>
-                        <MaterialIcons name="work" size={lt ? ls(16) : L ? 14 : ms(14)} color={c.accent} />
-                        <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.jobDetails')}</Text>
+            </View>
+          </View>
+          {/* Timeline */}
+          {!detailLoading && (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: isSmallLandscape ? fs(6) : fs(12), paddingHorizontal: fs(8) }}>
+              {timeline.map((item, i) => {
+                const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
+                const isFirst = i === 0; const isLast = i === timeline.length - 1;
+                const nextDone = !isLast && timeline[i + 1]?.done;
+                const lineDone = item.done && nextDone;
+                const dotSz = isActive ? fs(isSmallLandscape ? 22 : 30) : item.done ? fs(isSmallLandscape ? 16 : 22) : fs(isSmallLandscape ? 12 : 16);
+                return (
+                  <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
+                    <Text style={{ fontSize: fs(isSmallLandscape ? 10 : 12), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: fs(isSmallLandscape ? 2 : 4) }} numberOfLines={1}>{item.label}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', height: fs(isSmallLandscape ? 24 : 32), width: '100%' }}>
+                      {isFirst ? <View style={{ flex: 1 }} /> : (
+                        <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : 'transparent', borderBottomWidth: item.done ? 0 : 1.5, borderBottomColor: '#888', borderStyle: item.done ? 'solid' : 'dashed' }} />
+                      )}
+                      <View style={{
+                        width: dotSz, height: dotSz, borderRadius: dotSz / 2,
+                        justifyContent: 'center', alignItems: 'center',
+                        backgroundColor: isActive ? c.primary : item.done ? c.primary : c.border,
+                        borderWidth: isActive ? fs(3) : 0,
+                        borderColor: isActive ? c.primaryLight : 'transparent',
+                      }}>
+                        {item.done && !isActive && <MaterialIcons name="check" size={fs(13)} color="#fff" />}
+                        {isActive && <View style={{ width: fs(10), height: fs(10), borderRadius: fs(5), backgroundColor: '#fff' }} />}
                       </View>
+                      {isLast ? <View style={{ flex: 1 }} /> : (
+                        <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : 'transparent', borderBottomWidth: lineDone ? 0 : 1.5, borderBottomColor: '#888', borderStyle: lineDone ? 'solid' : 'dashed' }} />
+                      )}
                     </View>
-                    <View style={[cs.card, { flex: 1, backgroundColor: c.primarySurface, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }]}>
-                      <View style={[styles.secHeader, { marginBottom: 0, borderBottomWidth: 0, paddingBottom: lt ? ls(3) : L ? 2 : wp(2), gap: lt ? ls(5) : L ? 4 : wp(4) }]}>
-                        <MaterialIcons name="science" size={lt ? ls(16) : L ? 14 : ms(14)} color={c.primary} />
-                        <Text style={[styles.secTitle, { color: c.textPrimary }]}>{t('dashboard.mixDetails')}</Text>
-                      </View>
-                    </View>
+                    <Text style={{ fontSize: fs(isSmallLandscape ? 11 : 13), fontWeight: '800', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: fs(isSmallLandscape ? 1 : 3) }}>{item.time || '—'}</Text>
+                  </View>);
+              })}
+            </View>
+          )}
+          {detailLoading && <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
+          {/* Two-column body */}
+          {!detailLoading && (
+            <View style={{ flexDirection: 'row', gap: fs(6), flex: 1, minHeight: 0, marginBottom: fs(5) }}>
+              {/* LEFT — Customer + Product + Delivery Location */}
+              <View style={{ flex: 1.2 }}>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: fs(isSmallLandscape ? 3 : 5), paddingBottom: fs(4) }} bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled
+                onContentSizeChange={(_w, h) => {
+                  leftColContentH.current = h;
+                  setLeftColScrollable(h > leftColLayoutH.current + 2);
+                }}
+                onLayout={(e) => {
+                  leftColLayoutH.current = e.nativeEvent.layout.height;
+                  setLeftColScrollable(leftColContentH.current > e.nativeEvent.layout.height + 2);
+                }}
+                onScroll={(e) => {
+                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                  const maxScroll = contentSize.height - layoutMeasurement.height;
+                  setLeftColScrollPct(maxScroll > 0 ? contentOffset.y / maxScroll : 0);
+                }}
+                scrollEventThrottle={16}>
+                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(8) : fs(10) }}>
+                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(5), marginBottom: isSmallLandscape ? fs(3) : fs(5) }}>
+                    <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Customer</Text>
                   </View>
-                  {/* Synchronized data rows */}
-                  {Array.from({ length: pairedRows }).map((_, i) => {
-                    const jobItem = jobInfo[i];
-                    const mixItem = mixInfo[i];
-                    const isLast = i === pairedRows - 1;
-                    return (
-                      <View key={i} style={{ flexDirection: 'row', gap }}>
-                        {/* Job cell */}
-                        <View style={[cellBase, { backgroundColor: c.white }, isLast && { borderBottomWidth: bw, borderBottomLeftRadius: radius, borderBottomRightRadius: radius, overflow: 'hidden' }]}>
-                          {jobItem ? (
-                            <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.borderLight }]}>
-                              <Text style={[styles.detailLabel, { color: c.textMuted, width: '28%' }]} numberOfLines={1}>{t(jobItem.labelKey)}</Text>
-                              {jobItem.isMap ? (
-                                <TouchableOpacity activeOpacity={0.6} onPress={() => {
-                                  if (currentTicket?.at_plant_time != null) {
-                                    setDirectionsAlert(true);
-                                  } else {
-                                    navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: jobItem.value });
-                                  }
-                                }} style={common.flex1}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(4) }}>
-                                    <Text style={[styles.detailValue, { color: c.accent, flex: 1 }]} numberOfLines={2}>{jobItem.value}</Text>
-                                    <MaterialIcons name="map" size={L ? ls(14) : 16} color={c.accent} />
-                                  </View>
-                                </TouchableOpacity>
-                              ) : jobItem.isHighlight ? (
-                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00', flex: 1, flexShrink: 1 }]}>
-                                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{jobItem.value}</Text>
-                                </View>
-                              ) : (
-                                <Text style={[styles.detailValue, common.flex1, { color: jobItem.isLink ? c.accent : c.textPrimary }]} numberOfLines={2}>{jobItem.value}</Text>
-                              )}
-                            </View>
-                          ) : <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }]} />}
-                        </View>
-                        {/* Mix cell */}
-                        <View style={[cellBase, { backgroundColor: c.primarySurface }, isLast && { borderBottomWidth: bw, borderBottomLeftRadius: radius, borderBottomRightRadius: radius, overflow: 'hidden' }]}>
-                          {mixItem ? (
-                            <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }, !isLast && { borderBottomWidth: bw, borderBottomColor: c.primaryMuted }]}>
-                              <Text style={[styles.detailLabel, { color: c.textMuted, width: '28%' }]} numberOfLines={1}>{t(mixItem.labelKey)}</Text>
-                              {mixItem.isHighlight ? (
-                                <View style={[styles.slumpPillInline, { backgroundColor: '#FFFF00', borderColor: '#FFFF00', flexShrink: 1 }]}>
-                                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000' }}>{mixItem.value}</Text>
-                                </View>
-                              ) : mixItem.isTruckBehind ? (
-                                <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: [...(detail?.location?.truck ? [{ type: 'My Truck', value: `${detail.ticket.truck_code}`, latitude: detail.location.truck.lat, longitude: detail.location.truck.lng, status: detail.ticket.status_label, is_current: true, directions: true, driverCode: detail.ticket.driver_code, deliveryState: detail.ticket.delivery_state, gpsUpdatedAt: detail.location.truck.updated_at, distanceMiles: detail.location?.route?.distance_miles ?? null, durationSeconds: detail.location?.route?.duration ?? null, deliveredTo: detail.job?.delivered_to ?? null }] : []), ...(detail?.map || [])].sort((a, b) => { const order: Record<string, number> = { 'Plant': 0, 'My Truck': 1, 'Truck Ahead': 2, 'Truck Behind': 3, 'Job Site': 4 }; return (order[a.type] ?? 5) - (order[b.type] ?? 5); }), delivery: detail?.location?.delivery, plant: detail?.location?.plant, truck: detail?.location?.truck, address: detail?.job?.delivered_to || '', plantName: currentTicket?.plant_name || '' })} style={common.flex1}>
-                                  <Text style={[styles.detailValue, { color: c.accent }]} numberOfLines={2}>{mixItem.value}</Text>
-                                </TouchableOpacity>
-                              ) : mixItem.isLink ? (
-                                <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={common.flex1}>
-                                  <Text style={[styles.detailValue, { color: c.accent }]} numberOfLines={2}>{mixItem.value}</Text>
-                                </TouchableOpacity>
-                              ) : (
-                                <Text style={[styles.detailValue, common.flex1, { color: mixItem.valueColor === 'accent' ? c.accent : c.textPrimary }]} numberOfLines={2}>{mixItem.value}</Text>
-                              )}
-                            </View>
-                          ) : <View style={[styles.detailRow, { paddingVertical: lt ? ls(6) : L ? 4 : wp(4) }]} />}
-                        </View>
+                  {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
+                    <View key={i} style={{ flexDirection: 'row', paddingVertical: isSmallLandscape ? fs(3) : fs(5), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                      <Text style={{ fontSize: fs(12), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }}>{row.label}</Text>
+                      <Text style={{ fontSize: fs(14), fontWeight: '700', color: c.textPrimary, flex: 1 }} numberOfLines={2}>{row.value}</Text>
+                    </View>
+                  ))}
+                </View>
+                {/* Product */}
+                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(8) : fs(10) }}>
+                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(5), marginBottom: isSmallLandscape ? fs(3) : fs(5) }}>
+                    <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Product</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row' }}>
+                    <View style={{ flex: 3, paddingRight: fs(12) }} />
+                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 2, textAlign: 'left' }}>SLUMP</Text>
+                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1.5, textAlign: 'left' }}>QTY</Text>
+                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1, textAlign: 'left' }}>UOM</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: fs(2) }}>
+                    <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 3, paddingRight: fs(12) }}>
+                      <Text style={{ fontSize: fs(13), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{detail?.mix?.mix_code || '-'} {currentTicket?.mix?.description || ''}</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: fs(16), fontWeight: '800', color: c.textPrimary, flex: 2 }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text>
+                    <Text style={{ fontSize: fs(16), fontWeight: '900', color: c.textPrimary, flex: 1.5 }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text>
+                    <Text style={{ fontSize: fs(16), fontWeight: '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', paddingVertical: fs(4), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: fs(4) }}>
+                    <Text style={{ fontSize: fs(12), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }}>USAGE</Text>
+                    <Text style={{ fontSize: fs(14), fontWeight: '700', color: c.textPrimary, flex: 1, textTransform: 'uppercase' }}>{detail?.mix?.usage || '-'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: fs(4), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: fs(2) }}>
+                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }} numberOfLines={1}>DELIVERY PROGRESS</Text>
+                    <Text style={{ fontSize: fs(13), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{stripUnit(detail?.mix?.quantity) || '-'} of {stripUnit(detail?.mix?.loads?.total) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'M\u00B3'}</Text>
+                  </View>
+                </View>
+                {/* Delivery Location */}
+                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(8) : fs(10) }}>
+                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(4), marginBottom: isSmallLandscape ? fs(3) : fs(4) }}>
+                    <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Delivery Location</Text>
+                  </View>
+                    {[
+                      { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' },
+                      { label: 'LOAD', value: detail?.mix?.loads?.current != null ? String(detail.mix.loads.current) : '-', accent: true },
+                      { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
+                      { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
+                      { label: 'INSTRUCTIONS', value: detail?.job?.instructions || '', highlight: true },
+                    ].map((row, i) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(5), borderBottomWidth: i < 4 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                        <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }}>{row.label}</Text>
+                        {row.isLink ? (
+                          <TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}>
+                            <Text style={{ fontSize: fs(13), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={2}>{row.value}</Text>
+                          </TouchableOpacity>
+                        ) : row.highlight && row.value ? (
+                          <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: fs(3), paddingHorizontal: fs(5) }}>
+                            <Text style={{ fontSize: fs(12), fontWeight: '800', color: '#000' }} numberOfLines={3}>{row.value}</Text>
+                          </View>
+                        ) : (
+                          <Text style={{ fontSize: fs(14), fontWeight: row.accent ? '900' : '700', color: row.accent ? c.warning : c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
+                        )}
                       </View>
-                    );
+                    ))}
+                </View>
+              </ScrollView>
+              {leftColScrollable && (() => {
+                const thumbPct = leftColLayoutH.current > 0 && leftColContentH.current > 0 ? Math.max(5,(leftColLayoutH.current / leftColContentH.current) * 100) : 30;
+                const trackSpace = 100 - thumbPct;
+                const topPct = trackSpace * leftColScrollPct;
+                return (
+                  <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: fs(4), borderRadius: fs(2), backgroundColor: c.border, pointerEvents: 'none' }}>
+                    <View style={{ position: 'absolute', top: `${topPct}%`, width: '100%', height: `${thumbPct}%`, borderRadius: fs(2), backgroundColor: c.textMuted, opacity: 0.5 }} />
+                  </View>
+                );
+              })()}
+              </View>
+              {/* RIGHT: Mandatory Fields */}
+              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(6) : fs(8) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(4), marginBottom: isSmallLandscape ? fs(3) : fs(4) }}>
+                  <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.accent, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>Mandatory Fields</Text>
+                  <View style={{ backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : c.errorSurface, paddingVertical: fs(3), paddingHorizontal: fs(10), borderRadius: 12 }}>
+                    <Text style={{ fontSize: fs(12), fontWeight: '800', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                  </View>
+                </View>
+                <ScrollView style={{ flex: 1 }} bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled
+                  onContentSizeChange={(_w, h) => {
+                    rightColContentH.current = h;
+                    setRightColScrollable(h > rightColLayoutH.current + 2);
+                  }}
+                  onLayout={(e) => {
+                    rightColLayoutH.current = e.nativeEvent.layout.height;
+                    setRightColScrollable(rightColContentH.current > e.nativeEvent.layout.height + 2);
+                  }}
+                  onScroll={(e) => {
+                    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                    const maxScroll = contentSize.height - layoutMeasurement.height;
+                    setRightColScrollPct(maxScroll > 0 ? contentOffset.y / maxScroll : 0);
+                  }}
+                  scrollEventThrottle={16}>
+                  {[
+                    { label: 'PLANT', data: plantMandatory, color: c.primary },
+                    { label: 'JOBSITE', data: jobsiteMandatory, color: c.accent },
+                    { label: 'RETURNED', data: returnedMandatory, color: c.warning },
+                    { label: 'STATUS TIMES', data: timeMandatory, color: c.error },
+                  ].map((section, si) => (
+                    <View key={si} style={{ marginBottom: fs(6) }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: fs(3) }}>
+                        <Text style={{ fontSize: fs(11), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
+                        <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted }}>{section.data.filled}/{section.data.total}</Text>
+                      </View>
+                      {section.data.items.map((item, ii) => (
+                        <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), gap: fs(6) }}>
+                          <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : c.error, justifyContent: 'center', alignItems: 'center' }}>
+                            <MaterialIcons name={item.filled ? 'check' : 'close'} size={fs(10)} color="#fff" />
+                          </View>
+                          <Text style={{ fontSize: fs(12), fontWeight: '500', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
+                          {item.value && <Text style={{ fontSize: fs(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text>}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+              {rightColScrollable && (() => {
+                const thumbPct = rightColLayoutH.current > 0 && rightColContentH.current > 0 ? Math.max(5,(rightColLayoutH.current / rightColContentH.current) * 100) : 30;
+                const trackSpace = 100 - thumbPct;
+                const topPct = trackSpace * rightColScrollPct;
+                return (
+                  <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: fs(4), borderRadius: fs(2), backgroundColor: c.border, pointerEvents: 'none' }}>
+                    <View style={{ position: 'absolute', top: `${topPct}%`, width: '100%', height: `${thumbPct}%`, borderRadius: fs(2), backgroundColor: c.textMuted, opacity: 0.5 }} />
+                  </View>
+                );
+              })()}
+              </View>
+            </View>
+          )}
+        </View>
+        ); })() : (
+        /* ═══ PORTRAIT: Scrollable ═══ */
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.scrollInner, { gap: 0, flexGrow: 1, padding: wp(8), paddingLeft: Math.max(wp(10), insets.left + wp(4)), paddingRight: Math.max(wp(10), insets.right + wp(4)) }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
+          <View style={[{ flex: 1 }, isTablet && { maxWidth: 960, alignSelf: 'center', width: '100%' }]}>
+            {/* Info Bar */}
+            <View style={{ backgroundColor: '#367000', borderRadius: 8, padding: wp(8), marginBottom: wp(6), flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                <MaterialIcons name="local-shipping" size={ms(18)} color={c.primary} />
+                <View>
+                  <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
+                  <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
+                </View>
+              </View>
+              <View style={{ alignItems: 'center', flex: 2 }}>
+                <Text style={{ fontSize: ms(14), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+                <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end', flex: 1, gap: 3 }}>
+                {currentTicket != null && (<>
+                  {(() => { const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
+                    <View style={{ backgroundColor: isActive ? '#1E40AF' : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' }} />
+                      <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#fff' }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
+                    </View>); })()}
+                  <View style={{ backgroundColor: '#E53935', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4 }}>
+                    <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#fff' }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+                  </View>
+                </>)}
+              </View>
+            </View>
+            {/* Timeline */}
+            {!detailLoading && (
+              <View style={{ marginBottom: wp(6) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(4) }}>
+                  {timeline.map((item, i) => {
+                    const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
+                    const isFirst = i === 0; const isLast = i === timeline.length - 1;
+                    const dotSz = isActive ? wp(12) : wp(8);
+                    const lineDone = item.done && !isLast && timeline[i + 1]?.done;
+                    return (
+                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: isActive ? '800' : '600', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }} numberOfLines={1}>{item.label}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(14), width: '100%' }}>
+                          {isFirst ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border }} />}
+                          <View style={{ width: dotSz, height: dotSz, borderRadius: dotSz / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: isActive ? c.primary : item.done ? c.primary : c.surface, borderWidth: isActive ? 3 : item.done ? 0 : 1.5, borderColor: isActive ? c.primaryLight : c.border }}>
+                            {item.done && !isActive && <MaterialIcons name="check" size={ms(5)} color={c.textOnPrimary} />}
+                            {isActive && <View style={{ width: dotSz * 0.4, height: dotSz * 0.4, borderRadius: dotSz * 0.2, backgroundColor: '#fff' }} />}
+                          </View>
+                          {isLast ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border }} />}
+                        </View>
+                        <Text style={{ fontSize: ms(10), fontWeight: '800', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: 4 }}>{item.time}</Text>
+                      </View>);
                   })}
-                </FadeCard>
-              );
-            })()}
+                </View>
+              </View>
+            )}
+            {detailLoading && <View style={{ paddingVertical: wp(12), alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
+            {/* Cards */}
+            {!detailLoading && (
+              <View style={{ gap: wp(6) }}>
+                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Customer</Text></View>
+                  {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
+                    <View key={i} style={{ flexDirection: 'row', paddingVertical: 7, borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                      <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, width: 130 }}>{row.label}</Text>
+                      <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, flex: 1 }}>{row.value}</Text>
+                    </View>))}
+                </View>
+                {/* Product */}
+                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Product</Text></View>
+                  <View style={{ flexDirection: 'row' }}>
+                    <View style={{ flex: 3, paddingRight: 12 }} />
+                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 2, textAlign: 'left' }}>SLUMP</Text>
+                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1.5, textAlign: 'left' }}>QTY</Text>
+                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1, textAlign: 'left' }}>UOM</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 3, paddingRight: 12 }}>
+                      <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{detail?.mix?.mix_code || '-'} {currentTicket?.mix?.description || ''}</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: ms(15), fontWeight: '800', color: c.textPrimary, flex: 2 }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text>
+                    <Text style={{ fontSize: ms(15), fontWeight: '900', color: c.textPrimary, flex: 1.5 }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text>
+                    <Text style={{ fontSize: ms(15), fontWeight: '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', paddingVertical: 7, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: 6 }}>
+                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, width: 130 }}>USAGE</Text>
+                    <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, flex: 1, textTransform: 'uppercase' }}>{detail?.mix?.usage || '-'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 5, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: 2 }}>
+                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, width: 130 }} numberOfLines={1}>DELIVERY PROGRESS</Text>
+                    <Text style={{ fontSize: ms(12), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{stripUnit(detail?.mix?.quantity) || '-'} of {stripUnit(detail?.mix?.loads?.total) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'M\u00B3'}</Text>
+                  </View>
+                </View>
+                {/* Delivery Location */}
+                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Delivery Location</Text></View>
+                  {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, { label: 'LOAD', value: detail?.mix?.loads?.current != null ? String(detail.mix.loads.current) : '-', accent: true }, { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }, { label: 'INSTRUCTIONS', value: detail?.job?.instructions || '', highlight: true }].map((row, i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: i < 4 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                      <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, width: 130 }}>{row.label}</Text>
+                      {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
+                      ) : row.highlight && row.value ? (<View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: 4, paddingHorizontal: 6 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: '#000' }}>{row.value}</Text></View>
+                      ) : (<Text style={{ fontSize: ms(13), fontWeight: row.accent ? '900' : '700', color: row.accent ? c.warning : c.textPrimary, flex: 1 }}>{row.value}</Text>)}
+                    </View>))}
+                </View>
+                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: c.accent, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>Mandatory Fields</Text>
+                    <View style={{ backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : c.errorSurface, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 12 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text></View>
+                  </View>
+                  {[{ label: 'PLANT', data: plantMandatory, color: c.primary }, { label: 'JOBSITE', data: jobsiteMandatory, color: c.accent }, { label: 'RETURNED', data: returnedMandatory, color: c.warning }, { label: 'STATUS TIMES', data: timeMandatory, color: c.error }].map((section, si) => (
+                    <View key={si} style={{ marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}><Text style={{ fontSize: ms(10), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text><Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted }}>{section.data.filled}/{section.data.total}</Text></View>
+                      {section.data.items.map((item, ii) => (
+                        <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
+                          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: item.filled ? c.success : c.error, justifyContent: 'center', alignItems: 'center' }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={10} color="#fff" /></View>
+                          <Text style={{ fontSize: ms(11), fontWeight: '500', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
+                          {item.value && <Text style={{ fontSize: ms(11), fontWeight: '700', color: c.primary }}>{item.value}</Text>}
+                        </View>))}
+                    </View>))}
+                </View>
+              </View>
+            )}
           </View>
         </ScrollView>
+        )}
 
-      </View>{/* end main content column */}
+      </View>{/* end main content */}
 
-      {/* ─── NAV BAR ─── */}
-      {L ? (
-        <View style={{
-          width: (lp ? 72 : ls(76)) + insets.right,
-          paddingRight: insets.right,
-          paddingTop: insets.top + (lp ? 8 : ls(10)),
-          paddingBottom: Math.max(insets.bottom, lp ? 8 : ls(16)),
-          borderLeftWidth: StyleSheet.hairlineWidth,
-          borderLeftColor: c.border,
-          backgroundColor: c.white,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
+      {/* ─── BOTTOM NAV BAR (both orientations) ─── */}
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: c.border,
+        backgroundColor: c.white,
+        paddingTop: L ? 2 : 4,
+        paddingBottom: L ? (insets.bottom || 2) : (insets.bottom || 6),
+        paddingLeft: Math.max(insets.left, L ? ls(12) : wp(8)),
+        paddingRight: Math.max(insets.right, L ? ls(12) : wp(8)),
+      }}>
+        {/* Left: Refresh timestamp */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.primarySurface, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8 }}>
+            <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><MaterialIcons name="sync" size={12} color={c.primary} /></Animated.View>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: c.primary }}>REFRESHED at {lastSyncTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</Text>
+          </TouchableOpacity>
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isOnline ? c.success : c.error }} />
+        </View>
+        <View style={{ flex: 1 }} />
+        {/* Right: Nav icons */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(2) }}>
           {BOTTOM_ACTIONS.map(renderNavBtn)}
         </View>
-      ) : (
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'space-evenly',
-          alignItems: 'center',
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: c.border,
-          backgroundColor: c.white,
-          paddingTop: 4,
-          paddingBottom: insets.bottom || 6,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          elevation: 8,
-          shadowColor: Colors.shadowColor,
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.04,
-          shadowRadius: 4,
-        }}>
-          {BOTTOM_ACTIONS.map(renderNavBtn)}
-        </View>
-      )}
+      </View>
 
       {/* ─── DROPDOWN MENU ─── */}
       {menuVisible && (
@@ -1438,7 +1580,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
             {/* Version footer */}
             <View style={[styles.ddFooter, isLandscape && { paddingVertical: lp ? 6 : ls(4) }, { borderTopColor: c.borderLight }]}>
-              <Text style={[styles.ddVersion, { color: c.textMuted }]}>v1.20.0</Text>
+              <Text style={[styles.ddVersion, { color: c.textMuted }]}>{appVersion ? `v${appVersion}` : '...'}</Text>
             </View>
           </Animated.View>
         </View>
@@ -1840,7 +1982,7 @@ export default function DashboardScreen({ navigation }: Props) {
               <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary }}>Missing Fields</Text>
               <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted }}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
             </View>
-            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surfaceAlt }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -1993,17 +2135,17 @@ export default function DashboardScreen({ navigation }: Props) {
               onPress={fontDecrease}
               disabled={fontScale <= 0.85}
               activeOpacity={0.7}
-              style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale <= 0.85 ? c.surfaceAlt : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+              style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale <= 0.85 ? c.surface : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
               <Text style={{ fontSize: ms(14), fontWeight: '800', color: fontScale <= 0.85 ? c.textMuted : c.textPrimary }}>A-</Text>
             </TouchableOpacity>
-            <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: c.surfaceAlt, overflow: 'hidden' }}>
+            <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: c.surface, overflow: 'hidden' }}>
               <View style={{ width: `${((fontScale - 0.85) / (1.30 - 0.85)) * 100}%`, height: '100%', borderRadius: 3, backgroundColor: c.primary }} />
             </View>
             <TouchableOpacity
               onPress={fontIncrease}
               disabled={fontScale >= 1.30}
               activeOpacity={0.7}
-              style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale >= 1.30 ? c.surfaceAlt : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+              style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale >= 1.30 ? c.surface : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
               <Text style={{ fontSize: ms(18), fontWeight: '800', color: fontScale >= 1.30 ? c.textMuted : c.textPrimary }}>A+</Text>
             </TouchableOpacity>
           </View>
@@ -2011,7 +2153,7 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => { fontReset(); }}
             disabled={Math.round(fontScale * 100) === 100}
             activeOpacity={0.7}
-            style={{ paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8), backgroundColor: Math.round(fontScale * 100) === 100 ? c.surfaceAlt : c.primary }}>
+            style={{ paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8), backgroundColor: Math.round(fontScale * 100) === 100 ? c.surface : c.primary }}>
             <Text style={{ fontSize: ms(12), fontWeight: '700', color: Math.round(fontScale * 100) === 100 ? c.textMuted : c.textOnPrimary }}>Reset to 100%</Text>
           </TouchableOpacity>
         </View>

