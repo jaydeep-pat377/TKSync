@@ -403,6 +403,13 @@ export type TicketDetail = {
     is_current: boolean;
     directions: boolean;
   }[];
+  mandatory_fields?: {
+    plant: string[];
+    jobsite: string[];
+    returned: string[];
+    time: string[];
+    cod: string[];
+  };
 };
 
 export type DeliveryRecord = {

@@ -919,7 +919,7 @@ export default function DashboardScreen({ navigation }: Props) {
   };
 
   // Mandatory fields completion data for right panel
-  const mandatoryFields = deliveryRecord?.mandatory_fields;
+  const mandatoryFields = detail?.mandatory_fields || deliveryRecord?.mandatory_fields;
   const getMandatoryStatus = (tab: string, fields: string[]) => {
     if (!deliveryRecord || !fields.length) return { filled: 0, total: 0, items: [] as {name: string; filled: boolean; value?: string}[] };
     const tabData = (deliveryRecord as any)[tab];
@@ -1011,8 +1011,8 @@ export default function DashboardScreen({ navigation }: Props) {
             <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
               <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={16} color={c.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#6B21A8', justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 11, fontWeight: '900', color: '#fff' }}>{(driver?.driver_code || 'U').substring(0, 2).toUpperCase()}</Text>
+            <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+              <MaterialIcons name="menu" size={18} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1245,17 +1245,17 @@ export default function DashboardScreen({ navigation }: Props) {
                   </View>
                   <View style={{ flexDirection: 'row' }}>
                     <View style={{ flex: 3, paddingRight: fs(12) }} />
-                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 2, textAlign: 'left' }}>SLUMP</Text>
-                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1.5, textAlign: 'left' }}>QTY</Text>
-                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1, textAlign: 'left' }}>UOM</Text>
+                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1.2, textAlign: 'left' }}>SLUMP</Text>
+                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 2.5, textAlign: 'left' }}>QTY</Text>
+                    <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 0.8, textAlign: 'left' }}>UOM</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: fs(2) }}>
                     <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 3, paddingRight: fs(12) }}>
                       <Text style={{ fontSize: fs(13), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{detail?.mix?.mix_code || '-'} {currentTicket?.mix?.description || ''}</Text>
                     </TouchableOpacity>
-                    <Text style={{ fontSize: fs(16), fontWeight: '800', color: c.textPrimary, flex: 2 }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text>
-                    <Text style={{ fontSize: fs(16), fontWeight: '900', color: c.textPrimary, flex: 1.5 }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text>
-                    <Text style={{ fontSize: fs(16), fontWeight: '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                    <Text style={{ fontSize: fs(16), fontWeight: '800', color: c.textPrimary, flex: 1.2 }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text>
+                    <Text style={{ fontSize: fs(16), fontWeight: '900', color: c.textPrimary, flex: 2.5 }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text>
+                    <Text style={{ fontSize: fs(16), fontWeight: '600', color: c.textPrimary, flex: 0.8 }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', paddingVertical: fs(4), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: fs(4) }}>
                     <Text style={{ fontSize: fs(12), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }}>USAGE</Text>
@@ -1272,24 +1272,31 @@ export default function DashboardScreen({ navigation }: Props) {
                     <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Delivery Location</Text>
                   </View>
                     {[
+                      { label: 'MMXID', value: detail?.mix?.mix_code || '—' },
+                      { label: 'JOB', value: detail?.job?.job || '—' },
                       { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' },
-                      { label: 'LOAD', value: detail?.mix?.loads?.current != null ? String(detail.mix.loads.current) : '-', accent: true },
+                      ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: `${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []),
+                      { label: 'TRUCKS', value: [detail?.mix?.truck_ahead ? `${detail.mix.truck_ahead.truck_code} ${detail.mix.truck_ahead.status}` : null, detail?.mix?.truck_behind ? `${detail.mix.truck_behind.truck_code} ${detail.mix.truck_behind.status}` : null].filter(Boolean).join(' | ') || '—', blue: true },
                       { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
                       { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
                       { label: 'INSTRUCTIONS', value: detail?.job?.instructions || '', highlight: true },
-                    ].map((row, i) => (
-                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(5), borderBottomWidth: i < 4 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                    ].map((row, i, arr) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(5), borderBottomWidth: i < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                         <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }}>{row.label}</Text>
                         {row.isLink ? (
                           <TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}>
                             <Text style={{ fontSize: fs(13), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={2}>{row.value}</Text>
+                          </TouchableOpacity>
+                        ) : row.blue ? (
+                          <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1 }}>
+                            <Text style={{ fontSize: fs(14), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{row.value}</Text>
                           </TouchableOpacity>
                         ) : row.highlight && row.value ? (
                           <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: fs(3), paddingHorizontal: fs(5) }}>
                             <Text style={{ fontSize: fs(12), fontWeight: '800', color: '#000' }} numberOfLines={3}>{row.value}</Text>
                           </View>
                         ) : (
-                          <Text style={{ fontSize: fs(14), fontWeight: row.accent ? '900' : '700', color: row.accent ? c.warning : c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
+                          <Text style={{ fontSize: fs(14), fontWeight: '700', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
                         )}
                       </View>
                     ))}
@@ -1445,17 +1452,17 @@ export default function DashboardScreen({ navigation }: Props) {
                   <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Product</Text></View>
                   <View style={{ flexDirection: 'row' }}>
                     <View style={{ flex: 3, paddingRight: 12 }} />
-                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 2, textAlign: 'left' }}>SLUMP</Text>
-                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1.5, textAlign: 'left' }}>QTY</Text>
-                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1, textAlign: 'left' }}>UOM</Text>
+                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 1.2, textAlign: 'left' }}>SLUMP</Text>
+                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 2.5, textAlign: 'left' }}>QTY</Text>
+                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, flex: 0.8, textAlign: 'left' }}>UOM</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                     <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 3, paddingRight: 12 }}>
                       <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{detail?.mix?.mix_code || '-'} {currentTicket?.mix?.description || ''}</Text>
                     </TouchableOpacity>
-                    <Text style={{ fontSize: ms(15), fontWeight: '800', color: c.textPrimary, flex: 2 }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text>
-                    <Text style={{ fontSize: ms(15), fontWeight: '900', color: c.textPrimary, flex: 1.5 }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text>
-                    <Text style={{ fontSize: ms(15), fontWeight: '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                    <Text style={{ fontSize: ms(15), fontWeight: '800', color: c.textPrimary, flex: 1.2 }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text>
+                    <Text style={{ fontSize: ms(15), fontWeight: '900', color: c.textPrimary, flex: 2.5 }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text>
+                    <Text style={{ fontSize: ms(15), fontWeight: '600', color: c.textPrimary, flex: 0.8 }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', paddingVertical: 7, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, marginTop: 6 }}>
                     <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, width: 130 }}>USAGE</Text>
@@ -1469,12 +1476,13 @@ export default function DashboardScreen({ navigation }: Props) {
                 {/* Delivery Location */}
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                   <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Delivery Location</Text></View>
-                  {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, { label: 'LOAD', value: detail?.mix?.loads?.current != null ? String(detail.mix.loads.current) : '-', accent: true }, { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }, { label: 'INSTRUCTIONS', value: detail?.job?.instructions || '', highlight: true }].map((row, i) => (
-                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: i < 4 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                  {[{ label: 'MMXID', value: detail?.mix?.mix_code || '—' }, { label: 'JOB', value: detail?.job?.job || '—' }, { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: `${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find((p: any) => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []), { label: 'TRUCKS', value: [detail?.mix?.truck_ahead ? `${detail.mix.truck_ahead.truck_code} ${detail.mix.truck_ahead.status}` : null, detail?.mix?.truck_behind ? `${detail.mix.truck_behind.truck_code} ${detail.mix.truck_behind.status}` : null].filter(Boolean).join(' | ') || '—', blue: true }, { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }, { label: 'INSTRUCTIONS', value: detail?.job?.instructions || '', highlight: true }].map((row, i, arr) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: i < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                       <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textMuted, width: 130 }}>{row.label}</Text>
                       {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
                       ) : row.highlight && row.value ? (<View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: 4, paddingHorizontal: 6 }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: '#000' }}>{row.value}</Text></View>
-                      ) : (<Text style={{ fontSize: ms(13), fontWeight: row.accent ? '900' : '700', color: row.accent ? c.warning : c.textPrimary, flex: 1 }}>{row.value}</Text>)}
+                      ) : row.blue ? (<TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1 }}><Text style={{ fontSize: ms(13), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
+                      ) : (<Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, flex: 1 }}>{row.value}</Text>)}
                     </View>))}
                 </View>
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
