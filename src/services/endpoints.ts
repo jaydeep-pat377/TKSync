@@ -33,4 +33,7 @@ export const ENDPOINTS = {
   // Notifications
   NOTIFICATION_REGISTER: '/notifications/register-device',
   NOTIFICATION_UNREGISTER: '/notifications/unregister-device',
+
+  // Field Definitions
+  FIELD_DEFINITIONS: '/field-definitions',
 } as const;

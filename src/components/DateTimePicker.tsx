@@ -156,9 +156,10 @@ type Props = {
   value: Date;
   onConfirm: (date: Date) => void;
   onCancel: () => void;
+  mode?: 'datetime' | 'time';
 };
 
-export default function DateTimePicker({visible, value, onConfirm, onCancel}: Props) {
+export default function DateTimePicker({visible, value, onConfirm, onCancel, mode = 'datetime'}: Props) {
   const ps = createPs();
   const {c} = useTheme();
   const {width: screenW, height: screenH} = useWindowDimensions();
@@ -249,9 +250,9 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
           {/* Header */}
           <View style={[ps.hdr, {borderBottomColor: c.borderLight}]}>
             <View style={[ps.hdrIcon, {backgroundColor: c.primarySurface}]}>
-              <MaterialIcons name="event" size={ms(14)} color={c.primary} />
+              <MaterialIcons name={mode === 'time' ? 'access-time' : 'event'} size={ms(14)} color={c.primary} />
             </View>
-            <Text style={[ps.hdrTitle, {color: c.textPrimary}]}>Select Date & Time</Text>
+            <Text style={[ps.hdrTitle, {color: c.textPrimary}]}>{mode === 'time' ? 'Select Time' : 'Select Date & Time'}</Text>
             <TouchableOpacity
               style={[ps.closeBtn, {backgroundColor: c.surface}]}
               onPress={onCancel}
@@ -269,18 +270,22 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
 
             {isLandscape ? (
               <View style={ps.landscapeRow}>
-                <View style={ps.landscapeCol}>
-                  <View style={ps.sectionLabel}>
-                    <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
-                    <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
-                  </View>
-                  <View style={ps.wheels}>
-                    <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
-                    <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
-                    <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
-                  </View>
-                </View>
-                <View style={[ps.dividerV, {backgroundColor: c.borderLight}]} />
+                {mode !== 'time' && (
+                  <>
+                    <View style={ps.landscapeCol}>
+                      <View style={ps.sectionLabel}>
+                        <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
+                        <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
+                      </View>
+                      <View style={ps.wheels}>
+                        <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
+                        <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
+                        <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
+                      </View>
+                    </View>
+                    <View style={[ps.dividerV, {backgroundColor: c.borderLight}]} />
+                  </>
+                )}
                 <View style={ps.landscapeCol}>
                   <View style={ps.sectionLabel}>
                     <MaterialIcons name="access-time" size={ms(10)} color={c.primary} />
@@ -295,15 +300,19 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel}: Pr
               </View>
             ) : (
               <>
-                <View style={ps.sectionLabel}>
-                  <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
-                  <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
-                </View>
-                <View style={ps.wheels}>
-                  <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
-                  <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
-                  <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
-                </View>
+                {mode !== 'time' && (
+                  <>
+                    <View style={ps.sectionLabel}>
+                      <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
+                      <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
+                    </View>
+                    <View style={ps.wheels}>
+                      <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
+                      <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
+                      <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
+                    </View>
+                  </>
+                )}
                 <View style={ps.sectionLabel}>
                   <MaterialIcons name="access-time" size={ms(10)} color={c.primary} />
                   <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>

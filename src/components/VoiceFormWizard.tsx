@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import ResponsiveModal from './ResponsiveModal';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
@@ -136,9 +137,18 @@ function spokenToNumber(text: string): string {
 
 export default function VoiceFormWizard({visible, onClose, fields, onComplete, keywords, speakPrompts}: Props) {
   const {c} = useTheme();
-  const {height: screenHeight} = useWindowDimensions();
-  // Available height for scrollable content: 85% of screen minus header (~50px) and progress bar
-  const scrollableHeight = screenHeight * 0.85 - wp(60);
+  const {width: screenWidth, height: screenHeight} = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isLandscape = screenWidth > screenHeight;
+  // Modal maxHeight matches ResponsiveModal: 90% of available height
+  const availH = screenHeight - insets.top - insets.bottom;
+  const modalMaxH = availH * 0.90;
+  // Inside modal: header ~50pt, progress ~12pt, field strip ~35pt = ~97pt chrome
+  const chromeH = wp(50) + wp(12) + wp(35);
+  // Mic button area: button ~48pt + hint ~12pt + skip ~27pt + padding ~12pt = ~100pt
+  const micAreaH = wp(48) + wp(12) + wp(27) + wp(12);
+  // ScrollView gets whatever remains
+  const scrollableHeight = modalMaxH - chromeH - micAreaH;
 
   const [phase, setPhase] = useState<WizardPhase>('ready');
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -154,6 +164,10 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
     if (f.dependsOn) return results[f.dependsOn.key] === f.dependsOn.value;
     return true;
   });
+  const activeFieldsRef = useRef(activeFields);
+  activeFieldsRef.current = activeFields;
+  const resultsRef = useRef(results);
+  resultsRef.current = results;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -242,9 +256,17 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
         setPhase('processing');
 
         const idx = currentIdxRef.current;
-        const field = activeFields[idx];
+        const field = activeFieldsRef.current[idx];
         const processed = processVoiceInput(event.text, field);
-        setResults(prev => ({...prev, [field.key]: processed}));
+        const newResults = {...resultsRef.current, [field.key]: processed};
+        setResults(newResults);
+
+        // Recompute activeFields with the NEW results (so dependsOn fields appear immediately)
+        const updatedActiveFields = fields.filter(f => {
+          if (f.skip) return false;
+          if (f.dependsOn) return newResults[f.dependsOn.key] === f.dependsOn.value;
+          return true;
+        });
 
         // Validate immediately
         const validation = validateField(processed, field);
@@ -272,11 +294,14 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
           }, 800);
         } else {
           // ─── VALID: auto-advance to next field ───
+          // Find the current field's position in the UPDATED activeFields list
+          const currentFieldIdx = updatedActiveFields.findIndex(f => f.key === field.key);
+          const nextIdx = currentFieldIdx + 1;
           setTimeout(() => {
             if (!isMounted.current) return;
-            if (idx < activeFields.length - 1) {
+            if (nextIdx < updatedActiveFields.length) {
               pendingAutoStart.current = true;
-              setCurrentIdx(idx + 1);
+              setCurrentIdx(nextIdx);
               setPhase('ready');
               setError('');
             } else {
@@ -479,7 +504,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
   // ─── RENDER ───
 
   return (
-    <ResponsiveModal visible={visible} onClose={handleCancel} maxWidth={400} maxHeightPercent={85}>
+    <ResponsiveModal visible={visible} onClose={handleCancel} maxWidth={400} maxHeightPercent={90}>
       <Animated.View style={[styles.container, {backgroundColor: c.white, opacity: fadeAnim}]}>
         {/* Header with real-time title + subtitle */}
         <View style={[styles.header, {borderBottomColor: c.border}]}>
@@ -557,7 +582,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
             )}
 
             {/* Field list */}
-            <ScrollView style={[styles.confirmScrollOuter, {maxHeight: scrollableHeight - wp(200)}]} showsVerticalScrollIndicator contentContainerStyle={styles.confirmScrollInner}>
+            <ScrollView style={[styles.confirmScrollOuter, {maxHeight: modalMaxH - chromeH - wp(120)}]} showsVerticalScrollIndicator contentContainerStyle={styles.confirmScrollInner}>
               {activeFields.map(f => {
                 const val = results[f.key];
                 const v = validations[f.key];
@@ -601,7 +626,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                 </View>
               )}
             </View>
-            <ScrollView style={[styles.reviewScroll, {maxHeight: scrollableHeight - wp(80)}]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView style={[styles.reviewScroll, {maxHeight: modalMaxH - chromeH - wp(80)}]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {activeFields.map((field, idx) => {
                   const val = results[field.key];
                   const v = validations[field.key];
@@ -666,7 +691,8 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
         {/* ═══ FIELD PROMPT ═══ */}
         {(phase === 'ready' || phase === 'listening' || phase === 'processing') && (
-          <ScrollView style={{maxHeight: scrollableHeight}} contentContainerStyle={styles.promptContainer} showsVerticalScrollIndicator={false} bounces={false}>
+          <>
+          <ScrollView style={{maxHeight: Math.max(scrollableHeight, wp(80))}} contentContainerStyle={{alignItems: 'center', paddingHorizontal: wp(16), paddingTop: wp(8), paddingBottom: wp(8)}} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
             <Text style={[styles.stepText, {color: c.textMuted}]}>Field {currentIdx + 1} of {activeFields.length}{results[currentField?.key] ? ' (re-record)' : ''}</Text>
             <Text style={[styles.fieldLabel, {color: c.textPrimary}]}>{currentField?.label}</Text>
             <Text style={[styles.promptText, {color: c.textSecondary}]}>{currentField?.prompt}</Text>
@@ -707,27 +733,27 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                 <Text style={[styles.settingsText, {color: c.linkBlue}]}>Open Settings</Text>
               </TouchableOpacity>
             )}
+          </ScrollView>
 
-            <View style={styles.micContainer}>
-              <Animated.View style={{transform: [{scale: pulseAnim}]}}>
-                <TouchableOpacity
-                  style={[styles.micButton, {backgroundColor: phase === 'listening' ? c.error : c.primary}]}
-                  onPress={phase === 'listening' ? stopListening : startListening}
-                  activeOpacity={0.7}
-                  disabled={phase === 'processing' || isSpeakingPrompt}>
-                  <MaterialIcons name={phase === 'listening' ? 'stop' : 'mic'} size={ms(22)} color="#FFF" />
-                </TouchableOpacity>
-              </Animated.View>
-              <Text style={[styles.micHint, {color: c.textMuted}]}>
-                {isSpeakingPrompt ? 'Speaking prompt...' : phase === 'listening' ? 'Listening... Tap to stop' : phase === 'processing' ? 'Processing...' : 'Tap to speak'}
-              </Text>
-            </View>
-
+          <View style={[styles.micContainer, {paddingBottom: wp(12)}]}>
+            <Animated.View style={{transform: [{scale: pulseAnim}]}}>
+              <TouchableOpacity
+                style={[styles.micButton, {backgroundColor: phase === 'listening' ? c.error : c.primary}]}
+                onPress={phase === 'listening' ? stopListening : startListening}
+                activeOpacity={0.7}
+                disabled={phase === 'processing' || isSpeakingPrompt}>
+                <MaterialIcons name={phase === 'listening' ? 'stop' : 'mic'} size={ms(22)} color="#FFF" />
+              </TouchableOpacity>
+            </Animated.View>
+            <Text style={[styles.micHint, {color: c.textMuted}]}>
+              {isSpeakingPrompt ? 'Speaking prompt...' : phase === 'listening' ? 'Listening... Tap to stop' : phase === 'processing' ? 'Processing...' : 'Tap to speak'}
+            </Text>
             <TouchableOpacity style={styles.skipButton} onPress={skipField} activeOpacity={0.6} disabled={phase === 'processing'}>
               <Text style={[styles.skipText, {color: c.textMuted}]}>Skip this field</Text>
               <MaterialIcons name="skip-next" size={ms(14)} color={c.textMuted} />
             </TouchableOpacity>
-          </ScrollView>
+          </View>
+          </>
         )}
       </Animated.View>
     </ResponsiveModal>
@@ -749,7 +775,7 @@ const styles = StyleSheet.create({
   progressTrack: {height: 2, width: '100%'},
   progressFill: {height: '100%', borderRadius: 1},
 
-  promptContainer: {alignItems: 'center', paddingHorizontal: wp(16), paddingTop: wp(12), paddingBottom: wp(30)},
+  promptContainer: {alignItems: 'center', paddingHorizontal: wp(16), paddingTop: wp(8), paddingBottom: wp(16)},
   stepText: {fontSize: ms(9), fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5},
   fieldLabel: {fontSize: ms(15), fontWeight: '700', marginTop: wp(4), textAlign: 'center'},
   promptText: {fontSize: ms(11), marginTop: wp(4), textAlign: 'center', lineHeight: ms(15)},
@@ -763,13 +789,13 @@ const styles = StyleSheet.create({
   errorText: {fontSize: ms(9), marginTop: wp(4), textAlign: 'center', paddingHorizontal: wp(6)},
   settingsLink: {flexDirection: 'row', alignItems: 'center', gap: wp(3), marginTop: wp(4), paddingVertical: wp(3), paddingHorizontal: wp(6)},
   settingsText: {fontSize: ms(10), fontWeight: '600', textDecorationLine: 'underline'},
-  micContainer: {alignItems: 'center', marginTop: wp(12), gap: wp(6)},
+  micContainer: {alignItems: 'center', marginTop: wp(8), gap: wp(4)},
   micButton: {width: wp(48), height: wp(48), borderRadius: wp(24), alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4},
   micHint: {fontSize: ms(9)},
   skipButton: {flexDirection: 'row', alignItems: 'center', gap: wp(3), marginTop: wp(8), paddingVertical: wp(4), paddingHorizontal: wp(8)},
   skipText: {fontSize: ms(10)},
 
-  confirmContainer: {paddingHorizontal: wp(12), paddingBottom: wp(12)},
+  confirmContainer: {paddingHorizontal: wp(12), paddingBottom: wp(20)},
   confirmHeader: {alignItems: 'center', paddingTop: wp(10), paddingBottom: wp(6)},
   confirmQuestion: {fontSize: ms(12), fontWeight: '600', marginTop: wp(4), textAlign: 'center'},
   confirmStats: {flexDirection: 'row', justifyContent: 'center', gap: wp(6), marginTop: wp(6), marginBottom: wp(4)},
@@ -779,9 +805,9 @@ const styles = StyleSheet.create({
   confirmSummaryRow: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(5), borderBottomWidth: StyleSheet.hairlineWidth},
   confirmSummaryLabel: {fontSize: ms(9), fontWeight: '600', flex: 1},
   confirmSummaryValue: {fontSize: ms(10), fontWeight: '500', maxWidth: '40%', textAlign: 'right'},
-  confirmButtons: {flexDirection: 'row', gap: wp(8), marginTop: wp(10), marginBottom: wp(12)},
+  confirmButtons: {flexDirection: 'row', gap: wp(8), marginTop: wp(10), marginBottom: wp(20)},
 
-  reviewContainer: {paddingHorizontal: wp(12), paddingTop: wp(6), paddingBottom: wp(12)},
+  reviewContainer: {paddingHorizontal: wp(12), paddingTop: wp(6), paddingBottom: wp(20)},
   reviewStats: {flexDirection: 'row', justifyContent: 'center', gap: wp(8), marginTop: wp(4), marginBottom: wp(6)},
   statBadge: {flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingHorizontal: wp(8), paddingVertical: wp(3), borderRadius: wp(10)},
   statText: {fontSize: ms(9), fontWeight: '700'},
@@ -796,7 +822,7 @@ const styles = StyleSheet.create({
   editRow: {flexDirection: 'row', alignItems: 'center', gap: wp(4), marginTop: wp(3)},
   editInput: {flex: 1, fontSize: ms(11), fontWeight: '500', borderWidth: 1.5, borderRadius: wp(6), paddingHorizontal: wp(8), paddingVertical: wp(4), minHeight: wp(28)},
   editActionBtn: {width: wp(26), height: wp(26), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center'},
-  reviewButtons: {flexDirection: 'row', gap: wp(8), marginTop: wp(10)},
+  reviewButtons: {flexDirection: 'row', gap: wp(8), marginTop: wp(10), marginBottom: wp(20)},
 
   actionBtn: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(4), paddingVertical: wp(8), borderRadius: wp(8), minHeight: wp(36)},
   actionBtnText: {fontSize: ms(12), fontWeight: '600'},

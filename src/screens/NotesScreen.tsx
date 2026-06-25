@@ -49,7 +49,7 @@ function formatPickerTime(date: Date | undefined): string {
   const h = date.getHours().toString().padStart(2, '0');
   const m = date.getMinutes().toString().padStart(2, '0');
   const s = date.getSeconds().toString().padStart(2, '0');
-  return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+  return `${h}:${m}`;
 }
 
 const TABS = [
@@ -624,8 +624,8 @@ function ProductsModal({visible, onClose, products}: {visible: boolean; onClose:
           <Text style={[st.tableCellQty, {fontWeight: '900', color: c.textPrimary}]}>QTY</Text>
           <Text style={[st.tableCellUnit, {fontWeight: '900', color: c.textPrimary}]}>UNIT</Text>
         </View>
-        {items.map(item => (
-          <View key={item.item_code} style={common.tableRow}>
+        {items.map((item, idx) => (
+          <View key={`${item.item_code}-${idx}`} style={common.tableRow}>
             <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}]}>{item.item_code}</Text>
             <Text style={[st.tableCellDesc, {fontWeight: '500', color: c.textPrimary}]}>{item.description}</Text>
             <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}]}>{item.quantity ?? '0'}</Text>
@@ -844,25 +844,25 @@ function _createSlumpSt() { return StyleSheet.create({
 function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
-  const mf = (field: string) => data?.mandatory_fields?.plant?.includes(field) ?? false;
+  // Dynamic field definitions from API
+  const fd = data?.field_definitions?.plant || {};
+  const fdKeys = Object.keys(fd);
+  const hasField = (field: string) => field in fd;
+  const ft = (field: string) => (fd as any)?.[field]?.title || field.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+  const mf = (field: string) => (fd as any)?.[field]?.mandatory ?? false;
   const p = data?.plant;
-  const allFieldsFilled = p != null && (
-    p.slump_from_plant != null && p.slump_to_job != null && p.temp_at_plant != null &&
-    p.water_added_full != null && p.water_reason != null && p.truck_start != null &&
-    p.truck_end != null && p.hand_added != null && p.nitrogen_added != null &&
-    p.fibers_added != null && p.load_tested != null && p.notes != null
-  );
-  const hasApiData = p != null && (
-    p.slump_from_plant != null || p.slump_to_job != null || p.temp_at_plant != null ||
-    p.water_added_full != null || p.water_reason != null || p.truck_start != null ||
-    p.truck_end != null || p.hand_added != null || p.nitrogen_added != null ||
-    p.fibers_added != null || p.load_tested != null || p.notes != null
-  );
+  const allFieldsFilled = p != null && fdKeys.length > 0 && fdKeys.every(k => {
+    // Skip fields whose dependency isn't met
+    const dep = (fd as any)?.[k]?.depends_on;
+    if (dep && (p as any)?.[dep.field] !== dep.value) return true;
+    const val = (p as any)?.[k];
+    return val != null && val !== '';
+  });
+  const hasApiData = p != null && fdKeys.some(k => (p as any)?.[k] != null);
   const slumpFromPlantLocked = p?.slump_from_plant != null;
   const slumpToJobLocked = p?.slump_to_job != null;
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const mandatoryPlantFields = data?.mandatory_fields?.plant || [];
   const handleSavePlant = async () => {
     if (!ticketId) return;
     setSaving(true);
@@ -872,14 +872,20 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         slump_from_plant: slumpFromPlant !== '' ? Number(slumpFromPlant) : null,
         slump_to_job: slumpToJob !== '' ? Number(slumpToJob) : null,
         temp_at_plant: tempAtPlant !== '' ? Number(tempAtPlant) : null,
-        water_added_full: waterLitres,
+        water_added_full: waterLitres > 0 ? waterLitres : null,
         water_reason: waterReason || null,
         truck_start: truckStart ? truckStart.toISOString() : null,
         truck_end: truckEnd ? truckEnd.toISOString() : null,
-        hand_added: handAdded,
-        nitrogen_added: nitrogenAdded,
-        fibers_added: fibersAdded,
+        hand_added: handAdded != null ? handAdded : null,
+        nitrogen_added: nitrogenAdded != null ? nitrogenAdded : null,
+        fibers_added: fibersAdded != null ? fibersAdded : null,
         load_tested: loadTested === 'yes' ? true : loadTested === 'no' ? false : null,
+        ...(loadTested === 'yes' ? {
+          load_temp: loadTemp != null ? loadTemp : null,
+          load_air: loadAir != null ? loadAir : null,
+          load_slump: loadSlump !== '' ? Number(loadSlump) : null,
+          load_cylinders: loadCylinders != null ? loadCylinders : null,
+        } : {}),
         notes: plantNotes || null,
       });
       if (!result.offline) await refreshRecord?.();
@@ -899,15 +905,15 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   const [waterReason, setWaterReason] = useState(p?.water_reason || '');
   const [reasonModalVisible, setReasonModalVisible] = useState(false);
   const [productsModalVisible, setProductsModalVisible] = useState(false);
-  const [handAdded, setHandAdded] = useState(p?.hand_added ?? false);
-  const [nitrogenAdded, setNitrogenAdded] = useState(p?.nitrogen_added ?? false);
-  const [fibersAdded, setFibersAdded] = useState(p?.fibers_added ?? false);
+  const [handAdded, setHandAdded] = useState<boolean | null>(p?.hand_added ?? null);
+  const [nitrogenAdded, setNitrogenAdded] = useState<boolean | null>(p?.nitrogen_added ?? null);
+  const [fibersAdded, setFibersAdded] = useState<boolean | null>(p?.fibers_added ?? null);
   const [loadTested, setLoadTested] = useState<'yes' | 'no' | null>(p?.load_tested === true ? 'yes' : p?.load_tested === false ? 'no' : null);
-  const [loadTemp, setLoadTemp] = useState(0);
-  const [loadAir, setLoadAir] = useState(0);
-  const [loadSlump, setLoadSlump] = useState('');
+  const [loadTemp, setLoadTemp] = useState((p as any)?.load_temp ?? 0);
+  const [loadAir, setLoadAir] = useState((p as any)?.load_air ?? 0);
+  const [loadSlump, setLoadSlump] = useState((p as any)?.load_slump != null ? String((p as any).load_slump) : '');
   const [loadSlumpPickerVisible, setLoadSlumpPickerVisible] = useState(false);
-  const [loadCylinders, setLoadCylinders] = useState(0);
+  const [loadCylinders, setLoadCylinders] = useState((p as any)?.load_cylinders ?? 0);
   const [truckStart, setTruckStart] = useState<Date | undefined>(p?.truck_start ? new Date(p.truck_start) : undefined);
   const [truckEnd, setTruckEnd] = useState<Date | undefined>(p?.truck_end ? new Date(p.truck_end) : undefined);
   const [truckPickerField, setTruckPickerField] = useState<'start' | 'end' | null>(null);
@@ -921,28 +927,38 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
     temp_at_plant: tempAtPlant?.trim?.(), water_added_full: waterLitres,
     water_reason: waterReason, truck_start: truckStart, truck_end: truckEnd,
     hand_added: handAdded, nitrogen_added: nitrogenAdded, fibers_added: fibersAdded,
-    load_tested: loadTested, notes: plantNotes,
+    load_tested: loadTested === 'yes' ? true : loadTested === 'no' ? false : null, notes: plantNotes,
+    load_temp: loadTemp, load_air: loadAir, load_slump: loadSlump, load_cylinders: loadCylinders,
   };
-  const mandatoryPlantMissing = mandatoryPlantFields.some(f => {
-    const v = plantFieldValues[f];
+  const shouldShow = (fieldKey: string): boolean => {
+    const dep = (fd as any)?.[fieldKey]?.depends_on;
+    if (!dep) return true;
+    return plantFieldValues[dep.field] === dep.value;
+  };
+  const mandatoryPlantMissing = fdKeys.some(k => {
+    if (!(fd as any)?.[k]?.mandatory) return false;
+    // Skip if dependency not met
+    const dep = (fd as any)?.[k]?.depends_on;
+    if (dep && plantFieldValues[dep.field] !== dep.value) return false;
+    const v = plantFieldValues[k];
     return v === '' || v === null || v === undefined;
   });
 
   const PLANT_VOICE_FIELDS: VoiceField[] = [
-    {key: 'slumpFromPlant', label: 'Slump at Plant (mm)', prompt: 'Say the slump value at the plant in millimeters.', type: 'number', skip: slumpFromPlantLocked, required: true, min: 0, max: 300},
-    {key: 'waterLitres', label: 'Water Added (litres)', prompt: 'How many litres of water were added?', type: 'number', min: 0, max: 999},
-    {key: 'waterReason', label: 'Water Reason', prompt: 'Why was water added?', type: 'choice', choices: ['NOT ADDED', 'EXCEEDED', 'BRING UP TO']},
-    {key: 'slumpToJob', label: 'Slump to Job (mm)', prompt: 'Say the slump value to the job in millimeters.', type: 'number', skip: slumpToJobLocked, required: true, min: 0, max: 300},
-    {key: 'tempAtPlant', label: 'Temp at Plant (°c)', prompt: 'What is the temperature at the plant in degrees?', type: 'number', min: -40, max: 60},
-    {key: 'handAdded', label: 'Hand-Added Items', prompt: 'Were any items hand-added? Say yes or no.', type: 'boolean'},
-    {key: 'nitrogenAdded', label: 'Nitrogen Added', prompt: 'Was nitrogen added? Say yes or no.', type: 'boolean'},
-    {key: 'fibersAdded', label: 'Fibers Added', prompt: 'Were fibers added? Say yes or no.', type: 'boolean'},
-    {key: 'loadTested', label: 'Load Tested', prompt: 'Was the load tested? Say yes or no.', type: 'boolean'},
-    {key: 'loadTemp', label: 'Test Temp (°c)', prompt: 'What is the test temperature in degrees?', type: 'number', min: 0, max: 100, dependsOn: {key: 'loadTested', value: 'yes'}},
-    {key: 'loadAir', label: 'Test Air (%)', prompt: 'What is the air percentage?', type: 'number', min: 0, max: 100, dependsOn: {key: 'loadTested', value: 'yes'}},
-    {key: 'loadSlump', label: 'Test Slump (mm)', prompt: 'What is the test slump value in millimeters?', type: 'number', min: 0, max: 300, dependsOn: {key: 'loadTested', value: 'yes'}},
-    {key: 'loadCylinders', label: 'Cylinders', prompt: 'How many cylinders?', type: 'number', min: 0, max: 50, dependsOn: {key: 'loadTested', value: 'yes'}},
-    {key: 'plantNotes', label: 'Plant Notes', prompt: 'Dictate any plant notes.', type: 'text'},
+    {key: 'slumpFromPlant', label: ft('slump_from_plant'), prompt: `Say the ${ft('slump_from_plant').toLowerCase()} value.`, type: 'number', skip: slumpFromPlantLocked, required: mf('slump_from_plant'), min: 0, max: 300},
+    {key: 'waterLitres', label: ft('water_added_full'), prompt: `How many litres of water were added?`, type: 'number', min: 0, max: 999},
+    {key: 'waterReason', label: ft('water_reason'), prompt: 'Why was water added?', type: 'choice', choices: ['NOT ADDED', 'EXCEEDED', 'BRING UP TO']},
+    {key: 'slumpToJob', label: ft('slump_to_job'), prompt: `Say the ${ft('slump_to_job').toLowerCase()} value.`, type: 'number', skip: slumpToJobLocked, required: mf('slump_to_job'), min: 0, max: 300},
+    {key: 'tempAtPlant', label: ft('temp_at_plant'), prompt: 'What is the temperature at the plant in degrees?', type: 'number', min: -40, max: 60},
+    {key: 'handAdded', label: ft('hand_added'), prompt: `${ft('hand_added')}? Say yes or no.`, type: 'boolean'},
+    {key: 'nitrogenAdded', label: ft('nitrogen_added'), prompt: `${ft('nitrogen_added')}? Say yes or no.`, type: 'boolean'},
+    {key: 'fibersAdded', label: ft('fibers_added'), prompt: `${ft('fibers_added')}? Say yes or no.`, type: 'boolean'},
+    {key: 'loadTested', label: ft('load_tested'), prompt: `${ft('load_tested')}? Say yes or no.`, type: 'boolean'},
+    {key: 'loadTemp', label: ft('load_temp'), prompt: `What is the ${ft('load_temp').toLowerCase()}?`, type: 'number', min: 0, max: 100, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'loadAir', label: ft('load_air'), prompt: `What is the ${ft('load_air').toLowerCase()}?`, type: 'number', min: 0, max: 100, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'loadSlump', label: ft('load_slump'), prompt: `What is the ${ft('load_slump').toLowerCase()}?`, type: 'number', min: 0, max: 300, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'loadCylinders', label: ft('load_cylinders'), prompt: `How many ${ft('load_cylinders').toLowerCase()}?`, type: 'number', min: 0, max: 50, dependsOn: {key: 'loadTested', value: 'yes'}},
+    {key: 'plantNotes', label: ft('notes'), prompt: 'Dictate any plant notes.', type: 'text'},
   ];
 
   const PLANT_KEYWORDS = ['slump', 'nitrogen', 'fibers', 'bring up to', 'exceeded', 'not added', 'litres', 'cylinders'];
@@ -969,10 +985,10 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
     if (!dirtyMountRef.current) { dirtyMountRef.current = true; return; }
     if (hasApiData) setIsDirty(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waterLitres, waterReason, handAdded, nitrogenAdded, fibersAdded, loadTested, truckStart, truckEnd, plantNotes, tempAtPlant, slumpFromPlant, slumpToJob]);
+  }, [waterLitres, waterReason, handAdded, nitrogenAdded, fibersAdded, loadTested, truckStart, truckEnd, plantNotes, tempAtPlant, slumpFromPlant, slumpToJob, loadTemp, loadAir, loadSlump, loadCylinders]);
 
   const plantScrollRef = useRef<ScrollView>(null);
-  const plantTestAnim = useRef(new Animated.Value(0)).current;
+  const plantTestAnim = useRef(new Animated.Value(loadTested === 'yes' ? 1 : 0)).current;
   const {width: _pw, height: _ph} = useWindowDimensions();
   const _pLand = _pw > _ph;
   const handlePlantLoadTested = useCallback((val: 'yes' | 'no') => {
@@ -1005,13 +1021,13 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           {/* Top: two columns */}
           <View style={[{flexDirection: 'row', gap: wp(10)}, !_pIsPhone && {flex: 3}]}>
             <LCard title="Mix Properties" icon="science">
-              <LField label="SLUMP AT PLANT (mm)" mandatory={mf('slump_from_plant')}>
+              <LField label={ft('slump_from_plant')} mandatory={mf('slump_from_plant')}>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpFromPlantLocked && setSlumpPickerVisible(true)} disabled={slumpFromPlantLocked}>
                   <YellowInput value={slumpFromPlant} />
                 </TouchableOpacity>
                 {!slumpFromPlantLocked && <MoreBtn onPress={() => setSlumpPickerVisible(true)} />}
               </LField>
-              <LField label="WATER ADDED (litres)" mandatory={mf('water_added_full')}>
+              <LField label={ft('water_added_full')} mandatory={mf('water_added_full')}>
                 <View style={common.rowFlex1Gap12}>
                   <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
                   <View style={[common.rowCenterGap8, {flex: 1}]}>
@@ -1020,47 +1036,47 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                   </View>
                 </View>
               </LField>
-              <LField label="SLUMP TO JOB (mm)" mandatory={mf('slump_to_job')}>
+              <LField label={ft('slump_to_job')} mandatory={mf('slump_to_job')}>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpToJobLocked && setSlumpToJobPickerVisible(true)} disabled={slumpToJobLocked}>
                   <YellowInput value={slumpToJob} />
                 </TouchableOpacity>
               </LField>
-              <LField label="TEMP AT PLANT (°c)" noBorder mandatory={mf('temp_at_plant')}>
+              <LField label={ft('temp_at_plant')} noBorder mandatory={mf('temp_at_plant')}>
                 <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
               </LField>
             </LCard>
             <View style={{flex: 1}}>
             <LCard title="Truck & Additives" icon="local-shipping">
-              {loadTested === 'yes' ? (
-              <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled contentContainerStyle={{gap: wp(8)}}>
+              <ScrollView style={{flex: 1}} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled contentContainerStyle={{gap: wp(8)}}>
                 <View style={{paddingVertical: wp(4)}}>
                   <LFieldRow>
-                    <LField label="TRUCK START" compact mandatory={mf('truck_start')}>
+                    <LField label={ft('truck_start')} compact mandatory={mf('truck_start')}>
                       <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
                     </LField>
-                    <LField label="TRUCK END" compact mandatory={mf('truck_end')}>
+                    <LField label={ft('truck_end')} compact mandatory={mf('truck_end')}>
                       <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
                     </LField>
                   </LFieldRow>
                 </View>
-                <LField label="HAND-ADDED" mandatory={mf('hand_added')}>
-                  <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
+                <LField label={ft('hand_added')} mandatory={mf('hand_added')}>
+                  <Check checked={!!handAdded} onPress={() => setHandAdded(!handAdded)} />
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
                     <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
                   </TouchableOpacity>
                 </LField>
                 <View style={{paddingVertical: wp(4)}}>
                   <LFieldRow>
-                    <LField label="NITROGEN" compact mandatory={mf('nitrogen_added')}><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
-                    <LField label="FIBERS" compact mandatory={mf('fibers_added')}><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
+                    <LField label={ft('nitrogen_added')} compact mandatory={mf('nitrogen_added')}><Check checked={!!nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
+                    <LField label={ft('fibers_added')} compact mandatory={mf('fibers_added')}><Check checked={!!fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
                   </LFieldRow>
                 </View>
-                <LField label="LOAD TESTED" mandatory={mf('load_tested')}>
+                <LField label={ft('load_tested')} mandatory={mf('load_tested')}>
                   <View style={[st.radioRow, {justifyContent: 'center'}]}>
-                    <Radio selected={true} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
-                    <Radio selected={false} label="No" onPress={() => handlePlantLoadTested('no')} />
+                    <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
+                    <Radio selected={loadTested === 'no'} label="No" onPress={() => handlePlantLoadTested('no')} />
                   </View>
                 </LField>
+                {shouldShow('load_temp') && (
                 <Animated.View style={{opacity: plantTestAnim, transform: [{translateY: plantTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
                   <View style={[ls.sectionDivider, {borderTopColor: c.primary}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
@@ -1069,55 +1085,24 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                     </View>
                   </View>
                   <LFieldRow>
-                    <LField label="TEMP(°c)" compact>
+                    <LField label={ft('load_temp')} compact>
                       <Stepper value={String(loadTemp)} unit="" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
                     </LField>
-                    <LField label="AIR(%)" compact>
+                    <LField label={ft('load_air')} compact>
                       <Stepper value={String(loadAir)} unit="" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
                     </LField>
                   </LFieldRow>
                   <LFieldRow>
-                    <LField label="SLUMP(mm)" compact>
+                    <LField label={ft('load_slump')} compact>
                       <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
                     </LField>
-                    <LField label="CYLINDERS" compact>
+                    <LField label={ft('load_cylinders')} compact>
                       <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
                     </LField>
                   </LFieldRow>
                 </Animated.View>
+                )}
               </ScrollView>
-              ) : (
-              <ScrollView showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled contentContainerStyle={{gap: wp(8)}}>
-                <View style={{paddingVertical: wp(4)}}>
-                  <LFieldRow>
-                    <LField label="TRUCK START" compact mandatory={mf('truck_start')}>
-                      <TimePicker label="Select" value={truckStart} onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }} />
-                    </LField>
-                    <LField label="TRUCK END" compact mandatory={mf('truck_end')}>
-                      <TimePicker label="Select" value={truckEnd} onPress={() => { setTruckPickerField('end'); setTruckPickerVisible(true); }} />
-                    </LField>
-                  </LFieldRow>
-                </View>
-                <LField label="HAND-ADDED" mandatory={mf('hand_added')}>
-                  <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
-                  <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
-                    <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
-                  </TouchableOpacity>
-                </LField>
-                <View style={{paddingVertical: wp(4)}}>
-                  <LFieldRow>
-                    <LField label="NITROGEN" compact mandatory={mf('nitrogen_added')}><Check checked={nitrogenAdded} label="Not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></LField>
-                    <LField label="FIBERS" compact mandatory={mf('fibers_added')}><Check checked={fibersAdded} label="Not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></LField>
-                  </LFieldRow>
-                </View>
-                <LField label="LOAD TESTED" mandatory={mf('load_tested')}>
-                  <View style={[st.radioRow, {justifyContent: 'center'}]}>
-                    <Radio selected={false} label="Yes" onPress={() => handlePlantLoadTested('yes')} />
-                    <Radio selected={loadTested === 'no'} label="No" onPress={() => handlePlantLoadTested('no')} />
-                  </View>
-                </LField>
-              </ScrollView>
-              )}
             </LCard>
             </View>
           </View>
@@ -1143,12 +1128,12 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
             {plantLandContent}
           </ScrollView>
         ) : plantLandContent}
-        <SlumpPickerModal visible={slumpPickerVisible} value={slumpFromPlant} title="Slump From Plant" onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }} onClose={() => setSlumpPickerVisible(false)} />
+        <SlumpPickerModal visible={slumpPickerVisible} value={slumpFromPlant} title={ft('slump_from_plant')} onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }} onClose={() => setSlumpPickerVisible(false)} />
         <SlumpPickerModal visible={loadSlumpPickerVisible} value={loadSlump} title="Load Slump" onConfirm={(val) => { setLoadSlump(val); setLoadSlumpPickerVisible(false); }} onClose={() => setLoadSlumpPickerVisible(false)} />
-        <SlumpPickerModal visible={slumpToJobPickerVisible} value={slumpToJob} title="Slump To Job" onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }} onClose={() => setSlumpToJobPickerVisible(false)} />
+        <SlumpPickerModal visible={slumpToJobPickerVisible} value={slumpToJob} title={ft('slump_to_job')} onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }} onClose={() => setSlumpToJobPickerVisible(false)} />
         <ReasonListModal visible={reasonModalVisible} onSelect={setWaterReason} onClose={() => setReasonModalVisible(false)} />
         <ProductsModal visible={productsModalVisible} onClose={() => setProductsModalVisible(false)} products={p?.products} />
-        <DateTimePicker visible={truckPickerVisible} value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()} onConfirm={(date) => { if (truckPickerField === 'start') {setTruckStart(date);} else if (truckPickerField === 'end') {setTruckEnd(date);} setTruckPickerVisible(false); }} onCancel={() => setTruckPickerVisible(false)} />
+        <DateTimePicker mode="time" visible={truckPickerVisible} value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()} onConfirm={(date) => { if (truckPickerField === 'start') {setTruckStart(date);} else if (truckPickerField === 'end') {setTruckEnd(date);} setTruckPickerVisible(false); }} onCancel={() => setTruckPickerVisible(false)} />
         <VoiceFormWizard visible={voiceWizardVisible} onClose={() => setVoiceWizardVisible(false)} fields={PLANT_VOICE_FIELDS} onComplete={handleVoiceComplete} keywords={PLANT_KEYWORDS} speakPrompts />
       </View>
     );
@@ -1169,13 +1154,13 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       <View pointerEvents={allFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Mix Properties" icon="science">
-      <Field label="SLUMP AT PLANT (mm)" mandatory={mf('slump_from_plant')}>
+      <Field label={ft('slump_from_plant')} mandatory={mf('slump_from_plant')}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpFromPlantLocked && setSlumpPickerVisible(true)} disabled={slumpFromPlantLocked}>
           <YellowInput value={slumpFromPlant} />
         </TouchableOpacity>
         {!slumpFromPlantLocked && <MoreBtn onPress={() => setSlumpPickerVisible(true)} />}
       </Field>
-      <Field label="WATER ADDED (litres)" mandatory={mf('water_added_full')}>
+      <Field label={ft('water_added_full')} mandatory={mf('water_added_full')}>
         <View style={common.rowFlex1Gap12}>
           <Stepper value={String(waterLitres)} unit="" onIncrement={() => setWaterLitres(v => v + 1)} onDecrement={() => setWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setWaterLitres(parseInt(v) || 0)} />
           <View style={[common.rowCenterGap8, {flex: 1}]}>
@@ -1184,25 +1169,25 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           </View>
         </View>
       </Field>
-      <Field label="SLUMP TO JOB (mm)" mandatory={mf('slump_to_job')}>
+      <Field label={ft('slump_to_job')} mandatory={mf('slump_to_job')}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => !slumpToJobLocked && setSlumpToJobPickerVisible(true)} disabled={slumpToJobLocked}>
           <YellowInput value={slumpToJob} />
         </TouchableOpacity>
       </Field>
-      <Field label="TEMP AT PLANT (°c)" last mandatory={mf('temp_at_plant')}>
+      <Field label={ft('temp_at_plant')} last mandatory={mf('temp_at_plant')}>
         <LineInput width={100} placeholder="Temperature" keyboardType="numeric" value={tempAtPlant} onChangeText={setTempAtPlant} />
       </Field>
       </FieldCard>
       <FieldCard title="Truck & Additives" icon="local-shipping">
       <FieldRow>
-        <Field label="TRUCK START" compact mandatory={mf('truck_start')}>
+        <Field label={ft('truck_start')} compact mandatory={mf('truck_start')}>
           <TimePicker
             label="Select"
             value={truckStart}
             onPress={() => { setTruckPickerField('start'); setTruckPickerVisible(true); }}
           />
         </Field>
-        <Field label="TRUCK END" compact mandatory={mf('truck_end')}>
+        <Field label={ft('truck_end')} compact mandatory={mf('truck_end')}>
           <TimePicker
             label="Select"
             value={truckEnd}
@@ -1210,37 +1195,37 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
           />
         </Field>
       </FieldRow>
-      <Field label="HAND-ADDED ITEMS" mandatory={mf('hand_added')}>
-        <Check checked={handAdded} onPress={() => setHandAdded(!handAdded)} />
+      <Field label={ft('hand_added')} mandatory={mf('hand_added')}>
+        <Check checked={!!handAdded} onPress={() => setHandAdded(!handAdded)} />
         <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
           <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
         </TouchableOpacity>
       </Field>
       <FieldRow>
-        <Field label="NITROGEN ADDED" compact mandatory={mf('nitrogen_added')}><Check checked={nitrogenAdded} label="If not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
-        <Field label="FIBERS ADDED" compact mandatory={mf('fibers_added')}><Check checked={fibersAdded} label="If not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></Field>
+        <Field label={ft('nitrogen_added')} compact mandatory={mf('nitrogen_added')}><Check checked={!!nitrogenAdded} label="If not on ticket" onPress={() => setNitrogenAdded(!nitrogenAdded)} /></Field>
+        <Field label={ft('fibers_added')} compact mandatory={mf('fibers_added')}><Check checked={!!fibersAdded} label="If not on ticket" onPress={() => setFibersAdded(!fibersAdded)} /></Field>
       </FieldRow>
-      <Field label="LOAD TESTED" last={loadTested !== 'yes'} mandatory={mf('load_tested')}>
+      <Field label={ft('load_tested')} last={!shouldShow('load_temp')} mandatory={mf('load_tested')}>
         <View style={st.radioRow}>
           <Radio selected={loadTested === 'yes'} label="Yes" onPress={() => setLoadTested('yes')} />
           <Radio selected={loadTested === 'no'} label="No" onPress={() => setLoadTested('no')} />
         </View>
       </Field>
-      {loadTested === 'yes' && (
+      {shouldShow('load_temp') && (
         <>
           <FieldRow>
-            <Field label="TEMP(°c)" compact>
+            <Field label={ft('load_temp')} compact>
               <Stepper value={String(loadTemp)} unit="" onIncrement={() => setLoadTemp(v => v + 1)} onDecrement={() => setLoadTemp(v => Math.max(0, v - 1))} onChangeValue={v => setLoadTemp(parseInt(v) || 0)} />
             </Field>
-            <Field label="AIR(%)" compact>
+            <Field label={ft('load_air')} compact>
               <Stepper value={String(loadAir)} unit="" onIncrement={() => setLoadAir(v => v + 1)} onDecrement={() => setLoadAir(v => Math.max(0, v - 1))} onChangeValue={v => setLoadAir(parseInt(v) || 0)} />
             </Field>
           </FieldRow>
           <FieldRow>
-            <Field label="SLUMP(mm)" compact>
+            <Field label={ft('load_slump')} compact>
               <Stepper value={loadSlump} unit="" onIncrement={() => setLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} />
             </Field>
-            <Field label="CYLINDERS" compact>
+            <Field label={ft('load_cylinders')} compact>
               <Stepper value={String(loadCylinders)} unit="" onIncrement={() => setLoadCylinders(v => v + 1)} onDecrement={() => setLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setLoadCylinders(parseInt(v) || 0)} />
             </Field>
           </FieldRow>
@@ -1248,7 +1233,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       )}
       </FieldCard>
       <FieldCard title="Plant Notes" icon="edit-note" fullWidth>
-      <Field label="NOTES" wide last mandatory={mf('notes')}>
+      <Field label={ft('notes')} wide last mandatory={mf('notes')}>
         <NoteInput placeholder="Enter plant notes..." value={plantNotes} onChangeText={setPlantNotes} />
       </Field>
       </FieldCard>
@@ -1257,7 +1242,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       <SlumpPickerModal
         visible={slumpPickerVisible}
         value={slumpFromPlant}
-        title="Slump From Plant"
+        title={ft('slump_from_plant')}
         onConfirm={(val) => { setSlumpFromPlant(val); setSlumpPickerVisible(false); }}
         onClose={() => setSlumpPickerVisible(false)}
       />
@@ -1271,7 +1256,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       <SlumpPickerModal
         visible={slumpToJobPickerVisible}
         value={slumpToJob}
-        title="Slump To Job"
+        title={ft('slump_to_job')}
         onConfirm={(val) => { setSlumpToJob(val); setSlumpToJobPickerVisible(false); }}
         onClose={() => setSlumpToJobPickerVisible(false)}
       />
@@ -1286,6 +1271,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         products={p?.products}
       />
       <DateTimePicker
+        mode="time"
         visible={truckPickerVisible}
         value={(truckPickerField === 'start' ? truckStart : truckEnd) || new Date()}
         onConfirm={(date) => {
@@ -1311,26 +1297,19 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
 function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
-  const mf = (field: string) => data?.mandatory_fields?.jobsite?.includes(field) ?? false;
+  const fd = data?.field_definitions?.jobsite || {};
+  const fdKeys = Object.keys(fd);
+  const hasField = (field: string) => field in fd;
+  const ft = (field: string) => (fd as any)?.[field]?.title || field.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+  const mf = (field: string) => (fd as any)?.[field]?.mandatory ?? false;
   const j = data?.jobsite;
-  const jAllFieldsFilled = j != null && (
-    j.full_load_litres != null && j.full_load_reason != null && j.full_load_mm != null &&
-    j.customer_water_litres != null && j.customer_water_mm != null &&
-    j.maintenance_water_litres != null && j.maintenance_water_mm != null &&
-    j.super_plasticizer != null && j.conveyor != null && j.color != null &&
-    j.fiber != null && j.other != null && j.conveyor_ordered_not_used != null &&
-    j.unloaded_conveyor != null && j.load_disputed != null && j.washout_area != null &&
-    j.load_tested != null && j.notes != null
-  );
-  const jHasApiData = j != null && (
-    j.full_load_litres != null || j.full_load_reason != null || j.full_load_mm != null ||
-    j.customer_water_litres != null || j.customer_water_mm != null ||
-    j.maintenance_water_litres != null || j.maintenance_water_mm != null ||
-    j.super_plasticizer != null || j.conveyor != null || j.color != null ||
-    j.fiber != null || j.other != null || j.conveyor_ordered_not_used != null ||
-    j.unloaded_conveyor != null || j.load_disputed != null || j.washout_area != null ||
-    j.load_tested != null || j.notes != null
-  );
+  const jAllFieldsFilled = j != null && fdKeys.length > 0 && fdKeys.every(k => {
+    const dep = (fd as any)?.[k]?.depends_on;
+    if (dep && (j as any)?.[dep.field] !== dep.value) return true;
+    const val = (j as any)?.[k];
+    return val != null && val !== '';
+  });
+  const jHasApiData = j != null && fdKeys.some(k => (j as any)?.[k] != null);
   const fullLoadLocked = j?.full_load_litres != null;
   const [saving, setSaving] = useState(false);
   const [jIsDirty, setJIsDirty] = useState(false);
@@ -1340,23 +1319,29 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
     setSavingOverlay?.(true);
     try {
       const result = await saveDeliveryTab(ticketId, 'jobsite', {
-        full_load_litres: fullLoadLitres,
+        full_load_litres: fullLoadLitres > 0 ? fullLoadLitres : null,
         full_load_reason: fullLoadReason || null,
         full_load_mm: fullLoadMm !== '' ? Number(fullLoadMm) : null,
-        customer_water_litres: custWaterLitres,
+        customer_water_litres: custWaterLitres > 0 ? custWaterLitres : null,
         customer_water_mm: custWaterMm !== '' ? Number(custWaterMm) : null,
-        maintenance_water_litres: maintWaterLitres,
+        maintenance_water_litres: maintWaterLitres > 0 ? maintWaterLitres : null,
         maintenance_water_mm: maintWaterMm !== '' ? Number(maintWaterMm) : null,
         super_plasticizer: addedValues['SUPER PLASTICIZER'] || null,
         conveyor: addedValues['CONVEYOR (IF NOT ON TICKET)'] || null,
         color: addedValues['COLOR'] || null,
         fiber: addedValues['FIBER'] || null,
         other: addedValues['Other'] || null,
-        conveyor_ordered_not_used: conveyorOrdered,
-        unloaded_conveyor: unloadedConveyor,
-        load_disputed: loadDisputed,
+        conveyor_ordered_not_used: conveyorOrdered != null ? conveyorOrdered : null,
+        unloaded_conveyor: unloadedConveyor != null ? unloadedConveyor : null,
+        load_disputed: loadDisputed != null ? loadDisputed : null,
         washout_area: washoutArea || null,
         load_tested: jobLoadTested === 'yes' ? true : jobLoadTested === 'no' ? false : null,
+        ...(jobLoadTested === 'yes' ? {
+          load_temp: jobLoadTemp != null ? jobLoadTemp : null,
+          load_air: jobLoadAir != null ? jobLoadAir : null,
+          load_slump: jobLoadSlump !== '' ? Number(jobLoadSlump) : null,
+          load_cylinders: jobLoadCylinders != null ? jobLoadCylinders : null,
+        } : {}),
         notes: jobsiteNotes || null,
       });
       if (!result.offline) await refreshRecord?.();
@@ -1389,18 +1374,17 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   const [washoutModalVisible, setWashoutModalVisible] = useState(false);
   const [jobsiteNotes, setJobsiteNotes] = useState(j?.notes || '');
   const [jobsiteNotesModal, setJobsiteNotesModal] = useState(false);
-  const [conveyorOrdered, setConveyorOrdered] = useState(j?.conveyor_ordered_not_used ?? false);
-  const [unloadedConveyor, setUnloadedConveyor] = useState(j?.unloaded_conveyor ?? false);
-  const [loadDisputed, setLoadDisputed] = useState(j?.load_disputed ?? false);
+  const [conveyorOrdered, setConveyorOrdered] = useState<boolean | null>(j?.conveyor_ordered_not_used ?? null);
+  const [unloadedConveyor, setUnloadedConveyor] = useState<boolean | null>(j?.unloaded_conveyor ?? null);
+  const [loadDisputed, setLoadDisputed] = useState<boolean | null>(j?.load_disputed ?? null);
   const [jobLoadTested, setJobLoadTested] = useState<'yes' | 'no' | null>(j?.load_tested === true ? 'yes' : j?.load_tested === false ? 'no' : null);
-  const [jobLoadTemp, setJobLoadTemp] = useState(0);
-  const [jobLoadAir, setJobLoadAir] = useState(0);
-  const [jobLoadSlump, setJobLoadSlump] = useState('');
+  const [jobLoadTemp, setJobLoadTemp] = useState((j as any)?.load_temp ?? 0);
+  const [jobLoadAir, setJobLoadAir] = useState((j as any)?.load_air ?? 0);
+  const [jobLoadSlump, setJobLoadSlump] = useState((j as any)?.load_slump != null ? String((j as any).load_slump) : '');
   const [jobLoadSlumpPickerVisible, setJobLoadSlumpPickerVisible] = useState(false);
-  const [jobLoadCylinders, setJobLoadCylinders] = useState(0);
+  const [jobLoadCylinders, setJobLoadCylinders] = useState((j as any)?.load_cylinders ?? 0);
   const [jVoiceWizardVisible, setJVoiceWizardVisible] = useState(false);
 
-  const mandatoryJobFields = data?.mandatory_fields?.jobsite || [];
   const jobFieldValues: Record<string, any> = {
     full_load_litres: fullLoadLitres, full_load_reason: fullLoadReason,
     full_load_mm: fullLoadMm?.trim?.(), customer_water_litres: custWaterLitres,
@@ -1410,36 +1394,45 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
     fiber: addedValues['FIBER'], other: addedValues['Other'],
     conveyor_ordered_not_used: conveyorOrdered, unloaded_conveyor: unloadedConveyor,
     load_disputed: loadDisputed, washout_area: washoutArea,
-    load_tested: jobLoadTested, notes: jobsiteNotes,
+    load_tested: jobLoadTested === 'yes' ? true : jobLoadTested === 'no' ? false : null, notes: jobsiteNotes,
+    load_temp: jobLoadTemp, load_air: jobLoadAir, load_slump: jobLoadSlump, load_cylinders: jobLoadCylinders,
   };
-  const mandatoryJobMissing = mandatoryJobFields.some(f => {
-    const v = jobFieldValues[f];
+  const jobShouldShow = (fieldKey: string): boolean => {
+    const dep = (fd as any)?.[fieldKey]?.depends_on;
+    if (!dep) return true;
+    return jobFieldValues[dep.field] === dep.value;
+  };
+  const mandatoryJobMissing = fdKeys.some(k => {
+    if (!(fd as any)?.[k]?.mandatory) return false;
+    const dep = (fd as any)?.[k]?.depends_on;
+    if (dep && jobFieldValues[dep.field] !== dep.value) return false;
+    const v = jobFieldValues[k];
     return v === '' || v === null || v === undefined;
   });
 
   const JOBSITE_VOICE_FIELDS: VoiceField[] = [
-    {key: 'fullLoadLitres', label: 'Full Load (litres)', prompt: 'How many litres for the full load?', type: 'number', min: 0, max: 999},
-    {key: 'fullLoadReason', label: 'Full Load Reason', prompt: 'What is the reason?', type: 'choice', choices: ['NOT ADDED', 'EXCEEDED', 'BRING UP TO']},
-    {key: 'fullLoadMm', label: 'Full Load Slump (mm)', prompt: 'What is the full load slump in millimeters?', type: 'number', min: 0, max: 300},
-    {key: 'custWaterLitres', label: 'Customer Water (litres)', prompt: 'How many litres of customer requested water?', type: 'number', min: 0, max: 999},
-    {key: 'custWaterMm', label: 'Customer Water (mm)', prompt: 'Customer water slump in millimeters?', type: 'number', min: 0, max: 300},
-    {key: 'maintWaterLitres', label: 'Maintenance Water (litres)', prompt: 'How many litres of maintenance water?', type: 'number', min: 0, max: 999},
-    {key: 'maintWaterMm', label: 'Maintenance Water (mm)', prompt: 'Maintenance water slump in millimeters?', type: 'number', min: 0, max: 300},
-    {key: 'superPlasticizer', label: 'Super Plasticizer', prompt: 'Super plasticizer? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
-    {key: 'conveyor', label: 'Conveyor', prompt: 'Conveyor? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
-    {key: 'color', label: 'Color', prompt: 'Color? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
-    {key: 'fiber', label: 'Fiber', prompt: 'Fiber? Say not added, customer, or driver.', type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
-    {key: 'other', label: 'Other', prompt: 'Any other items to add?', type: 'text'},
-    {key: 'conveyorOrdered', label: 'Conveyor Ordered Not Used', prompt: 'Was conveyor ordered but not used? Say yes or no.', type: 'boolean'},
-    {key: 'unloadedConveyor', label: 'Unloaded Over Conveyor', prompt: 'Was it unloaded over conveyor? Say yes or no.', type: 'boolean'},
-    {key: 'loadDisputed', label: 'Load Disputed', prompt: 'Was the load disputed? Say yes or no.', type: 'boolean'},
-    {key: 'washoutArea', label: 'Washout Area', prompt: 'What is the washout area?', type: 'choice', choices: ['WHEELBARROW', 'DUMPSTER', 'BEHIND CURB LINE', 'STONE PILE ON JOB SITE', 'TRUCK MOUNTED WASHOUT', 'PUMP', 'OTHER']},
-    {key: 'jobLoadTested', label: 'Load Tested', prompt: 'Was the load tested? Say yes or no.', type: 'boolean'},
-    {key: 'jobLoadTemp', label: 'Test Temp (°c)', prompt: 'What is the test temperature?', type: 'number', min: 0, max: 100, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
-    {key: 'jobLoadAir', label: 'Test Air (%)', prompt: 'What is the air percentage?', type: 'number', min: 0, max: 100, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
-    {key: 'jobLoadSlump', label: 'Test Slump (mm)', prompt: 'What is the test slump in millimeters?', type: 'number', min: 0, max: 300, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
-    {key: 'jobLoadCylinders', label: 'Cylinders', prompt: 'How many cylinders?', type: 'number', min: 0, max: 50, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
-    {key: 'jobsiteNotes', label: 'Jobsite Notes', prompt: 'Dictate any jobsite notes.', type: 'text'},
+    {key: 'fullLoadLitres', label: ft('full_load_litres'), prompt: `How many litres for ${ft('full_load_litres').toLowerCase()}?`, type: 'number', min: 0, max: 999},
+    {key: 'fullLoadReason', label: ft('full_load_reason'), prompt: `What is the ${ft('full_load_reason').toLowerCase()}?`, type: 'choice', choices: ['NOT ADDED', 'EXCEEDED', 'BRING UP TO']},
+    {key: 'fullLoadMm', label: ft('full_load_mm'), prompt: `What is the ${ft('full_load_mm').toLowerCase()}?`, type: 'number', min: 0, max: 300},
+    {key: 'custWaterLitres', label: ft('customer_water_litres'), prompt: `How many litres of ${ft('customer_water_litres').toLowerCase()}?`, type: 'number', min: 0, max: 999},
+    {key: 'custWaterMm', label: ft('customer_water_mm'), prompt: `What is the ${ft('customer_water_mm').toLowerCase()}?`, type: 'number', min: 0, max: 300},
+    {key: 'maintWaterLitres', label: ft('maintenance_water_litres'), prompt: `How many litres of ${ft('maintenance_water_litres').toLowerCase()}?`, type: 'number', min: 0, max: 999},
+    {key: 'maintWaterMm', label: ft('maintenance_water_mm'), prompt: `What is the ${ft('maintenance_water_mm').toLowerCase()}?`, type: 'number', min: 0, max: 300},
+    {key: 'superPlasticizer', label: ft('super_plasticizer'), prompt: `${ft('super_plasticizer')}? Say not added, customer, or driver.`, type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'conveyor', label: ft('conveyor'), prompt: `${ft('conveyor')}? Say not added, customer, or driver.`, type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'color', label: ft('color'), prompt: `${ft('color')}? Say not added, customer, or driver.`, type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'fiber', label: ft('fiber'), prompt: `${ft('fiber')}? Say not added, customer, or driver.`, type: 'choice', choices: ['NOT ADDED', 'CUSTOMER', 'DRIVER']},
+    {key: 'other', label: ft('other'), prompt: `Any ${ft('other').toLowerCase()} items to add?`, type: 'text'},
+    {key: 'conveyorOrdered', label: ft('conveyor_ordered_not_used'), prompt: `${ft('conveyor_ordered_not_used')}? Say yes or no.`, type: 'boolean'},
+    {key: 'unloadedConveyor', label: ft('unloaded_conveyor'), prompt: `${ft('unloaded_conveyor')}? Say yes or no.`, type: 'boolean'},
+    {key: 'loadDisputed', label: ft('load_disputed'), prompt: `${ft('load_disputed')}? Say yes or no.`, type: 'boolean'},
+    {key: 'washoutArea', label: ft('washout_area'), prompt: `What is the ${ft('washout_area').toLowerCase()}?`, type: 'choice', choices: ['WHEELBARROW', 'DUMPSTER', 'BEHIND CURB LINE', 'STONE PILE ON JOB SITE', 'TRUCK MOUNTED WASHOUT', 'PUMP', 'OTHER']},
+    {key: 'jobLoadTested', label: ft('load_tested'), prompt: `${ft('load_tested')}? Say yes or no.`, type: 'boolean'},
+    {key: 'jobLoadTemp', label: ft('load_temp'), prompt: `What is the ${ft('load_temp').toLowerCase()}?`, type: 'number', min: 0, max: 100, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobLoadAir', label: ft('load_air'), prompt: `What is the ${ft('load_air').toLowerCase()}?`, type: 'number', min: 0, max: 100, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobLoadSlump', label: ft('load_slump'), prompt: `What is the ${ft('load_slump').toLowerCase()}?`, type: 'number', min: 0, max: 300, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobLoadCylinders', label: ft('load_cylinders'), prompt: `How many ${ft('load_cylinders').toLowerCase()}?`, type: 'number', min: 0, max: 50, dependsOn: {key: 'jobLoadTested', value: 'yes'}},
+    {key: 'jobsiteNotes', label: ft('notes'), prompt: `Dictate any ${ft('notes').toLowerCase()}.`, type: 'text'},
   ];
 
   const JOBSITE_KEYWORDS = ['slump', 'litres', 'plasticizer', 'conveyor', 'fiber', 'wheelbarrow', 'dumpster', 'curb', 'cylinders', 'maintenance', 'customer', 'driver', 'not added'];
@@ -1474,10 +1467,10 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
     if (!jDirtyMountRef.current) { jDirtyMountRef.current = true; return; }
     if (jHasApiData) setJIsDirty(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullLoadLitres, fullLoadReason, fullLoadMm, custWaterLitres, custWaterMm, maintWaterLitres, maintWaterMm, addedValues, conveyorOrdered, unloadedConveyor, loadDisputed, washoutArea, jobLoadTested, jobsiteNotes]);
+  }, [fullLoadLitres, fullLoadReason, fullLoadMm, custWaterLitres, custWaterMm, maintWaterLitres, maintWaterMm, addedValues, conveyorOrdered, unloadedConveyor, loadDisputed, washoutArea, jobLoadTested, jobsiteNotes, jobLoadTemp, jobLoadAir, jobLoadSlump, jobLoadCylinders]);
 
   const jobScrollRef = useRef<ScrollView>(null);
-  const jobTestAnim = useRef(new Animated.Value(0)).current;
+  const jobTestAnim = useRef(new Animated.Value(jobLoadTested === 'yes' ? 1 : 0)).current;
   const {width: _jw, height: _jh} = useWindowDimensions();
   const _jLand = _jw > _jh;
 
@@ -1509,18 +1502,18 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           {/* Column 1: Water */}
           <View style={{flex: 1}}>
           <LCard title="Water" icon="water-drop">
-            <LField label="FULL LOAD (litres)" mandatory={mf('full_load_litres')}>
+            <LField label={ft('full_load_litres')} mandatory={mf('full_load_litres')}>
               <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => v + 1)} onDecrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={fullLoadLocked ? undefined : v => setFullLoadLitres(parseInt(v) || 0)} />
             </LField>
-            <LField label="REASON" mandatory={mf('full_load_reason')}>
+            <LField label={ft('full_load_reason')} mandatory={mf('full_load_reason')}>
               <LineInput placeholder="Select" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
               <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
             </LField>
-            <LField label="SLUMP" mandatory={mf('full_load_mm')}>
+            <LField label={ft('full_load_mm')} mandatory={mf('full_load_mm')}>
               <LineInput placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
               <MoreBtn onPress={() => setMmModalField('fullLoad')} />
             </LField>
-            <LField label="CUSTOMER REQUESTED WATER(litres)" wide noBorder mandatory={mf('customer_water_litres')}>
+            <LField label={ft('customer_water_litres')} wide noBorder mandatory={mf('customer_water_litres')}>
               <View style={common.rowCenterGap8}>
                 <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
                 <LineInput placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
@@ -1528,7 +1521,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               </View>
             </LField>
             <View style={{marginTop: wp(8)}} />
-            <LField label="MAINTENANCE WATER(litres)" wide noBorder mandatory={mf('maintenance_water_litres')}>
+            <LField label={ft('maintenance_water_litres')} wide noBorder mandatory={mf('maintenance_water_litres')}>
               <View style={common.rowCenterGap8}>
                 <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
                 <LineInput placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
@@ -1541,14 +1534,14 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           {/* Column 2: Added, Not Ordered (moved from Water & Additives) */}
           <View style={{flex: 1}}>
           <LCard title="Added, Not Ordered" icon="playlist-add" style={{flex: 0, alignSelf: 'flex-start', width: '100%'}}>
-            <LField label="SUPER PLASTICIZER" wide noBorder mandatory={mf('super_plasticizer')}>
+            <LField label={ft('super_plasticizer')} wide noBorder mandatory={mf('super_plasticizer')}>
               <View style={common.rowCenterGap8}>
                 <LineInput placeholder="Select" value={addedValues['SUPER PLASTICIZER'] || ''} onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
                 <MoreBtn onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
               </View>
             </LField>
             <View style={{marginTop: wp(12)}} />
-            <LField label="CONVEYOR(if not on ticket)" wide noBorder mandatory={mf('conveyor')}>
+            <LField label={ft('conveyor')} wide noBorder mandatory={mf('conveyor')}>
               <View style={common.rowCenterGap8}>
                 <LineInput placeholder="Select" value={addedValues['CONVEYOR (IF NOT ON TICKET)'] || ''} onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
                 <MoreBtn onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
@@ -1556,15 +1549,15 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
             </LField>
             <View style={{marginTop: wp(10)}} />
             {[
-              {key: 'COLOR', label: 'COLOR', apiKey: 'color'},
-              {key: 'FIBER', label: 'FIBER', apiKey: 'fiber'},
+              {key: 'COLOR', apiKey: 'color'},
+              {key: 'FIBER', apiKey: 'fiber'},
             ].map(item => (
-              <LField key={item.key} label={item.label} mandatory={mf(item.apiKey)}>
+              <LField key={item.key} label={ft(item.apiKey)} mandatory={mf(item.apiKey)}>
                 <LineInput placeholder="Select" value={addedValues[item.key] || ''} onPress={() => setAddedModalItem(item.key)} />
                 <MoreBtn onPress={() => setAddedModalItem(item.key)} />
               </LField>
             ))}
-            <LField label="OTHER" mandatory={mf('other')}>
+            <LField label={ft('other')} mandatory={mf('other')}>
               <LineInput placeholder="Enter value" value={addedValues['Other'] || ''} onChangeText={(text) => setAddedValues(prev => ({...prev, Other: text}))} />
             </LField>
           </LCard>
@@ -1572,17 +1565,17 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
 
           {/* Column 3: Options & Testing + Jobsite Notes (moved to last) */}
           <LCard title="Options & Testing" icon="checklist" style={{flex: 1}}>
-            <ScrollView ref={jobScrollRef} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
-              <LField label="CONVEYOR ORDERED" compact mandatory={mf('conveyor_ordered_not_used')}>
-                <Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} />
+            <ScrollView ref={jobScrollRef} style={{flex: 1}} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
+              <LField label={ft('conveyor_ordered_not_used')} compact mandatory={mf('conveyor_ordered_not_used')}>
+                <Check checked={!!conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} />
               </LField>
-              <LField label="UNLOAD OVER CONVEYOR" compact mandatory={mf('unloaded_conveyor')}>
-                <Check checked={unloadedConveyor} label="Not used" onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
+              <LField label={ft('unloaded_conveyor')} compact mandatory={mf('unloaded_conveyor')}>
+                <Check checked={!!unloadedConveyor} label="Not used" onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
               </LField>
-              <LField label="LOAD DISPUTED" mandatory={mf('load_disputed')}>
-                <Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
+              <LField label={ft('load_disputed')} mandatory={mf('load_disputed')}>
+                <Check checked={!!loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
               </LField>
-              <LField label="WASHOUT" noBorder mandatory={mf('washout_area')}>
+              <LField label={ft('washout_area')} noBorder mandatory={mf('washout_area')}>
                 <LineInput placeholder="Select area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
                 <MoreBtn onPress={() => setWashoutModalVisible(true)} />
               </LField>
@@ -1590,13 +1583,13 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               <View style={[ls.sectionDivider, {borderTopColor: c.borderLight}]}>
                 <Text style={[ls.sectionLabel, {color: c.textMuted}]}>LOAD TESTING</Text>
               </View>
-              <LField label="LOAD TESTED" noBorder mandatory={mf('load_tested')}>
+              <LField label={ft('load_tested')} noBorder mandatory={mf('load_tested')}>
                 <View style={st.radioRow}>
                   <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => handleJobLoadTested('yes')} />
                   <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => handleJobLoadTested('no')} />
                 </View>
               </LField>
-              {jobLoadTested === 'yes' && (
+              {jobShouldShow('load_temp') && (
                 <Animated.View style={{opacity: jobTestAnim, transform: [{translateY: jobTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
                   <View style={[ls.sectionDivider, {borderTopColor: 'transparent'}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
@@ -1654,7 +1647,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           onSelect={(val) => setJobsiteNotes(prev => prev ? prev + '\n' + val : val)}
           onClose={() => setJobsiteNotesModal(false)}
         />
-        {jobLoadTested === 'yes' && (
+        {jobShouldShow('load_temp') && (
           <SlumpPickerModal visible={jobLoadSlumpPickerVisible} title="Load Slump" value={jobLoadSlump} onConfirm={(val) => { setJobLoadSlump(val); setJobLoadSlumpPickerVisible(false); }} onClose={() => setJobLoadSlumpPickerVisible(false)} />
         )}
         <VoiceFormWizard visible={jVoiceWizardVisible} onClose={() => setJVoiceWizardVisible(false)} fields={JOBSITE_VOICE_FIELDS} onComplete={handleJobsiteVoiceComplete} keywords={JOBSITE_KEYWORDS} speakPrompts />
@@ -1674,23 +1667,23 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       <View pointerEvents={jAllFieldsFilled ? 'none' : 'auto'}>
       <CardsGrid>
       <FieldCard title="Water" icon="water-drop">
-      <Field label="FULL LOAD (litres)" mandatory={mf('full_load_litres')}>
+      <Field label={ft('full_load_litres')} mandatory={mf('full_load_litres')}>
         <Stepper value={String(fullLoadLitres)} unit="" highlight onIncrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => v + 1)} onDecrement={fullLoadLocked ? undefined : () => setFullLoadLitres(v => Math.max(0, v - 1))} onChangeValue={fullLoadLocked ? undefined : v => setFullLoadLitres(parseInt(v) || 0)} />
       </Field>
-      <Field label="REASON" mandatory={mf('full_load_reason')}>
+      <Field label={ft('full_load_reason')} mandatory={mf('full_load_reason')}>
         <LineInput placeholder="Reason" value={fullLoadReason} onPress={() => setFullLoadReasonModal(true)} />
         <MoreBtn onPress={() => setFullLoadReasonModal(true)} />
       </Field>
-      <Field label="SLUMP(mm)" mandatory={mf('full_load_mm')}>
+      <Field label={ft('full_load_mm')} mandatory={mf('full_load_mm')}>
         <LineInput width={80} placeholder="mm" value={fullLoadMm} onPress={() => setMmModalField('fullLoad')} />
         <MoreBtn onPress={() => setMmModalField('fullLoad')} />
       </Field>
-      <Field label="CUSTOMER REQUESTED WATER(litres)" mandatory={mf('customer_water_litres')}>
+      <Field label={ft('customer_water_litres')} mandatory={mf('customer_water_litres')}>
         <Stepper value={String(custWaterLitres)} unit="" onIncrement={() => setCustWaterLitres(v => v + 1)} onDecrement={() => setCustWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setCustWaterLitres(parseInt(v) || 0)} />
         <LineInput width={80} placeholder="mm" value={custWaterMm} onPress={() => setMmModalField('custWater')} />
         <MoreBtn onPress={() => setMmModalField('custWater')} />
       </Field>
-      <Field label="MAINTENANCE WATER(litres)" last mandatory={mf('maintenance_water_litres')}>
+      <Field label={ft('maintenance_water_litres')} last mandatory={mf('maintenance_water_litres')}>
         <Stepper value={String(maintWaterLitres)} unit="" onIncrement={() => setMaintWaterLitres(v => v + 1)} onDecrement={() => setMaintWaterLitres(v => Math.max(0, v - 1))} onChangeValue={v => setMaintWaterLitres(parseInt(v) || 0)} />
         <LineInput width={80} placeholder="mm" value={maintWaterMm} onPress={() => setMmModalField('maintWater')} />
         <MoreBtn onPress={() => setMmModalField('maintWater')} />
@@ -1715,11 +1708,11 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       />
 
       <FieldCard title="Added, Not Ordered" icon="playlist-add">
-      <Field label="SUPER PLASTICIZER" mandatory={mf('super_plasticizer')}>
+      <Field label={ft('super_plasticizer')} mandatory={mf('super_plasticizer')}>
         <LineInput placeholder="Value" value={addedValues['SUPER PLASTICIZER'] || ''} onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
         <MoreBtn onPress={() => setAddedModalItem('SUPER PLASTICIZER')} />
       </Field>
-      <Field label="CONVEYOR(if not on ticket)" mandatory={mf('conveyor')}>
+      <Field label={ft('conveyor')} mandatory={mf('conveyor')}>
         <LineInput placeholder="Value" value={addedValues['CONVEYOR (IF NOT ON TICKET)'] || ''} onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
         <MoreBtn onPress={() => setAddedModalItem('CONVEYOR (IF NOT ON TICKET)')} />
       </Field>
@@ -1728,7 +1721,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         {key: 'FIBER', apiKey: 'fiber'},
         {key: 'Other', apiKey: 'other'},
       ].map(item => (
-        <Field key={item.key} label={item.key} last={item.key === 'Other'} mandatory={mf(item.apiKey)}>
+        <Field key={item.key} label={ft(item.apiKey)} last={item.key === 'Other'} mandatory={mf(item.apiKey)}>
           <LineInput placeholder="Value" value={addedValues[item.key] || ''} onPress={item.key !== 'Other' ? () => setAddedModalItem(item.key) : undefined} onChangeText={item.key === 'Other' ? (text) => setAddedValues(prev => ({...prev, [item.key]: text})) : undefined} />
           {item.key !== 'Other' && <MoreBtn onPress={() => setAddedModalItem(item.key)} />}
         </Field>
@@ -1743,29 +1736,29 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
 
       <FieldCard title="Options & Testing" icon="checklist">
       <FieldRow>
-        <Field label="CONVEYOR ORDERED" compact mandatory={mf('conveyor_ordered_not_used')}><Check checked={conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
-        <Field label="WASHOUT AREA" compact mandatory={mf('washout_area')}>
+        <Field label={ft('conveyor_ordered_not_used')} compact mandatory={mf('conveyor_ordered_not_used')}><Check checked={!!conveyorOrdered} label="Not used" onPress={() => setConveyorOrdered(!conveyorOrdered)} /></Field>
+        <Field label={ft('washout_area')} compact mandatory={mf('washout_area')}>
           <LineInput placeholder="Area" value={washoutArea} onPress={() => setWashoutModalVisible(true)} />
           <MoreBtn onPress={() => setWashoutModalVisible(true)} />
         </Field>
       </FieldRow>
       <View style={{flexDirection: 'row', gap: wp(8), paddingVertical: wp(5), borderBottomWidth: 0.5, borderBottomColor: c.borderLight}}>
         <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
-          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>LOAD DISPUTED</Text>
-          <Check checked={loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
+          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>{ft('load_disputed')}</Text>
+          <Check checked={!!loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
         </View>
         <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
-          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>UNLOAD OVER CONVEYOR</Text>
-          <Check checked={unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
+          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>{ft('unloaded_conveyor')}</Text>
+          <Check checked={!!unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
         </View>
       </View>
-      <Field label="LOAD TESTED" last={jobLoadTested !== 'yes'} mandatory={mf('load_tested')}>
+      <Field label={ft('load_tested')} last={!jobShouldShow('load_temp')} mandatory={mf('load_tested')}>
         <View style={st.radioRow}>
           <Radio selected={jobLoadTested === 'yes'} label="Yes" onPress={() => setJobLoadTested('yes')} />
           <Radio selected={jobLoadTested === 'no'} label="No" onPress={() => setJobLoadTested('no')} />
         </View>
       </Field>
-      {jobLoadTested === 'yes' && (
+      {jobShouldShow('load_temp') && (
         <>
           <FieldRow>
             <Field label="TEMP" compact>
@@ -1801,7 +1794,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         onClose={() => setWashoutModalVisible(false)}
       />
       <FieldCard title="Internal Jobsite Notes" icon="edit-note" fullWidth>
-      <Field label="NOTES" wide last mandatory={mf('notes')}>
+      <Field label={ft('notes')} wide last mandatory={mf('notes')}>
         <NoteInput placeholder="Enter jobsite notes..." value={jobsiteNotes} onChangeText={setJobsiteNotes} />
       </Field>
       </FieldCard>
@@ -2026,16 +2019,19 @@ function _createSm() { return StyleSheet.create({
 function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
-  const mf = (field: string) => data?.mandatory_fields?.returned?.includes(field) ?? false;
+  const fd = data?.field_definitions?.returned || {};
+  const fdKeys = Object.keys(fd);
+  const hasField = (field: string) => field in fd;
+  const ft = (field: string) => (fd as any)?.[field]?.title || field.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+  const mf = (field: string) => (fd as any)?.[field]?.mandatory ?? false;
   const {width: _rtW, height: _rtH} = useWindowDimensions();
   const _rtLand = _rtW > _rtH;
   const r = data?.returned;
-  const rAllFieldsFilled = r != null && (
-    r.returned_concrete_m3 != null && r.disposal_method != null && r.reason_for_return != null
-  );
-  const rHasApiData = r != null && (
-    r.returned_concrete_m3 != null || r.disposal_method != null || r.reason_for_return != null
-  );
+  const rAllFieldsFilled = r != null && fdKeys.length > 0 && fdKeys.every(k => {
+    const val = (r as any)?.[k];
+    return val != null && val !== '';
+  });
+  const rHasApiData = r != null && fdKeys.some(k => (r as any)?.[k] != null);
   const concreteLocked = r?.returned_concrete_m3 != null;
 
   const [concreteVal, setConcreteVal] = useState(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
@@ -2047,19 +2043,20 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
   const [reasonModal, setReasonModal] = useState(false);
   const [rVoiceWizardVisible, setRVoiceWizardVisible] = useState(false);
 
-  const mandatoryRetFields = data?.mandatory_fields?.returned || [];
   const retFieldValues: Record<string, any> = {
     returned_concrete_m3: concreteVal?.trim?.(), disposal_method: disposalMethod, reason_for_return: returnReason,
   };
-  const mandatoryRetMissing = mandatoryRetFields.some(f => {
+  const mandatoryRetMissing = fdKeys.some(k => {
+    if (!(fd as any)?.[k]?.mandatory) return false;
+    const f = k;
     const v = retFieldValues[f];
     return v === '' || v === null || v === undefined;
   });
 
   const RETURNED_VOICE_FIELDS: VoiceField[] = [
-    {key: 'concreteVal', label: 'Returned Concrete (M3)', prompt: 'How much concrete was returned in cubic meters?', type: 'number', skip: concreteLocked, required: true, min: 0, max: 999},
-    {key: 'disposalMethod', label: 'Disposal Method', prompt: 'What was the disposal method?', type: 'choice', choices: DISPOSAL_METHODS.map(m => m.label)},
-    {key: 'returnReason', label: 'Reason for Return', prompt: 'What was the reason for the return?', type: 'choice', choices: RETURN_REASONS.map(r => r.label)},
+    {key: 'concreteVal', label: ft('returned_concrete_m3'), prompt: `How much ${ft('returned_concrete_m3').toLowerCase()}?`, type: 'number', skip: concreteLocked, required: mf('returned_concrete_m3'), min: 0, max: 999},
+    {key: 'disposalMethod', label: ft('disposal_method'), prompt: `What was the ${ft('disposal_method').toLowerCase()}?`, type: 'choice', choices: DISPOSAL_METHODS.map(m => m.label)},
+    {key: 'returnReason', label: ft('reason_for_return'), prompt: `What was the ${ft('reason_for_return').toLowerCase()}?`, type: 'choice', choices: RETURN_REASONS.map(r => r.label)},
   ];
 
   const RETURNED_KEYWORDS = ['concrete', 'reshipped', 'dumped', 'blocks', 'granulize', 'rejected', 'slump', 'temperature', 'balling', 'pour complete'];
@@ -2147,7 +2144,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
         </View>
         <View style={ls.columns} pointerEvents={rAllFieldsFilled ? 'none' : 'auto'}>
           <LCard title="Return Details" icon="assignment-return">
-            <LField label="RETURNED CONCRETE" mandatory={mf('returned_concrete_m3')}>
+            <LField label={ft('returned_concrete_m3')} mandatory={mf('returned_concrete_m3')}>
               <View style={[st.numericInput, {backgroundColor: '#FFFF00', borderColor: c.primaryBorder}]}>
                 <TextInput
                   style={[st.numericInputText, {color: c.textPrimary}]}
@@ -2163,11 +2160,11 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
               </View>
               <Text style={[st.unitInline, {color: c.textSecondary}]}>M3</Text>
             </LField>
-            <LField label="DISPOSAL METHOD" mandatory={mf('disposal_method')}>
+            <LField label={ft('disposal_method')} mandatory={mf('disposal_method')}>
               <LineInput placeholder="Select method" value={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || ''} onPress={() => setDisposalModal(true)} />
               <MoreBtn onPress={() => setDisposalModal(true)} />
             </LField>
-            <LField label="REASON FOR RETURN" noBorder mandatory={mf('reason_for_return')}>
+            <LField label={ft('reason_for_return')} noBorder mandatory={mf('reason_for_return')}>
               <LineInput placeholder="Select reason" value={RETURN_REASONS.find(r => r.key === returnReason)?.label || returnReason || ''} onPress={() => setReasonModal(true)} />
               <MoreBtn onPress={() => setReasonModal(true)} />
             </LField>
@@ -2196,7 +2193,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       <CardsGrid>
       <FieldCard title="Return Details" icon="assignment-return">
       {/* Returned Concrete */}
-      <Field label="RETURNED CONCRETE" mandatory={mf('returned_concrete_m3')}>
+      <Field label={ft('returned_concrete_m3')} mandatory={mf('returned_concrete_m3')}>
         <View style={[st.numericInput, {backgroundColor: '#FFFF00', borderColor: c.primaryBorder}]}>
           <TextInput
             style={[st.numericInputText, {color: c.textPrimary}]}
@@ -2214,7 +2211,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       </Field>
 
       {/* Disposal Method */}
-      <Field label="DISPOSAL METHOD" mandatory={mf('disposal_method')}>
+      <Field label={ft('disposal_method')} mandatory={mf('disposal_method')}>
         <TouchableOpacity
           style={[st.selectorBtn, common.selectorCompact, {backgroundColor: isDisposalValid ? c.primarySurface : c.surface, borderColor: isDisposalValid ? c.primary : c.border}]}
           activeOpacity={0.6}
@@ -2232,7 +2229,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       </Field>
 
       {/* Reason for Return */}
-      <Field label="REASON FOR RETURN" last mandatory={mf('reason_for_return')}>
+      <Field label={ft('reason_for_return')} last mandatory={mf('reason_for_return')}>
         <TouchableOpacity
           style={[st.selectorBtn, common.selectorCompact, {backgroundColor: isReasonValid ? c.primarySurface : c.surface, borderColor: isReasonValid ? c.primary : c.border}]}
           activeOpacity={0.6}
@@ -2298,6 +2295,10 @@ const TIME_EVENTS = [
 function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
+  const fd = data?.field_definitions?.time || {};
+  const fdKeys = Object.keys(fd);
+  const hasField = (field: string) => field in fd;
+  const ft = (field: string) => (fd as any)?.[field]?.title || field.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
   const {width: _tw, height: _th} = useWindowDimensions();
   const _tLand = _tw > _th;
   const timeSteps = data?.time?.steps;
@@ -2413,7 +2414,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
                 <MaterialIcons name={event.icon as any} size={ms(15)} color={hasValue ? c.primary : c.textTertiary} />
               </View>
               <View style={common.flex1}>
-                <Text style={[tt.label, {color: c.textPrimary}]}>{event.key}</Text>
+                <Text style={[tt.label, {color: c.textPrimary}]}>{ft(({'LEAVE PLANT':'leave_plant','ARRIVE JOB':'arrive_job','START POUR':'start_pour','WASHING':'washing','LEAVE JOB':'leave_job','AT PLANT':'at_plant'} as Record<string,string>)[event.key] || event.key)}</Text>
                 <Text style={[tt.value, {color: hasValue ? c.primary : c.textMuted}]}>
                   {hasValue ? formatPickerTime(selectedTimes[event.key]) : 'Not set'}
                 </Text>
@@ -2442,6 +2443,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
       ) : timeContent}
 
       <DateTimePicker
+        mode="time"
         visible={pickerVisible}
         value={pickerField && selectedTimes[pickerField] ? selectedTimes[pickerField] : new Date()}
         onConfirm={(date) => {
@@ -2490,14 +2492,18 @@ const PAYMENT_TYPES = [
 function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}: {data: DeliveryRecord | null; ticketId?: number; onSaveResult?: (success: boolean, message: string) => void; setSavingOverlay?: (v: boolean) => void; refreshRecord?: () => Promise<void>}) {
   const {c} = useTheme();
   const {saveDeliveryTab} = useOfflineSync();
-  const mf = (field: string) => data?.mandatory_fields?.cod?.includes(field) ?? false;
+  const fd = data?.field_definitions?.cod || {};
+  const fdKeys = Object.keys(fd);
+  const hasField = (field: string) => field in fd;
+  const ft = (field: string) => (fd as any)?.[field]?.title || field.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+  const mf = (field: string) => (fd as any)?.[field]?.mandatory ?? false;
   const {width: _codW, height: _codH} = useWindowDimensions();
   const _codLand = _codW > _codH;
   const codData = data?.cod;
-  const codAllFieldsFilled = codData != null && (
-    codData.payment_type != null && codData.amount != null &&
-    codData.wait_time_minutes != null && codData.notes != null
-  );
+  const codAllFieldsFilled = codData != null && fdKeys.length > 0 && fdKeys.every(k => {
+    const val = (codData as any)?.[k];
+    return val != null && val !== '';
+  });
 
   const [saving, setSaving] = useState(false);
   const keyToApiCode: Record<string, string> = {
@@ -2542,21 +2548,21 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
   const [notesFocused, setNotesFocused] = useState(false);
   const [codVoiceWizardVisible, setCodVoiceWizardVisible] = useState(false);
 
-  const mandatoryCodFields = data?.mandatory_fields?.cod || [];
   const codFieldValues: Record<string, any> = {
     payment_type: paymentType, amount: codAmount?.trim?.(),
     wait_time_minutes: waitTime, notes: codNotes,
   };
-  const mandatoryCodMissing = mandatoryCodFields.some(f => {
-    const v = codFieldValues[f];
+  const mandatoryCodMissing = fdKeys.some(k => {
+    if (!(fd as any)?.[k]?.mandatory) return false;
+    const v = codFieldValues[k];
     return v === '' || v === null || v === undefined;
   });
 
   const COD_VOICE_FIELDS: VoiceField[] = [
-    {key: 'paymentType', label: 'Payment Type', prompt: 'What is the payment type? Say prepaid credit card, cash, check, or other.', type: 'choice', choices: PAYMENT_TYPES.map(p => p.label)},
-    {key: 'codAmount', label: 'COD Amount ($)', prompt: 'What is the COD amount in dollars?', type: 'number', min: 0, max: 99999},
-    {key: 'waitTime', label: 'Wait Time (minutes)', prompt: 'How many minutes was the wait time?', type: 'number', min: 0, max: 999},
-    {key: 'codNotes', label: 'COD Notes', prompt: 'Dictate any COD notes.', type: 'text'},
+    {key: 'paymentType', label: ft('payment_type'), prompt: `What is the ${ft('payment_type').toLowerCase()}? Say prepaid credit card, cash, check, or other.`, type: 'choice', choices: PAYMENT_TYPES.map(p => p.label)},
+    {key: 'codAmount', label: ft('amount'), prompt: `What is the ${ft('amount').toLowerCase()} in dollars?`, type: 'number', min: 0, max: 99999},
+    {key: 'waitTime', label: ft('wait_time_minutes'), prompt: `How many ${ft('wait_time_minutes').toLowerCase()}?`, type: 'number', min: 0, max: 999},
+    {key: 'codNotes', label: ft('notes'), prompt: `Dictate any ${ft('notes').toLowerCase()}.`, type: 'text'},
   ];
 
   const COD_KEYWORDS = ['prepaid', 'credit card', 'cash', 'check', 'minutes', 'wait'];
@@ -2641,7 +2647,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
       <CardsGrid>
       <FieldCard title="Payment Details" icon="payments">
       {/* Payment Type Selector */}
-      <Field label="PAYMENT" mandatory={mf('payment_type')}>
+      <Field label={ft('payment_type')} mandatory={mf('payment_type')}>
         <TouchableOpacity
           style={[cod.selectorBtn, common.selectorCompact, {
             backgroundColor: paymentType ? c.primarySurface : c.white,
@@ -2667,7 +2673,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
       {/* COD Amount */}
       {/* Wait Time */}
-      <Field label="WAIT TIME" mandatory={mf('wait_time_minutes')}>
+      <Field label={ft('wait_time_minutes')} mandatory={mf('wait_time_minutes')}>
         <View style={st.stepperWrap}>
           <View style={[st.numInput, {backgroundColor: waitTime > 0 ? c.primarySurface : c.surface, borderColor: waitTime > 0 ? c.primaryBorder : 'transparent'}]}>
             <TextInput
@@ -2710,7 +2716,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
       <FieldCard fullWidth>
       {/* COD Notes */}
-      <Field label="COD NOTES" wide last mandatory={mf('notes')}>
+      <Field label={ft('notes')} wide last mandatory={mf('notes')}>
         <TextInput
           style={[st.textArea, {
             borderColor: notesFocused ? c.primary : c.border,
@@ -2903,6 +2909,7 @@ export default function NotesScreen({navigation, route}: Props) {
     setRecordLoading(true);
     ticketsApi.getDeliveryRecord(ticketId)
       .then(res => {
+        console.log('[NotesScreen] delivery record field_definitions:', JSON.stringify(res.data?.field_definitions?.plant ? Object.keys(res.data.field_definitions.plant) : 'MISSING'));
         setDeliveryRecord(res.data);
         // Cache API data locally for offline fallback
         offlineStorage.cacheDeliveryRecord(ticketId, res.data);

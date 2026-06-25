@@ -494,6 +494,17 @@ export type DeliveryRecord = {
     time: string[];
     cod: string[];
   };
+  field_definitions?: {
+    [tab: string]: {
+      [field: string]: {
+        field_type: string;
+        value_type: string;
+        title: string;
+        mandatory: boolean;
+        depends_on?: { field: string; value: any };
+      };
+    };
+  };
 };
 
 export type MobileTicketPrint = {
