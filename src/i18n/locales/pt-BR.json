@@ -1,0 +1,146 @@
+{
+  "app": {
+    "name": "TKSync",
+    "tagline": "Sistema de rastreamento de tickets",
+    "poweredBy": "© 2026 Truckast"
+  },
+  "companyLogin": {
+    "badge": "Login da empresa",
+    "title": "Conectar empresa",
+    "subtitle": "Digite o código da empresa para começar",
+    "companyCode": "Código da empresa",
+    "companyCodePlaceholder": "Digite o código da empresa",
+    "serverUrl": "URL do servidor",
+    "serverUrlPlaceholder": "https://seuservidor.com (opcional)",
+    "connect": "Conectar",
+    "connecting": "Conectando...",
+    "errorEmpty": "Por favor, digite um código de empresa",
+    "errorNetwork": "Erro de rede. Por favor, tente novamente.",
+    "alreadyConnected": "Já conectado?",
+    "driverLogin": "Login do motorista"
+  },
+  "driverLogin": {
+    "badge": "Login do motorista",
+    "title": "Login do motorista",
+    "subtitle": "Digite suas credenciais de veículo e motorista",
+    "truckNumber": "ID do veículo",
+    "truckNumberPlaceholder": "Digite o ID do veículo",
+    "driverPin": "ID do funcionário",
+    "driverPinPlaceholder": "Digite o ID do funcionário",
+    "signIn": "Entrar",
+    "signingIn": "Entrando...",
+    "errorEmpty": "Por favor, digite o ID do veículo e o ID do funcionário",
+    "errorNetwork": "Erro de rede. Por favor, tente novamente.",
+    "switchCompany": "Empresa errada?",
+    "companyLogin": "Trocar empresa"
+  },
+  "login": {
+    "welcomeBack": "Bem-vindo de volta",
+    "welcomeSub": "Faça login na sua conta para continuar",
+    "companyCode": "Código da empresa",
+    "companyCodePlaceholder": "Digite o código da empresa",
+    "username": "Nome de usuário",
+    "usernamePlaceholder": "Digite seu nome de usuário",
+    "password": "Senha",
+    "passwordPlaceholder": "Digite sua senha",
+    "signIn": "Entrar"
+  },
+  "dashboard": {
+    "ticketTracking": "Rastreamento de tickets",
+    "ticket": "TICKET",
+    "order": "PEDIDO",
+    "active": "ATIVO",
+    "inactive": "INATIVO",
+    "inProcess": "EM PROCESSO",
+    "completed": "CONCLUÍDO",
+    "voided": "ANULADO",
+    "pending": "PENDENTE",
+    "onAccount": "NA CONTA",
+    "deliveryProgress": "Progresso da entrega",
+    "jobDetails": "Detalhes do trabalho",
+    "mixDetails": "Detalhes do pedido",
+    "lastSyncedAt": "Última sincronização às {{time}}",
+    "syncNow": "Sincronizar"
+  },
+  "timeline": {
+    "ticketed": "COM TICKET",
+    "loading": "CARREGANDO",
+    "toJob": "PARA OBRA",
+    "onJob": "NA OBRA",
+    "pouring": "CONCRETANDO",
+    "washing": "LAVANDO",
+    "toPlant": "PARA USINA",
+    "atPlant": "NA USINA"
+  },
+  "jobInfo": {
+    "customer": "CLIENTE",
+    "project": "PROJETO",
+    "job": "TRABALHO"
+  },
+  "orderInfo": {
+    "title": "Info do pedido",
+    "timeDue": "HORA PREVISTA",
+    "deliveredTo": "ENTREGUE A",
+    "plant": "USINA",
+    "lotBlock": "LOTE / BLOCO",
+    "instructions": "INSTRUÇÕES",
+    "quantity": "QUANTIDADE",
+    "loadSize": "TAMANHO DA CARGA",
+    "loads": "CARGAS",
+    "trucks": "CAMINHÕES"
+  },
+  "mixInfo": {
+    "mixId": "ID MISTURA",
+    "description": "DESCRIÇÃO",
+    "usage": "USO",
+    "slump": "ABATIMENTO",
+    "temperature": "TEMP",
+    "order": "PEDIDO",
+    "status": "STATUS",
+    "payment": "PAGAMENTO",
+    "amount": "VALOR",
+    "tax": "IMPOSTO",
+    "total": "TOTAL",
+    "truck": "CAMINHÃO",
+    "truckBehind": "CAMINHÃO ATRÁS"
+  },
+  "actions": {
+    "notes": "Notas",
+    "tag": "Etiqueta",
+    "edit": "Editar",
+    "truck": "Caminhão",
+    "qr": "QR"
+  },
+  "menu": {
+    "vehicle": "Veículo",
+    "logoutDriver": "Sair motorista",
+    "logoutTenant": "Sair empresa",
+    "language": "Idioma",
+    "about": "Sobre"
+  },
+  "logout": {
+    "driverTitle": "Sair motorista",
+    "driverMessage": "Tem certeza de que deseja sair como motorista? Você voltará à tela de login do motorista.",
+    "tenantTitle": "Sair empresa",
+    "tenantMessage": "Tem certeza de que deseja sair da empresa? Todos os dados da sessão serão apagados.",
+    "cancel": "Cancelar",
+    "confirm": "Sair"
+  },
+  "productsModal": {
+    "title": "Produtos",
+    "subtitle": "Detalhes da mistura",
+    "code": "CÓDIGO",
+    "description": "DESCRIÇÃO",
+    "qty": "QTDE",
+    "unit": "UNIDADE",
+    "noData": "Nenhum dado de produto disponível"
+  },
+  "modals": {
+    "plants": "USINAS",
+    "editTicket": "EDITAR TICKET",
+    "actions": "AÇÕES",
+    "signAccept": "ASSINAR E ACEITAR TICKET",
+    "disputeLoad": "CONTESTAR CARGA",
+    "signCurbline": "ASSINAR LIBERAÇÃO"
+  }
+}

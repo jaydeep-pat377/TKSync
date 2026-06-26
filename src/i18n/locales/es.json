@@ -1,0 +1,146 @@
+{
+  "app": {
+    "name": "TKSync",
+    "tagline": "Sistema de seguimiento de boletas",
+    "poweredBy": "© 2026 Truckast"
+  },
+  "companyLogin": {
+    "badge": "Inicio de sesión de empresa",
+    "title": "Conectar empresa",
+    "subtitle": "Ingrese su código de empresa para comenzar",
+    "companyCode": "Código de empresa",
+    "companyCodePlaceholder": "Ingrese el código de empresa",
+    "serverUrl": "URL del servidor",
+    "serverUrlPlaceholder": "https://suservidor.com (opcional)",
+    "connect": "Conectar",
+    "connecting": "Conectando...",
+    "errorEmpty": "Por favor ingrese un código de empresa",
+    "errorNetwork": "Error de red. Por favor intente de nuevo.",
+    "alreadyConnected": "¿Ya conectado?",
+    "driverLogin": "Inicio de sesión del conductor"
+  },
+  "driverLogin": {
+    "badge": "Inicio de sesión del conductor",
+    "title": "Inicio de sesión del conductor",
+    "subtitle": "Ingrese sus credenciales de vehículo y conductor",
+    "truckNumber": "ID de vehículo",
+    "truckNumberPlaceholder": "Ingrese el ID de vehículo",
+    "driverPin": "ID de empleado",
+    "driverPinPlaceholder": "Ingrese el ID de empleado",
+    "signIn": "Iniciar sesión",
+    "signingIn": "Iniciando sesión...",
+    "errorEmpty": "Por favor ingrese el ID de vehículo y el ID de empleado",
+    "errorNetwork": "Error de red. Por favor intente de nuevo.",
+    "switchCompany": "¿Empresa incorrecta?",
+    "companyLogin": "Cambiar empresa"
+  },
+  "login": {
+    "welcomeBack": "Bienvenido de nuevo",
+    "welcomeSub": "Inicie sesión en su cuenta para continuar",
+    "companyCode": "Código de empresa",
+    "companyCodePlaceholder": "Ingrese el código de empresa",
+    "username": "Nombre de usuario",
+    "usernamePlaceholder": "Ingrese su nombre de usuario",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Ingrese su contraseña",
+    "signIn": "Iniciar sesión"
+  },
+  "dashboard": {
+    "ticketTracking": "Seguimiento de boletas",
+    "ticket": "BOLETA",
+    "order": "PEDIDO",
+    "active": "ACTIVO",
+    "inactive": "INACTIVO",
+    "inProcess": "EN PROCESO",
+    "completed": "COMPLETADO",
+    "voided": "ANULADO",
+    "pending": "PENDIENTE",
+    "onAccount": "A CUENTA",
+    "deliveryProgress": "Progreso de entrega",
+    "jobDetails": "Detalles del trabajo",
+    "mixDetails": "Detalles del pedido",
+    "lastSyncedAt": "Última sincronización a las {{time}}",
+    "syncNow": "Sincronizar"
+  },
+  "timeline": {
+    "ticketed": "CON BOLETA",
+    "loading": "CARGANDO",
+    "toJob": "HACIA OBRA",
+    "onJob": "EN OBRA",
+    "pouring": "VACIANDO",
+    "washing": "LAVANDO",
+    "toPlant": "HACIA PLANTA",
+    "atPlant": "EN PLANTA"
+  },
+  "jobInfo": {
+    "customer": "CLIENTE",
+    "project": "PROYECTO",
+    "job": "TRABAJO"
+  },
+  "orderInfo": {
+    "title": "Info del pedido",
+    "timeDue": "HORA PREVISTA",
+    "deliveredTo": "ENTREGADO A",
+    "plant": "PLANTA",
+    "lotBlock": "LOTE / BLOQUE",
+    "instructions": "INSTRUCCIONES",
+    "quantity": "CANTIDAD",
+    "loadSize": "TAMAÑO DE CARGA",
+    "loads": "CARGAS",
+    "trucks": "CAMIONES"
+  },
+  "mixInfo": {
+    "mixId": "ID MEZCLA",
+    "description": "DESCRIPCIÓN",
+    "usage": "USO",
+    "slump": "REVENIMIENTO",
+    "temperature": "TEMP",
+    "order": "PEDIDO",
+    "status": "ESTADO",
+    "payment": "PAGO",
+    "amount": "MONTO",
+    "tax": "IMPUESTO",
+    "total": "TOTAL",
+    "truck": "CAMIÓN",
+    "truckBehind": "CAMIÓN DETRÁS"
+  },
+  "actions": {
+    "notes": "Notas",
+    "tag": "Etiqueta",
+    "edit": "Editar",
+    "truck": "Camión",
+    "qr": "QR"
+  },
+  "menu": {
+    "vehicle": "Vehículo",
+    "logoutDriver": "Cerrar sesión conductor",
+    "logoutTenant": "Cerrar sesión empresa",
+    "language": "Idioma",
+    "about": "Acerca de"
+  },
+  "logout": {
+    "driverTitle": "Cerrar sesión conductor",
+    "driverMessage": "¿Está seguro de que desea cerrar sesión como conductor? Volverá a la pantalla de inicio de sesión del conductor.",
+    "tenantTitle": "Cerrar sesión empresa",
+    "tenantMessage": "¿Está seguro de que desea cerrar sesión de la empresa? Todos los datos de la sesión serán eliminados.",
+    "cancel": "Cancelar",
+    "confirm": "Cerrar sesión"
+  },
+  "productsModal": {
+    "title": "Productos",
+    "subtitle": "Detalles de la mezcla",
+    "code": "CÓDIGO",
+    "description": "DESCRIPCIÓN",
+    "qty": "CANT",
+    "unit": "UNIDAD",
+    "noData": "No hay datos de producto disponibles"
+  },
+  "modals": {
+    "plants": "PLANTAS",
+    "editTicket": "EDITAR BOLETA",
+    "actions": "ACCIONES",
+    "signAccept": "FIRMAR Y ACEPTAR BOLETA",
+    "disputeLoad": "DISPUTAR CARGA",
+    "signCurbline": "FIRMAR LIBERACIÓN"
+  }
+}

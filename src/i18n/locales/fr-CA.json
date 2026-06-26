@@ -1,0 +1,146 @@
+{
+  "app": {
+    "name": "TKSync",
+    "tagline": "Système de suivi des billets",
+    "poweredBy": "© 2026 Truckast"
+  },
+  "companyLogin": {
+    "badge": "Connexion entreprise",
+    "title": "Connecter l'entreprise",
+    "subtitle": "Entrez votre code d'entreprise pour commencer",
+    "companyCode": "Code d'entreprise",
+    "companyCodePlaceholder": "Entrez le code d'entreprise",
+    "serverUrl": "URL du serveur",
+    "serverUrlPlaceholder": "https://votreserveur.com (optionnel)",
+    "connect": "Connecter",
+    "connecting": "Connexion...",
+    "errorEmpty": "Veuillez entrer un code d'entreprise",
+    "errorNetwork": "Erreur réseau. Veuillez réessayer.",
+    "alreadyConnected": "Déjà connecté?",
+    "driverLogin": "Connexion chauffeur"
+  },
+  "driverLogin": {
+    "badge": "Connexion chauffeur",
+    "title": "Connexion chauffeur",
+    "subtitle": "Entrez vos identifiants de véhicule et de chauffeur",
+    "truckNumber": "ID véhicule",
+    "truckNumberPlaceholder": "Entrez l'ID véhicule",
+    "driverPin": "ID employé",
+    "driverPinPlaceholder": "Entrez l'ID employé",
+    "signIn": "Se connecter",
+    "signingIn": "Connexion...",
+    "errorEmpty": "Veuillez entrer l'ID véhicule et l'ID employé",
+    "errorNetwork": "Erreur réseau. Veuillez réessayer.",
+    "switchCompany": "Mauvaise entreprise?",
+    "companyLogin": "Changer d'entreprise"
+  },
+  "login": {
+    "welcomeBack": "Bon retour",
+    "welcomeSub": "Connectez-vous à votre compte pour continuer",
+    "companyCode": "Code d'entreprise",
+    "companyCodePlaceholder": "Entrez le code d'entreprise",
+    "username": "Nom d'utilisateur",
+    "usernamePlaceholder": "Entrez votre nom d'utilisateur",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Entrez votre mot de passe",
+    "signIn": "Se connecter"
+  },
+  "dashboard": {
+    "ticketTracking": "Suivi des billets",
+    "ticket": "BILLET",
+    "order": "COMMANDE",
+    "active": "ACTIF",
+    "inactive": "INACTIF",
+    "inProcess": "EN COURS",
+    "completed": "TERMINÉ",
+    "voided": "ANNULÉ",
+    "pending": "EN ATTENTE",
+    "onAccount": "SUR COMPTE",
+    "deliveryProgress": "Progression de la livraison",
+    "jobDetails": "Détails du travail",
+    "mixDetails": "Détails de la commande",
+    "lastSyncedAt": "Dernière sync à {{time}}",
+    "syncNow": "Synchroniser"
+  },
+  "timeline": {
+    "ticketed": "BILLETÉ",
+    "loading": "CHARGEMENT",
+    "toJob": "VERS CHANTIER",
+    "onJob": "SUR CHANTIER",
+    "pouring": "COULAGE",
+    "washing": "LAVAGE",
+    "toPlant": "VERS USINE",
+    "atPlant": "À L'USINE"
+  },
+  "jobInfo": {
+    "customer": "CLIENT",
+    "project": "PROJET",
+    "job": "TRAVAIL"
+  },
+  "orderInfo": {
+    "title": "Info commande",
+    "timeDue": "HEURE PRÉVUE",
+    "deliveredTo": "LIVRÉ À",
+    "plant": "USINE",
+    "lotBlock": "LOT / BLOC",
+    "instructions": "INSTRUCTIONS",
+    "quantity": "QUANTITÉ",
+    "loadSize": "TAILLE DE LA CHARGE",
+    "loads": "CHARGES",
+    "trucks": "CAMIONS"
+  },
+  "mixInfo": {
+    "mixId": "ID MÉLANGE",
+    "description": "DESCRIPTION",
+    "usage": "UTILISATION",
+    "slump": "AFFAISSEMENT",
+    "temperature": "TEMP",
+    "order": "COMMANDE",
+    "status": "STATUT",
+    "payment": "PAIEMENT",
+    "amount": "MONTANT",
+    "tax": "TAXE",
+    "total": "TOTAL",
+    "truck": "CAMION",
+    "truckBehind": "CAMION DERRIÈRE"
+  },
+  "actions": {
+    "notes": "Notes",
+    "tag": "Étiquette",
+    "edit": "Modifier",
+    "truck": "Camion",
+    "qr": "QR"
+  },
+  "menu": {
+    "vehicle": "Véhicule",
+    "logoutDriver": "Déconnexion chauffeur",
+    "logoutTenant": "Déconnexion entreprise",
+    "language": "Langue",
+    "about": "À propos"
+  },
+  "logout": {
+    "driverTitle": "Déconnexion chauffeur",
+    "driverMessage": "Êtes-vous sûr de vouloir vous déconnecter en tant que chauffeur? Vous reviendrez à l'écran de connexion chauffeur.",
+    "tenantTitle": "Déconnexion entreprise",
+    "tenantMessage": "Êtes-vous sûr de vouloir vous déconnecter de l'entreprise? Toutes les données de session seront effacées.",
+    "cancel": "Annuler",
+    "confirm": "Déconnexion"
+  },
+  "productsModal": {
+    "title": "Produits",
+    "subtitle": "Détails du mélange",
+    "code": "CODE",
+    "description": "DESCRIPTION",
+    "qty": "QTÉ",
+    "unit": "UNITÉ",
+    "noData": "Aucune donnée produit disponible"
+  },
+  "modals": {
+    "plants": "USINES",
+    "editTicket": "MODIFIER BILLET",
+    "actions": "ACTIONS",
+    "signAccept": "SIGNER ET ACCEPTER LE BILLET",
+    "disputeLoad": "CONTESTER LA CHARGE",
+    "signCurbline": "SIGNER LA LIBÉRATION"
+  }
+}

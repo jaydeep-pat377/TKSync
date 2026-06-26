@@ -3,7 +3,7 @@ import {createMMKV} from 'react-native-mmkv';
 const gpsStore = createMMKV({id: 'tksync-gps'});
 
 const RECORDS_KEY = 'gps_records';
-const MAX_RECORDS = 50;
+
 
 export type GpsRecord = {
   id: string;
@@ -41,10 +41,6 @@ export const gpsStorage = {
       id: `gps_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       synced: false,
     });
-    // Trim oldest records beyond the cap
-    if (records.length > MAX_RECORDS) {
-      records.splice(0, records.length - MAX_RECORDS);
-    }
     setRecords(records);
   },
 

@@ -19,6 +19,7 @@ import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms, wp} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
+import {TruckSvg} from '../components/TruckSvg';
 
 MapboxGL.setAccessToken(Config.MAPBOX_ACCESS_TOKEN || '');
 
@@ -224,9 +225,15 @@ export default function MapScreen({navigation, route}: Props) {
               title={item.type}
               onSelected={() => setSelectedMarker(idx)}
               onDeselected={() => { if (selectedMarker === idx) setSelectedMarker(null); }}>
-              <View style={[styles.marker, {backgroundColor: colors.marker}]}>
-                <MaterialIcons name={iconName} size={18} color="#fff" />
-              </View>
+              {item.type === 'My Truck' ? (
+                <View style={styles.truckMarker}>
+                  <TruckSvg width={40} height={22} primaryColor={colors.marker} secondaryColor={colors.icon} />
+                </View>
+              ) : (
+                <View style={[styles.marker, {backgroundColor: colors.marker}]}>
+                  <MaterialIcons name={iconName} size={18} color="#fff" />
+                </View>
+              )}
               <MapboxGL.Callout title="">
                 <View style={styles.callout}>
                   <View style={styles.calloutHeader}>
@@ -404,6 +411,7 @@ const createStyles = () => StyleSheet.create({
   loader: {position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 10},
   map: {flex: 1},
   marker: {width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 4},
+  truckMarker: {alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.3, shadowRadius: 4},
 
   // Side panel (landscape)
   sidePanel: {borderRightWidth: StyleSheet.hairlineWidth},

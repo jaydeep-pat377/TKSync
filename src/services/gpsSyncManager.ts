@@ -30,6 +30,8 @@ async function syncAndRefreshTicket(): Promise<void> {
   }
 }
 
+const BATCH_SIZE = 100;
+
 async function syncGpsRecords(): Promise<void> {
   if (isSyncing || !getIsOnline()) return;
 
@@ -37,23 +39,30 @@ async function syncGpsRecords(): Promise<void> {
   if (unsynced.length === 0) return;
 
   isSyncing = true;
+  let totalSynced = 0;
   try {
-    const records = unsynced.map(r => ({
-      ticket_id: r.ticket_id,
-      latitude: r.latitude,
-      longitude: r.longitude,
-      speed: r.speed,
-      heading: r.heading,
-      altitude: r.altitude,
-      accuracy: r.accuracy,
-      recorded_at: r.recorded_at,
-    }));
+    // Send in batches to avoid large payloads
+    for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
+      if (!getIsOnline()) break; // Stop if we lose connection mid-sync
+      const batch = unsynced.slice(i, i + BATCH_SIZE);
+      const records = batch.map(r => ({
+        ticket_id: r.ticket_id,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        speed: r.speed,
+        heading: r.heading,
+        altitude: r.altitude,
+        accuracy: r.accuracy,
+        recorded_at: r.recorded_at,
+      }));
 
-    await gpsApi.saveRecords(records);
-    gpsStorage.markSynced(unsynced.map(r => r.id));
-    console.log(`[GpsSyncManager] Synced ${unsynced.length} GPS records`);
+      await gpsApi.saveRecords(records);
+      gpsStorage.markSynced(batch.map(r => r.id));
+      totalSynced += batch.length;
+    }
+    console.log(`[GpsSyncManager] Synced ${totalSynced}/${unsynced.length} GPS records`);
   } catch (err: any) {
-    console.warn(`[GpsSyncManager] Sync failed: ${err.message}`);
+    console.warn(`[GpsSyncManager] Sync failed after ${totalSynced} records: ${err.message}`);
   } finally {
     isSyncing = false;
   }

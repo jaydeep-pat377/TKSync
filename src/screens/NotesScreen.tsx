@@ -2882,7 +2882,14 @@ export default function NotesScreen({navigation, route}: Props) {
   useFontScaleRefresh();
   refreshStylesIfNeeded();
   const ticketId = (route.params as any)?.ticketId as number | undefined;
-  const [activeTab, setActiveTab] = useState(0);
+  const initialTab = (route.params as any)?.initialTab as string | undefined;
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialTab) {
+      const idx = TABS.findIndex(t => t.key === initialTab);
+      return idx >= 0 ? idx : 0;
+    }
+    return 0;
+  });
   const [deliveryRecord, setDeliveryRecord] = useState<DeliveryRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(false);
   const [saveModal, setSaveModal] = useState<{visible: boolean; success: boolean; message: string}>({visible: false, success: false, message: ''});
