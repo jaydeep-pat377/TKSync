@@ -27,6 +27,7 @@ import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
 import { wp, ms } from '../utils/responsive';
+import { offlineStorage } from '../services/offlineStorage';
 import {useFontScaleRefresh, useFontSize} from '../contexts/FontSizeContext';
 
 const WEATHER_ICONS: Record<string, string> = {
@@ -293,6 +294,9 @@ export default function DashboardScreen({ navigation }: Props) {
   const plantsHasNextRef = useRef(false);
   const plantsLoadingMoreRef = useRef(false);
 
+  const ticketsRef = useRef<Ticket[]>([]);
+  const activeTicketRef = useRef(0);
+  const loadedTicketIdRef = useRef<number | null>(null);
   const plantsLayoutH = useRef(0);
   const plantsContentH = useRef(0);
 
@@ -408,14 +412,17 @@ export default function DashboardScreen({ navigation }: Props) {
     return () => clearInterval(iv);
   }, [lastSyncTime]);
 
-  const fetchTickets = useCallback(async (showLoading = true) => {
+  const fetchTickets = useCallback(async () => {
     try {
-      if (showLoading) setLoading(true);
+      setLoading(true);
       setRefreshing(true);
       const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
+      ticketsRef.current = data.data;
+      loadedTicketIdRef.current = null;
       setActiveTicket(0);
+      activeTicketRef.current = 0;
       setDateFrom(data.filters?.date_from || null);
       setLastSyncTime(new Date());
     } catch (err) {
@@ -439,37 +446,77 @@ export default function DashboardScreen({ navigation }: Props) {
     }
   }, []);
 
+  // Silent refresh helper — refreshes all data without any loader
+  const silentRefreshAll = useCallback(async () => {
+    const idx = activeTicketRef.current;
+    // Refresh ticket list
+    try {
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
+      // Pre-mark so the useEffect skips when setTickets triggers it
+      const currentTicket = data.data[idx];
+      if (currentTicket && activeTicketRef.current === idx) {
+        loadedTicketIdRef.current = currentTicket.id;
+      }
+      setTickets(data.data);
+      ticketsRef.current = data.data;
+      setDateFrom(data.filters?.date_from || null);
+      setLastSyncTime(new Date());
+    } catch (_) {}
+    // Refresh detail + delivery record for current ticket
+    const ticket = ticketsRef.current[activeTicketRef.current];
+    if (ticket) {
+      fetchDetail(ticket.id, false);
+      ticketsApi.getDeliveryRecord(ticket.id)
+        .then(res => {
+          setDeliveryRecord(res.data);
+          offlineStorage.cacheDeliveryRecord(ticket.id, res.data);
+        })
+        .catch(() => {});
+    }
+  }, [fetchDetail]);
+
+  // Initial load
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
 
   // Auto-refresh every 2 minutes (silent — no loader)
   useEffect(() => {
-    const iv = setInterval(() => {
-      fetchTickets(false);
-      const ticket = tickets[activeTicket];
-      if (ticket) {
-        fetchDetail(ticket.id, false);
-        ticketsApi.getDeliveryRecord(ticket.id)
-          .then(res => setDeliveryRecord(res.data))
-          .catch(() => {});
-      }
-    }, 120000);
+    const iv = setInterval(silentRefreshAll, 120000);
     return () => clearInterval(iv);
-  }, [fetchTickets, fetchDetail, tickets, activeTicket]);
+  }, [silentRefreshAll]);
 
-  // Fetch detail + delivery record when active ticket changes
+  // Fetch detail + delivery record when ticket changes
   useEffect(() => {
     const ticket = tickets[activeTicket];
     if (ticket) {
+      // Skip if already loaded by silentRefreshAll
+      if (loadedTicketIdRef.current === ticket.id) return;
+      loadedTicketIdRef.current = ticket.id;
       fetchDetail(ticket.id);
       ticketsApi.getDeliveryRecord(ticket.id)
         .then(res => {
           setDeliveryRecord(res.data);
+          offlineStorage.cacheDeliveryRecord(ticket.id, res.data);
           setPendingDetails(prev => { if (prev) { setDetailsVisible(true); } return false; });
         })
-        .catch(() => { setDeliveryRecord(null); setPendingDetails(false); });
+        .catch(() => {
+          // Fall back to locally cached delivery record
+          const cached = offlineStorage.getCachedDeliveryRecord(ticket.id);
+          if (cached) {
+            const pending = offlineStorage.getPendingForTicket(ticket.id);
+            let merged = {...cached};
+            for (const item of pending) {
+              merged[item.tab] = {...(merged[item.tab] || {}), ...item.body};
+            }
+            setDeliveryRecord(merged as DeliveryRecord);
+          } else {
+            setDeliveryRecord(null);
+          }
+          setPendingDetails(false);
+        });
     } else {
+      loadedTicketIdRef.current = null;
       setDetail(null);
       setDeliveryRecord(null);
     }
@@ -478,14 +525,21 @@ export default function DashboardScreen({ navigation }: Props) {
   const handleSync = useCallback(() => {
     syncSpin.setValue(0);
     Animated.timing(syncSpin, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-    fetchTickets(false);
-  }, [syncSpin, fetchTickets]);
+    silentRefreshAll();
+  }, [syncSpin, silentRefreshAll]);
 
-  const onRefresh = useCallback(() => {
-    fetchTickets(false);
-  }, [fetchTickets]);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await silentRefreshAll();
+    setRefreshing(false);
+  }, [silentRefreshAll]);
 
   const syncRotate = syncSpin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  const switchTicket = useCallback((i: number) => {
+    activeTicketRef.current = i;
+    setActiveTicket(i);
+  }, []);
 
   // Derived data from active ticket
   const currentTicket = tickets[activeTicket] || null;
@@ -791,7 +845,7 @@ export default function DashboardScreen({ navigation }: Props) {
             <ActivityIndicator size="large" color="#2e7d32" style={{marginTop: isLandscape ? 6 : wp(16)}} />
           ) : (
             <>
-              <TouchableOpacity onPress={() => fetchTickets(true)} activeOpacity={0.7} style={{marginTop: isLandscape ? 2 : wp(8)}}>
+              <TouchableOpacity onPress={() => fetchTickets()} activeOpacity={0.7} style={{marginTop: isLandscape ? 2 : wp(8)}}>
                 <Text style={{fontSize: ms(isLandscape ? 11 : 15), fontWeight: '600', color: '#2e7d32', textDecorationLine: 'underline', textAlign: 'center'}}>
                   REFRESH
                 </Text>
@@ -973,7 +1027,10 @@ export default function DashboardScreen({ navigation }: Props) {
   })();
   const timeMandatory = (() => {
     const steps = deliveryRecord?.time?.steps || [];
-    const items = steps.map(s => ({ name: s.label, filled: s.done, value: s.done && s.time ? s.time.substring(11, 16) : undefined }));
+    const mFields = mandatoryFields?.time || [];
+    // If mandatory_fields.time has entries, show only those steps; otherwise show all steps
+    const filtered = mFields.length > 0 ? steps.filter(s => mFields.includes(s.key)) : steps;
+    const items = filtered.map(s => ({ name: s.label, filled: s.done, value: s.done && s.time ? s.time.substring(11, 16) : undefined }));
     return { filled: items.filter(i => i.filled).length, total: items.length, items };
   })();
   const totalMandatoryFilled = plantMandatory.filled + jobsiteMandatory.filled + returnedMandatory.filled + timeMandatory.filled;
@@ -992,9 +1049,9 @@ export default function DashboardScreen({ navigation }: Props) {
               const isSelected = activeTicket === i;
               const isCompleted = ticket.at_plant_time != null;
               return (
-                <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); setActiveTicket(i); }} activeOpacity={0.7}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: isCompleted ? '#2E7D32' : c.accent, borderBottomWidth: isSelected ? 3 : 0, borderBottomColor: isDark ? '#fff' : '#000' }}>
-                  <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' }} />
+                <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: isCompleted ? '#2E7D32' : c.accent }}>
+                  <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
                   <Text style={{ fontSize: ms(10), fontWeight: isSelected ? '900' : '700', color: '#fff', fontFamily: 'monospace' }}>{ticket.ticket_code}</Text>
                 </TouchableOpacity>
               );
@@ -1058,7 +1115,8 @@ export default function DashboardScreen({ navigation }: Props) {
                   const isSelected = activeTicket === i;
                   const isCompleted = ticket.at_plant_time != null;
                   return (
-                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } setActiveTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
+                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent }]}>
+                      <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
                       <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
@@ -1115,7 +1173,8 @@ export default function DashboardScreen({ navigation }: Props) {
                   const isSelected = activeTicket === i;
                   const isCompleted = ticket.at_plant_time != null;
                   return (
-                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } setActiveTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent, borderBottomWidth: isSelected ? 4 : 0, borderBottomColor: c.textPrimary }]}>
+                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent }]}>
+                      <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
                       <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
@@ -1390,7 +1449,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       {section.data.items.map((item, ii) => (
                         <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(5), gap: fs(6) }}>
                           <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : isDark ? '#2A1F05' : '#FFF8E1', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: '#F59E0B' }}>
-                            <MaterialIcons name={item.filled ? 'check' : 'remove'} size={fs(10)} color={item.filled ? '#fff' : '#F59E0B'} />
+                            <MaterialIcons name={item.filled ? 'check' : 'close'} size={fs(10)} color={item.filled ? '#fff' : '#F59E0B'} />
                           </View>
                           <Text style={{ fontSize: fs(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
                           {item.value ? <Text style={{ fontSize: fs(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fs(10), color: c.textMuted }}>--</Text>}
@@ -1609,7 +1668,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       </View>
                       {section.data.items.map((item, ii) => (
                         <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
-                          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1F05' : '#FFF8E1', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: '#F59E0B' }}><MaterialIcons name={item.filled ? 'check' : 'remove'} size={11} color={item.filled ? '#fff' : '#F59E0B'} /></View>
+                          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1F05' : '#FFF8E1', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: '#F59E0B' }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : '#F59E0B'} /></View>
                           <Text style={{ fontSize: ms(11), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
                           {item.value ? <Text style={{ fontSize: ms(11), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(10), color: c.textMuted }}>--</Text>}
                         </View>))}
