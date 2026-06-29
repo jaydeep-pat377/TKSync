@@ -614,7 +614,7 @@ export default function DashboardScreen({ navigation }: Props) {
     setActiveBottom(i);
     if (item.icon === 'label') { navigation.navigate('MobileTicket', { ticketId: currentTicket?.id }); }
     if (item.icon === 'note-alt') { navigation.navigate('Notes', { ticketId: currentTicket?.id }); }
-    if (item.icon === 'edit') { setEditVisible(true); }
+    if (item.icon === 'edit') { console.log('[DEBUG] Edit button pressed, setting editVisible=true'); setEditVisible(true); }
     if (item.icon === 'text-fields') { setFontSizeVisible(true); }
     if (item.icon === 'qr-code-scanner' && currentTicket) {
       setQrLoading(true);
@@ -1194,7 +1194,7 @@ export default function DashboardScreen({ navigation }: Props) {
         const s = Math.max(0.65, Math.min(1, lh / 660)); // 0.65–1.0 scale, slightly smaller text
         const fs = (base: number) => Math.round(base * s);
         return (
-        <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(6), paddingBottom: fs(2) }}>
+        <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(4), paddingBottom: 6 }}>
           {/* Info Bar */}
           <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(4) : fs(6), paddingHorizontal: fs(12), marginBottom: fs(3), flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1 }}>
@@ -1232,17 +1232,17 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
           {/* Timeline */}
           {!detailLoading && (
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: isSmallLandscape ? fs(6) : fs(12), paddingHorizontal: fs(8) }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: fs(4), paddingHorizontal: fs(8) }}>
               {timeline.map((item, i) => {
                 const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
                 const isFirst = i === 0; const isLast = i === timeline.length - 1;
                 const nextDone = !isLast && timeline[i + 1]?.done;
                 const lineDone = item.done && nextDone;
-                const dotSz = isActive ? fs(isSmallLandscape ? 22 : 30) : item.done ? fs(isSmallLandscape ? 16 : 22) : fs(isSmallLandscape ? 12 : 16);
+                const dotSz = isActive ? fs(isSmallLandscape ? 20 : 24) : item.done ? fs(isSmallLandscape ? 14 : 18) : fs(isSmallLandscape ? 10 : 14);
                 return (
                   <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
                     <Text style={{ fontSize: fs(isSmallLandscape ? 10 : 12), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: fs(isSmallLandscape ? 2 : 4) }} numberOfLines={1}>{item.label}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', height: fs(isSmallLandscape ? 24 : 32), width: '100%' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', height: fs(isSmallLandscape ? 22 : 26), width: '100%' }}>
                       {isFirst ? <View style={{ flex: 1 }} /> : (
                         <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : 'transparent', borderBottomWidth: item.done ? 0 : 1.5, borderBottomColor: '#888', borderStyle: item.done ? 'solid' : 'dashed' }} />
                       )}
@@ -1268,37 +1268,23 @@ export default function DashboardScreen({ navigation }: Props) {
           {detailLoading && <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
           {/* Two-column body */}
           {!detailLoading && (
-            <View style={{ flexDirection: 'row', gap: fs(6), flex: 1, minHeight: 0, marginBottom: fs(5) }}>
+            <View style={{ flexDirection: 'row', gap: fs(6), flex: 1, minHeight: 0 }}>
               {/* LEFT — Customer + Product + Delivery Location */}
               <View style={{ flex: 1.2 }}>
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: fs(isSmallLandscape ? 3 : 5), paddingBottom: fs(4) }} bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled
-                onContentSizeChange={(_w, h) => {
-                  leftColContentH.current = h;
-                  setLeftColScrollable(h > leftColLayoutH.current + 2);
-                }}
-                onLayout={(e) => {
-                  leftColLayoutH.current = e.nativeEvent.layout.height;
-                  setLeftColScrollable(leftColContentH.current > e.nativeEvent.layout.height + 2);
-                }}
-                onScroll={(e) => {
-                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                  const maxScroll = contentSize.height - layoutMeasurement.height;
-                  setLeftColScrollPct(maxScroll > 0 ? contentOffset.y / maxScroll : 0);
-                }}
-                scrollEventThrottle={16}>
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(8) : fs(10) }}>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: fs(isSmallLandscape ? 3 : 5), ...(instructionsExpanded ? { paddingBottom: fs(4) } : { flexGrow: 1 }) }} scrollEnabled={instructionsExpanded} bounces={false} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} nestedScrollEnabled>
+                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(6) : fs(8) }}>
                   <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(5), marginBottom: isSmallLandscape ? fs(3) : fs(5) }}>
                     <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Customer</Text>
                   </View>
                   {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
                     <View key={i} style={{ flexDirection: 'row', paddingVertical: isSmallLandscape ? fs(3) : fs(5), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120), letterSpacing: 0.5 }}>{row.label}</Text>
+                      <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
                       <Text style={{ fontSize: fs(14), fontWeight: '800', color: c.textPrimary, flex: 1 }} numberOfLines={2}>{row.value}</Text>
                     </View>
                   ))}
                 </View>
                 {/* Product */}
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(8) : fs(10) }}>
+                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(6) : fs(8) }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(5), marginBottom: isSmallLandscape ? fs(3) : fs(5) }}>
                     <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
                     <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1337,7 +1323,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   </View>
                 </View>
                 {/* Delivery Location */}
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(8) : fs(10) }}>
+                <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(6) : fs(8) }}>
                   <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(4), marginBottom: isSmallLandscape ? fs(3) : fs(4) }}>
                     <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Delivery Location</Text>
                   </View>
@@ -1349,7 +1335,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       { label: 'TRUCKS', value: [detail?.mix?.truck_ahead ? `AFTER · ${detail.mix.truck_ahead.truck_code} ${detail.mix.truck_ahead.status}` : null, detail?.mix?.truck_behind ? `BEFORE · ${detail.mix.truck_behind.truck_code} ${detail.mix.truck_behind.status}` : null].filter(Boolean).join('   ') || '—', blue: true },
                     ].map((row, i, arr) => (
                       <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(5), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                        <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }}>{row.label}</Text>
+                        <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: '30%' }}>{row.label}</Text>
                         {row.isLink ? (
                           <TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}>
                             <Text style={{ fontSize: fs(13), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={2}>{row.value}</Text>
@@ -1365,7 +1351,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     ))}
                     {/* Instructions row */}
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: fs(5) }}>
-                      <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: fs(isSmallLandscape ? 90 : 120) }}>INSTRUCTIONS</Text>
+                      <Text style={{ fontSize: fs(11), fontWeight: '600', color: c.textMuted, width: '30%' }}>INSTRUCTIONS</Text>
                       {detail?.job?.instructions ? (
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
                           <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: fs(3), paddingHorizontal: fs(5) }}>
@@ -1380,36 +1366,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       )}
                     </View>
                 </View>
-                {/* Quick Links */}
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(8) : fs(10) }}>
-                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(4), marginBottom: isSmallLandscape ? fs(3) : fs(4) }}>
-                    <Text style={{ fontSize: fs(12), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>QUICK LINKS</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: fs(6) }}>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => { const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true }; if (currentTicket) { params.ticketInfo = { customer_name: detail?.job?.customer_name || currentTicket.customer_name || '', customer_code: detail?.job?.customer_code || currentTicket.customer_code || '', project_name: detail?.job?.project_name || currentTicket.project_name || '', project_code: detail?.job?.project_code || currentTicket.project_code || '', order_code: currentTicket.order_code || '', ticket_code: currentTicket.ticket_code || '' }; } navigation.navigate('AcceptTicket', params); }}>
-                      <Text style={{ fontSize: fs(11), fontWeight: '800', color: c.primary }}>SIGN & ACCEPT TICKET</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: fs(13), color: c.textMuted }}>|</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => { const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true }; if (currentTicket) { params.ticketInfo = { customer_name: detail?.job?.customer_name || currentTicket.customer_name || '', customer_code: detail?.job?.customer_code || currentTicket.customer_code || '', project_name: detail?.job?.project_name || currentTicket.project_name || '', project_code: detail?.job?.project_code || currentTicket.project_code || '', order_code: currentTicket.order_code || '', ticket_code: currentTicket.ticket_code || '' }; } navigation.navigate('DisputeTicket', params); }}>
-                      <Text style={{ fontSize: fs(11), fontWeight: '800', color: c.primary }}>DISPUTE LOAD</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: fs(13), color: c.textMuted }}>|</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => { const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true }; if (currentTicket) { params.ticketInfo = { customer_name: detail?.job?.customer_name || currentTicket.customer_name || '', customer_code: detail?.job?.customer_code || currentTicket.customer_code || '', project_name: detail?.job?.project_name || currentTicket.project_name || '', project_code: detail?.job?.project_code || currentTicket.project_code || '', order_code: currentTicket.order_code || '', ticket_code: currentTicket.ticket_code || '' }; } navigation.navigate('CurblineRelease', params); }}>
-                      <Text style={{ fontSize: fs(11), fontWeight: '800', color: c.primary }}>CURBLINE RELEASE</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
               </ScrollView>
-              {leftColScrollable && (() => {
-                const thumbPct = leftColLayoutH.current > 0 && leftColContentH.current > 0 ? Math.max(5,(leftColLayoutH.current / leftColContentH.current) * 100) : 30;
-                const trackSpace = 100 - thumbPct;
-                const topPct = trackSpace * leftColScrollPct;
-                return (
-                  <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: fs(4), borderRadius: fs(2), backgroundColor: c.border, pointerEvents: 'none' }}>
-                    <View style={{ position: 'absolute', top: `${topPct}%`, width: '100%', height: `${thumbPct}%`, borderRadius: fs(2), backgroundColor: c.textMuted, opacity: 0.5 }} />
-                  </View>
-                );
-              })()}
               </View>
               {/* RIGHT: Mandatory Fields */}
               <View style={{ flex: 1 }}>
@@ -1632,25 +1589,6 @@ export default function DashboardScreen({ navigation }: Props) {
                     ) : (
                       <Text style={{ fontSize: ms(14), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
                     )}
-                  </View>
-                </View>
-                {/* Quick Links */}
-                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
-                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>QUICK LINKS</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(6) }}>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => { const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true }; if (currentTicket) { params.ticketInfo = { customer_name: detail?.job?.customer_name || currentTicket.customer_name || '', customer_code: detail?.job?.customer_code || currentTicket.customer_code || '', project_name: detail?.job?.project_name || currentTicket.project_name || '', project_code: detail?.job?.project_code || currentTicket.project_code || '', order_code: currentTicket.order_code || '', ticket_code: currentTicket.ticket_code || '' }; } navigation.navigate('AcceptTicket', params); }}>
-                      <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.primary }}>SIGN & ACCEPT TICKET</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: ms(12), color: c.textMuted }}>|</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => { const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true }; if (currentTicket) { params.ticketInfo = { customer_name: detail?.job?.customer_name || currentTicket.customer_name || '', customer_code: detail?.job?.customer_code || currentTicket.customer_code || '', project_name: detail?.job?.project_name || currentTicket.project_name || '', project_code: detail?.job?.project_code || currentTicket.project_code || '', order_code: currentTicket.order_code || '', ticket_code: currentTicket.ticket_code || '' }; } navigation.navigate('DisputeTicket', params); }}>
-                      <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.primary }}>DISPUTE LOAD</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: ms(12), color: c.textMuted }}>|</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => { const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true }; if (currentTicket) { params.ticketInfo = { customer_name: detail?.job?.customer_name || currentTicket.customer_name || '', customer_code: detail?.job?.customer_code || currentTicket.customer_code || '', project_name: detail?.job?.project_name || currentTicket.project_name || '', project_code: detail?.job?.project_code || currentTicket.project_code || '', order_code: currentTicket.order_code || '', ticket_code: currentTicket.ticket_code || '' }; } navigation.navigate('CurblineRelease', params); }}>
-                      <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.primary }}>CURBLINE RELEASE</Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
