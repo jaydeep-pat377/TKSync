@@ -15,8 +15,8 @@ async function showLocalNotification(data: Record<string, string> = {}) {
     console.log('Notifee channel created:', channelId);
 
     const notificationId = await notifee.displayNotification({
-      title: 'TKSync',
-      body: 'There are missing fields in Plant, Job Site, Returned, Time Adjust, COD. Please fill the required fields.',
+      title: data?.title || 'TKSync',
+      body: data?.body || data?.message || 'There are missing fields in Plant, Job Site, Returned, Time Adjust, COD. Please fill the required fields.',
       android: {
         channelId,
         smallIcon: 'ic_launcher',
@@ -94,14 +94,24 @@ export function setupTokenRefreshListener(): () => void {
 
 export function setupBackgroundHandler() {
   messaging().setBackgroundMessageHandler(async remoteMessage => {
-    console.log('Silent push received in background:', remoteMessage.data);
-    await showLocalNotification(remoteMessage.data as Record<string, string>);
+    console.log('Push received in background:', remoteMessage.data);
+    const data = (remoteMessage.data || {}) as Record<string, string>;
+    if (remoteMessage.notification) {
+      data.title = data.title || remoteMessage.notification.title || '';
+      data.body = data.body || remoteMessage.notification.body || '';
+    }
+    await showLocalNotification(data);
   });
 }
 
 export function setupForegroundHandler() {
   return messaging().onMessage(async remoteMessage => {
-    console.log('Silent push received in foreground:', remoteMessage.data);
-    await showLocalNotification(remoteMessage.data as Record<string, string>);
+    console.log('Push received in foreground:', remoteMessage.data);
+    const data = (remoteMessage.data || {}) as Record<string, string>;
+    if (remoteMessage.notification) {
+      data.title = data.title || remoteMessage.notification.title || '';
+      data.body = data.body || remoteMessage.notification.body || '';
+    }
+    await showLocalNotification(data);
   });
 }
