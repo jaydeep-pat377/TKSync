@@ -1200,13 +1200,13 @@ export default function DashboardScreen({ navigation }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1 }}>
               <MaterialIcons name="local-shipping" size={fs(16)} color={c.primary} />
               <View>
-                <Text style={{ fontSize: fs(11), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
-                <Text style={{ fontSize: fs(9), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
+                <Text style={{ fontSize: fs(14), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
+                <Text style={{ fontSize: fs(11), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
               </View>
             </View>
             <View style={{ alignItems: 'center', flex: 2 }}>
-              <Text style={{ fontSize: fs(14), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
-              <Text style={{ fontSize: fs(10), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+              <Text style={{ fontSize: fs(16), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+              <Text style={{ fontSize: fs(12), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(10), flex: 1.5, justifyContent: 'flex-end' }}>
               <View style={{ backgroundColor: c.overlay15, paddingVertical: fs(5), paddingHorizontal: fs(10), borderRadius: fs(8), flexDirection: 'row', alignItems: 'center', gap: fs(6) }}>
@@ -1505,13 +1505,13 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                 <MaterialIcons name="local-shipping" size={ms(18)} color={c.primary} />
                 <View>
-                  <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
-                  <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
+                  <Text style={{ fontSize: ms(12), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
+                  <Text style={{ fontSize: ms(10), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
                 </View>
               </View>
               <View style={{ alignItems: 'center', flex: 2 }}>
-                <Text style={{ fontSize: ms(12), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
-                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+                <Text style={{ fontSize: ms(14), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
               </View>
               <View style={{ alignItems: 'flex-end', flex: 1, gap: 3 }}>
                 {currentTicket != null && (<>
