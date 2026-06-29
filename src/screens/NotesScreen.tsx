@@ -3042,7 +3042,7 @@ export default function NotesScreen({navigation, route}: Props) {
         visible={saveModal.visible}
         success={saveModal.success}
         message={saveModal.message}
-        onClose={() => setSaveModal(s => ({...s, visible: false}))}
+        onClose={() => { setSaveModal(s => ({...s, visible: false})); if (saveModal.success) navigation.goBack(); }}
       />
       {(savingOverlay || recordLoading) && (
         <View style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', zIndex: 100}}>

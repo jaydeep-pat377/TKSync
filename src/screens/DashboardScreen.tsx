@@ -1416,8 +1416,8 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: isSmallLandscape ? fs(6) : fs(8) }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: isSmallLandscape ? fs(3) : fs(4), marginBottom: isSmallLandscape ? fs(3) : fs(4) }}>
                   <Text style={{ fontSize: fs(12), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1F05' : '#FFF8E1', paddingVertical: fs(4), paddingHorizontal: fs(12), borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : '#F59E0B40' }}>
-                    <Text style={{ fontSize: fs(13), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : '#F59E0B' }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(4), paddingHorizontal: fs(12), borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
+                    <Text style={{ fontSize: fs(13), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                   </View>
                 </View>
                 <ScrollView style={{ flex: 1 }} bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled
@@ -1444,12 +1444,12 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View key={si} style={{ marginBottom: si < arr.length - 1 ? fs(4) : 0, paddingBottom: si < arr.length - 1 ? fs(6) : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: fs(3) }}>
                         <Text style={{ fontSize: fs(11), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
-                        <Text style={{ fontSize: fs(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.textMuted }}>{section.data.filled}/{section.data.total}</Text>
+                        <Text style={{ fontSize: fs(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
                       </View>
                       {section.data.items.map((item, ii) => (
                         <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(5), gap: fs(6) }}>
-                          <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : isDark ? '#2A1F05' : '#FFF8E1', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: '#F59E0B' }}>
-                            <MaterialIcons name={item.filled ? 'check' : 'close'} size={fs(10)} color={item.filled ? '#fff' : '#F59E0B'} />
+                          <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
+                            <MaterialIcons name={item.filled ? 'check' : 'close'} size={fs(10)} color={item.filled ? '#fff' : c.error} />
                           </View>
                           <Text style={{ fontSize: fs(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
                           {item.value ? <Text style={{ fontSize: fs(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fs(10), color: c.textMuted }}>--</Text>}
@@ -1656,19 +1656,19 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
                     <Text style={{ fontSize: ms(12), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1F05' : '#FFF8E1', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : '#F59E0B40' }}>
-                      <Text style={{ fontSize: ms(13), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : '#F59E0B' }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
+                      <Text style={{ fontSize: ms(13), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                     </View>
                   </View>
                   {[{ label: 'PLANT', data: plantMandatory, icon: 'factory' as const }, { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const }, { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const }, { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const }].map((section, si, arr) => (
                     <View key={si} style={{ marginBottom: si < arr.length - 1 ? 4 : 0, paddingBottom: si < arr.length - 1 ? 8 : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
                         <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
-                        <Text style={{ fontSize: ms(10), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.textMuted }}>{section.data.filled}/{section.data.total}</Text>
+                        <Text style={{ fontSize: ms(10), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
                       </View>
                       {section.data.items.map((item, ii) => (
                         <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
-                          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1F05' : '#FFF8E1', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: '#F59E0B' }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : '#F59E0B'} /></View>
+                          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : c.error} /></View>
                           <Text style={{ fontSize: ms(11), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
                           {item.value ? <Text style={{ fontSize: ms(11), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(10), color: c.textMuted }}>--</Text>}
                         </View>))}
