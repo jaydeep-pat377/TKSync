@@ -43,7 +43,7 @@ type Props = {
 export default function AcceptTicketScreen({navigation, route}: Props) {
   useFontScaleRefresh();
   const s = createS();
-  const {c} = useTheme();
+  const {c, isDark} = useTheme();
   const {isOnline, enqueueOffline} = useOfflineSync();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
@@ -52,7 +52,7 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
   const isTabletLandscape = isTablet && isLandscape;
   const sigHeight = isTablet
     ? Math.min(300, Math.max(200, height * 0.28))
-    : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
+    : Math.min(isLandscape ? 200 : 200, Math.max(120, height * 0.22));
   const cardMaxWidth = isTabletLandscape ? undefined : 700;
   const {ticketId, editable: routeEditable, ticketInfo: routeTicketInfo} = (route.params || {}) as {
     ticketId?: number;
@@ -369,14 +369,14 @@ export default function AcceptTicketScreen({navigation, route}: Props) {
 
             {!isFormDisabled && (
               <TouchableOpacity
-                style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
+                style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : isDark ? '#4A5B6E' : c.border}]}
                 activeOpacity={canSubmit ? 0.8 : 1}
                 disabled={!canSubmit}
                 onPress={handleSubmit}>
                 {submitting ? (
                   <ActivityIndicator size="small" color={c.textOnPrimary} />
                 ) : (
-                  <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>SUBMIT</Text>
+                  <Text style={[s.submitBtnText, {color: canSubmit ? '#FFFFFF' : '#9E9E9E'}]}>SUBMIT</Text>
                 )}
               </TouchableOpacity>
             )}

@@ -73,7 +73,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
     .m-signature-pad { box-shadow: none; border: none; margin: 0; }
     .m-signature-pad--body { border: none; }
     .m-signature-pad--footer { display: none; }
-    body, html { background-color: ${isDark ? '#1E2230' : '#F1F5F9'}; margin: 0; padding: 0; }
+    body, html { background-color: ${isDark ? '#F0F0F0' : '#F1F5F9'}; margin: 0; padding: 0; }
     canvas { width: 100% !important; height: 100% !important; touch-action: none; }
   `;
 
@@ -84,7 +84,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
           <MaterialIcons name="draw" size={ms(16)} color={c.textMuted} />
           <Text style={[st.label, {color: c.textMuted}]}>Signature</Text>
         </View>
-        <View style={[st.padOuter, {height, backgroundColor: c.surface, borderColor: c.primary}]}>
+        <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: c.primary}]}>
           <Image source={{uri: initialImage}} style={st.readOnlyImage} resizeMode="contain" />
           <View style={[st.signLine, {borderBottomColor: c.textMuted}]}>
             <MaterialIcons name="play-arrow" size={ms(14)} color={c.textMuted} />
@@ -113,7 +113,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
         <Text style={[st.label, {color: c.textMuted}]}>Draw your signature below</Text>
       </View>
 
-      <View style={[st.padOuter, {height, backgroundColor: c.surface, borderColor: hasSignature ? c.primary : c.border}]}>
+      <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: hasSignature ? c.primary : c.border}]}>
         <SignatureScreen
           ref={sigRef}
           onBegin={handleBegin}
@@ -122,7 +122,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
           onEmpty={handleEmpty}
           webStyle={webStyle}
           backgroundColor="transparent"
-          penColor={isDark ? '#F1F5F9' : '#1A202C'}
+          penColor="#1A202C"
           minWidth={1.5}
           maxWidth={3}
           dotSize={2}
@@ -141,12 +141,12 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
         </TouchableOpacity>
 
         {/* Sign line */}
-        <View style={[st.signLine, {borderBottomColor: c.textMuted}]}>
-          <MaterialIcons name="play-arrow" size={ms(14)} color={c.textMuted} />
+        <View style={[st.signLine, {borderBottomColor: isDark ? c.textMuted : '#333'}]}>
+          <MaterialIcons name="play-arrow" size={ms(14)} color={isDark ? c.textMuted : '#333'} />
         </View>
 
         {/* Sign here label */}
-        <Text style={[st.signHere, {color: c.textMuted}]}>SIGN HERE</Text>
+        <Text style={[st.signHere, {color: isDark ? c.textMuted : '#333'}]}>SIGN HERE</Text>
 
         {/* Status indicator */}
         {hasSignature && (

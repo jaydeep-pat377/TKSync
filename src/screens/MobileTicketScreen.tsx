@@ -48,22 +48,22 @@ const normalizeUOM = (unit: string | null): string => {
 };
 
 // Landscape section header
-function LSectionHead({icon, title, color}: {icon: string; title: string; color: string}) {
+function LSectionHead({icon, title, color, fs}: {icon: string; title: string; color: string; fs: (n: number) => number}) {
   return (
     <View style={{flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8}}>
-      <MaterialIcons name={icon as any} size={ms(12)} color={color} />
-      <Text style={{fontSize: ms(10), fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
+      <MaterialIcons name={icon as any} size={fs(12)} color={color} />
+      <Text style={{fontSize: fs(12), fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
     </View>
   );
 }
 
 // Landscape info row
-function LRow({label, value, highlight, highlightBg, textColor, labelColor, labelW = 80, wrap}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelColor?: string; labelW?: number; wrap?: boolean}) {
+function LRow({label, value, highlight, highlightBg, textColor, labelColor, labelW = 80, wrap, fs}: {label: string; value: string; highlight?: boolean; highlightBg?: string; textColor: string; labelColor?: string; labelW?: number; wrap?: boolean; fs: (n: number) => number}) {
   return (
-    <View style={{flexDirection: 'row', paddingVertical: wp(4), flexWrap: 'wrap'}}>
-      <Text style={{minWidth: labelW, maxWidth: labelW + 10, fontSize: ms(9), fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
+    <View style={{flexDirection: 'row', paddingVertical: wp(4)}}>
+      <Text style={{width: labelW, fontSize: fs(11), fontWeight: '600', color: labelColor || '#9E9E9E'}}>{label}</Text>
       <Text style={[
-        {flex: 1, fontSize: ms(9), fontWeight: '600', color: textColor, minWidth: 60},
+        {flex: 1, fontSize: fs(14), fontWeight: '600', color: textColor, minWidth: 60},
         highlight && {paddingHorizontal: 4, paddingVertical: 2, backgroundColor: highlightBg, borderRadius: 3},
       ]} numberOfLines={wrap ? undefined : 2}>{value}</Text>
     </View>
@@ -75,7 +75,7 @@ function SLabel({text, icon, color}: {text: string; icon?: string; color: string
   return (
     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(5), marginBottom: wp(6)}}>
       {icon && <MaterialIcons name={icon as any} size={ms(13)} color={color} />}
-      <Text style={{fontSize: ms(10), fontWeight: '800', letterSpacing: 0.6, color}}>{text}</Text>
+      <Text style={{fontSize: ms(9), fontWeight: '800', letterSpacing: 0.6, color}}>{text}</Text>
     </View>
   );
 }
@@ -83,7 +83,7 @@ function SLabel({text, icon, color}: {text: string; icon?: string; color: string
 export default function MobileTicketScreen({navigation, route}: Props) {
   useFontScaleRefresh();
   const s = createS();
-  const {c} = useTheme();
+  const {c, isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height: winHeight} = useWindowDimensions();
   const isTablet = Math.min(width, winHeight) > 600;
@@ -92,6 +92,11 @@ export default function MobileTicketScreen({navigation, route}: Props) {
   const shortDim = Math.min(width, winHeight);
   const isSmallPhone = shortDim < 360;
   const hMargin = isTablet ? 24 : isLandscape ? 16 : isSmallPhone ? wp(6) : wp(10);
+
+  // Landscape scale factor — same as Dashboard
+  const lh = winHeight - insets.top - insets.bottom;
+  const lsScale = Math.max(0.65, Math.min(1, lh / 660));
+  const fs = (base: number) => Math.round(base * lsScale);
 
   const ticketId = route.params?.ticketId;
   const [data, setData] = useState<MobileTicketPrint | null>(null);
@@ -154,8 +159,14 @@ export default function MobileTicketScreen({navigation, route}: Props) {
     {label: 'USAGE', value: dt.usage || '-'},
   ] : [];
 
+  const fmtTimeOnly = (t: string | null) => {
+    if (!t) return '--';
+    const d = new Date(t);
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+  };
+
   const timelineGrid = tl?.steps
-    ? tl.steps.map(step => ({label: step.label.toUpperCase(), time: fmtTime(step.time)}))
+    ? tl.steps.map(step => ({label: step.label.toUpperCase(), time: fmtTime(step.time), timeOnly: fmtTimeOnly(step.time)}))
     : [];
 
   const subTotal = totals?.subtotal != null ? totals.subtotal.toFixed(2) : '0.00';
@@ -220,12 +231,12 @@ export default function MobileTicketScreen({navigation, route}: Props) {
               <MaterialIcons name="receipt-long" size={wide ? 19 : ms(16)} color={c.textOnPrimary} />
             </View>
             <View style={{flex: 1}}>
-              <Text style={[s.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 16}]}>MOBILE TICKET</Text>
+              <Text style={[s.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 18}]}>MOBILE TICKET</Text>
               <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: wide ? 14 : wp(8), marginTop: wide ? 5 : wp(6)}}>
                 {[{label: 'ORDER', value: orderCode}, {label: 'TICKET', value: ticketCode}, {label: 'DATE', value: orderDate}].map(item => (
                   <View key={item.label} style={{flexDirection: 'row', alignItems: 'center', gap: wide ? 4 : wp(3)}}>
-                    <Text style={{fontSize: wide ? 9 : ms(8), fontWeight: '600', color: c.textOnDark60}}>{item.label}</Text>
-                    <Text style={{fontSize: wide ? 12 : ms(10), fontWeight: '800', color: c.textOnPrimary}} numberOfLines={1}>{item.value}</Text>
+                    <Text style={{fontSize: wide ? 11 : ms(10), fontWeight: '600', color: c.textOnDark60}}>{item.label}</Text>
+                    <Text style={{fontSize: wide ? 14 : ms(12), fontWeight: '800', color: c.textOnPrimary}} numberOfLines={1}>{item.value}</Text>
                   </View>
                 ))}
               </View>
@@ -248,15 +259,15 @@ export default function MobileTicketScreen({navigation, route}: Props) {
               {/* Column 1: Customer + Driver/Truck */}
               <View style={{flex: 30, gap: isTablet ? 8 : wp(5)}}>
                 <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
-                  <LSectionHead icon="people" title="CUSTOMER" color={c.primary} />
+                  <LSectionHead icon="people" title="CUSTOMER" color={isDark ? '#B0BEC5' : c.primary} fs={fs} />
                   {customerInfo.map(item => (
-                    <LRow key={item.label} label={item.label} value={item.value} highlight={item.highlight} highlightBg={c.highlight} textColor={c.textPrimary} labelW={isTablet ? 70 : 58} wrap={item.wrap} />
+                    <LRow key={item.label} label={item.label} value={item.value} highlight={item.highlight} highlightBg={c.highlight} textColor={c.textPrimary} labelW={isTablet ? 115 : 85} wrap={item.wrap} fs={fs} />
                   ))}
                 </View>
                 <View style={[lCard, {backgroundColor: c.white, borderColor: c.border}]}>
-                  <LSectionHead icon="local-shipping" title="DRIVER & TRUCK" color={c.primary} />
+                  <LSectionHead icon="local-shipping" title="DRIVER & TRUCK" color={isDark ? '#B0BEC5' : c.primary} fs={fs} />
                   {[...driverCol, ...truckCol].map(item => (
-                    <LRow key={item.label} label={item.label} value={item.value} textColor={c.textPrimary} labelW={isTablet ? 65 : 52} />
+                    <LRow key={item.label} label={item.label} value={item.value} textColor={c.textPrimary} labelW={isTablet ? 115 : 85} fs={fs} />
                   ))}
                 </View>
               </View>
@@ -267,30 +278,30 @@ export default function MobileTicketScreen({navigation, route}: Props) {
                 <View style={{flexDirection: 'row', gap: isTablet ? 8 : wp(5), flex: 1}}>
                   {/* Charges */}
                   <View style={[lCard, {flex: 1, backgroundColor: c.white, borderColor: c.border}]}>
-                    <LSectionHead icon="receipt-long" title="CHARGES" color={c.primary} />
+                    <LSectionHead icon="receipt-long" title="CHARGES" color={isDark ? '#B0BEC5' : c.primary} fs={fs} />
                     <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: c.primary, gap: isTablet ? 5 : 3}}>
-                      <Text style={{width: isTablet ? 56 : 44, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>CODE</Text>
-                      <Text style={{flex: 1, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>DESCRIPTION</Text>
-                      <Text style={{width: isTablet ? 35 : 28, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>QTY</Text>
-                      <Text style={{width: isTablet ? 28 : 22, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>UNIT</Text>
-                      <Text style={{width: isTablet ? 38 : 30, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>PRICE</Text>
-                      <Text style={{width: isTablet ? 72 : 58, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>AMOUNT</Text>
+                      <Text style={{width: isTablet ? 56 : 44, fontSize: fs(10), fontWeight: '800', color: c.textPrimary}}>CODE</Text>
+                      <Text style={{flex: 1, fontSize: fs(10), fontWeight: '800', color: c.textPrimary}}>DESCRIPTION</Text>
+                      <Text style={{width: isTablet ? 40 : 28, fontSize: fs(10), fontWeight: '800', color: c.textPrimary}}>QTY</Text>
+                      <Text style={{width: isTablet ? 48 : 32, fontSize: fs(10), fontWeight: '800', color: c.textPrimary}}>UNIT</Text>
+                      <Text style={{width: isTablet ? 55 : 42, fontSize: fs(10), fontWeight: '800', color: c.textPrimary}}>PRICE</Text>
+                      <Text style={{width: isTablet ? 85 : 65, fontSize: fs(10), fontWeight: '800', color: c.textPrimary}}>AMOUNT</Text>
                     </View>
                     {chargeRows.map((row, i) => (
                       <View key={`${row.code}-${i}`} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: isTablet ? 5 : 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, gap: isTablet ? 5 : 3}}>
-                        <Text style={{width: isTablet ? 56 : 44, fontSize: ms(9), fontWeight: '500', color: c.textMuted}} numberOfLines={1}>{row.code}</Text>
-                        <Text style={{flex: 1, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}} numberOfLines={1}>{row.desc}</Text>
-                        <Text style={{width: isTablet ? 35 : 28, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}}>{row.qty}</Text>
-                        <Text style={{width: isTablet ? 28 : 22, fontSize: ms(9), fontWeight: '500', color: c.textMuted}}>{row.unit}</Text>
-                        <Text style={{width: isTablet ? 38 : 30, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}}>{row.price}</Text>
-                        <Text style={{width: isTablet ? 72 : 58, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}}>{row.amount}</Text>
+                        <Text style={{width: isTablet ? 56 : 44, fontSize: fs(13), fontWeight: '500', color: c.textMuted}} numberOfLines={1}>{row.code}</Text>
+                        <Text style={{flex: 1, fontSize: fs(13), fontWeight: '500', color: c.textPrimary}} numberOfLines={1}>{row.desc}</Text>
+                        <Text style={{width: isTablet ? 40 : 28, fontSize: fs(13), fontWeight: '500', color: c.textPrimary}}>{row.qty}</Text>
+                        <Text style={{width: isTablet ? 48 : 32, fontSize: fs(13), fontWeight: '500', color: c.textMuted}}>{row.unit}</Text>
+                        <Text style={{width: isTablet ? 55 : 42, fontSize: fs(13), fontWeight: '500', color: c.textPrimary}}>{row.price}</Text>
+                        <Text style={{width: isTablet ? 85 : 65, fontSize: fs(13), fontWeight: '500', color: c.textPrimary}}>{row.amount}</Text>
                       </View>
                     ))}
                     <View style={{borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border, marginTop: 6, paddingTop: 6}}>
                       {[{label: 'Sub', value: subTotal}, {label: 'Tax', value: taxTotal}, {label: 'Total', value: grandTotal}].map(item => (
                         <View key={item.label} style={{flexDirection: 'row', paddingVertical: 3}}>
-                          <Text style={{minWidth: isTablet ? 42 : 34, fontSize: ms(10), fontWeight: item.label === 'Total' ? '800' : '600', color: item.label === 'Total' ? c.textPrimary : c.textMuted}}>{item.label}</Text>
-                          <Text style={{flex: 1, fontSize: ms(10), fontWeight: item.label === 'Total' ? '700' : '500', color: c.textPrimary}}>{item.value}</Text>
+                          <Text style={{minWidth: isTablet ? 42 : 34, fontSize: fs(12), fontWeight: item.label === 'Total' ? '800' : '600', color: item.label === 'Total' ? c.textPrimary : c.textMuted}}>{item.label}</Text>
+                          <Text style={{flex: 1, fontSize: fs(12), fontWeight: item.label === 'Total' ? '700' : '500', color: c.textPrimary}}>{item.value}</Text>
                         </View>
                       ))}
                     </View>
@@ -298,11 +309,11 @@ export default function MobileTicketScreen({navigation, route}: Props) {
 
                   {/* Timeline */}
                   <View style={[lCard, {width: isTablet ? 280 : 160, backgroundColor: c.white, borderColor: c.border}]}>
-                    <LSectionHead icon="schedule" title="TIMELINE" color={c.primary} />
+                    <LSectionHead icon="schedule" title="TIMELINE" color={isDark ? '#B0BEC5' : c.primary} fs={fs} />
                     {timelineGrid.map(item => (
                       <View key={item.label} style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: isTablet ? 5 : 3}}>
-                        <Text style={{fontSize: ms(9), fontWeight: '600', color: c.textMuted}}>{item.label}</Text>
-                        <Text style={{fontSize: ms(10), fontWeight: '700', color: c.textPrimary}}>{item.time}</Text>
+                        <Text style={{fontSize: fs(11), fontWeight: '600', color: c.textMuted}}>{item.label}</Text>
+                        <Text style={{fontSize: fs(13), fontWeight: '700', color: c.textPrimary}}>{item.timeOnly}</Text>
                       </View>
                     ))}
                   </View>
@@ -311,10 +322,10 @@ export default function MobileTicketScreen({navigation, route}: Props) {
                 {/* Shared Actions */}
                 <View style={[lCard, {flexDirection: 'row', alignItems: 'center', backgroundColor: c.white, borderColor: c.border, gap: isTablet ? 10 : wp(6)}]}>
                   <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : wp(10), borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : wp(40), backgroundColor: c.signBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket', {ticketId})}>
-                    <Text style={{fontSize: isTablet ? 16 : ms(13), fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>SIGN</Text>
+                    <Text style={{fontSize: fs(16), fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>SIGN</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={{flex: 1, paddingVertical: isTablet ? 18 : wp(10), borderRadius: 9, alignItems: 'center', justifyContent: 'center', minHeight: isTablet ? 56 : wp(40), backgroundColor: c.disputeBtn}} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket', {ticketId})}>
-                    <Text style={{fontSize: isTablet ? 16 : ms(13), fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>DISPUTE</Text>
+                    <Text style={{fontSize: fs(16), fontWeight: '800', letterSpacing: 0.4, color: c.textOnPrimary}}>DISPUTE</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -324,7 +335,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
             <>
               {/* Customer Info */}
               <View style={[s.section, {borderBottomColor: c.border}]}>
-                <SLabel text="CUSTOMER DETAILS" icon="people" color={c.primary} />
+                <SLabel text="CUSTOMER DETAILS" icon="people" color={isDark ? '#B0BEC5' : c.primary} />
                 {customerInfo.map(item => (
                   <View key={item.label} style={s.infoRow}>
                     <Text style={[s.infoLabel, {color: c.textMuted}]}>{item.label}</Text>
@@ -339,7 +350,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
 
               {/* Driver / Truck */}
               <View style={[s.section, {borderBottomColor: c.border}]}>
-                <SLabel text="DRIVER & TRUCK" icon="local-shipping" color={c.primary} />
+                <SLabel text="DRIVER & TRUCK" icon="local-shipping" color={isDark ? '#B0BEC5' : c.primary} />
                 <View style={s.twoColGrid}>
                   <View style={s.gridCol}>
                     {driverCol.map(item => (
@@ -361,53 +372,65 @@ export default function MobileTicketScreen({navigation, route}: Props) {
               </View>
 
               {/* Timeline + Totals */}
-              <View style={[s.section, {borderBottomColor: c.border, backgroundColor: c.surface}]}>
-                <View style={{flexDirection: 'row'}}>
+              <View style={[s.section, {borderBottomColor: c.border}]}>
+                <SLabel text="DELIVERY TIMELINE" icon="schedule" color={isDark ? '#B0BEC5' : c.primary} />
+                <View style={{flexDirection: 'row', gap: wp(10)}}>
                   <View style={{flex: 1}}>
-                    <SLabel text="DELIVERY TIMELINE" icon="schedule" color={c.primary} />
-                    <View style={s.timeGrid}>
-                      {timelineGrid.map(item => (
-                        <View key={item.label} style={s.timeCell}>
-                          <Text style={[s.timeLabel, {color: c.textMuted}]}>{item.label}</Text>
-                          <Text style={[s.timeValue, {color: c.textPrimary}]}>{item.time}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                  <View style={{borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border, paddingLeft: wp(10), justifyContent: 'center'}}>
-                    <SLabel text="TOTALS" color={c.primary} />
-                    {[{label: 'Sub', value: subTotal}, {label: 'Tax', value: taxTotal}, {label: 'Total', value: grandTotal}].map(item => (
-                      <View key={item.label} style={{flexDirection: 'row', paddingVertical: wp(3), gap: wp(8)}}>
-                        <Text style={{fontSize: ms(11), fontWeight: '700', color: c.textMuted, minWidth: wp(34)}}>{item.label}</Text>
-                        <Text style={[{fontSize: ms(11), fontWeight: '600', color: c.textPrimary}, item.label === 'Total' && {fontWeight: '800'}]}>{item.value}</Text>
+                    {timelineGrid.slice(0, 4).map(item => (
+                      <View key={item.label} style={{flexDirection: 'row', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}}>
+                        <Text style={{fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '55%', letterSpacing: 0.3}}>{item.label}</Text>
+                        <Text style={{fontSize: ms(9), fontWeight: '800', color: c.textPrimary, flex: 1}}>{item.timeOnly}</Text>
                       </View>
                     ))}
+                  </View>
+                  <View style={{width: StyleSheet.hairlineWidth, backgroundColor: c.border}} />
+                  <View style={{flex: 1}}>
+                    {timelineGrid.slice(4).map(item => (
+                      <View key={item.label} style={{flexDirection: 'row', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}}>
+                        <Text style={{fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '55%', letterSpacing: 0.3}}>{item.label}</Text>
+                        <Text style={{fontSize: ms(9), fontWeight: '800', color: c.textPrimary, flex: 1}}>{item.timeOnly}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+                {/* Totals */}
+                <View style={{flexDirection: 'row', marginTop: 10, backgroundColor: c.surface, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12}}>
+                  <View style={{flex: 1, alignItems: 'center'}}>
+                    <Text style={{fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.3}}>SUB</Text>
+                    <Text style={{fontSize: ms(9), fontWeight: '700', color: c.textPrimary, marginTop: 2}}>{subTotal}</Text>
+                  </View>
+                  <View style={{width: StyleSheet.hairlineWidth, backgroundColor: c.border}} />
+                  <View style={{flex: 1, alignItems: 'center'}}>
+                    <Text style={{fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.3}}>TAX</Text>
+                    <Text style={{fontSize: ms(9), fontWeight: '700', color: c.textPrimary, marginTop: 2}}>{taxTotal}</Text>
+                  </View>
+                  <View style={{width: StyleSheet.hairlineWidth, backgroundColor: c.border}} />
+                  <View style={{flex: 1.5, alignItems: 'center'}}>
+                    <Text style={{fontSize: ms(8), fontWeight: '800', color: c.primary, letterSpacing: 0.3}}>TOTAL</Text>
+                    <Text style={{fontSize: ms(10), fontWeight: '900', color: c.primary, marginTop: 2}}>{grandTotal}</Text>
                   </View>
                 </View>
               </View>
 
               {/* Charges */}
               <View style={[s.section, {borderBottomColor: c.border}]}>
-                <SLabel text="CHARGES" icon="receipt-long" color={c.primary} />
+                <SLabel text="CHARGES" icon="receipt-long" color={isDark ? '#B0BEC5' : c.primary} />
+                <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: c.primary}}>
+                  <Text style={{flex: 0.8, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>CODE</Text>
+                  <Text style={{flex: 3, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>DESCRIPTION</Text>
+                  <Text style={{flex: 0.6, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>QTY</Text>
+                  <Text style={{flex: 0.6, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>UNIT</Text>
+                  <Text style={{flex: 0.7, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>PRICE</Text>
+                  <Text style={{flex: 1.2, fontSize: ms(9), fontWeight: '800', color: c.textPrimary}}>AMOUNT</Text>
+                </View>
                 {chargeRows.map((row, i) => (
-                  <View key={`${row.code}-${i}`} style={[s.chargeItem, {backgroundColor: i % 2 === 0 ? c.surface : c.white, borderLeftColor: c.primary}]}>
-                    <View style={s.chargeTop}>
-                      <Text style={[s.chargeDesc, {color: c.textPrimary}]} numberOfLines={2}>{row.desc}</Text>
-                      <Text style={[s.chargeCode, {color: c.textMuted, backgroundColor: c.white, paddingHorizontal: wp(4), paddingVertical: wp(1), borderRadius: wp(4), overflow: 'hidden'}]}>{row.code}</Text>
-                    </View>
-                    <View style={s.chargeFields}>
-                      {[
-                        {label: 'QTY', value: row.qty},
-                        {label: 'UNIT', value: row.unit},
-                        {label: 'PRICE', value: row.price},
-                        {label: 'AMOUNT', value: row.amount},
-                      ].map(f => (
-                        <View key={f.label} style={s.chargeField}>
-                          <Text style={[s.chargeFieldLabel, {color: c.textMuted}]}>{f.label}</Text>
-                          <Text style={[s.chargeFieldValue, {color: f.label === 'AMOUNT' ? c.primary : c.textPrimary, fontWeight: f.label === 'AMOUNT' ? '700' : '600'}]}>{f.value}</Text>
-                        </View>
-                      ))}
-                    </View>
+                  <View key={`${row.code}-${i}`} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}}>
+                    <Text style={{flex: 0.8, fontSize: ms(9), fontWeight: '500', color: c.textMuted}} numberOfLines={1}>{row.code}</Text>
+                    <Text style={{flex: 3, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}} numberOfLines={1}>{row.desc}</Text>
+                    <Text style={{flex: 0.6, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}}>{row.qty}</Text>
+                    <Text style={{flex: 0.6, fontSize: ms(9), fontWeight: '500', color: c.textMuted}}>{row.unit}</Text>
+                    <Text style={{flex: 0.7, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}}>{row.price}</Text>
+                    <Text style={{flex: 1.2, fontSize: ms(9), fontWeight: '500', color: c.textPrimary}}>{row.amount}</Text>
                   </View>
                 ))}
               </View>
@@ -415,10 +438,10 @@ export default function MobileTicketScreen({navigation, route}: Props) {
               {/* Actions */}
               <View style={s.actionsSection}>
                 <View style={s.actionRowHalf}>
-                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.signBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket', {ticketId})}>
+                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.signBtn, paddingVertical: wp(8), minHeight: wp(36)}, isTablet && {minHeight: 50, paddingVertical: 14}]} activeOpacity={0.8} onPress={() => navigation.navigate('AcceptTicket', {ticketId})}>
                     <Text style={[s.actionBtnFullText, {color: c.textOnPrimary}, isTablet && {fontSize: 17}]}>SIGN</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.disputeBtn}, isTablet && {minHeight: 64, paddingVertical: 20}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket', {ticketId})}>
+                  <TouchableOpacity style={[s.actionBtnHalf, {backgroundColor: c.disputeBtn, paddingVertical: wp(8), minHeight: wp(36)}, isTablet && {minHeight: 50, paddingVertical: 14}]} activeOpacity={0.8} onPress={() => navigation.navigate('DisputeTicket', {ticketId})}>
                     <Text style={[s.actionBtnFullText, {color: c.textOnPrimary}, isTablet && {fontSize: 16}]}>DISPUTE</Text>
                   </TouchableOpacity>
                 </View>
@@ -442,33 +465,33 @@ const createS = () => StyleSheet.create({
   ticketCard: {borderRadius: wp(12), overflow: 'hidden', elevation: 3, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 6},
   banner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(12), paddingVertical: wp(8), gap: wp(8)},
   bannerIcon: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
-  bannerTitle: {fontSize: ms(14), fontWeight: '900', letterSpacing: 0.6},
+  bannerTitle: {fontSize: ms(16), fontWeight: '900', letterSpacing: 0.6},
   qrPlaceholder: {width: wp(32), height: wp(32), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
   closeBtn: {width: wp(34), height: wp(34), borderRadius: wp(17), justifyContent: 'center', alignItems: 'center'},
   section: {paddingHorizontal: wp(14), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth},
   divider: {height: StyleSheet.hairlineWidth, marginVertical: wp(4)},
   infoRow: {flexDirection: 'row', paddingVertical: wp(6), flexWrap: 'wrap'},
-  infoLabel: {minWidth: wp(68), maxWidth: wp(90), fontSize: ms(10), fontWeight: '700', letterSpacing: 0.2},
-  infoValue: {flex: 1, fontSize: ms(12), fontWeight: '600', minWidth: 80},
+  infoLabel: {minWidth: wp(68), maxWidth: wp(90), fontSize: ms(9), fontWeight: '700', letterSpacing: 0.2},
+  infoValue: {flex: 1, fontSize: ms(9), fontWeight: '600', minWidth: 80},
   highlightValue: {paddingHorizontal: wp(5), paddingVertical: wp(2), borderRadius: wp(4)},
   twoColGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(6)},
   gridCol: {flex: 1, minWidth: 120},
   gridRow: {flexDirection: 'row', paddingVertical: wp(4)},
-  gridLabel: {minWidth: wp(52), maxWidth: wp(78), fontSize: ms(11), fontWeight: '700'},
-  gridValue: {flex: 1, fontSize: ms(13), fontWeight: '500'},
+  gridLabel: {minWidth: wp(52), maxWidth: wp(78), fontSize: ms(9), fontWeight: '700'},
+  gridValue: {flex: 1, fontSize: ms(9), fontWeight: '500'},
   // Charges — card-style rows
   chargeItem: {paddingVertical: wp(8), paddingHorizontal: wp(10), paddingLeft: wp(12), marginBottom: wp(4), borderRadius: wp(6), borderLeftWidth: 3},
   chargeTop: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: wp(8), marginBottom: wp(6)},
   chargeCode: {fontSize: ms(9), fontWeight: '600'},
-  chargeDesc: {flex: 1, fontSize: ms(12), fontWeight: '700', lineHeight: ms(17)},
+  chargeDesc: {flex: 1, fontSize: ms(9), fontWeight: '700', lineHeight: ms(14)},
   chargeFields: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(10)},
   chargeField: {gap: wp(2), minWidth: wp(36)},
-  chargeFieldLabel: {fontSize: ms(8), fontWeight: '700', letterSpacing: 0.5},
-  chargeFieldValue: {fontSize: ms(11), fontWeight: '600'},
+  chargeFieldLabel: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.5},
+  chargeFieldValue: {fontSize: ms(9), fontWeight: '600'},
   timeGrid: {flexDirection: 'row', flexWrap: 'wrap'},
   timeCell: {width: '25%', minWidth: 70, paddingVertical: wp(4)},
-  timeLabel: {fontSize: ms(8), fontWeight: '700', letterSpacing: 0.3},
-  timeValue: {fontSize: ms(11), fontWeight: '700', marginTop: 2},
+  timeLabel: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.3},
+  timeValue: {fontSize: ms(9), fontWeight: '700', marginTop: 2},
   actionsSection: {paddingHorizontal: wp(14), paddingVertical: wp(12)},
   actionRowHalf: {flexDirection: 'row', gap: wp(10)},
   actionBtnHalf: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(8), paddingVertical: wp(14), borderRadius: wp(12), minHeight: wp(48), elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.12, shadowRadius: 3},

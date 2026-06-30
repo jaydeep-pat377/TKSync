@@ -112,6 +112,7 @@
     "qr": "QR"
   },
   "menu": {
+    "vehicleTracking": "Seguimiento de vehículo",
     "vehicle": "Vehículo",
     "logoutDriver": "Cerrar sesión conductor",
     "logoutTenant": "Cerrar sesión empresa",

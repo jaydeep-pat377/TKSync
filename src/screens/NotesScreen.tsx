@@ -1140,7 +1140,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8)}}>
         {!allFieldsFilled ? (
           <TouchableOpacity
             style={[st.voiceBtn, {backgroundColor: c.primary}]}
@@ -1656,7 +1656,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
   }
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8)}}>
         {!jAllFieldsFilled ? (
           <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setJVoiceWizardVisible(true)} activeOpacity={0.7}>
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
@@ -2180,7 +2180,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
 
   return (
     <View style={[st.tabBody, {backgroundColor: c.surface}]}>
-      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8)}}>
         {!rAllFieldsFilled ? (
           <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setRVoiceWizardVisible(true)} activeOpacity={0.7}>
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
@@ -2373,9 +2373,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
               {allFilled ? 'All timestamps recorded' : `${filledCount} of ${TIME_EVENTS.length} completed`}
             </Text>
           </View>
-          <View style={[tt.countPill, {backgroundColor: allFilled ? c.successSurface : c.surface, borderColor: allFilled ? c.success : c.border}]}>
-            <Text style={[tt.countText, {color: allFilled ? c.successDark : c.textMuted}]}>{filledCount}/{TIME_EVENTS.length}</Text>
-          </View>
+          <SaveButton disabled={tAllFieldsFilled || saving} onPress={handleSaveTime} />
         </View>
         {/* Progress */}
         <View style={[tt.track, {backgroundColor: c.border}]}>
@@ -2429,8 +2427,6 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
         })}
       </View>
 
-      {/* Save */}
-      <SaveButton disabled={tAllFieldsFilled || saving} onPress={handleSaveTime} />
     </>
   );
 
@@ -2634,7 +2630,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
 
   const codContent = (
     <>
-      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(6)}}>
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8)}}>
         {!codAllFieldsFilled ? (
           <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setCodVoiceWizardVisible(true)} activeOpacity={0.7}>
             <MaterialIcons name="mic" size={ms(14)} color="#FFF" />

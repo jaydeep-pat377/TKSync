@@ -34,7 +34,7 @@ type Props = {
 export default function DisputeTicketScreen({navigation, route}: Props) {
   useFontScaleRefresh();
   const s = createS();
-  const {c} = useTheme();
+  const {c, isDark} = useTheme();
   const {isOnline, enqueueOffline} = useOfflineSync();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
@@ -43,7 +43,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
   const isTabletLandscape = isTablet && isLandscape;
   const sigHeight = isTablet
     ? Math.min(300, Math.max(200, height * 0.28))
-    : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
+    : Math.min(isLandscape ? 200 : 200, Math.max(120, height * 0.22));
   const cardMaxWidth = isTabletLandscape ? undefined : 700;
   const {ticketId, editable: routeEditable, ticketInfo: routeTicketInfo} = (route.params || {}) as {
     ticketId?: number;
@@ -327,14 +327,14 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
 
             {!isFormDisabled && (
               <TouchableOpacity
-                style={[s.disputeBtn, {backgroundColor: canSubmit ? c.disputeBtn : c.border}]}
+                style={[s.disputeBtn, {backgroundColor: canSubmit ? c.disputeBtn : isDark ? '#4A5B6E' : c.border}]}
                 activeOpacity={canSubmit ? 0.8 : 1}
                 disabled={!canSubmit}
                 onPress={handleDispute}>
                 {submitting ? (
                   <ActivityIndicator size="small" color={c.textOnPrimary} />
                 ) : (
-                  <Text style={[s.disputeBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>DISPUTE</Text>
+                  <Text style={[s.disputeBtnText, {color: canSubmit ? '#FFFFFF' : '#9E9E9E'}]}>DISPUTE</Text>
                 )}
               </TouchableOpacity>
             )}

@@ -8,6 +8,7 @@ let syncInterval: ReturnType<typeof setInterval> | null = null;
 let unsubConnectivity: (() => void) | null = null;
 let isSyncing = false;
 let currentTicketId: number | null = null;
+let onTicketInactive: (() => void) | null = null;
 
 /** Fetch the current in-process ticket ID from tracking/me. */
 async function resolveTicketId(): Promise<number | null> {
@@ -22,8 +23,13 @@ async function resolveTicketId(): Promise<number | null> {
 /** Sync unsynced GPS records + re-resolve ticket ID for new records. */
 async function syncAndRefreshTicket(): Promise<void> {
   await syncGpsRecords();
-  // Re-resolve ticket ID — only update if API returned a valid result
+  // Re-resolve ticket ID — check if ticket is still active
   const newTicketId = await resolveTicketId();
+  if (newTicketId === null && currentTicketId !== null) {
+    console.log(`[GpsSyncManager] Ticket ${currentTicketId} is no longer active — auto-stopping`);
+    onTicketInactive?.();
+    return;
+  }
   if (newTicketId !== null && newTicketId !== currentTicketId) {
     console.log(`[GpsSyncManager] Ticket changed: ${currentTicketId} → ${newTicketId}`);
     currentTicketId = newTicketId;
@@ -97,12 +103,18 @@ export const gpsSyncManager = {
     unsubConnectivity = null;
     syncGpsRecords();
     currentTicketId = null;
+    onTicketInactive = null;
     console.log('[GpsSyncManager] Stopped');
   },
 
   /** Get the current ticket ID (resolved at start, refreshed every 30s). */
   getTicketId(): number | null {
     return currentTicketId;
+  },
+
+  /** Set callback for when the ticket becomes inactive (auto-stop tracking). */
+  setOnTicketInactive(cb: (() => void) | null): void {
+    onTicketInactive = cb;
   },
 
   /** Manual sync trigger. */

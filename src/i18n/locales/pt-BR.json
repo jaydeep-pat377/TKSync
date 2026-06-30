@@ -112,6 +112,7 @@
     "qr": "QR"
   },
   "menu": {
+    "vehicleTracking": "Rastreamento de veículo",
     "vehicle": "Veículo",
     "logoutDriver": "Sair motorista",
     "logoutTenant": "Sair empresa",

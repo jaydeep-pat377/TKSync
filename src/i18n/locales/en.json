@@ -112,6 +112,7 @@
     "qr": "QR"
   },
   "menu": {
+    "vehicleTracking": "Vehicle Tracking",
     "vehicle": "Vehicle",
     "logoutDriver": "Logout Driver",
     "logoutTenant": "Logout Tenant",

@@ -46,7 +46,7 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
     ticketId?: number;
     ticketInfo?: TicketInfo;
   };
-  const {c} = useTheme();
+  const {c, isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const {isOnline, enqueueOffline} = useOfflineSync();
@@ -54,7 +54,7 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
   const isLandscape = width > height;
   const sigHeight = isTablet
     ? Math.min(300, Math.max(200, height * 0.28))
-    : Math.min(isLandscape ? 200 : 280, Math.max(160, height * 0.32));
+    : Math.min(isLandscape ? 200 : 200, Math.max(120, height * 0.22));
   const [typeName, setTypeName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
@@ -309,14 +309,14 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
             )}
 
             <TouchableOpacity
-              style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : c.border}]}
+              style={[s.submitBtn, {backgroundColor: canSubmit ? c.signBtn : isDark ? '#4A5B6E' : c.border}]}
               activeOpacity={canSubmit ? 0.8 : 1}
               disabled={!canSubmit}
               onPress={handleSubmit}>
               {submitting ? (
                 <ActivityIndicator color={c.textOnPrimary} />
               ) : (
-                <Text style={[s.submitBtnText, {color: canSubmit ? c.textOnPrimary : c.textMuted}]}>
+                <Text style={[s.submitBtnText, {color: canSubmit ? '#FFFFFF' : '#9E9E9E'}]}>
                   {existingRelease && existingRelease.id > 0 ? 'UPDATE' : 'SUBMIT'}
                 </Text>
               )}

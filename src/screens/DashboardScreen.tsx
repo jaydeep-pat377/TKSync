@@ -194,13 +194,13 @@ const BOTTOM_ACTIONS = [
   { icon: 'note-alt', labelKey: 'actions.notes' },
   { icon: 'label', labelKey: 'actions.tag' },
   { icon: 'edit', labelKey: 'actions.edit' },
-  { icon: 'person', labelKey: 'actions.truck' },
+  { icon: 'factory', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
   { icon: 'text-fields', labelKey: 'actions.fontSize' },
 ];
 
 const MENU_ITEMS_BASE = [
-  { icon: 'local-shipping', labelKey: 'menu.vehicle', actionKey: 'Vehicle', color: '' },
+  { icon: 'gps-fixed', labelKey: 'menu.vehicleTracking', actionKey: 'VehicleTracking', color: '' },
   { icon: 'dark-mode', labelKey: 'menu.darkMode', actionKey: 'DarkMode', color: '' },
   { icon: 'person-off', labelKey: 'menu.logoutDriver', actionKey: 'Logout Driver', color: '' },
   { icon: 'domain-disabled', labelKey: 'menu.logoutTenant', actionKey: 'Logout Tenant', color: 'warn' },
@@ -552,10 +552,10 @@ export default function DashboardScreen({ navigation }: Props) {
   const doneCount = detail ? detail.progress.completed : 0;
   const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 
-  // Only show Vehicle Tracking menu when there's an in-process ticket
+  // Only show Vehicle/VehicleTracking menu when ticket is in process
   const hasActiveTicket = detail?.ticket?.in_process === true;
   const menuItems = useMemo(
-    () => hasActiveTicket ? MENU_ITEMS_BASE : MENU_ITEMS_BASE.filter(i => i.actionKey !== 'Vehicle'),
+    () => hasActiveTicket ? MENU_ITEMS_BASE : MENU_ITEMS_BASE.filter(i => i.actionKey !== 'VehicleTracking'),
     [hasActiveTicket],
   );
 
@@ -597,8 +597,8 @@ export default function DashboardScreen({ navigation }: Props) {
 
   const handleMenuItemPress = (label: string) => {
     closeMenu();
-    if (label === 'Vehicle') {
-      navigation.navigate('VehicleTracking');
+    if (label === 'VehicleTracking') {
+      navigation.navigate('VehicleTracking', { ticketId: currentTicket?.id });
     } else if (label === 'DarkMode') {
       toggle();
     } else if (label === 'Logout Driver') {
@@ -627,7 +627,7 @@ export default function DashboardScreen({ navigation }: Props) {
         .finally(() => setQrLoading(false));
     }
     if (item.icon === 'help-outline') { setFontSizeVisible(true); return; }
-    if (item.icon === 'person' || item.icon === 'local-shipping') {
+    if (item.icon === 'factory' || item.icon === 'local-shipping') {
       setPlantsLoading(true);
       setPlantsError(false);
       setPlantsList([]);
@@ -960,8 +960,8 @@ export default function DashboardScreen({ navigation }: Props) {
     const isFontBtn = item.icon === 'text-fields';
     const sz = L ? 20 : isTablet ? 24 : ms(20);
     const iconEl = isFontBtn
-      ? <Text style={{ fontSize: sz * 0.85, fontWeight: '900', color: active ? c.primary : c.textMuted }}>A</Text>
-      : <MaterialIcons name={item.icon as any} size={sz} color={active ? c.primary : c.textMuted} />;
+      ? <Text style={{ fontSize: sz * 0.85, fontWeight: '900', color: active ? c.primary : isDark ? '#B0BEC5' : c.textMuted }}>A</Text>
+      : <MaterialIcons name={item.icon as any} size={sz} color={active ? c.primary : isDark ? '#B0BEC5' : c.textMuted} />;
     return (
       <TouchableOpacity
         key={item.labelKey}
@@ -1044,33 +1044,35 @@ export default function DashboardScreen({ navigation }: Props) {
       <View style={{ flex: 1 }}>
         {/* ─── TOP BAR: TODAY + Tickets + Right Icons ─── */}
         <View style={{ backgroundColor: c.background, paddingTop: insets.top + (L ? 2 : 4), paddingBottom: L ? 3 : 6, paddingLeft: Math.max(L ? ls(12) : wp(12), insets.left + 4), paddingRight: Math.max(L ? ls(12) : wp(12), insets.right + 4), alignItems: 'center' }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }}>
-            {tickets.map((ticket, i) => {
-              const isSelected = activeTicket === i;
-              const isCompleted = ticket.at_plant_time != null;
-              return (
-                <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: isCompleted ? '#2E7D32' : c.accent }}>
-                  <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
-                  <Text style={{ fontSize: ms(10), fontWeight: isSelected ? '900' : '700', color: '#fff', fontFamily: 'monospace' }}>{ticket.ticket_code}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          <View style={{ position: 'absolute', right: Math.max(L ? ls(12) : wp(12), insets.right + 4), top: insets.top + (L ? 2 : 4), flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: 14, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <MaterialIcons name="wifi" size={12} color="#fff" />
-              <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', paddingHorizontal: 8 }} style={{ flex: 1 }}>
+              {tickets.map((ticket, i) => {
+                const isSelected = activeTicket === i;
+                const isCompleted = ticket.at_plant_time != null;
+                return (
+                  <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: isCompleted ? '#2E7D32' : c.accent }}>
+                    <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
+                    <Text style={{ fontSize: ms(10), fontWeight: isSelected ? '900' : '700', color: '#fff', fontFamily: 'monospace' }}>{ticket.ticket_code}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+              <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: 14, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MaterialIcons name="wifi" size={12} color="#fff" />
+                <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialIcons name="notifications" size={16} color={c.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={16} color={c.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialIcons name="settings" size={18} color={c.textSecondary} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-              <MaterialIcons name="notifications" size={16} color={c.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-              <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={16} color={c.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-              <MaterialIcons name="settings" size={18} color={c.textSecondary} />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -1515,18 +1517,18 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={{ gap: wp(6) }}>
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                   <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Customer</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Customer</Text>
                   </View>
                   {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
                     <View key={i} style={{ flexDirection: 'row', paddingVertical: 7, borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, width: 100, letterSpacing: 0.5 }}>{row.label}</Text>
-                      <Text style={{ fontSize: ms(12), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>
                     </View>))}
                 </View>
                 {/* Product */}
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
                     <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                       <MaterialIcons name="visibility" size={ms(16)} color={c.accent} />
                     </TouchableOpacity>
@@ -1534,100 +1536,100 @@ export default function DashboardScreen({ navigation }: Props) {
                   {/* Column headers */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', paddingBottom: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, marginBottom: 4 }}>
                     <View style={{ flex: 0.8, paddingRight: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>CODE</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(10), backgroundColor: c.border }} />
+                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
                     <View style={{ flex: 3.4, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>DESCRIPTION</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(10), backgroundColor: c.border }} />
+                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
                     <View style={{ flex: 1.5, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>SLUMP</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(10), backgroundColor: c.border }} />
+                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
                     <View style={{ flex: 0.8, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>QTY</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(10), backgroundColor: c.border }} />
+                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
                     <View style={{ flex: 0.6, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>UOM</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(10), backgroundColor: c.border }} />
+                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
                     <View style={{ flex: 1.5, paddingLeft: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>USAGE</Text></View>
                   </View>
                   {/* Data row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ flex: 0.8, paddingRight: wp(4) }}><Text style={{ fontSize: ms(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.mix_code || '-'}</Text></View>
+                    <View style={{ flex: 0.8, paddingRight: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.mix_code || '-'}</Text></View>
                     <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
                     <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 3.4, paddingHorizontal: wp(4) }}>
-                      <Text style={{ fontSize: ms(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
                     </TouchableOpacity>
                     <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text></View>
+                    <View style={{ flex: 1.5, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text></View>
                     <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 0.8, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(11), fontWeight: '900', color: c.textPrimary }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text></View>
+                    <View style={{ flex: 0.8, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '900', color: c.textPrimary }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text></View>
                     <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 0.6, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textPrimary }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text></View>
+                    <View style={{ flex: 0.6, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text></View>
                     <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingLeft: wp(4) }}><Text style={{ fontSize: ms(11), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1}>{detail?.mix?.usage || '-'}</Text></View>
+                    <View style={{ flex: 1.5, paddingLeft: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1}>{detail?.mix?.usage || '-'}</Text></View>
                   </View>
                 </View>
                 {/* Delivery Location */}
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                   <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Delivery Location</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Delivery Location</Text>
                   </View>
                   {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find((p: any) => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }, { label: 'TRUCKS', value: [detail?.mix?.truck_ahead ? `AFTER · ${detail.mix.truck_ahead.truck_code} ${detail.mix.truck_ahead.status}` : null, detail?.mix?.truck_behind ? `BEFORE · ${detail.mix.truck_behind.truck_code} ${detail.mix.truck_behind.status}` : null].filter(Boolean).join('   ') || '—', blue: true }].map((row, i) => (
                     <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, width: 100, letterSpacing: 0.5 }}>{row.label}</Text>
-                      {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(13), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
-                      ) : row.blue ? (<TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1 }}><Text style={{ fontSize: ms(14), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
-                      ) : (<Text style={{ fontSize: ms(14), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>)}
+                      <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
+                      {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
+                      ) : row.blue ? (<TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1 }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
+                      ) : (<Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>)}
                     </View>))}
                   {/* Instructions row */}
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7 }}>
-                    <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted, width: 100, letterSpacing: 0.5 }}>INSTRUCTIONS</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>INSTRUCTIONS</Text>
                     {detail?.job?.instructions ? (
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
                         <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: 4, paddingHorizontal: 6 }}>
-                          <Text style={{ fontSize: ms(11), fontWeight: '800', color: '#000', lineHeight: ms(18) }} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
+                          <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000', lineHeight: ms(16) }} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
                         </View>
                         <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsExpanded(v => !v)} style={{ marginLeft: 6, paddingVertical: 3, paddingHorizontal: 6 }}>
                           <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.accent }}>{instructionsExpanded ? 'HIDE' : 'VIEW ALL'}</Text>
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <Text style={{ fontSize: ms(14), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
                     )}
                   </View>
                 </View>
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(12), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
-                      <Text style={{ fontSize: ms(13), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                     </View>
                   </View>
                   {[{ label: 'PLANT', data: plantMandatory, icon: 'factory' as const }, { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const }, { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const }, { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const }].map((section, si, arr) => (
                     <View key={si} style={{ marginBottom: si < arr.length - 1 ? 4 : 0, paddingBottom: si < arr.length - 1 ? 8 : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                        <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
-                        <Text style={{ fontSize: ms(10), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
+                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
+                        <Text style={{ fontSize: ms(9), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
                       </View>
                       {section.data.items.map((item, ii) => (
                         <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
                           <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : c.error} /></View>
-                          <Text style={{ fontSize: ms(11), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
-                          {item.value ? <Text style={{ fontSize: ms(11), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(10), color: c.textMuted }}>--</Text>}
+                          <Text style={{ fontSize: ms(9), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
+                          {item.value ? <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(9), color: c.textMuted }}>--</Text>}
                         </View>))}
                     </View>))}
                 </View>
                 {/* Additional Entries */}
                 <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                   <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
                     <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'plant' })}>
-                      <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.primary }}>PLANT</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary }}>PLANT</Text>
                     </TouchableOpacity>
-                    <Text style={{ fontSize: ms(11), color: c.textMuted }}>|</Text>
+                    <Text style={{ fontSize: ms(9), color: c.textMuted }}>|</Text>
                     <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'jobsite' })}>
-                      <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
                     </TouchableOpacity>
-                    <Text style={{ fontSize: ms(11), color: c.textMuted }}>|</Text>
+                    <Text style={{ fontSize: ms(9), color: c.textMuted }}>|</Text>
                     <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'cod' })}>
-                      <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.primary }}>COD</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary }}>COD</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1739,23 +1741,23 @@ export default function DashboardScreen({ navigation }: Props) {
               <MaterialIcons name="qr-code-2" size={L ? (lt ? ls(16) : 15) : ms(18)} color={c.qrFg} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.qrHeaderTitle, { color: c.qrFg }]}>QR Code</Text>
-              <Text style={[styles.qrHeaderSub, { color: c.qrFg + '90' }, L && { fontSize: lp ? ms(8) : ms(9) }]}>Scan to verify delivery</Text>
+              <Text style={[styles.qrHeaderTitle, { color: c.qrFg }, L && { fontSize: ls(12) }]}>QR Code</Text>
+              <Text style={[styles.qrHeaderSub, { color: c.qrFg + '90' }, L && { fontSize: ls(9) }]}>Scan to verify delivery</Text>
             </View>
-            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.qrFg + '12' }]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="close" size={ms(18)} color={c.qrFg} />
+            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.qrFg + '12' }, L && { width: ls(28), height: ls(28), borderRadius: ls(14) }]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialIcons name="close" size={L ? ls(14) : ms(18)} color={c.qrFg} />
             </TouchableOpacity>
           </View>
 
           {qrLoading ? (
-            <View style={{ paddingVertical: wp(40), alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={c.qrFg} />
+            <View style={{ paddingVertical: L ? ls(30) : wp(40), alignItems: 'center' }}>
+              <ActivityIndicator size={L ? 'small' : 'large'} color={c.qrFg} />
             </View>
           ) : qrError ? (
-            <View style={{ paddingVertical: wp(30), alignItems: 'center', paddingHorizontal: wp(20) }}>
-              <MaterialIcons name="error-outline" size={ms(36)} color={c.qrFg + '60'} />
-              <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.qrFg, marginTop: wp(10), textAlign: 'center' }}>Server Error</Text>
-              <Text style={{ fontSize: ms(11), color: c.qrFg + '80', marginTop: wp(4), textAlign: 'center' }}>Unable to load QR code. Please try again later.</Text>
+            <View style={{ paddingVertical: L ? ls(20) : wp(30), alignItems: 'center', paddingHorizontal: L ? ls(16) : wp(20) }}>
+              <MaterialIcons name="error-outline" size={L ? ls(28) : ms(36)} color={c.qrFg + '60'} />
+              <Text style={{ fontSize: L ? ls(12) : ms(13), fontWeight: '700', color: c.qrFg, marginTop: L ? ls(8) : wp(10), textAlign: 'center' }}>Server Error</Text>
+              <Text style={{ fontSize: L ? ls(10) : ms(11), color: c.qrFg + '80', marginTop: L ? ls(3) : wp(4), textAlign: 'center' }}>Unable to load QR code. Please try again later.</Text>
               <TouchableOpacity
                 onPress={() => {
                   if (!currentTicket) return;
@@ -1767,44 +1769,44 @@ export default function DashboardScreen({ navigation }: Props) {
                     .finally(() => setQrLoading(false));
                 }}
                 activeOpacity={0.7}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: wp(5), marginTop: wp(16), backgroundColor: c.qrFg + '18', paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8) }}>
-                <MaterialIcons name="refresh" size={ms(14)} color={c.qrFg} />
-                <Text style={{ fontSize: ms(11), fontWeight: '700', color: c.qrFg }}>Retry</Text>
+                style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(5), marginTop: L ? ls(12) : wp(16), backgroundColor: c.qrFg + '18', paddingVertical: L ? ls(6) : wp(8), paddingHorizontal: L ? ls(16) : wp(20), borderRadius: L ? ls(6) : wp(8) }}>
+                <MaterialIcons name="refresh" size={L ? ls(12) : ms(14)} color={c.qrFg} />
+                <Text style={{ fontSize: L ? ls(10) : ms(11), fontWeight: '700', color: c.qrFg }}>Retry</Text>
               </TouchableOpacity>
             </View>
           ) : qrData ? (
             <ScrollView
               bounces={false}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ alignItems: 'center', paddingVertical: wp(6) }}>
-              <View style={styles.qrChipRow}>
-                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }]}>
-                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }]}>ORDER</Text>
-                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{qrData.order_code || '-'}</Text>
+              contentContainerStyle={{ alignItems: 'center', paddingVertical: L ? ls(4) : wp(6) }}>
+              <View style={[styles.qrChipRow, L && { gap: ls(5), paddingHorizontal: ls(10) }]}>
+                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }, L && { paddingVertical: ls(5), borderRadius: ls(6) }]}>
+                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }, L && { fontSize: ls(9) }]}>ORDER</Text>
+                  <Text style={[styles.qrChipValue, { color: c.qrFg }, L && { fontSize: ls(11) }]}>{qrData.order_code || '-'}</Text>
                 </View>
-                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }]}>
-                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }]}>TICKET</Text>
-                  <Text style={[styles.qrChipValue, { color: c.qrFg }]}>{qrData.ticket_code || '-'}</Text>
+                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }, L && { paddingVertical: ls(5), borderRadius: ls(6) }]}>
+                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }, L && { fontSize: ls(9) }]}>TICKET</Text>
+                  <Text style={[styles.qrChipValue, { color: c.qrFg }, L && { fontSize: ls(11) }]}>{qrData.ticket_code || '-'}</Text>
                 </View>
               </View>
-              <View style={styles.qrCodeSection}>
-                <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor }]}>
+              <View style={[styles.qrCodeSection, L && { paddingVertical: ls(8), paddingHorizontal: ls(8) }]}>
+                <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor }, L && { padding: ls(10), borderRadius: ls(10) }]}>
                   <QRCode
                     value={qrData.qr_token}
-                    size={Math.round(Math.min(Math.max((width - insets.left - insets.right) * 0.45, 150), isTablet ? 260 : 200))}
+                    size={L ? Math.round(Math.min(Math.max((winHeight - insets.top - insets.bottom) * 0.35, 120), lt ? 220 : 160)) : Math.round(Math.min(Math.max((width - insets.left - insets.right) * 0.45, 150), isTablet ? 260 : 200))}
                     backgroundColor={c.white}
                     color={c.qrFg}
                   />
                 </View>
               </View>
-              <View style={styles.qrFooter}>
-                <View style={[styles.qrFooterRow, { borderTopColor: c.qrFg + '12' }]}>
-                  <MaterialIcons name="local-shipping" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{`TRUCK ${qrData.truck_code || '-'} · DRIVER ${qrData.driver_code || '-'}`}</Text>
+              <View style={[styles.qrFooter, L && { paddingHorizontal: ls(10), gap: ls(3) }]}>
+                <View style={[styles.qrFooterRow, { borderTopColor: c.qrFg + '12' }, L && { gap: ls(4), paddingTop: ls(2) }]}>
+                  <MaterialIcons name="local-shipping" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
+                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }, L && { fontSize: ls(10) }]}>{`TRUCK ${qrData.truck_code || '-'} · DRIVER ${qrData.driver_code || '-'}`}</Text>
                 </View>
-                <View style={styles.qrFooterRow}>
-                  <MaterialIcons name="factory" size={ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }]}>{qrData.plant_name || '-'}</Text>
+                <View style={[styles.qrFooterRow, L && { gap: ls(4) }]}>
+                  <MaterialIcons name="factory" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
+                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }, L && { fontSize: ls(10) }]}>{qrData.plant_name || '-'}</Text>
                 </View>
               </View>
             </ScrollView>
