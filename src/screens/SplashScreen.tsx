@@ -5,15 +5,15 @@ import {
   StyleSheet,
   Animated,
   StatusBar,
-  Image,
   useWindowDimensions,
+  Easing,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
+import YellowTruck from '../assets/svgs/yellowTruck.svg';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -49,6 +49,7 @@ export default function SplashScreen({navigation}: Props) {
   const dot3Opacity = useRef(new Animated.Value(0)).current;
   const versionOpacity = useRef(new Animated.Value(0)).current;
   const screenFade = useRef(new Animated.Value(1)).current;
+  const wheelRotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const ringPulse = (
@@ -92,6 +93,17 @@ export default function SplashScreen({navigation}: Props) {
           ]),
         ),
       ]);
+
+    // Wheel spin loop
+    const wheelAnimation = Animated.loop(
+      Animated.timing(wheelRotation, {
+        toValue: 1,
+        duration: 800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    wheelAnimation.start();
 
     // Main sequence
     Animated.parallel([
@@ -209,7 +221,10 @@ export default function SplashScreen({navigation}: Props) {
       });
     }, 3200);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      wheelAnimation.stop();
+    };
   }, [
     bgGlow,
     ring1Scale,
@@ -231,12 +246,18 @@ export default function SplashScreen({navigation}: Props) {
     dot3Opacity,
     versionOpacity,
     screenFade,
+    wheelRotation,
     navigation,
   ]);
 
   const logoSpin = logoRotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['-15deg', '0deg'],
+  });
+
+  const wheelSpin = wheelRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
   });
 
   const smallDim = Math.min(width, height);
@@ -319,7 +340,50 @@ export default function SplashScreen({navigation}: Props) {
               opacity: iconOpacity,
               transform: [{scale: logoScale}],
             }}>
-            <MaterialIcons name="local-shipping" size={isTablet ? 120 : isLandscape ? 80 : 100} color="#fff" />
+            {(() => {
+              const truckWidth = isTablet ? 240 : isLandscape ? 160 : 200;
+              const truckHeight = (truckWidth * 86) / 157;
+              const scale = truckWidth / 157;
+              const rearWheelSize = 20 * scale;
+              const frontWheelSize = 16 * scale;
+              const rearWheelLeft = 47 * scale - rearWheelSize / 2;
+              const rearWheelBottom = (86 - 71) * scale - rearWheelSize / 2;
+              const frontWheelLeft = 127 * scale - frontWheelSize / 2;
+              const frontWheelBottom = (86 - 71) * scale - frontWheelSize / 2;
+              return (
+                <View style={{width: truckWidth, height: truckHeight}}>
+                  <YellowTruck width={truckWidth} height={truckHeight} />
+                  <Animated.View
+                    style={[
+                      styles.wheelOverlay,
+                      {
+                        width: rearWheelSize,
+                        height: rearWheelSize,
+                        left: rearWheelLeft,
+                        bottom: rearWheelBottom,
+                        transform: [{rotate: wheelSpin}],
+                      },
+                    ]}>
+                    <View style={[styles.wheelSpoke, {height: rearWheelSize * 0.8, width: 2 * scale}]} />
+                    <View style={[styles.wheelSpoke, styles.spokeRotated, {height: rearWheelSize * 0.8, width: 2 * scale}]} />
+                  </Animated.View>
+                  <Animated.View
+                    style={[
+                      styles.wheelOverlay,
+                      {
+                        width: frontWheelSize,
+                        height: frontWheelSize,
+                        left: frontWheelLeft,
+                        bottom: frontWheelBottom,
+                        transform: [{rotate: wheelSpin}],
+                      },
+                    ]}>
+                    <View style={[styles.wheelSpoke, {height: frontWheelSize * 0.75, width: 2 * scale}]} />
+                    <View style={[styles.wheelSpoke, styles.spokeRotated, {height: frontWheelSize * 0.75, width: 2 * scale}]} />
+                  </Animated.View>
+                </View>
+              );
+            })()}
           </Animated.View>
         </View>
 
@@ -426,6 +490,9 @@ const createStyles = () => StyleSheet.create({
   divider: {width: 60, height: 2.5, borderRadius: 2, marginTop: 20, marginBottom: 20},
   dotsRow: {flexDirection: 'row', gap: 8, alignItems: 'center'},
   dot: {},
+  wheelOverlay: {position: 'absolute', alignItems: 'center', justifyContent: 'center'},
+  wheelSpoke: {position: 'absolute', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 1},
+  spokeRotated: {transform: [{rotate: '90deg'}]},
   versionContainer: {position: 'absolute', alignItems: 'center'},
   versionContainerLandscape: {right: 30, left: undefined},
   versionBadge: {paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, borderWidth: 1, marginBottom: 8},
