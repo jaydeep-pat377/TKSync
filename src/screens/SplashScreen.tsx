@@ -94,7 +94,7 @@ export default function SplashScreen({navigation}: Props) {
         ),
       ]);
 
-    // Wheel spin loop
+    // Wheel spin
     const wheelAnimation = Animated.loop(
       Animated.timing(wheelRotation, {
         toValue: 1,
@@ -343,44 +343,37 @@ export default function SplashScreen({navigation}: Props) {
             {(() => {
               const truckWidth = isTablet ? 240 : isLandscape ? 160 : 200;
               const truckHeight = (truckWidth * 86) / 157;
-              const scale = truckWidth / 157;
-              const rearWheelSize = 20 * scale;
-              const frontWheelSize = 16 * scale;
-              const rearWheelLeft = 47 * scale - rearWheelSize / 2;
-              const rearWheelBottom = (86 - 71) * scale - rearWheelSize / 2;
-              const frontWheelLeft = 127 * scale - frontWheelSize / 2;
-              const frontWheelBottom = (86 - 71) * scale - frontWheelSize / 2;
+              const s = truckWidth / 157;
+              // Wheel centers from SVG: rear(42.2, 75.9), middle(62.9, 75.9), front(127.5, 75.9)
+              // Inner wheel radius in SVG ≈ 6.5
+              const wheelSize = 13 * s;
+              const wheelBottom = (86 - 75.9) * s - wheelSize / 2;
+              const spokeW = 2 * s;
+              const wheels = [
+                {left: 42.2 * s - wheelSize / 2},
+                {left: 62.9 * s - wheelSize / 2},
+                {left: 127.5 * s - wheelSize / 2},
+              ];
               return (
                 <View style={{width: truckWidth, height: truckHeight}}>
                   <YellowTruck width={truckWidth} height={truckHeight} />
-                  <Animated.View
-                    style={[
-                      styles.wheelOverlay,
-                      {
-                        width: rearWheelSize,
-                        height: rearWheelSize,
-                        left: rearWheelLeft,
-                        bottom: rearWheelBottom,
-                        transform: [{rotate: wheelSpin}],
-                      },
-                    ]}>
-                    <View style={[styles.wheelSpoke, {height: rearWheelSize * 0.8, width: 2 * scale}]} />
-                    <View style={[styles.wheelSpoke, styles.spokeRotated, {height: rearWheelSize * 0.8, width: 2 * scale}]} />
-                  </Animated.View>
-                  <Animated.View
-                    style={[
-                      styles.wheelOverlay,
-                      {
-                        width: frontWheelSize,
-                        height: frontWheelSize,
-                        left: frontWheelLeft,
-                        bottom: frontWheelBottom,
-                        transform: [{rotate: wheelSpin}],
-                      },
-                    ]}>
-                    <View style={[styles.wheelSpoke, {height: frontWheelSize * 0.75, width: 2 * scale}]} />
-                    <View style={[styles.wheelSpoke, styles.spokeRotated, {height: frontWheelSize * 0.75, width: 2 * scale}]} />
-                  </Animated.View>
+                  {wheels.map((w, i) => (
+                    <Animated.View
+                      key={i}
+                      style={[
+                        styles.wheelOverlay,
+                        {
+                          width: wheelSize,
+                          height: wheelSize,
+                          left: w.left,
+                          bottom: wheelBottom,
+                          transform: [{rotate: wheelSpin}],
+                        },
+                      ]}>
+                      <View style={[styles.wheelSpoke, {height: wheelSize * 0.8, width: spokeW}]} />
+                      <View style={[styles.wheelSpoke, styles.spokeRotated, {height: wheelSize * 0.8, width: spokeW}]} />
+                    </Animated.View>
+                  ))}
                 </View>
               );
             })()}
@@ -491,7 +484,7 @@ const createStyles = () => StyleSheet.create({
   dotsRow: {flexDirection: 'row', gap: 8, alignItems: 'center'},
   dot: {},
   wheelOverlay: {position: 'absolute', alignItems: 'center', justifyContent: 'center'},
-  wheelSpoke: {position: 'absolute', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 1},
+  wheelSpoke: {position: 'absolute', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 1},
   spokeRotated: {transform: [{rotate: '90deg'}]},
   versionContainer: {position: 'absolute', alignItems: 'center'},
   versionContainerLandscape: {right: 30, left: undefined},
