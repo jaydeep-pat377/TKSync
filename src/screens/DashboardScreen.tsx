@@ -193,9 +193,7 @@ function buildMixInfoFromTicket(ticket: Ticket) {
 }
 
 const BOTTOM_ACTIONS = [
-  { icon: 'note-alt', labelKey: 'actions.notes' },
   { icon: 'label', labelKey: 'actions.tag' },
-  { icon: 'edit', labelKey: 'actions.edit' },
   { icon: 'factory', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
 ];
@@ -1826,16 +1824,15 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={slumpPickerField != null}
         onClose={() => setSlumpPickerField(null)}
-        maxWidth={L ? 400 : isTablet ? 400 : 340}
-        widthPercent={L ? 35 : 75}
-        maxHeightPercent={80}>
-        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden' }}>
-          <View style={{ paddingHorizontal: wp(16), paddingTop: wp(12), paddingBottom: wp(8) }}>
-            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>REQUIRED ENTRIES</Text>
-            <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary, marginTop: 2 }}>SELECT SLUMP <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted }}>mm</Text></Text>
-          </View>
-          <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={true} bounces={false}>
-            {['80', '90', '100', '110', '120', '130', '140', '150', '160', '170', '180', '190', '200', '210', '220', '230'].map(val => {
+        maxWidth={L ? 250 : isTablet ? 250 : 220}
+        widthPercent={L ? 20 : 50}
+        maxHeightPercent={50}>
+        <View style={{ paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), alignItems: 'center' }}>
+          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
+          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' }}>SELECT SLUMP <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted }}>mm</Text></Text>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
+            {Array.from({ length: 21 }, (_, i) => String(80 + i * 10)).map(val => {
               const currentVal = slumpPickerField === 'slump_from_plant' ? deliveryRecord?.plant?.slump_from_plant : deliveryRecord?.plant?.slump_to_job;
               const isSelected = currentVal != null && String(currentVal) === val;
               return (
@@ -1854,17 +1851,18 @@ export default function DashboardScreen({ navigation }: Props) {
                       }
                     } catch { }
                   }}
-                  style={{ paddingVertical: wp(10), paddingHorizontal: wp(16), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: isSelected ? c.primarySurface : 'transparent' }}>
-                  <Text style={{ fontSize: ms(13), fontWeight: isSelected ? '900' : '600', color: isSelected ? c.primary : c.textPrimary }}>{val}</Text>
+                  style={{ paddingVertical: ms(5), paddingHorizontal: ms(10), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: isSelected ? c.primarySurface : 'transparent', alignItems: 'center' }}>
+                  <Text style={{ fontSize: ms(8), fontWeight: isSelected ? '900' : '600', color: isSelected ? c.primary : c.textPrimary, textAlign: 'center' }}>{val}</Text>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+        </ScrollView>
+        <View style={{ alignItems: 'flex-end', paddingHorizontal: ms(10), paddingTop: ms(6), paddingBottom: ms(4) }}>
           <TouchableOpacity
             onPress={() => setSlumpPickerField(null)}
             activeOpacity={0.7}
-            style={{ alignSelf: 'flex-end', backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: 8, margin: wp(12) }}>
-            <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Close</Text>
+            style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
+            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' }}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
