@@ -48,7 +48,8 @@
       "Bash(find /Users/admin/Desktop/TKSync/src -name *i18n* -o -name *lang* -o -name *.json)",
       "Bash(xxd -p -r)",
       "Bash(npm info:*)",
-      "Bash(./gradlew app:installDebug -x lint -PreactNativeDevServerPort=8081)"
+      "Bash(./gradlew app:installDebug -x lint -PreactNativeDevServerPort=8081)",
+      "Bash(./gradlew app:assembleDebug -x lint)"
     ]
   }
 }
