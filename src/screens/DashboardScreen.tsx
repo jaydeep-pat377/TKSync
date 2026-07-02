@@ -12,6 +12,7 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -28,7 +29,8 @@ import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
 import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
-import {useFontScaleRefresh, useFontSize} from '../contexts/FontSizeContext';
+import { useOfflineSync } from '../contexts/OfflineSyncContext';
+import { useFontScaleRefresh, useFontSize } from '../contexts/FontSizeContext';
 
 const WEATHER_ICONS: Record<string, string> = {
   '01d': 'wb-sunny', '01n': 'nightlight-round',
@@ -196,7 +198,6 @@ const BOTTOM_ACTIONS = [
   { icon: 'edit', labelKey: 'actions.edit' },
   { icon: 'factory', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
-  { icon: 'text-fields', labelKey: 'actions.fontSize' },
 ];
 
 const MENU_ITEMS_BASE = [
@@ -267,6 +268,7 @@ type Props = {
 
 export default function DashboardScreen({ navigation }: Props) {
   useFontScaleRefresh();
+  const { saveDeliveryTab } = useOfflineSync();
   const styles = createStyles();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeTicket, setActiveTicket] = useState(0);
@@ -315,15 +317,15 @@ export default function DashboardScreen({ navigation }: Props) {
           setPlantsHasNext(res.data.has_next);
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         plantsLoadingMoreRef.current = false;
         setPlantsLoadingMore(false);
         // After load finishes, check again if content still doesn't fill the view
         setTimeout(() => {
           if (plantsLayoutH.current > 0 && plantsContentH.current > 0 &&
-              plantsContentH.current <= plantsLayoutH.current + 20 &&
-              plantsHasNextRef.current && !plantsLoadingMoreRef.current) {
+            plantsContentH.current <= plantsLayoutH.current + 20 &&
+            plantsHasNextRef.current && !plantsLoadingMoreRef.current) {
             loadMorePlants();
           }
         }, 100);
@@ -333,15 +335,15 @@ export default function DashboardScreen({ navigation }: Props) {
   const checkPlantsAutoLoad = useCallback(() => {
     setTimeout(() => {
       if (plantsLayoutH.current > 0 && plantsContentH.current > 0 &&
-          plantsContentH.current <= plantsLayoutH.current + 20 &&
-          plantsHasNextRef.current && !plantsLoadingMoreRef.current) {
+        plantsContentH.current <= plantsLayoutH.current + 20 &&
+        plantsHasNextRef.current && !plantsLoadingMoreRef.current) {
         loadMorePlants();
       }
     }, 50);
   }, [loadMorePlants]);
 
-  const handlePlantsScrollEnd = useCallback(({nativeEvent}: any) => {
-    const {layoutMeasurement, contentOffset, contentSize} = nativeEvent;
+  const handlePlantsScrollEnd = useCallback(({ nativeEvent }: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
     if (contentSize.height > 0 && layoutMeasurement.height + contentOffset.y >= contentSize.height - 60) {
       loadMorePlants();
     }
@@ -367,12 +369,20 @@ export default function DashboardScreen({ navigation }: Props) {
   const [customerExpanded, setCustomerExpanded] = useState(true);
   const [deliveryExpanded, setDeliveryExpanded] = useState(true);
   const [instructionsExpanded, setInstructionsExpanded] = useState(false);
+  const [instructionsModalVisible, setInstructionsModalVisible] = useState(false);
+  const [slumpPickerField, setSlumpPickerField] = useState<'slump_from_plant' | 'slump_to_job' | null>(null);
+  const [waterModalField, setWaterModalField] = useState<'customer_water' | 'maintenance_water' | null>(null);
+  const [waterLitresInput, setWaterLitresInput] = useState('');
+  const [waterMmInput, setWaterMmInput] = useState('');
+  const [timePickerStep, setTimePickerStep] = useState<{ key: string; label: string } | null>(null);
+  const [timePickerHour, setTimePickerHour] = useState(0);
+  const [timePickerMinute, setTimePickerMinute] = useState(0);
   const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
-    checkApiHealth().then(r => { if (r.version) setAppVersion(r.version); }).catch(() => {});
+    checkApiHealth().then(r => { if (r.version) setAppVersion(r.version); }).catch(() => { });
   }, []);
-  const {fontScale, increase: fontIncrease, decrease: fontDecrease, reset: fontReset} = useFontSize();
+  const { fontScale, increase: fontIncrease, decrease: fontDecrease, reset: fontReset } = useFontSize();
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
   const [dateFrom, setDateFrom] = useState<string | null>(null);
@@ -394,7 +404,7 @@ export default function DashboardScreen({ navigation }: Props) {
   // Redirect to login when session expires
   useEffect(() => {
     if (!isCompanyLoggedIn) {
-      navigation.reset({index: 0, routes: [{name: 'Login'}]});
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     }
   }, [isCompanyLoggedIn, navigation]);
 
@@ -461,7 +471,7 @@ export default function DashboardScreen({ navigation }: Props) {
       ticketsRef.current = data.data;
       setDateFrom(data.filters?.date_from || null);
       setLastSyncTime(new Date());
-    } catch (_) {}
+    } catch (_) { }
     // Refresh detail + delivery record for current ticket
     const ticket = ticketsRef.current[activeTicketRef.current];
     if (ticket) {
@@ -471,7 +481,7 @@ export default function DashboardScreen({ navigation }: Props) {
           setDeliveryRecord(res.data);
           offlineStorage.cacheDeliveryRecord(ticket.id, res.data);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [fetchDetail]);
 
@@ -505,9 +515,9 @@ export default function DashboardScreen({ navigation }: Props) {
           const cached = offlineStorage.getCachedDeliveryRecord(ticket.id);
           if (cached) {
             const pending = offlineStorage.getPendingForTicket(ticket.id);
-            let merged = {...cached};
+            let merged = { ...cached };
             for (const item of pending) {
-              merged[item.tab] = {...(merged[item.tab] || {}), ...item.body};
+              merged[item.tab] = { ...(merged[item.tab] || {}), ...item.body };
             }
             setDeliveryRecord(merged as DeliveryRecord);
           } else {
@@ -820,37 +830,37 @@ export default function DashboardScreen({ navigation }: Props) {
       setPlantsVisible(true);
       plantsApi.getAll(1)
         .then(res => { if (res.data?.plants) { setPlantsList(res.data.plants); setPlantsHasNext(res.data.has_next); plantsHasNextRef.current = res.data.has_next; setPlantsPage(1); plantsPageRef.current = 1; } })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => setPlantsLoading(false));
     };
     return (
-      <View style={[styles.container, {backgroundColor: '#c8c8c8'}]}>
+      <View style={[styles.container, { backgroundColor: '#c8c8c8' }]}>
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-        <View style={{backgroundColor: c.primary, paddingTop: insets.top + (isLandscape ? 2 : wp(4)), paddingBottom: isLandscape ? 4 : wp(6), paddingHorizontal: Math.max(wp(12), insets.right + wp(4)), flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center'}}>
-          <TouchableOpacity style={{width: isLandscape ? 30 : Math.max(wp(34), 34), height: isLandscape ? 30 : Math.max(wp(34), 34), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center'}} onPress={openMenu} activeOpacity={0.7}>
+        <View style={{ backgroundColor: c.primary, paddingTop: insets.top + (isLandscape ? 2 : wp(4)), paddingBottom: isLandscape ? 4 : wp(6), paddingHorizontal: Math.max(wp(12), insets.right + wp(4)), flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <TouchableOpacity style={{ width: isLandscape ? 30 : Math.max(wp(34), 34), height: isLandscape ? 30 : Math.max(wp(34), 34), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' }} onPress={openMenu} activeOpacity={0.7}>
             <MaterialIcons name="menu" size={ms(isLandscape ? 18 : 22)} color="#fff" />
           </TouchableOpacity>
         </View>
-        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(20)}}>
-          <Text style={{fontSize: ms(isLandscape ? 12 : 16), fontWeight: '400', color: '#222', textAlign: 'center'}}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(20) }}>
+          <Text style={{ fontSize: ms(isLandscape ? 12 : 16), fontWeight: '400', color: '#222', textAlign: 'center' }}>
             COMPANY: {company?.company_name || '-'}
           </Text>
-          <Text style={{fontSize: ms(isLandscape ? 11 : 15), fontWeight: '400', color: '#222', textAlign: 'center', marginTop: isLandscape ? 1 : wp(6)}}>
+          <Text style={{ fontSize: ms(isLandscape ? 11 : 15), fontWeight: '400', color: '#222', textAlign: 'center', marginTop: isLandscape ? 1 : wp(6) }}>
             VEHICLE: {driver?.truck_code || '-'}
           </Text>
-          <Text style={{fontSize: ms(isLandscape ? 13 : 18), fontWeight: '800', color: '#111', textAlign: 'center', marginTop: isLandscape ? 6 : wp(24)}}>
+          <Text style={{ fontSize: ms(isLandscape ? 13 : 18), fontWeight: '800', color: '#111', textAlign: 'center', marginTop: isLandscape ? 6 : wp(24) }}>
             TICKET NOT ASSIGNED
           </Text>
           {loading ? (
-            <ActivityIndicator size="large" color="#2e7d32" style={{marginTop: isLandscape ? 6 : wp(16)}} />
+            <ActivityIndicator size="large" color="#2e7d32" style={{ marginTop: isLandscape ? 6 : wp(16) }} />
           ) : (
             <>
-              <TouchableOpacity onPress={() => fetchTickets()} activeOpacity={0.7} style={{marginTop: isLandscape ? 2 : wp(8)}}>
-                <Text style={{fontSize: ms(isLandscape ? 11 : 15), fontWeight: '600', color: '#2e7d32', textDecorationLine: 'underline', textAlign: 'center'}}>
+              <TouchableOpacity onPress={() => fetchTickets()} activeOpacity={0.7} style={{ marginTop: isLandscape ? 2 : wp(8) }}>
+                <Text style={{ fontSize: ms(isLandscape ? 11 : 15), fontWeight: '600', color: '#2e7d32', textDecorationLine: 'underline', textAlign: 'center' }}>
                   REFRESH
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleTruckPress} activeOpacity={0.7} style={{marginTop: isLandscape ? 8 : wp(16), alignItems: 'center'}}>
+              <TouchableOpacity onPress={handleTruckPress} activeOpacity={0.7} style={{ marginTop: isLandscape ? 8 : wp(16), alignItems: 'center' }}>
                 <MaterialIcons name="local-shipping" size={ms(isLandscape ? 60 : 80)} color="#555" />
               </TouchableOpacity>
             </>
@@ -860,7 +870,7 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* Dropdown menu */}
         {menuVisible && (
           <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-            <Pressable style={[styles.dropdownOverlay, {backgroundColor: c.overlayDropdown}]} onPress={closeMenu} />
+            <Pressable style={[styles.dropdownOverlay, { backgroundColor: c.overlayDropdown }]} onPress={closeMenu} />
             <Animated.View
               style={[
                 styles.dropdown,
@@ -871,8 +881,8 @@ export default function DashboardScreen({ navigation }: Props) {
                   borderColor: c.border,
                   opacity: menuOpacity,
                   transform: [
-                    {scale: menuScale.interpolate({inputRange: [0, 1], outputRange: [0.85, 1]})},
-                    {translateY: menuScale.interpolate({inputRange: [0, 1], outputRange: [-10, 0]})},
+                    { scale: menuScale.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+                    { translateY: menuScale.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) },
                   ],
                 },
               ]}>
@@ -889,20 +899,20 @@ export default function DashboardScreen({ navigation }: Props) {
                   return (
                     <TouchableOpacity
                       key={item.actionKey}
-                      style={[styles.ddItem, i < menuItems.length - 1 && {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight}]}
+                      style={[styles.ddItem, i < menuItems.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }]}
                       activeOpacity={0.6}
                       onPress={() => handleMenuItemPress(item.actionKey)}>
-                      <View style={[styles.ddIcon, {backgroundColor: bgColor}]}>
+                      <View style={[styles.ddIcon, { backgroundColor: bgColor }]}>
                         <MaterialIcons name={itemIcon as any} size={ms(18)} color={iconColor} />
                       </View>
-                      <Text style={[styles.ddLabel, {color: labelColor}]}>{label}{suffix}</Text>
+                      <Text style={[styles.ddLabel, { color: labelColor }]}>{label}{suffix}</Text>
                       <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
-              <View style={[styles.ddFooter, {borderTopColor: c.borderLight}]}>
-                <Text style={[styles.ddVersion, {color: c.textMuted}]}>{appVersion ? `v${appVersion}` : '...'}</Text>
+              <View style={[styles.ddFooter, { borderTopColor: c.borderLight }]}>
+                <Text style={[styles.ddVersion, { color: c.textMuted }]}>{appVersion ? `v${appVersion}` : '...'}</Text>
               </View>
             </Animated.View>
           </View>
@@ -914,14 +924,14 @@ export default function DashboardScreen({ navigation }: Props) {
           onClose={() => setPlantsVisible(false)}
           maxWidth={450}
           maxHeightPercent={70}>
-          <View style={[styles.mHeader, {borderBottomColor: c.border}]}>
-            <Text style={[styles.mHeaderTitle, {color: c.textPrimary}]}>{t('modals.plants')}</Text>
-            <TouchableOpacity style={[styles.mCloseBtn, {backgroundColor: c.surface}]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
+            <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.plants')}</Text>
+            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
           {plantsLoading ? (
-            <View style={{paddingVertical: wp(40), alignItems: 'center'}}>
+            <View style={{ paddingVertical: wp(40), alignItems: 'center' }}>
               <ActivityIndicator size="large" color={c.primary} />
             </View>
           ) : (
@@ -931,19 +941,19 @@ export default function DashboardScreen({ navigation }: Props) {
               bounces={false}
               onMomentumScrollEnd={handlePlantsScrollEnd}
               onScrollEndDrag={handlePlantsScrollEnd}
-              onLayout={({nativeEvent}) => { plantsLayoutH.current = nativeEvent.layout.height; checkPlantsAutoLoad(); }}
+              onLayout={({ nativeEvent }) => { plantsLayoutH.current = nativeEvent.layout.height; checkPlantsAutoLoad(); }}
               onContentSizeChange={(_w, h) => { plantsContentH.current = h; checkPlantsAutoLoad(); }}>
               {plantsList.map(plant => (
                 <TouchableOpacity
                   key={plant.id}
-                  style={[styles.plantItem, {borderBottomColor: c.borderLight}]}
+                  style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
                   activeOpacity={0.6}
                   onPress={() => setPlantsVisible(false)}>
-                  <Text style={[styles.plantText, {color: c.textPrimary}]}>{plant.code}-{plant.name}</Text>
+                  <Text style={[styles.plantText, { color: c.textPrimary }]}>{plant.code}-{plant.name}</Text>
                 </TouchableOpacity>
               ))}
               {plantsLoadingMore && (
-                <View style={{paddingVertical: wp(12), alignItems: 'center'}}>
+                <View style={{ paddingVertical: wp(12), alignItems: 'center' }}>
                   <ActivityIndicator size="small" color={c.primary} />
                 </View>
               )}
@@ -976,7 +986,7 @@ export default function DashboardScreen({ navigation }: Props) {
   // Mandatory fields completion data for right panel
   const mandatoryFields = detail?.mandatory_fields || deliveryRecord?.mandatory_fields;
   const getMandatoryStatus = (tab: string, fields: string[]) => {
-    if (!deliveryRecord || !fields.length) return { filled: 0, total: 0, items: [] as {name: string; filled: boolean; value?: string}[] };
+    if (!deliveryRecord || !fields.length) return { filled: 0, total: 0, items: [] as { name: string; filled: boolean; value?: string }[] };
     const tabData = (deliveryRecord as any)[tab];
     const items = fields.map(f => {
       const val = tabData?.[f];
@@ -993,23 +1003,24 @@ export default function DashboardScreen({ navigation }: Props) {
       const filled = val !== null && val !== undefined && val !== '';
       let display = filled ? String(val) : undefined;
       if (filled && (f === 'slump_from_plant' || f === 'slump_to_job')) display = `${val} mm`;
-      return { name: f.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase()), filled, value: display };
+      return { key: f, name: f.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase()), filled, value: display };
     });
     return { filled: items.filter(i => i.filled).length, total: items.length, items };
   })();
   const jobsiteMandatory = (() => {
     const j = deliveryRecord?.jobsite;
     const mFields = mandatoryFields?.jobsite || [];
-    const items: {name: string; filled: boolean; value?: string}[] = [];
+    const items: { key?: string; name: string; filled: boolean; value?: string }[] = [];
     // Group water fields: show "Customer Requested Water" with combined L / mm
     if (mFields.includes('full_load_litres') || mFields.includes('customer_water_litres')) {
       const cwL = j?.customer_water_litres;
       const cwMm = j?.customer_water_mm;
-      items.push({ name: 'Customer Requested Water', filled: cwL != null, value: cwL != null ? `${cwL} L${cwMm != null ? ` / ${cwMm} mm` : ''}` : undefined });
+      items.push({ key: 'customer_water', name: 'Customer Requested Water', filled: cwL != null, value: cwL != null ? `${cwL} L${cwMm != null ? ` / ${cwMm} mm` : ''}` : undefined });
     }
     // Always show Maintenance Water
     const mwL = j?.maintenance_water_litres;
-    items.push({ name: 'Maintenance Water', filled: mwL != null, value: mwL != null ? `${mwL} L` : undefined });
+    const mwMm = j?.maintenance_water_mm;
+    items.push({ key: 'maintenance_water', name: 'Maintenance Water', filled: mwL != null, value: mwL != null ? `${mwL} L${mwMm != null ? ` / ${mwMm} mm` : ''}` : undefined });
     // Remaining jobsite mandatory fields
     mFields.filter(f => f !== 'full_load_litres' && f !== 'customer_water_litres' && f !== 'maintenance_water_litres' && f !== 'maintenance_water_mm').forEach(f => {
       const val = (j as any)?.[f];
@@ -1033,7 +1044,7 @@ export default function DashboardScreen({ navigation }: Props) {
     const mFields = mandatoryFields?.time || [];
     // If mandatory_fields.time has entries, show only those steps; otherwise show all steps
     const filtered = mFields.length > 0 ? steps.filter(s => mFields.includes(s.key)) : steps;
-    const items = filtered.map(s => ({ name: s.label, filled: s.done, value: s.done && s.time ? s.time.substring(11, 16) : undefined }));
+    const items = filtered.map(s => ({ key: s.key, name: s.label, filled: s.done, value: s.done && s.time ? s.time.substring(11, 16) : undefined }));
     return { filled: items.filter(i => i.filled).length, total: items.length, items };
   })();
   const totalMandatoryFilled = plantMandatory.filled + jobsiteMandatory.filled + returnedMandatory.filled + timeMandatory.filled;
@@ -1048,32 +1059,35 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* ─── TOP BAR: TODAY + Tickets + Right Icons ─── */}
         <View style={{ backgroundColor: c.background, paddingTop: insets.top + (L ? 2 : 4), paddingBottom: L ? 3 : 6, paddingLeft: Math.max(L ? ls(12) : wp(12), insets.left + 4), paddingRight: Math.max(L ? ls(12) : wp(12), insets.right + 4), alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', paddingHorizontal: 8 }} style={{ flex: 1 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', paddingHorizontal: 4 }} style={{ flex: 1 }}>
               {tickets.map((ticket, i) => {
                 const isSelected = activeTicket === i;
                 const isCompleted = ticket.at_plant_time != null;
                 return (
                   <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: isCompleted ? '#2E7D32' : c.accent }}>
-                    <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
-                    <Text style={{ fontSize: ms(10), fontWeight: isSelected ? '900' : '700', color: '#fff', fontFamily: 'monospace' }}>{ticket.ticket_code}</Text>
+                    style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
+                    <View style={{ width: isSelected ? ms(7) : ms(5), height: isSelected ? ms(7) : ms(5), borderRadius: ms(4), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
+                    <Text style={[styles.tabText, { color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700' }]}>{ticket.ticket_code}</Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 }}>
-              <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: 14, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <MaterialIcons name="wifi" size={12} color="#fff" />
-                <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(5), marginLeft: ms(6) }}>
+              <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: ms(12), paddingVertical: ms(3), paddingHorizontal: ms(8), flexDirection: 'row', alignItems: 'center', gap: ms(3) }}>
+                <MaterialIcons name="wifi" size={ms(10)} color="#fff" />
+                <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialIcons name="notifications" size={16} color={c.textSecondary} />
+              <TouchableOpacity activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialIcons name="notifications" size={ms(14)} color={c.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={16} color={c.textSecondary} />
+              <TouchableOpacity onPress={() => setFontSizeVisible(true)} activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: ms(14), fontWeight: '900', color: c.textSecondary }}>A</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialIcons name="settings" size={18} color={c.textSecondary} />
+              <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={ms(14)} color={c.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialIcons name="settings" size={ms(14)} color={c.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -1120,9 +1134,9 @@ export default function DashboardScreen({ navigation }: Props) {
                   const isSelected = activeTicket === i;
                   const isCompleted = ticket.at_plant_time != null;
                   return (
-                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent }]}>
-                      <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
-                      <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
+                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
+                      <View style={{ width: ms(5), height: ms(5), borderRadius: ms(3), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
+                      <Text style={[styles.tabText, { color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700' }]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1178,9 +1192,9 @@ export default function DashboardScreen({ navigation }: Props) {
                   const isSelected = activeTicket === i;
                   const isCompleted = ticket.at_plant_time != null;
                   return (
-                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: c.overlay15, backgroundColor: isCompleted ? c.primary : c.accent }]}>
-                      <View style={{ width: isSelected ? 12 : 7, height: isSelected ? 12 : 7, borderRadius: isSelected ? 6 : 4, backgroundColor: '#fff' }} />
-                      <Text style={[styles.tabText, { color: c.textOnPrimary }]}>{ticket.ticket_code}</Text>
+                    <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
+                      <View style={{ width: ms(5), height: ms(5), borderRadius: ms(3), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
+                      <Text style={[styles.tabText, { color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700' }]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1192,467 +1206,532 @@ export default function DashboardScreen({ navigation }: Props) {
 
         {/* ─── CONTENT ─── */}
         {L ? (() => {
-        /* ═══ LANDSCAPE: Adaptive viewport, no scroll ═══ */
-        // Responsive scale factor based on screen height (phone ~320pt, tablet ~700pt+)
-        const lh = winHeight - insets.top - insets.bottom;
-        const isSmallLandscape = lh < 400;
-        const shortDim = Math.min(width, winHeight);
-        const ct = shortDim < 820;
-        const s = isSmallLandscape
-          ? Math.max(0.65, lh / 660)
-          : Math.max(0.65, Math.min(1.35, shortDim / 810));
-        const fs = (base: number) => Math.round(base * s);
-        const fst = (base: number) => Math.round((base - 1) * s);
-        return (
-        <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(1), paddingBottom: 0 }}>
-          {/* Info Bar */}
-          <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(4) : fs(6), paddingHorizontal: fs(12), marginBottom: fs(3), flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1 }}>
-              <MaterialIcons name="local-shipping" size={fs(16)} color={c.primary} />
-              <View>
-                <Text style={{ fontSize: fst(14), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
-                <Text style={{ fontSize: fst(11), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
-              </View>
-            </View>
-            <View style={{ alignItems: 'center', flex: 2 }}>
-              <Text style={{ fontSize: fst(16), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
-              <Text style={{ fontSize: fst(12), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(10), flex: 1.5, justifyContent: 'flex-end' }}>
-              <View style={{ backgroundColor: c.overlay15, paddingVertical: fs(5), paddingHorizontal: fs(10), borderRadius: fs(8), flexDirection: 'row', alignItems: 'center', gap: fs(6) }}>
-                <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={fs(14)} color={c.textOnPrimary} />
-                <View>
-                  <Text style={{ fontSize: fst(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
-                  <Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textOnDark60 }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : '-'}</Text>
+          /* ═══ LANDSCAPE: Adaptive viewport, no scroll ═══ */
+          // Responsive scale factor based on screen height (phone ~320pt, tablet ~700pt+)
+          const lh = winHeight - insets.top - insets.bottom;
+          const isSmallLandscape = lh < 400;
+          const shortDim = Math.min(width, winHeight);
+          const ct = shortDim < 820;
+          const s = isSmallLandscape
+            ? Math.max(0.65, lh / 660)
+            : Math.max(0.65, Math.min(1.35, shortDim / 810));
+          const fs = (base: number) => Math.round(base * s);
+          const fst = (base: number) => Math.round((base - 1) * s);
+          return (
+            <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(1), paddingBottom: 0 }}>
+              {/* Info Bar */}
+              <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(4) : fs(6), paddingHorizontal: fs(12), marginBottom: fs(3), flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1 }}>
+                  <MaterialIcons name="local-shipping" size={fs(16)} color={c.primary} />
+                  <View>
+                    <Text style={{ fontSize: fst(14), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
+                    <Text style={{ fontSize: fst(11), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
+                  </View>
+                </View>
+                <View style={{ alignItems: 'center', flex: 2 }}>
+                  <Text style={{ fontSize: fst(16), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+                  <Text style={{ fontSize: fst(12), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(10), flex: 1.5, justifyContent: 'flex-end' }}>
+                  <View style={{ backgroundColor: c.overlay15, paddingVertical: fs(5), paddingHorizontal: fs(10), borderRadius: fs(8), flexDirection: 'row', alignItems: 'center', gap: fs(6) }}>
+                    <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={fs(14)} color={c.textOnPrimary} />
+                    <View>
+                      <Text style={{ fontSize: fst(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
+                      <Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textOnDark60 }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : '-'}</Text>
+                    </View>
+                  </View>
+                  {currentTicket != null && (
+                    <View style={{ alignItems: 'flex-end', gap: fs(3) }}>
+                      {(() => {
+                        const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
+                          <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: fs(5) }}>
+                            <View style={{ width: fs(6), height: fs(6), borderRadius: fs(3), backgroundColor: '#fff' }} />
+                            <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
+                          </View>);
+                      })()}
+                      <View style={{ backgroundColor: '#E53935', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4 }}>
+                        <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
               </View>
-              {currentTicket != null && (
-                <View style={{ alignItems: 'flex-end', gap: fs(3) }}>
-                  {(() => { const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
-                    <View style={{ backgroundColor: isActive ? '#1E40AF' : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: fs(5) }}>
-                      <View style={{ width: fs(6), height: fs(6), borderRadius: fs(3), backgroundColor: '#fff' }} />
-                      <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
-                    </View>); })()}
-                  <View style={{ backgroundColor: '#E53935', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4 }}>
-                    <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+              {/* Timeline */}
+              {!detailLoading && (
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: fs(4), paddingHorizontal: fs(8) }}>
+                  {timeline.map((item, i) => {
+                    const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
+                    const isFirst = i === 0; const isLast = i === timeline.length - 1;
+                    const nextDone = !isLast && timeline[i + 1]?.done;
+                    const lineDone = item.done && nextDone;
+                    const dotSz = isActive ? fs(isSmallLandscape ? 20 : 24) : item.done ? fs(isSmallLandscape ? 14 : 18) : fs(isSmallLandscape ? 10 : 14);
+                    return (
+                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
+                        <Text style={{ fontSize: fst(isSmallLandscape ? 10 : 12), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: fs(isSmallLandscape ? 2 : 4) }} numberOfLines={1}>{item.label}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', height: fs(isSmallLandscape ? 22 : 26), width: '100%' }}>
+                          {isFirst ? <View style={{ flex: 1 }} /> : (
+                            <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : 'transparent', borderBottomWidth: item.done ? 0 : 1.5, borderBottomColor: '#888', borderStyle: item.done ? 'solid' : 'dashed' }} />
+                          )}
+                          <View style={{
+                            width: dotSz, height: dotSz, borderRadius: dotSz / 2,
+                            justifyContent: 'center', alignItems: 'center',
+                            backgroundColor: isActive ? '#1E88E5' : item.done ? c.primary : c.border,
+                            borderWidth: isActive ? fs(3) : 0,
+                            borderColor: isActive ? '#90CAF9' : 'transparent',
+                          }}>
+                            {item.done && !isActive && <MaterialIcons name="check" size={fs(13)} color="#fff" />}
+                            {isActive && <View style={{ width: fs(10), height: fs(10), borderRadius: fs(5), backgroundColor: '#fff' }} />}
+                          </View>
+                          {isLast ? <View style={{ flex: 1 }} /> : (
+                            <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : 'transparent', borderBottomWidth: lineDone ? 0 : 1.5, borderBottomColor: '#888', borderStyle: lineDone ? 'solid' : 'dashed' }} />
+                          )}
+                        </View>
+                        <Text style={{ fontSize: fst(isSmallLandscape ? 11 : 13), fontWeight: '800', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: fs(isSmallLandscape ? 1 : 3) }}>{item.time || '—'}</Text>
+                      </View>);
+                  })}
+                </View>
+              )}
+              {detailLoading && <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
+              {/* Two-column body */}
+              {!detailLoading && (
+                <View style={{ flexDirection: 'row', gap: fs(6), minHeight: 0, marginTop: fs(6) }}>
+                  {/* LEFT — Customer + Product + Delivery Location + Quick Links */}
+                  <View style={{ flex: 1, gap: ct ? fs(6) : fs(8) }}>
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
+                      <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Customer</Text>
+                      </View>
+                      {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
+                        <View key={i} style={{ flexDirection: 'row', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%', letterSpacing: 0.5 }}>{row.label}</Text>
+                          <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    {/* Product */}
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
+                        <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <MaterialIcons name="visibility" size={fs(16)} color={c.accent} />
+                        </TouchableOpacity>
+                      </View>
+                      {/* Data row with titles */}
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                        <View style={{ flex: 0.7, paddingRight: fs(3) }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>CODE</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
+                        </View>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 2.5, paddingHorizontal: fs(3) }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>DESCRIPTION</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <View style={{ flex: 1.2, paddingHorizontal: fs(3) }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>SLUMP</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
+                        </View>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <View style={{ flex: 1.6, paddingHorizontal: fs(3) }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>QTY/UOM</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '900', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                        </View>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <View style={{ flex: 1.2, paddingLeft: fs(3) }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>USAGE</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    {/* Delivery Location */}
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
+                      <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Delivery Location</Text>
+                      </View>
+                      {[
+                        { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' },
+                        ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []),
+                        { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
+                        { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
+                      ].map((row, i, arr) => (
+                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>{row.label}</Text>
+                          {row.isLink ? (
+                            <TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}>
+                              <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{row.value}</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
+                          )}
+                        </View>
+                      ))}
+                      {/* Trucks row */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                        <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>TRUCKS</Text>
+                        <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }}>
+                            {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_ahead.status}</Text></> : null}
+                            {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '   ' : ''}
+                            {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
+                            {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
+                          </Text>
+                          {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <MaterialIcons name="map" size={fst(14)} color={c.accent} style={{ marginLeft: fs(4) }} />}
+                        </TouchableOpacity>
+                      </View>
+                      {/* Instructions row */}
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: ct ? fs(7) : fs(8) }}>
+                        <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>INSTRUCTIONS</Text>
+                        {detail?.job?.instructions ? (
+                          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: fs(3), paddingHorizontal: fs(5) }}>
+                              <Text style={{ fontSize: fst(12), fontWeight: '800', color: '#000', lineHeight: fs(18) }} numberOfLines={1}>{detail.job.instructions}</Text>
+                            </View>
+                            <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsModalVisible(true)} style={{ marginLeft: fs(6), paddingVertical: fs(2), paddingHorizontal: fs(6) }}>
+                              <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.accent }}>VIEW ALL</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <Text style={{ fontSize: fst(14), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                  {/* RIGHT: Mandatory Fields */}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(10) : fs(6) }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(1) : fs(3), marginBottom: fs(1) }}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(2), paddingHorizontal: fs(6), borderRadius: 10, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
+                          <Text style={{ fontSize: fst(10), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                        </View>
+                      </View>
+                      {[
+                        { label: 'PLANT', data: plantMandatory, icon: 'factory' as const },
+                        { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const },
+                        { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const },
+                        { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const },
+                      ].map((section, si, arr) => (
+                        <View key={si} style={{ marginBottom: si < arr.length - 1 ? fs(4) : 0, paddingBottom: si < arr.length - 1 ? fs(6) : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: fs(3) }}>
+                            <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
+                            <Text style={{ fontSize: fst(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
+                          </View>
+                          {section.data.items.map((item, ii) => {
+                            const itemKey = (item as any).key;
+                            const isSlump = itemKey === 'slump_from_plant' || itemKey === 'slump_to_job';
+                            const isWater = itemKey === 'customer_water' || itemKey === 'maintenance_water';
+                            const isTappable = isSlump || isWater;
+                            const Row = (
+                              <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(4), gap: fs(6) }}>
+                                <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
+                                  <MaterialIcons name={item.filled ? 'check' : 'close'} size={fs(12)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
+                                </View>
+                                <Text style={{ fontSize: fst(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
+                                {item.value ? <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fst(10), color: c.textMuted }}>--</Text>}
+                              </View>
+                            );
+                            if (isSlump) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => setSlumpPickerField(itemKey)}>{Row}</TouchableOpacity>;
+                            if (isWater) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
+                              const j = deliveryRecord?.jobsite;
+                              const litresKey = itemKey === 'customer_water' ? 'customer_water_litres' : 'maintenance_water_litres';
+                              const mmKey = itemKey === 'customer_water' ? 'customer_water_mm' : 'maintenance_water_mm';
+                              setWaterLitresInput((j as any)?.[litresKey] != null ? String((j as any)[litresKey]) : '');
+                              setWaterMmInput((j as any)?.[mmKey] != null ? String((j as any)[mmKey]) : '');
+                              setWaterModalField(itemKey);
+                            }}>{Row}</TouchableOpacity>;
+                            if (section.label === 'STATUS TIMES') return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
+                              const now = new Date();
+                              const existing = item.value;
+                              setTimePickerHour(existing ? parseInt(existing.split(':')[0], 10) : now.getHours());
+                              setTimePickerMinute(existing ? parseInt(existing.split(':')[1], 10) : now.getMinutes());
+                              setTimePickerStep({ key: itemKey, label: item.name });
+                            }}>{Row}</TouchableOpacity>;
+                            return Row;
+                          })}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+              {/* Quick Links + Additional Entries — same height row */}
+              {!detailLoading && (
+                <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(3), marginBottom: ct ? fs(10) : fs(16) }}>
+                  <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
+                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
+                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>QUICK LINKS</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: fs(4) }}>
+                      {([
+                        { label: t('modals.signAccept'), screen: 'AcceptTicket' as const },
+                        { label: t('modals.disputeLoad'), screen: 'DisputeTicket' as const },
+                        { label: t('modals.signCurbline'), screen: 'CurblineRelease' as const },
+                      ] as const).map((link, i, arr) => (
+                        <View key={link.screen} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <TouchableOpacity activeOpacity={0.6} onPress={() => {
+                            const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true };
+                            if (currentTicket) {
+                              params.ticketInfo = {
+                                customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
+                                customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
+                                project_name: detail?.job?.project_name || currentTicket.project_name || '',
+                                project_code: detail?.job?.project_code || currentTicket.project_code || '',
+                                order_code: currentTicket.order_code || '',
+                                ticket_code: currentTicket.ticket_code || '',
+                              };
+                            }
+                            navigation.navigate(link.screen, params);
+                          }}>
+                            <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.primary }}>{link.label}</Text>
+                          </TouchableOpacity>
+                          {i < arr.length - 1 && <Text style={{ fontSize: fst(10), color: c.textMuted, marginHorizontal: fs(6) }}>|</Text>}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
+                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
+                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8) }}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'plant' })}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>PLANT</Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'jobsite' })}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'cod' })}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>COD</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               )}
             </View>
-          </View>
-          {/* Timeline */}
-          {!detailLoading && (
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: fs(4), paddingHorizontal: fs(8) }}>
-              {timeline.map((item, i) => {
-                const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
-                const isFirst = i === 0; const isLast = i === timeline.length - 1;
-                const nextDone = !isLast && timeline[i + 1]?.done;
-                const lineDone = item.done && nextDone;
-                const dotSz = isActive ? fs(isSmallLandscape ? 20 : 24) : item.done ? fs(isSmallLandscape ? 14 : 18) : fs(isSmallLandscape ? 10 : 14);
-                return (
-                  <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                    <Text style={{ fontSize: fst(isSmallLandscape ? 10 : 12), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: fs(isSmallLandscape ? 2 : 4) }} numberOfLines={1}>{item.label}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', height: fs(isSmallLandscape ? 22 : 26), width: '100%' }}>
-                      {isFirst ? <View style={{ flex: 1 }} /> : (
-                        <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : 'transparent', borderBottomWidth: item.done ? 0 : 1.5, borderBottomColor: '#888', borderStyle: item.done ? 'solid' : 'dashed' }} />
-                      )}
-                      <View style={{
-                        width: dotSz, height: dotSz, borderRadius: dotSz / 2,
-                        justifyContent: 'center', alignItems: 'center',
-                        backgroundColor: isActive ? '#1E88E5' : item.done ? c.primary : c.border,
-                        borderWidth: isActive ? fs(3) : 0,
-                        borderColor: isActive ? '#90CAF9' : 'transparent',
-                      }}>
-                        {item.done && !isActive && <MaterialIcons name="check" size={fs(13)} color="#fff" />}
-                        {isActive && <View style={{ width: fs(10), height: fs(10), borderRadius: fs(5), backgroundColor: '#fff' }} />}
-                      </View>
-                      {isLast ? <View style={{ flex: 1 }} /> : (
-                        <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : 'transparent', borderBottomWidth: lineDone ? 0 : 1.5, borderBottomColor: '#888', borderStyle: lineDone ? 'solid' : 'dashed' }} />
-                      )}
-                    </View>
-                    <Text style={{ fontSize: fst(isSmallLandscape ? 11 : 13), fontWeight: '800', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: fs(isSmallLandscape ? 1 : 3) }}>{item.time || '—'}</Text>
-                  </View>);
-              })}
-            </View>
-          )}
-          {detailLoading && <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
-          {/* Two-column body */}
-          {!detailLoading && (
-            <View style={{ flexDirection: 'row', gap: fs(6), minHeight: 0, marginTop: fs(6) }}>
-              {/* LEFT — Customer + Product + Delivery Location + Quick Links */}
-              <View style={{ flex: 1, gap: ct ? fs(6) : fs(8) }}>
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
-                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                    <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Customer</Text>
-                  </View>
-                  {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
-                    <View key={i} style={{ flexDirection: 'row', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%', letterSpacing: 0.5 }}>{row.label}</Text>
-                      <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
-                    </View>
-                  ))}
-                </View>
-                {/* Product */}
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                    <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <MaterialIcons name="visibility" size={fs(16)} color={c.accent} />
-                    </TouchableOpacity>
-                  </View>
-                  {/* Column headers */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', paddingBottom: fs(3), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, marginBottom: fs(3) }}>
-                    <View style={{ flex: 0.8, paddingRight: fs(6) }}><Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>CODE</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: fs(12), backgroundColor: c.border }} />
-                    <View style={{ flex: 3.4, paddingHorizontal: fs(6) }}><Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>DESCRIPTION</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: fs(12), backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingHorizontal: fs(6) }}><Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>SLUMP</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: fs(12), backgroundColor: c.border }} />
-                    <View style={{ flex: 0.8, paddingHorizontal: fs(6) }}><Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>QTY</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: fs(12), backgroundColor: c.border }} />
-                    <View style={{ flex: 0.6, paddingHorizontal: fs(6) }}><Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>UOM</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: fs(12), backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingLeft: fs(6) }}><Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>USAGE</Text></View>
-                  </View>
-                  {/* Data row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ flex: 0.8, paddingRight: fs(6) }}><Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.mix_code || '-'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 3.4, paddingHorizontal: fs(6) }}>
-                      <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
-                    </TouchableOpacity>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingHorizontal: fs(6) }}><Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 0.8, paddingHorizontal: fs(6) }}><Text style={{ fontSize: fst(12), fontWeight: '900', color: c.textPrimary }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 0.6, paddingHorizontal: fs(6) }}><Text style={{ fontSize: fst(12), fontWeight: '600', color: c.textPrimary }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingLeft: fs(6) }}><Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1}>{detail?.mix?.usage || '-'}</Text></View>
+          );
+        })() : (
+          /* ═══ PORTRAIT: Scrollable ═══ */
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[styles.scrollInner, { gap: 0, flexGrow: 1, padding: wp(8), paddingLeft: Math.max(wp(10), insets.left + wp(4)), paddingRight: Math.max(wp(10), insets.right + wp(4)) }]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
+            <View style={[{ flex: 1 }, isTablet && { maxWidth: 960, alignSelf: 'center', width: '100%' }]}>
+              {/* Info Bar */}
+              <View style={{ backgroundColor: '#367000', borderRadius: 8, padding: wp(8), marginBottom: wp(6), flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <MaterialIcons name="local-shipping" size={ms(18)} color={c.primary} />
+                  <View>
+                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
                   </View>
                 </View>
-                {/* Delivery Location */}
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
-                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                    <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Delivery Location</Text>
+                <View style={{ alignItems: 'center', flex: 2 }}>
+                  <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+                  <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end', flex: 1, gap: 3 }}>
+                  {currentTicket != null && (<>
+                    {(() => {
+                      const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
+                        <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' }} />
+                          <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
+                        </View>);
+                    })()}
+                    <View style={{ backgroundColor: '#E53935', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4 }}>
+                      <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+                    </View>
+                  </>)}
+                </View>
+              </View>
+              {/* Timeline */}
+              {!detailLoading && (
+                <View style={{ marginBottom: wp(6) }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(4) }}>
+                    {timeline.map((item, i) => {
+                      const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
+                      const isFirst = i === 0; const isLast = i === timeline.length - 1;
+                      const dotSz = isActive ? wp(12) : wp(8);
+                      const lineDone = item.done && !isLast && timeline[i + 1]?.done;
+                      return (
+                        <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
+                          <Text style={{ fontSize: ms(8), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }} numberOfLines={1}>{item.label}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(14), width: '100%' }}>
+                            {isFirst ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border }} />}
+                            <View style={{ width: dotSz, height: dotSz, borderRadius: dotSz / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: isActive ? '#1E88E5' : item.done ? c.primary : c.surface, borderWidth: isActive ? 3 : item.done ? 0 : 1.5, borderColor: isActive ? '#90CAF9' : c.border }}>
+                              {item.done && !isActive && <MaterialIcons name="check" size={ms(5)} color={c.textOnPrimary} />}
+                              {isActive && <View style={{ width: dotSz * 0.4, height: dotSz * 0.4, borderRadius: dotSz * 0.2, backgroundColor: '#fff' }} />}
+                            </View>
+                            {isLast ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border }} />}
+                          </View>
+                          <Text style={{ fontSize: ms(9), fontWeight: '900', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: 4 }}>{item.time}</Text>
+                        </View>);
+                    })}
                   </View>
-                    {[
-                      { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' },
-                      ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []),
-                      { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
-                      { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
-                      { label: 'TRUCKS', value: [detail?.mix?.truck_ahead ? `AFTER · ${detail.mix.truck_ahead.truck_code} ${detail.mix.truck_ahead.status}` : null, detail?.mix?.truck_behind ? `BEFORE · ${detail.mix.truck_behind.truck_code} ${detail.mix.truck_behind.status}` : null].filter(Boolean).join('   ') || '—', blue: true },
-                    ].map((row, i, arr) => (
-                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                        <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>{row.label}</Text>
-                        {row.isLink ? (
-                          <TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}>
-                            <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{row.value}</Text>
-                          </TouchableOpacity>
-                        ) : row.blue ? (
-                          <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1 }}>
-                            <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{row.value}</Text>
-                          </TouchableOpacity>
-                        ) : (
-                          <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
-                        )}
+                </View>
+              )}
+              {detailLoading && <View style={{ paddingVertical: wp(12), alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
+              {/* Cards */}
+              {!detailLoading && (
+                <View style={{ gap: wp(6) }}>
+                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
+                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Customer</Text>
+                    </View>
+                    {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
+                      <View key={i} style={{ flexDirection: 'row', paddingVertical: 7, borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>
+                      </View>))}
+                  </View>
+                  {/* Product */}
+                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <MaterialIcons name="visibility" size={ms(16)} color={c.accent} />
+                      </TouchableOpacity>
+                    </View>
+                    {/* Data row with titles */}
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                      <View style={{ flex: 0.7, paddingRight: wp(2) }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>CODE</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
                       </View>
-                    ))}
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 2.5, paddingHorizontal: wp(2) }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>DESCRIPTION</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <View style={{ flex: 1.2, paddingHorizontal: wp(2) }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>SLUMP</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
+                      </View>
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <View style={{ flex: 1.6, paddingHorizontal: wp(2) }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>QTY/UOM</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                      </View>
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <View style={{ flex: 1.2, paddingLeft: wp(2) }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>USAGE</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {/* Delivery Location */}
+                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Delivery Location</Text>
+                    </View>
+                    {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find((p: any) => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }].map((row, i) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
+                        {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(8), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
+                        ) : (<Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>)}
+                      </View>))}
+                    {/* Trucks row */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>TRUCKS</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 }}>
+                          {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_ahead.status}</Text></> : null}
+                          {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '   ' : ''}
+                          {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
+                          {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
+                        </Text>
+                        {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <MaterialIcons name="map" size={ms(12)} color={c.accent} style={{ marginLeft: wp(3) }} />}
+                      </TouchableOpacity>
+                    </View>
                     {/* Instructions row */}
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: ct ? fs(7) : fs(8) }}>
-                      <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>INSTRUCTIONS</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7 }}>
+                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>INSTRUCTIONS</Text>
                       {detail?.job?.instructions ? (
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
-                          <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: fs(3), paddingHorizontal: fs(5) }}>
-                            <Text style={{ fontSize: fst(12), fontWeight: '800', color: '#000', lineHeight: fs(18) }} numberOfLines={1}>{detail.job.instructions}</Text>
+                          <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: 4, paddingHorizontal: 6 }}>
+                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#000', lineHeight: ms(16) }} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
                           </View>
-                          <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsModalVisible(true)} style={{ marginLeft: fs(6), paddingVertical: fs(2), paddingHorizontal: fs(6) }}>
-                            <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.accent }}>VIEW ALL</Text>
+                          <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsModalVisible(true)} style={{ marginLeft: 6, paddingVertical: 3, paddingHorizontal: 6 }}>
+                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.accent }}>VIEW ALL</Text>
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <Text style={{ fontSize: fst(14), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
                       )}
                     </View>
-                </View>
-              </View>
-              {/* RIGHT: Mandatory Fields */}
-              <View style={{ flex: 1 }}>
-                <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(10) : fs(6) }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(1) : fs(3), marginBottom: fs(1) }}>
-                    <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(2), paddingHorizontal: fs(6), borderRadius: 10, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
-                      <Text style={{ fontSize: fst(10), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
-                    </View>
                   </View>
-                  {[
-                    { label: 'PLANT', data: plantMandatory, icon: 'factory' as const },
-                    { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const },
-                    { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const },
-                    { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const },
-                  ].map((section, si, arr) => (
-                    <View key={si} style={{ marginBottom: si < arr.length - 1 ? fs(4) : 0, paddingBottom: si < arr.length - 1 ? fs(6) : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: fs(3) }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
-                        <Text style={{ fontSize: fst(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
+                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                       </View>
-                      {section.data.items.map((item, ii) => (
-                        <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(4), gap: fs(6) }}>
-                          <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
-                            <MaterialIcons name={item.filled ? 'check' : 'close'} size={fs(12)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
-                          </View>
-                          <Text style={{ fontSize: fst(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
-                          {item.value ? <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fst(10), color: c.textMuted }}>--</Text>}
-                        </View>
-                      ))}
                     </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-          {/* Quick Links + Additional Entries — same height row */}
-          {!detailLoading && (
-            <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(6), marginBottom: fs(6) }}>
-              <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
-                <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                  <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>QUICK LINKS</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: fs(4) }}>
-                  {([
-                    { label: t('modals.signAccept'), screen: 'AcceptTicket' as const },
-                    { label: t('modals.disputeLoad'), screen: 'DisputeTicket' as const },
-                    { label: t('modals.signCurbline'), screen: 'CurblineRelease' as const },
-                  ] as const).map((link, i, arr) => (
-                    <View key={link.screen} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => {
-                        const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true };
-                        if (currentTicket) {
-                          params.ticketInfo = {
-                            customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
-                            customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
-                            project_name: detail?.job?.project_name || currentTicket.project_name || '',
-                            project_code: detail?.job?.project_code || currentTicket.project_code || '',
-                            order_code: currentTicket.order_code || '',
-                            ticket_code: currentTicket.ticket_code || '',
-                          };
-                        }
-                        navigation.navigate(link.screen, params);
-                      }}>
-                        <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.accent, textDecorationLine: 'underline' }}>{link.label}</Text>
+                    {[{ label: 'PLANT', data: plantMandatory, icon: 'factory' as const }, { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const }, { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const }, { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const }].map((section, si, arr) => (
+                      <View key={si} style={{ marginBottom: si < arr.length - 1 ? 4 : 0, paddingBottom: si < arr.length - 1 ? 8 : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+                          <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
+                        </View>
+                        {section.data.items.map((item, ii) => {
+                          const itemKey = (item as any).key;
+                          const isSlump = itemKey === 'slump_from_plant' || itemKey === 'slump_to_job';
+                          const isWater = itemKey === 'customer_water' || itemKey === 'maintenance_water';
+                          const Row = (
+                            <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
+                              <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : c.error} /></View>
+                              <Text style={{ fontSize: ms(8), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
+                              {item.value ? <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(8), color: c.textMuted }}>--</Text>}
+                            </View>
+                          );
+                          if (isSlump) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => setSlumpPickerField(itemKey)}>{Row}</TouchableOpacity>;
+                          if (isWater) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
+                            const j = deliveryRecord?.jobsite;
+                            const litresKey = itemKey === 'customer_water' ? 'customer_water_litres' : 'maintenance_water_litres';
+                            const mmKey = itemKey === 'customer_water' ? 'customer_water_mm' : 'maintenance_water_mm';
+                            setWaterLitresInput((j as any)?.[litresKey] != null ? String((j as any)[litresKey]) : '');
+                            setWaterMmInput((j as any)?.[mmKey] != null ? String((j as any)[mmKey]) : '');
+                            setWaterModalField(itemKey);
+                          }}>{Row}</TouchableOpacity>;
+                          if (section.label === 'STATUS TIMES') return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
+                            const now = new Date();
+                            const existing = item.value;
+                            setTimePickerHour(existing ? parseInt(existing.split(':')[0], 10) : now.getHours());
+                            setTimePickerMinute(existing ? parseInt(existing.split(':')[1], 10) : now.getMinutes());
+                            setTimePickerStep({ key: itemKey, label: item.name });
+                          }}>{Row}</TouchableOpacity>;
+                          return Row;
+                        })}
+                      </View>))}
+                  </View>
+                  {/* Additional Entries */}
+                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'plant' })}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>PLANT</Text>
                       </TouchableOpacity>
-                      {i < arr.length - 1 && <Text style={{ fontSize: fst(10), color: c.textMuted, marginHorizontal: fs(6) }}>|</Text>}
-                    </View>
-                  ))}
-                </View>
-              </View>
-              <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
-                <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                  <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8) }}>
-                  <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'plant' })}>
-                    <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>PLANT</Text>
-                  </TouchableOpacity>
-                  <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
-                  <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'jobsite' })}>
-                    <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
-                  </TouchableOpacity>
-                  <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
-                  <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'cod' })}>
-                    <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>COD</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-        ); })() : (
-        /* ═══ PORTRAIT: Scrollable ═══ */
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollInner, { gap: 0, flexGrow: 1, padding: wp(8), paddingLeft: Math.max(wp(10), insets.left + wp(4)), paddingRight: Math.max(wp(10), insets.right + wp(4)) }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}>
-          <View style={[{ flex: 1 }, isTablet && { maxWidth: 960, alignSelf: 'center', width: '100%' }]}>
-            {/* Info Bar */}
-            <View style={{ backgroundColor: '#367000', borderRadius: 8, padding: wp(8), marginBottom: wp(6), flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                <MaterialIcons name="local-shipping" size={ms(18)} color={c.primary} />
-                <View>
-                  <Text style={{ fontSize: ms(12), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
-                  <Text style={{ fontSize: ms(10), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
-                </View>
-              </View>
-              <View style={{ alignItems: 'center', flex: 2 }}>
-                <Text style={{ fontSize: ms(14), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
-                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
-              </View>
-              <View style={{ alignItems: 'flex-end', flex: 1, gap: 3 }}>
-                {currentTicket != null && (<>
-                  {(() => { const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
-                    <View style={{ backgroundColor: isActive ? '#1E40AF' : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' }} />
-                      <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#fff' }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
-                    </View>); })()}
-                  <View style={{ backgroundColor: '#E53935', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4 }}>
-                    <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#fff' }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
-                  </View>
-                </>)}
-              </View>
-            </View>
-            {/* Timeline */}
-            {!detailLoading && (
-              <View style={{ marginBottom: wp(6) }}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: wp(4) }}>
-                  {timeline.map((item, i) => {
-                    const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
-                    const isFirst = i === 0; const isLast = i === timeline.length - 1;
-                    const dotSz = isActive ? wp(12) : wp(8);
-                    const lineDone = item.done && !isLast && timeline[i + 1]?.done;
-                    return (
-                      <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                        <Text style={{ fontSize: ms(9), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }} numberOfLines={1}>{item.label}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(14), width: '100%' }}>
-                          {isFirst ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border }} />}
-                          <View style={{ width: dotSz, height: dotSz, borderRadius: dotSz / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: isActive ? '#1E88E5' : item.done ? c.primary : c.surface, borderWidth: isActive ? 3 : item.done ? 0 : 1.5, borderColor: isActive ? '#90CAF9' : c.border }}>
-                            {item.done && !isActive && <MaterialIcons name="check" size={ms(5)} color={c.textOnPrimary} />}
-                            {isActive && <View style={{ width: dotSz * 0.4, height: dotSz * 0.4, borderRadius: dotSz * 0.2, backgroundColor: '#fff' }} />}
-                          </View>
-                          {isLast ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border }} />}
-                        </View>
-                        <Text style={{ fontSize: ms(10), fontWeight: '900', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: 4 }}>{item.time}</Text>
-                      </View>);
-                  })}
-                </View>
-              </View>
-            )}
-            {detailLoading && <View style={{ paddingVertical: wp(12), alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
-            {/* Cards */}
-            {!detailLoading && (
-              <View style={{ gap: wp(6) }}>
-                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
-                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Customer</Text>
-                  </View>
-                  {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
-                    <View key={i} style={{ flexDirection: 'row', paddingVertical: 7, borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
-                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>
-                    </View>))}
-                </View>
-                {/* Product */}
-                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <MaterialIcons name="visibility" size={ms(16)} color={c.accent} />
-                    </TouchableOpacity>
-                  </View>
-                  {/* Column headers */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', paddingBottom: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, marginBottom: 4 }}>
-                    <View style={{ flex: 0.8, paddingRight: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>CODE</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
-                    <View style={{ flex: 3.4, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>DESCRIPTION</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>SLUMP</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
-                    <View style={{ flex: 0.8, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>QTY</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
-                    <View style={{ flex: 0.6, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>UOM</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, height: ms(9), backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingLeft: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5 }}>USAGE</Text></View>
-                  </View>
-                  {/* Data row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ flex: 0.8, paddingRight: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.mix_code || '-'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 3.4, paddingHorizontal: wp(4) }}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
-                    </TouchableOpacity>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary }} numberOfLines={1}>{detail?.mix?.slump || '-'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 0.8, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '900', color: c.textPrimary }} numberOfLines={1}>{stripUnit(detail?.mix?.quantity) || '-'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 0.6, paddingHorizontal: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }} numberOfLines={1}>{normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text></View>
-                    <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: c.border }} />
-                    <View style={{ flex: 1.5, paddingLeft: wp(4) }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1}>{detail?.mix?.usage || '-'}</Text></View>
-                  </View>
-                </View>
-                {/* Delivery Location */}
-                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
-                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Delivery Location</Text>
-                  </View>
-                  {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find((p: any) => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }, { label: 'TRUCKS', value: [detail?.mix?.truck_ahead ? `AFTER · ${detail.mix.truck_ahead.truck_code} ${detail.mix.truck_ahead.status}` : null, detail?.mix?.truck_behind ? `BEFORE · ${detail.mix.truck_behind.truck_code} ${detail.mix.truck_behind.status}` : null].filter(Boolean).join('   ') || '—', blue: true }].map((row, i) => (
-                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
-                      {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
-                      ) : row.blue ? (<TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1 }}><Text style={{ fontSize: ms(9), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
-                      ) : (<Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>)}
-                    </View>))}
-                  {/* Instructions row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7 }}>
-                    <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>INSTRUCTIONS</Text>
-                    {detail?.job?.instructions ? (
-                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
-                        <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: 4, paddingHorizontal: 6 }}>
-                          <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#000', lineHeight: ms(16) }} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
-                        </View>
-                        <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsExpanded(v => !v)} style={{ marginLeft: 6, paddingVertical: 3, paddingHorizontal: 6 }}>
-                          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.accent }}>{instructionsExpanded ? 'HIDE' : 'VIEW ALL'}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
-                    )}
-                  </View>
-                </View>
-                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(9), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                      <Text style={{ fontSize: ms(8), color: c.textMuted }}>|</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'jobsite' })}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: ms(8), color: c.textMuted }}>|</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'cod' })}>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>COD</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  {[{ label: 'PLANT', data: plantMandatory, icon: 'factory' as const }, { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const }, { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const }, { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const }].map((section, si, arr) => (
-                    <View key={si} style={{ marginBottom: si < arr.length - 1 ? 4 : 0, paddingBottom: si < arr.length - 1 ? 8 : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                        <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
-                        <Text style={{ fontSize: ms(9), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
-                      </View>
-                      {section.data.items.map((item, ii) => (
-                        <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
-                          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : c.error} /></View>
-                          <Text style={{ fontSize: ms(9), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
-                          {item.value ? <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(9), color: c.textMuted }}>--</Text>}
-                        </View>))}
-                    </View>))}
                 </View>
-                {/* Additional Entries */}
-                <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
-                  <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                    <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'plant' })}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary }}>PLANT</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: ms(9), color: c.textMuted }}>|</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'jobsite' })}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: ms(9), color: c.textMuted }}>|</Text>
-                    <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'cod' })}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.primary }}>COD</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-        </ScrollView>
+              )}
+            </View>
+          </ScrollView>
         )}
 
       </View>{/* end main content */}
@@ -1673,7 +1752,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.primarySurface, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8 }}>
             <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><MaterialIcons name="sync" size={12} color={c.primary} /></Animated.View>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: c.primary }}>REFRESHED at {lastSyncTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: c.primary }}>REFRESHED at {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </TouchableOpacity>
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isOnline ? c.success : c.error }} />
         </View>
@@ -1742,6 +1821,208 @@ export default function DashboardScreen({ navigation }: Props) {
           </Animated.View>
         </View>
       )}
+
+      {/* ─── SLUMP PICKER MODAL ─── */}
+      <ResponsiveModal
+        visible={slumpPickerField != null}
+        onClose={() => setSlumpPickerField(null)}
+        maxWidth={L ? 400 : isTablet ? 400 : 340}
+        widthPercent={L ? 35 : 75}
+        maxHeightPercent={80}>
+        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden' }}>
+          <View style={{ paddingHorizontal: wp(16), paddingTop: wp(12), paddingBottom: wp(8) }}>
+            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>REQUIRED ENTRIES</Text>
+            <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary, marginTop: 2 }}>SELECT SLUMP <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted }}>mm</Text></Text>
+          </View>
+          <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={true} bounces={false}>
+            {['80', '90', '100', '110', '120', '130', '140', '150', '160', '170', '180', '190', '200', '210', '220', '230'].map(val => {
+              const currentVal = slumpPickerField === 'slump_from_plant' ? deliveryRecord?.plant?.slump_from_plant : deliveryRecord?.plant?.slump_to_job;
+              const isSelected = currentVal != null && String(currentVal) === val;
+              return (
+                <TouchableOpacity
+                  key={val}
+                  activeOpacity={0.6}
+                  onPress={async () => {
+                    if (!currentTicket?.id || !slumpPickerField) return;
+                    const body = { [slumpPickerField]: Number(val) };
+                    setSlumpPickerField(null);
+                    try {
+                      const result = await saveDeliveryTab(currentTicket.id, 'plant', body);
+                      if (!result.offline) await fetchDetail(currentTicket.id, false);
+                      else {
+                        setDeliveryRecord(prev => prev ? { ...prev, plant: { ...prev.plant, [slumpPickerField]: Number(val) } as any } : prev);
+                      }
+                    } catch { }
+                  }}
+                  style={{ paddingVertical: wp(10), paddingHorizontal: wp(16), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: isSelected ? c.primarySurface : 'transparent' }}>
+                  <Text style={{ fontSize: ms(13), fontWeight: isSelected ? '900' : '600', color: isSelected ? c.primary : c.textPrimary }}>{val}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <TouchableOpacity
+            onPress={() => setSlumpPickerField(null)}
+            activeOpacity={0.7}
+            style={{ alignSelf: 'flex-end', backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: 8, margin: wp(12) }}>
+            <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── TIME PICKER MODAL ─── */}
+      <ResponsiveModal
+        visible={timePickerStep != null}
+        onClose={() => setTimePickerStep(null)}
+        maxWidth={L ? 360 : isTablet ? 360 : 300}
+        widthPercent={L ? 30 : 70}>
+        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(16) }}>
+          <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>REQUIRED ENTRIES</Text>
+          <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(12) }}>SELECT TIME</Text>
+          <View style={{ flexDirection: 'row', marginBottom: wp(4) }}>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(8), fontWeight: '600', color: c.textMuted }}>Hours</Text>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(8), fontWeight: '600', color: c.textMuted }}>Minutes</Text>
+          </View>
+          <View style={{ flexDirection: 'row', height: 160, borderTopWidth: 2, borderTopColor: c.primary }}>
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true} snapToInterval={40} decelerationRate="fast"
+              contentContainerStyle={{ paddingVertical: 0 }}
+              onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerHour(Math.max(0, Math.min(23, idx))); }}>
+              {Array.from({ length: 24 }, (_, i) => (
+                <TouchableOpacity key={i} onPress={() => setTimePickerHour(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: timePickerHour === i ? c.primarySurface : 'transparent' }}>
+                  <Text style={{ fontSize: ms(12), fontWeight: timePickerHour === i ? '900' : '400', color: timePickerHour === i ? c.primary : c.textPrimary }}>{String(i).padStart(2, '0')}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: c.border }} />
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true} snapToInterval={40} decelerationRate="fast"
+              contentContainerStyle={{ paddingVertical: 0 }}
+              onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerMinute(Math.max(0, Math.min(59, idx))); }}>
+              {Array.from({ length: 60 }, (_, i) => (
+                <TouchableOpacity key={i} onPress={() => setTimePickerMinute(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: timePickerMinute === i ? c.primarySurface : 'transparent' }}>
+                  <Text style={{ fontSize: ms(12), fontWeight: timePickerMinute === i ? '900' : '400', color: timePickerMinute === i ? c.primary : c.textPrimary }}>{String(i).padStart(2, '0')}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(8), marginTop: wp(12) }}>
+            <TouchableOpacity onPress={() => setTimePickerStep(null)} activeOpacity={0.7} style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border }}>
+              <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={async () => {
+                if (!currentTicket?.id || !timePickerStep) return;
+                const uiToApi: Record<string, string> = { 'LEAVE PLANT': 'leave_plant', 'ARRIVE JOB': 'arrive_job', 'START POUR': 'start_pour', 'WASHING': 'washing', 'LEAVE JOB': 'leave_job', 'AT PLANT': 'at_plant' };
+                const apiKey = uiToApi[timePickerStep.key];
+                if (!apiKey) return;
+                const now = new Date();
+                const timeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), timePickerHour, timePickerMinute, 0);
+                const body = { [apiKey]: timeDate.toISOString() };
+                setTimePickerStep(null);
+                try {
+                  const result = await saveDeliveryTab(currentTicket.id, 'time', body);
+                  if (!result.offline) await fetchDetail(currentTicket.id, false);
+                  else {
+                    setDeliveryRecord(prev => {
+                      if (!prev) return prev;
+                      const steps = (prev.time?.steps || []).map(s => s.key === timePickerStep.key ? { ...s, done: true, time: timeDate.toISOString() } : s);
+                      return { ...prev, time: { ...prev.time, steps } as any };
+                    });
+                  }
+                } catch { }
+              }}
+              style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary }}>
+              <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' }}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── WATER MODAL ─── */}
+      <ResponsiveModal
+        visible={waterModalField != null}
+        onClose={() => setWaterModalField(null)}
+        maxWidth={L ? 420 : isTablet ? 420 : 360}
+        widthPercent={L ? 35 : 80}
+        avoidKeyboard>
+        <ScrollView bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(16) }}>
+            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>REQUIRED ENTRIES</Text>
+            <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(14) }}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
+            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, marginBottom: 4 }}>Liters</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: c.accent, borderRadius: 6, paddingVertical: wp(8), paddingHorizontal: wp(10), fontSize: ms(11), fontWeight: '600', color: c.textPrimary, marginBottom: wp(12) }}
+              value={waterLitresInput}
+              onChangeText={t => setWaterLitresInput(t.replace(/[^0-9.]/g, ''))}
+              placeholder="Liters"
+              placeholderTextColor={c.textMuted}
+              keyboardType="numeric"
+            />
+            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, marginBottom: 4 }}>Slump (mm)</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: c.border, borderRadius: 6, paddingVertical: wp(8), paddingHorizontal: wp(10), fontSize: ms(11), fontWeight: '600', color: c.textPrimary, marginBottom: wp(16) }}
+              value={waterMmInput}
+              onChangeText={t => setWaterMmInput(t.replace(/[^0-9.]/g, ''))}
+              placeholder="Select slump"
+              placeholderTextColor={c.textMuted}
+              keyboardType="numeric"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(8) }}>
+              <TouchableOpacity onPress={() => setWaterModalField(null)} activeOpacity={0.7} style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border }}>
+                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={async () => {
+                  if (!currentTicket?.id || !waterModalField) return;
+                  const litresKey = waterModalField === 'customer_water' ? 'customer_water_litres' : 'maintenance_water_litres';
+                  const mmKey = waterModalField === 'customer_water' ? 'customer_water_mm' : 'maintenance_water_mm';
+                  const body: Record<string, any> = {
+                    [litresKey]: waterLitresInput ? Number(waterLitresInput) : null,
+                    [mmKey]: waterMmInput ? Number(waterMmInput) : null,
+                  };
+                  setWaterModalField(null);
+                  try {
+                    const result = await saveDeliveryTab(currentTicket.id, 'jobsite', body);
+                    if (!result.offline) await fetchDetail(currentTicket.id, false);
+                    else {
+                      setDeliveryRecord(prev => prev ? { ...prev, jobsite: { ...prev.jobsite, ...body } as any } : prev);
+                    }
+                  } catch { }
+                }}
+                style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary }}>
+                <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </ResponsiveModal>
+
+      {/* ─── DELIVERY INSTRUCTIONS MODAL ─── */}
+      <ResponsiveModal
+        visible={instructionsModalVisible}
+        onClose={() => setInstructionsModalVisible(false)}
+        maxWidth={L ? 500 : isTablet ? 500 : 400}
+        widthPercent={L ? 40 : 80}>
+        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden' }}>
+          <View style={{ paddingHorizontal: wp(16), paddingTop: wp(16), paddingBottom: wp(10) }}>
+            <Text style={{ fontSize: ms(12), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' }}>DELIVERY INSTRUCTIONS</Text>
+          </View>
+          <View style={{ paddingHorizontal: wp(16), paddingBottom: wp(16) }}>
+            {(detail?.job?.instructions || '').split(/[*•\n]+/).filter((s: string) => s.trim()).map((line: string, i: number) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: wp(8) }}>
+                <Text style={{ fontSize: ms(11), color: c.textPrimary, marginRight: wp(8) }}>•</Text>
+                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textPrimary, flex: 1, lineHeight: ms(18) }}>{line.trim()}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            onPress={() => setInstructionsModalVisible(false)}
+            activeOpacity={0.7}
+            style={{ alignSelf: 'flex-end', backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: 8, margin: wp(16), marginTop: 0 }}>
+            <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </ResponsiveModal>
 
       {/* ─── QR CODE MODAL ─── */}
       <ResponsiveModal
@@ -1843,7 +2124,7 @@ export default function DashboardScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
         {plantsLoading ? (
-          <View style={{paddingVertical: wp(40), alignItems: 'center'}}>
+          <View style={{ paddingVertical: wp(40), alignItems: 'center' }}>
             <ActivityIndicator size="large" color={c.primary} />
           </View>
         ) : plantsError ? (
@@ -1877,7 +2158,7 @@ export default function DashboardScreen({ navigation }: Props) {
             onMomentumScrollEnd={handlePlantsScrollEnd}
             onScrollEndDrag={handlePlantsScrollEnd}
             scrollEventThrottle={400}
-            onLayout={({nativeEvent}) => { plantsLayoutH.current = nativeEvent.layout.height; checkPlantsAutoLoad(); }}
+            onLayout={({ nativeEvent }) => { plantsLayoutH.current = nativeEvent.layout.height; checkPlantsAutoLoad(); }}
             onContentSizeChange={(_w, h) => { plantsContentH.current = h; checkPlantsAutoLoad(); }}>
             {plantsList.map(plant => (
               <TouchableOpacity
@@ -1889,7 +2170,7 @@ export default function DashboardScreen({ navigation }: Props) {
               </TouchableOpacity>
             ))}
             {plantsLoadingMore && (
-              <View style={{paddingVertical: wp(12), alignItems: 'center'}}>
+              <View style={{ paddingVertical: wp(12), alignItems: 'center' }}>
                 <ActivityIndicator size="small" color={c.primary} />
               </View>
             )}
@@ -2005,42 +2286,61 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={productsVisible}
         onClose={() => setProductsVisible(false)}
+        widthPercent={L ? 40 : 50}
         maxWidth={560}
-        maxHeightPercent={75}>
+        maxHeightPercent={55}>
         <View style={[styles.pmHeader, { backgroundColor: c.primarySurface, borderBottomColor: c.primaryBorder }]}>
           <View style={[styles.pmHeaderIcon, { backgroundColor: c.primary }]}>
             <MaterialIcons name="inventory-2" size={ms(16)} color={c.textOnPrimary} />
           </View>
           <View style={common.flex1}>
-            <Text style={[styles.pmTitle, { color: c.textPrimary }]}>{t('productsModal.title')}</Text>
-            <Text style={[styles.pmSubtitle, { color: c.textMuted }]} numberOfLines={1}>{detail?.mix?.products?.find(p => p.is_mix)?.description || t('productsModal.subtitle')}</Text>
+            <Text style={[styles.pmTitle, { color: c.textPrimary }]}>PRODUCTS, CHARGES & FEES</Text>
+            <Text style={[styles.pmSubtitle, { color: c.textMuted }]} numberOfLines={1}>Ticket {currentTicket?.ticket_code || '-'}</Text>
           </View>
-          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.white }]} onPress={() => setProductsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
-          </TouchableOpacity>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.pmBody}>
           {/* Table Header */}
           <View style={[styles.pmRow, styles.pmRowHeader, { borderBottomColor: c.textPrimary }]}>
-            <Text style={[styles.pmColCode, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.code')}</Text>
-            <Text style={[styles.pmColDesc, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.description')}</Text>
-            <Text style={[styles.pmColQty, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.qty')}</Text>
-            <Text style={[styles.pmColUnit, styles.pmTh, { color: c.textPrimary }]}>{t('productsModal.unit')}</Text>
+            <Text style={[styles.pmColCode, styles.pmTh, { color: c.textPrimary }]}>CODE</Text>
+            <Text style={[styles.pmColDesc, styles.pmTh, { color: c.textPrimary }]}>DESCRIPTION</Text>
+            <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTh, { color: c.textPrimary }]}>SLUMP</Text>
+            <Text style={[styles.pmColQty, styles.pmTh, { color: c.textPrimary }]}>QTY</Text>
+            <Text style={[styles.pmColUnit, styles.pmTh, { color: c.textPrimary }]}>UNIT</Text>
           </View>
           {/* Table Rows */}
-          {detail?.mix?.products && detail.mix.products.length > 0 ? detail.mix.products.map((product, i) => (
-            <View key={`${product.code}-${i}`} style={[styles.pmRow, { borderBottomColor: c.borderLight }]}>
-              <Text style={[styles.pmColCode, styles.pmTd, { color: c.textPrimary }]} numberOfLines={1}>{product.code}</Text>
-              <Text style={[styles.pmColDesc, styles.pmTd, { color: c.textPrimary }]} numberOfLines={2}>{product.description}</Text>
-              <Text style={[styles.pmColQty, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
-              <Text style={[styles.pmColUnit, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_unit || '-'}</Text>
-            </View>
-          )) : (
-            <View style={{ padding: wp(16), alignItems: 'center' }}>
-              <Text style={{ color: c.textMuted, fontSize: ms(10) }}>{t('productsModal.noData', 'No product data available')}</Text>
-            </View>
-          )}
+          {(() => {
+            const mixProducts = detail?.mix?.products || [];
+            let rows = mixProducts.length > 0 ? mixProducts : (currentTicket?.mix ? [{
+              code: detail?.mix?.mix_code || currentTicket.mix.mix_code || '-',
+              description: currentTicket.mix.description || '-',
+              is_mix: true,
+              delivered_qty: detail?.mix?.quantity ? parseFloat(stripUnit(detail.mix.quantity) || '0') : null,
+              delivered_unit: 'm3',
+              slump_text: detail?.mix?.slump || currentTicket.mix.slump || null,
+            } as any] : []);
+            return rows.length > 0 ? rows.map((product: any, i: number) => (
+              <View key={`${product.code}-${i}`} style={[styles.pmRow, { borderBottomColor: c.borderLight }]}>
+                <Text style={[styles.pmColCode, styles.pmTd, { color: c.textPrimary }]} numberOfLines={1}>{product.code || '-'}</Text>
+                <Text style={[styles.pmColDesc, styles.pmTd, { color: c.textPrimary }]} numberOfLines={2}>{product.description || '-'}</Text>
+                <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTd, { color: c.textPrimary }]}>{product.is_mix ? (product.slump_text || detail?.mix?.slump || '-') : '-'}</Text>
+                <Text style={[styles.pmColQty, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
+                <Text style={[styles.pmColUnit, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_unit || '-'}</Text>
+              </View>
+            )) : (
+              <View style={{ padding: wp(16), alignItems: 'center' }}>
+                <Text style={{ color: c.textMuted, fontSize: ms(10) }}>No product data available</Text>
+              </View>
+            );
+          })()}
         </ScrollView>
+        <View style={{ alignItems: 'flex-end', paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+          <TouchableOpacity
+            onPress={() => setProductsVisible(false)}
+            activeOpacity={0.7}
+            style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
+            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' }}>Close</Text>
+          </TouchableOpacity>
+        </View>
       </ResponsiveModal>
 
       {/* ─── LOGOUT CONFIRMATION MODAL ─── */}
@@ -2336,10 +2636,10 @@ const createStyles = () => StyleSheet.create({
   hdrBtn: { width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center' },
 
   // Tabs
-  tabsRow: { flexDirection: 'row', gap: wp(5), paddingBottom: wp(2) },
-  tab: { flexDirection: 'row', alignItems: 'center', gap: wp(3), paddingVertical: wp(2), paddingHorizontal: wp(8), borderRadius: wp(7), borderWidth: 1 },
-  tabDot: { width: wp(5), height: wp(5), borderRadius: wp(3) },
-  tabText: { fontWeight: '700', fontSize: ms(11), letterSpacing: 0.2 },
+  tabsRow: { flexDirection: 'row', gap: ms(4), paddingBottom: ms(2) },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: ms(5), paddingVertical: ms(3), paddingHorizontal: ms(6), borderRadius: ms(20), borderWidth: 0.5 },
+  tabDot: { width: ms(5), height: ms(5), borderRadius: ms(3) },
+  tabText: { fontWeight: '800', fontSize: ms(8), letterSpacing: 0.2 },
 
   // Scroll
   scroll: { flex: 1 },
@@ -2422,19 +2722,19 @@ const createStyles = () => StyleSheet.create({
   mHeaderTitle: { fontSize: ms(13), fontWeight: '900', letterSpacing: 0.5 },
 
   // Products Modal
-  pmHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1 },
-  pmHeaderIcon: { width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center' },
-  pmTitle: { fontSize: ms(10), fontWeight: '800', letterSpacing: 0.3 },
-  pmSubtitle: { fontSize: ms(9), fontWeight: '500', marginTop: 1 },
-  pmBody: { paddingHorizontal: wp(14), paddingTop: wp(4), paddingBottom: wp(14) },
-  pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: wp(8), paddingHorizontal: wp(4), borderBottomWidth: 0.5, borderRadius: wp(4) },
-  pmRowHeader: { borderBottomWidth: 1.5, paddingBottom: wp(6), marginBottom: wp(2) },
-  pmColCode: { width: wp(60) },
-  pmColDesc: { flex: 1, paddingRight: wp(8) },
-  pmColQty: { width: wp(40), textAlign: 'right' },
-  pmColUnit: { width: wp(35), textAlign: 'center' },
-  pmTh: { fontSize: ms(9), fontWeight: '900', letterSpacing: 0.5 },
-  pmTd: { fontSize: ms(10), fontWeight: '500' },
+  pmHeader: { flexDirection: 'row', alignItems: 'center', gap: ms(6), paddingHorizontal: ms(10), paddingVertical: ms(8), borderBottomWidth: 1 },
+  pmHeaderIcon: { width: ms(24), height: ms(24), borderRadius: ms(7), justifyContent: 'center', alignItems: 'center' },
+  pmTitle: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.3 },
+  pmSubtitle: { fontSize: ms(8), fontWeight: '500', marginTop: 1 },
+  pmBody: { paddingHorizontal: ms(10), paddingTop: ms(3), paddingBottom: ms(10) },
+  pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: ms(5), paddingHorizontal: ms(3), borderBottomWidth: 0.5, borderRadius: ms(3) },
+  pmRowHeader: { borderBottomWidth: 1.5, paddingBottom: ms(4), marginBottom: ms(2) },
+  pmColCode: { width: ms(45) },
+  pmColDesc: { flex: 2, paddingRight: ms(6) },
+  pmColQty: { width: ms(30), textAlign: 'right' },
+  pmColUnit: { width: ms(25), textAlign: 'center' },
+  pmTh: { fontSize: ms(8), fontWeight: '900', letterSpacing: 0.5 },
+  pmTd: { fontSize: ms(8), fontWeight: '500' },
 
   // Logout confirmation modal
   logoutIconWrap: { width: wp(48), height: wp(48), borderRadius: wp(24), justifyContent: 'center', alignItems: 'center', marginBottom: wp(10) },

@@ -34,7 +34,7 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>TKSync needs microphone access for voice input.</string>
 	<key>RCTNewArchEnabled</key>
@@ -61,6 +61,11 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>MaterialIcons.ttf</string>
+		<string>RobotoMono-Medium.ttf</string>
+		<string>RobotoMono-SemiBold.ttf</string>
+		<string>RobotoMono-Regular.ttf</string>
+		<string>RobotoMono-Light.ttf</string>
+		<string>RobotoMono-Bold.ttf</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>

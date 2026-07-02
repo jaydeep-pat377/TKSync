@@ -49,7 +49,10 @@
       "Bash(xxd -p -r)",
       "Bash(npm info:*)",
       "Bash(./gradlew app:installDebug -x lint -PreactNativeDevServerPort=8081)",
-      "Bash(./gradlew app:assembleDebug -x lint)"
+      "Bash(./gradlew app:assembleDebug -x lint)",
+      "Bash(cd:*)",
+      "Bash(unzip -l roboto-mono.zip)",
+      "Bash(npx react-native-asset:*)"
     ]
   }
 }
