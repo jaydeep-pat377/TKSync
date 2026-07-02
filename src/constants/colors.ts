@@ -1,56 +1,88 @@
+// Global colors (shared across both themes)
+const Global = {
+  headerGreen: '#5e9c2a',
+  headerGreen2: '#6BB130',
+  green: '#2bb24c',
+  blue: '#2f9fe0',
+  gold: '#f4a823',
+  red: '#c0392b',
+  redSoft: '#d65745',
+  yellow: '#f6d10b',
+  teal: '#37c5a6',
+  purple: '#8b6cff',
+  orange: '#e8923a',
+} as const;
+
 export const Colors = {
   // Brand - Primary (Green)
-  primary: '#458b00',
+  primary: Global.headerGreen,
   primaryDark: '#367000',
-  primaryLight: '#5aa510',
+  primaryLight: Global.headerGreen2,
   primarySurface: '#F5F5F5',
   primaryBorder: '#E0E0E0',
   primaryMuted: '#EEEEEE',
 
   // Brand - Accent (Blue)
-  accent: '#1E40AF',
+  accent: Global.blue,
   accentLight: '#3B82F6',
-  accentBg: '#2E86DE',
+  accentBg: Global.blue,
 
-  // Neutrals
-  white: '#FFFFFF',
+  // Neutrals (Light mode)
+  white: '#ffffff',       // --panel
   black: '#000000',
-  background: '#F8F9FA',
-  surface: '#F2F3F5',
-  border: '#E0E0E0',
-  borderLight: '#F0F0F0',
-  divider: '#E0E0E0',
+  background: '#eef1f5',  // --bg
+  surface: '#f3f6f9',     // --inset
+  border: '#e4e8ee',      // --line
+  borderLight: '#eef1f5', // --hair
+  divider: '#dbe1e9',     // --line2
 
-  // Text
-  textPrimary: '#1A1A1A',
-  textSecondary: '#4A4A4A',
-  textTertiary: '#6B6B6B',
-  textMuted: '#9E9E9E',
-  textPlaceholder: '#BDBDBD',
+  // Text (Light mode)
+  textPrimary: '#1b2532',  // --text
+  textSecondary: '#5f6b7b', // --muted
+  textTertiary: '#6b7785', // --code
+  textMuted: '#76828f',    // --label
+  textPlaceholder: '#aab3bf', // --val-none
   textOnPrimary: '#FFFFFF',
 
   // Status
-  success: '#22C55E',
+  success: Global.green,
   successDark: '#166534',
-  successSurface: '#F0FFF4',
-  warning: '#F59E0B',
+  successSurface: 'rgba(43,178,76,.14)', // --ok-bg
+  warning: Global.gold,
   warningDark: '#92400E',
   warningSurface: '#FFFBEB',
   warningBorder: '#FCD34D',
-  error: '#EF4444',
-  errorSurface: '#FEF2F2',
+  error: Global.red,
+  errorSurface: 'rgba(192,57,43,.12)', // --no-bg
 
   // Specific UI
-  highlight: '#FFFF00',
-  bannerBg: '#1A1A1A',
-  signBtn: '#458b00',
-  disputeBtn: '#6B1010',
-  linkBlue: '#2E86DE',
-  tabActive: '#458b00',
-  saveBtn: '#B0B0B0',
+  highlight: Global.yellow,
+  bannerBg: '#1b2532',
+  signBtn: Global.headerGreen,
+  disputeBtn: Global.red,
+  linkBlue: '#1f6fc0',    // --link
+  tabActive: Global.headerGreen,
+  saveBtn: '#d6dde6',     // --btnB
   radioActive: '#E91E63',
   qrBg: '#FFFFFF',
   qrFg: '#000000',
+
+  // Extra mappings
+  page: '#dfe3e9',        // --page
+  btn: '#f2f5f9',         // --btn
+  btnBorder: '#d6dde6',   // --btnB
+  pill: '#eef2f7',        // --pill
+  pillBorder: '#d4dbe4',  // --pillB
+  wait: '#c4ccd6',        // --wait
+  waitText: '#9aa4b0',    // --waitT
+  dash: '#c4ccd6',        // --dash
+  kpi: '#1b2532',         // --kpi
+  thBg: '#f1f4f8',        // --thBg
+  partBg: 'rgba(232,146,58,.14)', // --part-bg
+  valHas: '#2e8b3f',      // --val-has
+  valMm: '#4f8a55',       // --val-mm
+  valNone: '#aab3bf',     // --val-none
+  doneLabel: '#3f7d49',   // --done-label
 
   // Overlay
   overlay06: 'rgba(255,255,255,0.06)',
@@ -59,9 +91,9 @@ export const Colors = {
   overlay15: 'rgba(255,255,255,0.15)',
   overlay20: 'rgba(255,255,255,0.20)',
   overlay25: 'rgba(255,255,255,0.25)',
-  overlayDark: 'rgba(0,0,0,0.15)',
-  overlayModal: 'rgba(0,0,0,0.5)',
-  overlayDropdown: 'rgba(0,0,0,0.2)',
+  overlayDark: 'rgba(20,28,40,.45)', // --overlay
+  overlayModal: 'rgba(20,28,40,.45)',
+  overlayDropdown: 'rgba(20,28,40,.45)',
   overlay12: 'rgba(255,255,255,0.12)',
   textOnDark70: 'rgba(255,255,255,0.7)',
   textOnDark65: 'rgba(255,255,255,0.65)',
@@ -73,57 +105,74 @@ export const Colors = {
 
 export const DarkColors = {
   // Brand - Primary (Green)
-  primary: '#458b00',
-  primaryDark: '#0A1A2A',
-  primaryLight: '#5aa510',
+  primary: Global.headerGreen,
+  primaryDark: '#0a0e15',
+  primaryLight: Global.headerGreen2,
   primarySurface: '#162200',
   primaryBorder: '#2E5A00',
   primaryMuted: '#1E2E10',
 
   // Brand - Accent (Blue)
-  accent: '#1E40AF',
-  accentLight: '#3B82F6',
+  accent: Global.blue,
+  accentLight: '#4aa6ec',
   accentBg: '#1A2D50',
 
-  // Neutrals (industrial dark)
-  white: '#141E2B',
-  black: '#E8ECEF',
-  background: '#0B1320',
-  surface: '#141E2B',
-  border: '#1E2D3D',
-  borderLight: '#1A2636',
-  divider: '#1E2D3D',
+  // Neutrals (Dark mode)
+  white: '#0e141d',       // --panel
+  black: '#e8edf3',
+  background: '#0a0e15',  // --bg
+  surface: '#0b1119',     // --inset
+  border: '#1b2533',      // --line
+  borderLight: '#131c26', // --hair
+  divider: '#223044',     // --line2
 
-  // Text
-  textPrimary: '#E8ECEF',
-  textSecondary: '#8A9AAF',
-  textTertiary: '#6B7D93',
-  textMuted: '#4A5B6E',
-  textPlaceholder: '#3A4B5E',
+  // Text (Dark mode)
+  textPrimary: '#e8edf3',  // --text
+  textSecondary: '#8a97a8', // --muted
+  textTertiary: '#7f8c9b', // --code
+  textMuted: '#7e8b9c',    // --label
+  textPlaceholder: '#46535f', // --val-none
   textOnPrimary: '#FFFFFF',
 
   // Status
-  success: '#00C896',
+  success: Global.green,
   successDark: '#00E6AA',
-  successSurface: '#0D2818',
-  warning: '#FFB800',
+  successSurface: 'rgba(43,178,76,.16)', // --ok-bg
+  warning: Global.gold,
   warningDark: '#FFD54F',
   warningSurface: '#2A1F05',
   warningBorder: '#8A6A10',
-  error: '#FF4757',
-  errorSurface: 'rgba(255,71,87,0.12)',
+  error: Global.redSoft,
+  errorSurface: 'rgba(214,87,69,.16)', // --no-bg
 
   // Specific UI
-  highlight: '#FFFF00',
-  bannerBg: '#0B1320',
-  signBtn: '#00C896',
-  disputeBtn: '#FF4757',
-  linkBlue: '#00BCD4',
-  tabActive: '#00C896',
-  saveBtn: '#1E2D3D',
+  highlight: Global.yellow,
+  bannerBg: '#0a0e15',
+  signBtn: Global.green,
+  disputeBtn: Global.redSoft,
+  linkBlue: '#4aa6ec',    // --link
+  tabActive: Global.green,
+  saveBtn: '#233140',     // --btnB
   radioActive: '#FF6B9D',
-  qrBg: '#141E2B',
-  qrFg: '#E8ECEF',
+  qrBg: '#0e141d',
+  qrFg: '#e8edf3',
+
+  // Extra mappings
+  page: '#05080c',        // --page
+  btn: '#0f1822',         // --btn
+  btnBorder: '#233140',   // --btnB
+  pill: '#0d1620',        // --pill
+  pillBorder: '#25333f',  // --pillB
+  wait: '#2c3a49',        // --wait
+  waitText: '#3a4756',    // --waitT
+  dash: '#2c3a49',        // --dash
+  kpi: '#f1f5f9',         // --kpi
+  thBg: '#0b1119',        // --thBg
+  partBg: 'rgba(232,146,58,.16)', // --part-bg
+  valHas: '#5fb85f',      // --val-has
+  valMm: '#7fb88a',       // --val-mm
+  valNone: '#46535f',     // --val-none
+  doneLabel: '#7fb88a',   // --done-label
 
   // Overlay
   overlay06: 'rgba(255,255,255,0.04)',
@@ -133,9 +182,9 @@ export const DarkColors = {
   overlay15: 'rgba(255,255,255,0.12)',
   overlay20: 'rgba(255,255,255,0.16)',
   overlay25: 'rgba(255,255,255,0.20)',
-  overlayDark: 'rgba(0,0,0,0.5)',
-  overlayModal: 'rgba(0,0,0,0.75)',
-  overlayDropdown: 'rgba(0,0,0,0.5)',
+  overlayDark: 'rgba(0,0,0,.6)',  // --overlay
+  overlayModal: 'rgba(0,0,0,.6)',
+  overlayDropdown: 'rgba(0,0,0,.6)',
   textOnDark70: 'rgba(255,255,255,0.7)',
   textOnDark65: 'rgba(255,255,255,0.6)',
   textOnDark60: 'rgba(255,255,255,0.5)',

@@ -1278,7 +1278,7 @@ export default function DashboardScreen({ navigation }: Props) {
           {detailLoading && <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
           {/* Two-column body */}
           {!detailLoading && (
-            <View style={{ flexDirection: 'row', gap: fs(6), flex: 1, minHeight: 0, marginTop: fs(6) }}>
+            <View style={{ flexDirection: 'row', gap: fs(6), minHeight: 0, marginTop: fs(6) }}>
               {/* LEFT — Customer + Product + Delivery Location + Quick Links */}
               <View style={{ flex: 1, gap: ct ? fs(6) : fs(8) }}>
                 <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
@@ -1413,7 +1413,7 @@ export default function DashboardScreen({ navigation }: Props) {
           )}
           {/* Quick Links + Additional Entries — same height row */}
           {!detailLoading && (
-            <View style={{ flexDirection: 'row', gap: fs(6), marginTop: ct ? fs(6) : fs(8) }}>
+            <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(6), marginBottom: fs(6) }}>
               <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                 <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                   <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>QUICK LINKS</Text>
