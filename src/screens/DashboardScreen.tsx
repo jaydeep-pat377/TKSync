@@ -1370,7 +1370,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                           <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }}>
                             {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_ahead.status}</Text></> : null}
-                            {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '   ' : ''}
+                            {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '  |  ' : ''}
                             {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
                             {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
                           </Text>
@@ -1397,7 +1397,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   </View>
                   {/* RIGHT: Mandatory Fields */}
                   <View style={{ flex: 1 }}>
-                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(10) : fs(6) }}>
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(6) : fs(2) }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(1) : fs(3), marginBottom: fs(1) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(2), paddingHorizontal: fs(6), borderRadius: 10, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
@@ -1455,7 +1455,7 @@ export default function DashboardScreen({ navigation }: Props) {
               )}
               {/* Quick Links + Additional Entries — same height row */}
               {!detailLoading && (
-                <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(3), marginBottom: ct ? fs(10) : fs(16) }}>
+                <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(1), marginBottom: '5%' }}>
                   <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                       <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>QUICK LINKS</Text>
@@ -1639,7 +1639,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 }}>
                           {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_ahead.status}</Text></> : null}
-                          {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '   ' : ''}
+                          {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '  |  ' : ''}
                           {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
                           {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
                         </Text>
