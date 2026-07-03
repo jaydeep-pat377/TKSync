@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   Image,
   TextInput,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
@@ -27,6 +29,7 @@ import { ticketsApi, plantsApi, checkApiHealth, type Ticket, type TicketDetail, 
 import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
+import AdditionalEntriesModal from '../components/AdditionalEntriesModal';
 import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
@@ -196,6 +199,26 @@ const BOTTOM_ACTIONS = [
   { icon: 'label', labelKey: 'actions.tag' },
   { icon: 'local-shipping', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
+];
+
+const DISPOSAL_OPTIONS = [
+  {key: 'RESHIPPED_IN_YARD', label: 'Reshipped in Yard'},
+  {key: 'DUMPED_IN_YARD', label: 'Dumped in Yard'},
+  {key: 'DUMPED_AT_THIRD_PARTY_YARD', label: 'Dumped at Third Party Yard'},
+  {key: 'MADE_BLOCKS', label: 'Made Blocks'},
+  {key: 'USED_FOR_PLANT_SHOP', label: 'Used for Plant/Shop'},
+  {key: 'RE_ROUTED_TO_DIFFERENT_SITE', label: 'Re-routed to Different Site'},
+  {key: 'GRANULIZE', label: 'Granulize'},
+];
+
+const REASON_OPTIONS = [
+  {key: 'REJECTED_AIR_OUT_OF_SPEC', label: 'Rejected — Air Out of Spec'},
+  {key: 'REJECTED_SLUMP_OUT_OF_SPEC', label: 'Rejected — Slump Out of Spec'},
+  {key: 'REJECTED_TEMPERATURE', label: 'Rejected — Temperature'},
+  {key: 'REJECTED_BALLING', label: 'Rejected — Balling'},
+  {key: 'REJECTED_TIME_LIMIT_EXCEEDED', label: 'Rejected — Time Limit Exceeded'},
+  {key: 'POUR_COMPLETE_NOT_NEEDED', label: 'Pour Complete — Not Needed'},
+  {key: 'OTHER_DRIVER_ADD_NOTES', label: 'Other — Driver Add Notes'},
 ];
 
 const MENU_ITEMS_BASE = [
@@ -368,10 +391,18 @@ export default function DashboardScreen({ navigation }: Props) {
   const [deliveryExpanded, setDeliveryExpanded] = useState(true);
   const [instructionsExpanded, setInstructionsExpanded] = useState(false);
   const [instructionsModalVisible, setInstructionsModalVisible] = useState(false);
-  const [slumpPickerField, setSlumpPickerField] = useState<'slump_from_plant' | 'slump_to_job' | null>(null);
+  const [slumpPickerField, setSlumpPickerField] = useState<'slump_from_plant' | 'slump_to_job' | 'water_slump' | null>(null);
   const [waterModalField, setWaterModalField] = useState<'customer_water' | 'maintenance_water' | null>(null);
   const [waterLitresInput, setWaterLitresInput] = useState('');
   const [waterMmInput, setWaterMmInput] = useState('');
+  const pendingWaterModal = useRef<'customer_water' | 'maintenance_water' | null>(null);
+  const [returnedModalVisible, setReturnedModalVisible] = useState(false);
+  const [returnedQtyInput, setReturnedQtyInput] = useState('');
+  const [returnedReason, setReturnedReason] = useState('');
+  const [returnedDisposal, setReturnedDisposal] = useState('');
+  const [returnedPickerType, setReturnedPickerType] = useState<'reason' | 'disposal' | null>(null);
+  const [additionalEntriesVisible, setAdditionalEntriesVisible] = useState(false);
+  const [additionalEntriesTab, setAdditionalEntriesTab] = useState<'plant' | 'jobsite' | 'cod'>('plant');
   const [timePickerStep, setTimePickerStep] = useState<{ key: string; label: string } | null>(null);
   const [timePickerHour, setTimePickerHour] = useState(0);
   const [timePickerMinute, setTimePickerMinute] = useState(0);
@@ -433,8 +464,20 @@ export default function DashboardScreen({ navigation }: Props) {
       activeTicketRef.current = 0;
       setDateFrom(data.filters?.date_from || null);
       setLastSyncTime(new Date());
+      offlineStorage.cacheTickets({ tickets: data.data, dateFrom: data.filters?.date_from || null });
     } catch (err) {
       console.log('[Tickets] fetch error:', err);
+      // Fall back to cached tickets
+      const cached = offlineStorage.getCachedTickets();
+      if (cached && cached.tickets.length > 0) {
+        console.log('[Tickets] using cached:', cached.tickets.length, 'tickets');
+        setTickets(cached.tickets);
+        ticketsRef.current = cached.tickets;
+        loadedTicketIdRef.current = null;
+        setActiveTicket(0);
+        activeTicketRef.current = 0;
+        setDateFrom(cached.dateFrom);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -447,8 +490,15 @@ export default function DashboardScreen({ navigation }: Props) {
     try {
       const { data } = await ticketsApi.getById(ticketId);
       setDetail(data);
+      offlineStorage.cacheTicketDetail(ticketId, data);
     } catch (err) {
       console.log('[TicketDetail] fetch error:', err);
+      // Fall back to cached detail
+      const cached = offlineStorage.getCachedTicketDetail(ticketId);
+      if (cached) {
+        console.log('[TicketDetail] using cached for ticket:', ticketId);
+        setDetail(cached as any);
+      }
     } finally {
       if (showLoading) setDetailLoading(false);
     }
@@ -966,7 +1016,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const renderNavBtn = (item: typeof BOTTOM_ACTIONS[0], i: number) => {
     const active = activeBottom === i;
     const isFontBtn = item.icon === 'text-fields';
-    const sz = L ? 24 : isTablet ? 28 : ms(24);
+    const sz = L ? 24 : isTablet ? 24 : ms(20);
     const iconEl = isFontBtn
       ? <Text style={{ fontSize: sz * 0.85, fontWeight: '900', color: active ? c.primary : isDark ? '#B0BEC5' : c.textMuted }}>A</Text>
       : <Icon name={item.icon as any} size={sz} color={active ? c.primary : isDark ? '#B0BEC5' : c.textMuted} />;
@@ -975,7 +1025,7 @@ export default function DashboardScreen({ navigation }: Props) {
         key={item.labelKey}
         activeOpacity={0.6}
         onPress={() => handleNavPress(item, i)}
-        style={{ width: L ? 40 : wp(40), height: L ? 40 : wp(36), justifyContent: 'center', alignItems: 'center', borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: active ? c.primarySurface : 'transparent' }}>
+        style={{ width: L ? 40 : wp(26), height: L ? 40 : wp(26), justifyContent: 'center', alignItems: 'center', borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: active ? c.primarySurface : 'transparent' }}>
         {iconEl}
       </TouchableOpacity>
     );
@@ -1030,7 +1080,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const returnedMandatory = (() => {
     const r = deliveryRecord?.returned;
     const items = [
-      { name: 'Qty · Reason · Disposal', filled: r?.returned_concrete_m3 != null && !!r?.disposal_method && !!r?.reason_for_return, value: r ? [r.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '-', r.disposal_method || '-', r.reason_for_return || '-'].join(' · ') : undefined },
+      { name: 'Qty · Reason · Disposal', filled: r?.returned_concrete_m3 != null && !!r?.disposal_method && !!r?.reason_for_return, value: r ? [r.returned_concrete_m3 != null ? `${r.returned_concrete_m3} m3` : '-', REASON_OPTIONS.find(o => o.key === r.reason_for_return)?.label || r.reason_for_return || '-', DISPOSAL_OPTIONS.find(o => o.key === r.disposal_method)?.label || r.disposal_method || '-'].join(' | ') : undefined },
     ];
     // Add washout from jobsite if available
     const ws = deliveryRecord?.jobsite?.washout_area;
@@ -1219,8 +1269,8 @@ export default function DashboardScreen({ navigation }: Props) {
             <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(1), paddingBottom: 0 }}>
               {/* Info Bar */}
               <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(4) : fs(6), paddingHorizontal: fs(12), marginBottom: fs(3), flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1 }}>
-                  <Icon name="local-shipping" size={fs(16)} color={c.primary} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1.5 }}>
+                  <Image source={require('../assets/images/logo.png')} style={{ width: fs(34), height: fs(34), borderRadius: fs(17) }} />
                   <View>
                     <Text style={{ fontSize: fst(14), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
                     <Text style={{ fontSize: fst(11), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
@@ -1419,16 +1469,24 @@ export default function DashboardScreen({ navigation }: Props) {
                             const itemKey = (item as any).key;
                             const isSlump = itemKey === 'slump_from_plant' || itemKey === 'slump_to_job';
                             const isWater = itemKey === 'customer_water' || itemKey === 'maintenance_water';
-                            const isTappable = isSlump || isWater;
+                            const isReturned = item.name === 'Qty · Reason · Disposal';
+                            const isTappable = isSlump || isWater || isReturned;
                             const Row = (
                               <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(4), gap: fs(6) }}>
-                                <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
-                                  <Icon name={item.filled ? 'check' : 'close'} size={fs(12)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
+                                <View style={{ width: fs(12), height: fs(12), borderRadius: fs(6), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
+                                  <Icon name={item.filled ? 'check' : 'close'} size={fs(8)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
                                 </View>
                                 <Text style={{ fontSize: fst(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
                                 {item.value ? <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fst(10), color: c.textMuted }}>--</Text>}
                               </View>
                             );
+                            if (isReturned) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
+                              const r = deliveryRecord?.returned;
+                              setReturnedQtyInput(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
+                              setReturnedDisposal(r?.disposal_method || '');
+                              setReturnedReason(r?.reason_for_return || '');
+                              setReturnedModalVisible(true);
+                            }}>{Row}</TouchableOpacity>;
                             if (isSlump) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => setSlumpPickerField(itemKey)}>{Row}</TouchableOpacity>;
                             if (isWater) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
                               const j = deliveryRecord?.jobsite;
@@ -1436,6 +1494,7 @@ export default function DashboardScreen({ navigation }: Props) {
                               const mmKey = itemKey === 'customer_water' ? 'customer_water_mm' : 'maintenance_water_mm';
                               setWaterLitresInput((j as any)?.[litresKey] != null ? String((j as any)[litresKey]) : '');
                               setWaterMmInput((j as any)?.[mmKey] != null ? String((j as any)[mmKey]) : '');
+
                               setWaterModalField(itemKey);
                             }}>{Row}</TouchableOpacity>;
                             if (section.label === 'STATUS TIMES') return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
@@ -1493,15 +1552,15 @@ export default function DashboardScreen({ navigation }: Props) {
                       <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8) }}>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'plant' })}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('plant'); setAdditionalEntriesVisible(true); }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>PLANT</Text>
                       </TouchableOpacity>
                       <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'jobsite' })}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('jobsite'); setAdditionalEntriesVisible(true); }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
                       </TouchableOpacity>
                       <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'cod' })}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('cod'); setAdditionalEntriesVisible(true); }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>COD</Text>
                       </TouchableOpacity>
                     </View>
@@ -1521,7 +1580,7 @@ export default function DashboardScreen({ navigation }: Props) {
               {/* Info Bar */}
               <View style={{ backgroundColor: '#367000', borderRadius: 8, padding: wp(8), marginBottom: wp(6), flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                  <Icon name="local-shipping" size={ms(18)} color={c.primary} />
+                  <Image source={require('../assets/images/logo.png')} style={{ width: ms(34), height: ms(34), borderRadius: ms(17) }} />
                   <View>
                     <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
                     <Text style={{ fontSize: ms(9), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
@@ -1680,13 +1739,21 @@ export default function DashboardScreen({ navigation }: Props) {
                           const itemKey = (item as any).key;
                           const isSlump = itemKey === 'slump_from_plant' || itemKey === 'slump_to_job';
                           const isWater = itemKey === 'customer_water' || itemKey === 'maintenance_water';
+                          const isReturned = item.name === 'Qty · Reason · Disposal';
                           const Row = (
                             <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
-                              <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><Icon name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : c.error} /></View>
+                              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><Icon name={item.filled ? 'check' : 'close'} size={8} color={item.filled ? '#fff' : c.error} /></View>
                               <Text style={{ fontSize: ms(8), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
                               {item.value ? <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(8), color: c.textMuted }}>--</Text>}
                             </View>
                           );
+                          if (isReturned) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
+                            const r = deliveryRecord?.returned;
+                            setReturnedQtyInput(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
+                            setReturnedDisposal(r?.disposal_method || '');
+                            setReturnedReason(r?.reason_for_return || '');
+                            setReturnedModalVisible(true);
+                          }}>{Row}</TouchableOpacity>;
                           if (isSlump) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => setSlumpPickerField(itemKey)}>{Row}</TouchableOpacity>;
                           if (isWater) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
                             const j = deliveryRecord?.jobsite;
@@ -1713,15 +1780,15 @@ export default function DashboardScreen({ navigation }: Props) {
                       <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'plant' })}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('plant'); setAdditionalEntriesVisible(true); }}>
                         <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>PLANT</Text>
                       </TouchableOpacity>
                       <Text style={{ fontSize: ms(8), color: c.textMuted }}>|</Text>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'jobsite' })}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('jobsite'); setAdditionalEntriesVisible(true); }}>
                         <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
                       </TouchableOpacity>
                       <Text style={{ fontSize: ms(8), color: c.textMuted }}>|</Text>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notes', { ticketId: currentTicket?.id, initialTab: 'cod' })}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('cod'); setAdditionalEntriesVisible(true); }}>
                         <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>COD</Text>
                       </TouchableOpacity>
                     </View>
@@ -1756,7 +1823,7 @@ export default function DashboardScreen({ navigation }: Props) {
         </View>
         <View style={{ flex: 1 }} />
         {/* Right: Nav icons */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(16) : wp(2) }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(16) : wp(8) }}>
           {BOTTOM_ACTIONS.map(renderNavBtn)}
         </View>
       </View>
@@ -1823,7 +1890,15 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* ─── SLUMP PICKER MODAL ─── */}
       <ResponsiveModal
         visible={slumpPickerField != null}
-        onClose={() => setSlumpPickerField(null)}
+        onClose={() => {
+          setSlumpPickerField(null);
+          if (Platform.OS === 'ios' && pendingWaterModal.current) {
+            setTimeout(() => {
+              setWaterModalField(pendingWaterModal.current);
+              pendingWaterModal.current = null;
+            }, 350);
+          }
+        }}
         maxWidth={L ? 250 : isTablet ? 250 : 220}
         widthPercent={L ? 20 : 50}
         maxHeightPercent={50}>
@@ -1833,22 +1908,31 @@ export default function DashboardScreen({ navigation }: Props) {
         </View>
         <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
             {Array.from({ length: 21 }, (_, i) => String(80 + i * 10)).map(val => {
-              const currentVal = slumpPickerField === 'slump_from_plant' ? deliveryRecord?.plant?.slump_from_plant : deliveryRecord?.plant?.slump_to_job;
+              const currentVal = slumpPickerField === 'water_slump' ? waterMmInput : slumpPickerField === 'slump_from_plant' ? deliveryRecord?.plant?.slump_from_plant : deliveryRecord?.plant?.slump_to_job;
               const isSelected = currentVal != null && String(currentVal) === val;
               return (
                 <TouchableOpacity
                   key={val}
                   activeOpacity={0.6}
                   onPress={async () => {
+                    if (slumpPickerField === 'water_slump') {
+                      setWaterMmInput(val);
+                      setSlumpPickerField(null);
+                      if (Platform.OS === 'ios' && pendingWaterModal.current) {
+                        setTimeout(() => {
+                          setWaterModalField(pendingWaterModal.current);
+                          pendingWaterModal.current = null;
+                        }, 350);
+                      }
+                      return;
+                    }
                     if (!currentTicket?.id || !slumpPickerField) return;
                     const body = { [slumpPickerField]: Number(val) };
                     setSlumpPickerField(null);
                     try {
                       const result = await saveDeliveryTab(currentTicket.id, 'plant', body);
+                      setDeliveryRecord(prev => prev ? { ...prev, plant: { ...prev.plant, [slumpPickerField]: Number(val) } as any } : prev);
                       if (!result.offline) await fetchDetail(currentTicket.id, false);
-                      else {
-                        setDeliveryRecord(prev => prev ? { ...prev, plant: { ...prev.plant, [slumpPickerField]: Number(val) } as any } : prev);
-                      }
                     } catch { }
                   }}
                   style={{ paddingVertical: ms(5), paddingHorizontal: ms(10), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: isSelected ? c.primarySurface : 'transparent', alignItems: 'center' }}>
@@ -1859,7 +1943,15 @@ export default function DashboardScreen({ navigation }: Props) {
         </ScrollView>
         <View style={{ alignItems: 'flex-end', paddingHorizontal: ms(10), paddingTop: ms(6), paddingBottom: ms(4) }}>
           <TouchableOpacity
-            onPress={() => setSlumpPickerField(null)}
+            onPress={() => {
+              setSlumpPickerField(null);
+              if (Platform.OS === 'ios' && pendingWaterModal.current) {
+                setTimeout(() => {
+                  setWaterModalField(pendingWaterModal.current);
+                  pendingWaterModal.current = null;
+                }, 350);
+              }
+            }}
             activeOpacity={0.7}
             style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
             <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' }}>Close</Text>
@@ -1871,64 +1963,67 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={timePickerStep != null}
         onClose={() => setTimePickerStep(null)}
-        maxWidth={L ? 360 : isTablet ? 360 : 300}
-        widthPercent={L ? 30 : 70}>
-        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(16) }}>
+        maxWidth={L ? 280 : isTablet ? 280 : 240}
+        widthPercent={L ? 22 : 55}>
+        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(10) }}>
           <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>REQUIRED ENTRIES</Text>
-          <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(12) }}>SELECT TIME</Text>
+          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(12) }}>SELECT TIME</Text>
           <View style={{ flexDirection: 'row', marginBottom: wp(4) }}>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(8), fontWeight: '600', color: c.textMuted }}>Hours</Text>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(8), fontWeight: '600', color: c.textMuted }}>Minutes</Text>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted }}>Hours</Text>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted }}>Minutes</Text>
           </View>
-          <View style={{ flexDirection: 'row', height: 160, borderTopWidth: 2, borderTopColor: c.primary }}>
-            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true} snapToInterval={40} decelerationRate="fast"
-              contentContainerStyle={{ paddingVertical: 0 }}
-              onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerHour(Math.max(0, Math.min(23, idx))); }}>
-              {Array.from({ length: 24 }, (_, i) => (
-                <TouchableOpacity key={i} onPress={() => setTimePickerHour(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: timePickerHour === i ? c.primarySurface : 'transparent' }}>
-                  <Text style={{ fontSize: ms(12), fontWeight: timePickerHour === i ? '900' : '400', color: timePickerHour === i ? c.primary : c.textPrimary }}>{String(i).padStart(2, '0')}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: c.border }} />
-            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true} snapToInterval={40} decelerationRate="fast"
-              contentContainerStyle={{ paddingVertical: 0 }}
-              onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerMinute(Math.max(0, Math.min(59, idx))); }}>
-              {Array.from({ length: 60 }, (_, i) => (
-                <TouchableOpacity key={i} onPress={() => setTimePickerMinute(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: timePickerMinute === i ? c.primarySurface : 'transparent' }}>
-                  <Text style={{ fontSize: ms(12), fontWeight: timePickerMinute === i ? '900' : '400', color: timePickerMinute === i ? c.primary : c.textPrimary }}>{String(i).padStart(2, '0')}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+          <View style={{ flexDirection: 'row', height: 120, overflow: 'hidden' }}>
+            <View style={{ flex: 1, position: 'relative' }}>
+              <View pointerEvents="none" style={{ position: 'absolute', top: 40, left: 0, right: 0, height: 40, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderColor: c.border, backgroundColor: c.primarySurface, zIndex: 0 }} />
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate="fast"
+                contentContainerStyle={{ paddingVertical: 40 }}
+                contentOffset={{ x: 0, y: timePickerHour * 40 }}
+                onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerHour(Math.max(0, Math.min(23, idx))); }}>
+                {Array.from({ length: 24 }, (_, i) => (
+                  <TouchableOpacity key={i} onPress={() => setTimePickerHour(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: ms(12), fontWeight: timePickerHour === i ? '900' : '400', color: timePickerHour === i ? c.textPrimary : c.textMuted }}>{String(i).padStart(2, '0')}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+            <View style={{ flex: 1, position: 'relative' }}>
+              <View pointerEvents="none" style={{ position: 'absolute', top: 40, left: 0, right: 0, height: 40, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderColor: c.border, backgroundColor: c.primarySurface, zIndex: 0 }} />
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate="fast"
+                contentContainerStyle={{ paddingVertical: 40 }}
+                contentOffset={{ x: 0, y: timePickerMinute * 40 }}
+                onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerMinute(Math.max(0, Math.min(59, idx))); }}>
+                {Array.from({ length: 60 }, (_, i) => (
+                  <TouchableOpacity key={i} onPress={() => setTimePickerMinute(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: ms(12), fontWeight: timePickerMinute === i ? '900' : '400', color: timePickerMinute === i ? c.textPrimary : c.textMuted }}>{String(i).padStart(2, '0')}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(8), marginTop: wp(12) }}>
-            <TouchableOpacity onPress={() => setTimePickerStep(null)} activeOpacity={0.7} style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border }}>
+            <TouchableOpacity onPress={() => setTimePickerStep(null)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border }}>
               <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={async () => {
                 if (!currentTicket?.id || !timePickerStep) return;
-                const uiToApi: Record<string, string> = { 'LEAVE PLANT': 'leave_plant', 'ARRIVE JOB': 'arrive_job', 'START POUR': 'start_pour', 'WASHING': 'washing', 'LEAVE JOB': 'leave_job', 'AT PLANT': 'at_plant' };
-                const apiKey = uiToApi[timePickerStep.key];
-                if (!apiKey) return;
+                const apiKey = timePickerStep.key;
                 const now = new Date();
                 const timeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), timePickerHour, timePickerMinute, 0);
                 const body = { [apiKey]: timeDate.toISOString() };
                 setTimePickerStep(null);
                 try {
                   const result = await saveDeliveryTab(currentTicket.id, 'time', body);
+                  setDeliveryRecord(prev => {
+                    if (!prev) return prev;
+                    const steps = (prev.time?.steps || []).map(s => s.key === timePickerStep.key ? { ...s, done: true, time: timeDate.toISOString() } : s);
+                    return { ...prev, time: { ...prev.time, steps } as any };
+                  });
                   if (!result.offline) await fetchDetail(currentTicket.id, false);
-                  else {
-                    setDeliveryRecord(prev => {
-                      if (!prev) return prev;
-                      const steps = (prev.time?.steps || []).map(s => s.key === timePickerStep.key ? { ...s, done: true, time: timeDate.toISOString() } : s);
-                      return { ...prev, time: { ...prev.time, steps } as any };
-                    });
-                  }
                 } catch { }
               }}
-              style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary }}>
+              style={{ paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary }}>
               <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' }}>OK</Text>
             </TouchableOpacity>
           </View>
@@ -1939,34 +2034,41 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={waterModalField != null}
         onClose={() => setWaterModalField(null)}
-        maxWidth={L ? 420 : isTablet ? 420 : 360}
-        widthPercent={L ? 35 : 80}
+        maxWidth={L ? 340 : isTablet ? 340 : 300}
+        widthPercent={L ? 28 : 70}
         avoidKeyboard>
         <ScrollView bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(16) }}>
-            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>REQUIRED ENTRIES</Text>
-            <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(14) }}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
-            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, marginBottom: 4 }}>Liters</Text>
+          <View style={{ backgroundColor: c.white, borderRadius: 10, overflow: 'hidden', padding: wp(10) }}>
+            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
+            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' }}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 }}>Liters</Text>
             <TextInput
-              style={{ borderWidth: 1, borderColor: c.accent, borderRadius: 6, paddingVertical: wp(8), paddingHorizontal: wp(10), fontSize: ms(11), fontWeight: '600', color: c.textPrimary, marginBottom: wp(12) }}
+              style={{ borderWidth: 1.5, borderColor: c.accent, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), fontSize: ms(10), fontWeight: '600', color: c.textPrimary, marginBottom: wp(4) }}
               value={waterLitresInput}
               onChangeText={t => setWaterLitresInput(t.replace(/[^0-9.]/g, ''))}
               placeholder="Liters"
               placeholderTextColor={c.textMuted}
               keyboardType="numeric"
             />
-            <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, marginBottom: 4 }}>Slump (mm)</Text>
-            <TextInput
-              style={{ borderWidth: 1, borderColor: c.border, borderRadius: 6, paddingVertical: wp(8), paddingHorizontal: wp(10), fontSize: ms(11), fontWeight: '600', color: c.textPrimary, marginBottom: wp(16) }}
-              value={waterMmInput}
-              onChangeText={t => setWaterMmInput(t.replace(/[^0-9.]/g, ''))}
-              placeholder="Select slump"
-              placeholderTextColor={c.textMuted}
-              keyboardType="numeric"
-            />
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(8) }}>
-              <TouchableOpacity onPress={() => setWaterModalField(null)} activeOpacity={0.7} style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border }}>
-                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 }}>Slump (mm)</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                Keyboard.dismiss();
+                if (Platform.OS === 'ios') {
+                  pendingWaterModal.current = waterModalField;
+                  setWaterModalField(null);
+                  setTimeout(() => setSlumpPickerField('water_slump'), 350);
+                } else {
+                  setSlumpPickerField('water_slump');
+                }
+              }}
+              style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(5) }}>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: waterMmInput ? c.textPrimary : c.textMuted }}>{waterMmInput ? `${waterMmInput} mm` : 'Select slump'}</Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(6) }}>
+              <TouchableOpacity onPress={() => setWaterModalField(null)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), borderWidth: 1.5, borderColor: c.border }}>
+                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -1981,19 +2083,164 @@ export default function DashboardScreen({ navigation }: Props) {
                   setWaterModalField(null);
                   try {
                     const result = await saveDeliveryTab(currentTicket.id, 'jobsite', body);
+                    setDeliveryRecord(prev => prev ? { ...prev, jobsite: { ...prev.jobsite, ...body } as any } : prev);
                     if (!result.offline) await fetchDetail(currentTicket.id, false);
-                    else {
-                      setDeliveryRecord(prev => prev ? { ...prev, jobsite: { ...prev.jobsite, ...body } as any } : prev);
-                    }
                   } catch { }
                 }}
-                style={{ paddingVertical: wp(8), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary }}>
-                <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Save</Text>
+                style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), backgroundColor: c.primary }}>
+                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' }}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </ResponsiveModal>
+
+      {/* ─── RETURNED MODAL ─── */}
+      <ResponsiveModal
+        visible={returnedModalVisible}
+        onClose={() => setReturnedModalVisible(false)}
+        maxWidth={L ? 340 : isTablet ? 340 : 300}
+        widthPercent={L ? 28 : 70}
+        avoidKeyboard>
+        <ScrollView bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={{ backgroundColor: c.white, borderRadius: 10, overflow: 'hidden', padding: wp(10) }}>
+            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
+            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' }}>Returned</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 }}>Qty (m3)</Text>
+            <TextInput
+              style={{ borderWidth: 1.5, borderColor: c.accent, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), fontSize: ms(10), fontWeight: '600', color: c.textPrimary, marginBottom: wp(4) }}
+              value={returnedQtyInput}
+              onChangeText={t => setReturnedQtyInput(t.replace(/[^0-9.]/g, ''))}
+              placeholder="Qty"
+              placeholderTextColor={c.textMuted}
+              keyboardType="numeric"
+            />
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 }}>Reason</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                Keyboard.dismiss();
+                if (Platform.OS === 'ios') {
+                  setReturnedModalVisible(false);
+                  setTimeout(() => setReturnedPickerType('reason'), 350);
+                } else {
+                  setReturnedPickerType('reason');
+                }
+              }}
+              style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(4) }}>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedReason ? c.textPrimary : c.textMuted }} numberOfLines={1}>{REASON_OPTIONS.find(r => r.key === returnedReason)?.label || 'Select reason'}</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(1), marginBottom: wp(2), letterSpacing: 0.3 }}>Disposal</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                Keyboard.dismiss();
+                if (Platform.OS === 'ios') {
+                  setReturnedModalVisible(false);
+                  setTimeout(() => setReturnedPickerType('disposal'), 350);
+                } else {
+                  setReturnedPickerType('disposal');
+                }
+              }}
+              style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(5) }}>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedDisposal ? c.textPrimary : c.textMuted }} numberOfLines={1}>{DISPOSAL_OPTIONS.find(d => d.key === returnedDisposal)?.label || 'Select method'}</Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(6), marginTop: wp(3) }}>
+              <TouchableOpacity onPress={() => setReturnedModalVisible(false)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), borderWidth: 1.5, borderColor: c.border }}>
+                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={async () => {
+                  if (!currentTicket?.id) return;
+                  const body: Record<string, any> = {
+                    returned_concrete_m3: returnedQtyInput ? Number(returnedQtyInput) : null,
+                    reason_for_return: returnedReason || null,
+                    disposal_method: returnedDisposal || null,
+                  };
+                  setReturnedModalVisible(false);
+                  try {
+                    const result = await saveDeliveryTab(currentTicket.id, 'returned', body);
+                    setDeliveryRecord(prev => prev ? { ...prev, returned: { ...prev.returned, ...body } as any } : prev);
+                    if (!result.offline) await fetchDetail(currentTicket.id, false);
+                  } catch { }
+                }}
+                style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), backgroundColor: c.primary }}>
+                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </ResponsiveModal>
+
+      {/* ─── RETURNED REASON/DISPOSAL PICKER MODAL ─── */}
+      <ResponsiveModal
+        visible={returnedPickerType != null}
+        onClose={() => {
+          setReturnedPickerType(null);
+          if (Platform.OS === 'ios') {
+            setTimeout(() => setReturnedModalVisible(true), 350);
+          }
+        }}
+        maxWidth={L ? 280 : isTablet ? 280 : 250}
+        widthPercent={L ? 22 : 55}
+        maxHeightPercent={55}>
+        <View style={{ paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), alignItems: 'center' }}>
+          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
+          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' }}>{returnedPickerType === 'reason' ? 'SELECT REASON' : 'SELECT DISPOSAL'}</Text>
+        </View>
+        <ScrollView showsVerticalScrollIndicator persistentScrollbar indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
+          {(returnedPickerType === 'reason' ? REASON_OPTIONS : DISPOSAL_OPTIONS).map(opt => {
+            const selected = returnedPickerType === 'reason' ? returnedReason === opt.key : returnedDisposal === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                activeOpacity={0.6}
+                onPress={() => {
+                  if (returnedPickerType === 'reason') setReturnedReason(opt.key);
+                  else setReturnedDisposal(opt.key);
+                  setReturnedPickerType(null);
+                  if (Platform.OS === 'ios') {
+                    setTimeout(() => setReturnedModalVisible(true), 350);
+                  }
+                }}
+                style={{ paddingVertical: ms(6), paddingHorizontal: ms(10), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: selected ? c.primarySurface : 'transparent', alignItems: 'center' }}>
+                <Text style={{ fontSize: ms(9), fontWeight: selected ? '900' : '600', color: selected ? c.primary : c.textPrimary, textAlign: 'center' }}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        <View style={{ alignItems: 'flex-end', paddingHorizontal: ms(10), paddingTop: ms(6), paddingBottom: ms(4) }}>
+          <TouchableOpacity
+            onPress={() => {
+              setReturnedPickerType(null);
+              if (Platform.OS === 'ios') {
+                setTimeout(() => setReturnedModalVisible(true), 350);
+              }
+            }}
+            activeOpacity={0.7}
+            style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
+            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' }}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── ADDITIONAL ENTRIES MODAL ─── */}
+      <AdditionalEntriesModal
+        visible={additionalEntriesVisible}
+        onClose={() => setAdditionalEntriesVisible(false)}
+        ticketCode={currentTicket?.ticket_code || '-'}
+        orderCode={currentTicket?.order_code || '-'}
+        deliveryRecord={deliveryRecord}
+        initialTab={additionalEntriesTab}
+        onSave={async (tab, body) => {
+          if (!currentTicket?.id) return;
+          const result = await saveDeliveryTab(currentTicket.id, tab, body);
+          setDeliveryRecord(prev => prev ? { ...prev, [tab]: { ...(prev as any)[tab], ...body } } : prev);
+          if (!result.offline) await fetchDetail(currentTicket.id, false);
+        }}
+        isLandscape={L}
+      />
 
       {/* ─── DELIVERY INSTRUCTIONS MODAL ─── */}
       <ResponsiveModal
@@ -2702,8 +2949,8 @@ const createStyles = () => StyleSheet.create({
 
   // Plants Modal
   plantsList: { paddingHorizontal: wp(16) },
-  plantItem: { paddingVertical: wp(12), borderBottomWidth: 0.5, alignItems: 'center', minHeight: wp(42) },
-  plantText: { fontSize: ms(13), fontWeight: '600', textAlign: 'center' },
+  plantItem: { paddingVertical: wp(6), borderBottomWidth: 0.5, alignItems: 'center', minHeight: wp(30) },
+  plantText: { fontSize: ms(11), fontWeight: '600', textAlign: 'center' },
   etHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(10), borderBottomWidth: 1 },
   etHeaderIcon: { width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center' },
   etHeaderTitle: { flex: 1, fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5 },

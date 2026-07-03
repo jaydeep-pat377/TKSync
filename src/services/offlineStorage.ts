@@ -5,6 +5,8 @@ const offlineStore = createMMKV({id: 'tksync-offline-queue'});
 const QUEUE_KEY = 'pending_saves';
 const QUEUE_COUNTER_KEY = 'queue_counter';
 const CACHE_PREFIX = 'delivery_cache_';
+const TICKETS_CACHE_KEY = 'tickets_cache';
+const DETAIL_CACHE_PREFIX = 'detail_cache_';
 const CURBLINE_CACHE_PREFIX = 'curbline_cache_';
 const CURBLINE_INFO_PREFIX = 'curbline_info_';
 const SIGNING_CACHE_PREFIX = 'signing_cache_';
@@ -104,6 +106,38 @@ export const offlineStorage = {
 
   hasPending(): boolean {
     return getQueue().length > 0;
+  },
+
+  // ─── Tickets list cache ───
+
+  cacheTickets(data: { tickets: any[]; dateFrom: string | null }): void {
+    offlineStore.set(TICKETS_CACHE_KEY, JSON.stringify(data));
+  },
+
+  getCachedTickets(): { tickets: any[]; dateFrom: string | null } | null {
+    const raw = offlineStore.getString(TICKETS_CACHE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+
+  // ─── Ticket detail cache ───
+
+  cacheTicketDetail(ticketId: number, detail: Record<string, any>): void {
+    offlineStore.set(DETAIL_CACHE_PREFIX + ticketId, JSON.stringify(detail));
+  },
+
+  getCachedTicketDetail(ticketId: number): Record<string, any> | null {
+    const raw = offlineStore.getString(DETAIL_CACHE_PREFIX + ticketId);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   },
 
   // ─── Local delivery record cache ───

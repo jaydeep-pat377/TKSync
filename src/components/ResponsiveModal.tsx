@@ -1,4 +1,4 @@
-import React, {useRef, useEffect} from 'react';
+import React, {useRef, useEffect, useState} from 'react';
 import {
   Modal,
   View,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Keyboard,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '../contexts/ThemeContext';
@@ -41,6 +42,7 @@ export default function ResponsiveModal({
   const fade = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
   const slide = useRef(new Animated.Value(30)).current;
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
@@ -63,8 +65,32 @@ export default function ResponsiveModal({
       fade.setValue(0);
       scale.setValue(0.9);
       slide.setValue(30);
+      keyboardOffset.setValue(0);
     }
-  }, [visible, fade, scale, slide, animationType]);
+  }, [visible, fade, scale, slide, animationType, keyboardOffset]);
+
+  // Track keyboard on Android to shift modal up
+  useEffect(() => {
+    if (!avoidKeyboard || Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      Animated.timing(keyboardOffset, {
+        toValue: -(e.endCoordinates.height / 2),
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [avoidKeyboard, keyboardOffset]);
 
   // Compute dimensions from live values (not static wp())
   const statusBarH = StatusBar.currentHeight || 0;
@@ -80,7 +106,7 @@ export default function ResponsiveModal({
   const modalW = Math.min(availW * (effectiveWidthPercent / 100), maxWidth);
 
   const animatedStyle = animationType === 'scale'
-    ? {transform: [{scale}], opacity: fade}
+    ? {transform: [{scale}, {translateY: avoidKeyboard && Platform.OS === 'android' ? keyboardOffset : 0}], opacity: fade}
     : {transform: [{translateY: slide}], opacity: fade};
 
   const cardContent = (
@@ -106,13 +132,13 @@ export default function ResponsiveModal({
     </View>
   );
 
-  if (avoidKeyboard) {
+  if (avoidKeyboard && Platform.OS === 'ios') {
     return (
       <Modal transparent visible={visible} animationType="none" onRequestClose={onClose} statusBarTranslucent>
         <KeyboardAvoidingView
           style={s.flex1}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+          behavior="padding"
+          keyboardVerticalOffset={0}>
           {overlay}
         </KeyboardAvoidingView>
       </Modal>
