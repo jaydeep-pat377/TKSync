@@ -10,7 +10,7 @@ import {
   TextInput,
   useWindowDimensions,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from './Icon';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import ResponsiveModal from './ResponsiveModal';
 import {useTheme} from '../contexts/ThemeContext';
@@ -496,9 +496,9 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
   // ─── Validation icon ───
   const VI = ({status}: {status: ValidationStatus}) => {
-    if (status === 'valid') return <MaterialIcons name="check-circle" size={ms(16)} color={c.success} />;
-    if (status === 'invalid') return <MaterialIcons name="error" size={ms(16)} color={c.error} />;
-    return <MaterialIcons name="remove-circle-outline" size={ms(16)} color={c.textMuted} />;
+    if (status === 'valid') return <Icon name="check-circle" size={ms(16)} color={c.success} />;
+    if (status === 'invalid') return <Icon name="error" size={ms(16)} color={c.error} />;
+    return <Icon name="remove-circle-outline" size={ms(16)} color={c.textMuted} />;
   };
 
   // ─── RENDER ───
@@ -509,14 +509,14 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
         {/* Header with real-time title + subtitle */}
         <View style={[styles.header, {borderBottomColor: c.border}]}>
           <View style={styles.headerLeft}>
-            <MaterialIcons name="mic" size={ms(18)} color={c.primary} />
+            <Icon name="mic" size={ms(18)} color={c.primary} />
             <View>
               <Text style={[styles.headerTitle, {color: c.textPrimary}]}>{getDynamicTitle()}</Text>
               <Text style={[styles.headerSubtitle, {color: c.textSecondary}]}>{getDynamicSubtitle()}</Text>
             </View>
           </View>
           <TouchableOpacity onPress={handleCancel} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
-            <MaterialIcons name="close" size={ms(20)} color={c.textMuted} />
+            <Icon name="close" size={ms(20)} color={c.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -529,7 +529,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               const isCurrent = idx === currentIdx;
               return (
                 <View key={f.key} style={[styles.fieldChip, isCurrent && {borderColor: c.primary, borderWidth: 1.5}, !isCurrent && {borderColor: 'transparent', borderWidth: 1.5}]}>
-                  {val ? <VI status={v.status} /> : (isCurrent ? <MaterialIcons name="mic" size={ms(12)} color={c.primary} /> : <MaterialIcons name="radio-button-unchecked" size={ms(12)} color={c.textMuted} />)}
+                  {val ? <VI status={v.status} /> : (isCurrent ? <Icon name="mic" size={ms(12)} color={c.primary} /> : <Icon name="radio-button-unchecked" size={ms(12)} color={c.textMuted} />)}
                   <Text style={[styles.fieldChipText, {color: isCurrent ? c.primary : val ? c.textPrimary : c.textMuted}]} numberOfLines={1}>{val || f.label.split(' ')[0]}</Text>
                 </View>
               );
@@ -548,7 +548,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
         {phase === 'confirm' && (
           <View style={styles.confirmContainer}>
             <View style={styles.confirmHeader}>
-              <MaterialIcons name="assignment-turned-in" size={ms(26)} color={c.primary} />
+              <Icon name="assignment-turned-in" size={ms(26)} color={c.primary} />
               <Text style={[styles.confirmQuestion, {color: c.textPrimary}]}>
                 Voice capture complete
               </Text>
@@ -557,18 +557,18 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
             {/* Summary badges */}
             <View style={styles.confirmStats}>
               <View style={[styles.statBadge, {backgroundColor: c.successSurface}]}>
-                <MaterialIcons name="check-circle" size={ms(10)} color={c.success} />
+                <Icon name="check-circle" size={ms(10)} color={c.success} />
                 <Text style={[styles.statText, {color: c.success}]}>{validCount} Filled</Text>
               </View>
               {skippedFieldCount > 0 && (
                 <View style={[styles.statBadge, {backgroundColor: c.surface}]}>
-                  <MaterialIcons name="remove-circle-outline" size={ms(10)} color={c.textMuted} />
+                  <Icon name="remove-circle-outline" size={ms(10)} color={c.textMuted} />
                   <Text style={[styles.statText, {color: c.textMuted}]}>{skippedFieldCount} Empty</Text>
                 </View>
               )}
               {invalidCount > 0 && (
                 <View style={[styles.statBadge, {backgroundColor: c.errorSurface}]}>
-                  <MaterialIcons name="error" size={ms(10)} color={c.error} />
+                  <Icon name="error" size={ms(10)} color={c.error} />
                   <Text style={[styles.statText, {color: c.error}]}>{invalidCount} Invalid</Text>
                 </View>
               )}
@@ -600,11 +600,11 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
             <View style={styles.confirmButtons}>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]} onPress={() => setPhase('review')} activeOpacity={0.7}>
-                <MaterialIcons name="edit" size={ms(16)} color={c.textSecondary} />
+                <Icon name="edit" size={ms(16)} color={c.textSecondary} />
                 <Text style={[styles.actionBtnText, {color: c.textSecondary}]}>Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.primary}]} onPress={handleConfirmOk} activeOpacity={0.7}>
-                <MaterialIcons name="check" size={ms(16)} color="#FFF" />
+                <Icon name="check" size={ms(16)} color="#FFF" />
                 <Text style={[styles.actionBtnText, {color: '#FFF'}]}>OK</Text>
               </TouchableOpacity>
             </View>
@@ -616,12 +616,12 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
           <View style={styles.reviewContainer}>
             <View style={styles.reviewStats}>
               <View style={[styles.statBadge, {backgroundColor: c.successSurface}]}>
-                <MaterialIcons name="check-circle" size={ms(12)} color={c.success} />
+                <Icon name="check-circle" size={ms(12)} color={c.success} />
                 <Text style={[styles.statText, {color: c.success}]}>{validCount} Valid</Text>
               </View>
               {invalidCount > 0 && (
                 <View style={[styles.statBadge, {backgroundColor: c.errorSurface}]}>
-                  <MaterialIcons name="error" size={ms(12)} color={c.error} />
+                  <Icon name="error" size={ms(12)} color={c.error} />
                   <Text style={[styles.statText, {color: c.error}]}>{invalidCount} Invalid</Text>
                 </View>
               )}
@@ -651,10 +651,10 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                             placeholder={`Enter ${field.label.toLowerCase()}`}
                           />
                           <TouchableOpacity onPress={handleSaveEdit} style={[styles.editActionBtn, {backgroundColor: c.primary}]}>
-                            <MaterialIcons name="check" size={ms(14)} color="#FFF" />
+                            <Icon name="check" size={ms(14)} color="#FFF" />
                           </TouchableOpacity>
                           <TouchableOpacity onPress={handleCancelEdit} style={[styles.editActionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]}>
-                            <MaterialIcons name="close" size={ms(14)} color={c.textMuted} />
+                            <Icon name="close" size={ms(14)} color={c.textMuted} />
                           </TouchableOpacity>
                         </View>
                       ) : (
@@ -662,10 +662,10 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                           <Text style={[styles.reviewValue, {color: val ? (v.status === 'invalid' ? c.error : c.textPrimary) : c.textMuted}]} numberOfLines={2}>{val || 'Skipped'}</Text>
                           <View style={styles.reviewActions}>
                             <TouchableOpacity onPress={() => handleStartEdit(field.key, val || '')} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-                              <MaterialIcons name="edit" size={ms(15)} color={c.textMuted} />
+                              <Icon name="edit" size={ms(15)} color={c.textMuted} />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => handleReRecordField(idx)} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-                              <MaterialIcons name="mic" size={ms(15)} color={c.primary} />
+                              <Icon name="mic" size={ms(15)} color={c.primary} />
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -682,7 +682,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                 <Text style={[styles.actionBtnText, {color: c.textSecondary}]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.primary}]} onPress={handleApply} activeOpacity={0.7}>
-                <MaterialIcons name="check" size={ms(16)} color="#FFF" />
+                <Icon name="check" size={ms(16)} color="#FFF" />
                 <Text style={[styles.actionBtnText, {color: '#FFF'}]}>Apply All</Text>
               </TouchableOpacity>
             </View>
@@ -729,7 +729,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
             {error.includes('permission') && (
               <TouchableOpacity onPress={openSettings} style={styles.settingsLink} activeOpacity={0.6}>
-                <MaterialIcons name="settings" size={ms(14)} color={c.linkBlue} />
+                <Icon name="settings" size={ms(14)} color={c.linkBlue} />
                 <Text style={[styles.settingsText, {color: c.linkBlue}]}>Open Settings</Text>
               </TouchableOpacity>
             )}
@@ -742,7 +742,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                 onPress={phase === 'listening' ? stopListening : startListening}
                 activeOpacity={0.7}
                 disabled={phase === 'processing' || isSpeakingPrompt}>
-                <MaterialIcons name={phase === 'listening' ? 'stop' : 'mic'} size={ms(22)} color="#FFF" />
+                <Icon name={phase === 'listening' ? 'stop' : 'mic'} size={ms(22)} color="#FFF" />
               </TouchableOpacity>
             </Animated.View>
             <Text style={[styles.micHint, {color: c.textMuted}]}>
@@ -750,7 +750,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
             </Text>
             <TouchableOpacity style={styles.skipButton} onPress={skipField} activeOpacity={0.6} disabled={phase === 'processing'}>
               <Text style={[styles.skipText, {color: c.textMuted}]}>Skip this field</Text>
-              <MaterialIcons name="skip-next" size={ms(14)} color={c.textMuted} />
+              <Icon name="skip-next" size={ms(14)} color={c.textMuted} />
             </TouchableOpacity>
           </View>
           </>

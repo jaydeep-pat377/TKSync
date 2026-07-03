@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from './Icon';
 import {useFontSize, setGlobalFontScale} from '../contexts/FontSizeContext';
 import {useTheme} from '../contexts/ThemeContext';
 
@@ -271,7 +271,7 @@ export default function FontSizeSlider() {
               hitSlop={{top: 8, bottom: 4, left: 10, right: 10}}
               style={st.arrowGroup}>
               <View style={{height: 6}} />
-              <MaterialIcons name="keyboard-arrow-up" size={22} color={atMax ? 'rgba(255,255,255,0.2)' : '#fff'} />
+              <Icon name="keyboard-arrow-up" size={22} color={atMax ? 'rgba(255,255,255,0.2)' : '#fff'} />
               <View style={{height: 4}} />
               <Text style={[st.arrowAa, {fontSize: 13}, atMax && st.arrowAaOff]} allowFontScaling={false}>A</Text>
               <View style={{height: 6}} />
@@ -309,7 +309,7 @@ export default function FontSizeSlider() {
               <View style={{height: 6}} />
               <Text style={[st.arrowAa, {fontSize: 10}, atMin && st.arrowAaOff]} allowFontScaling={false}>A</Text>
               <View style={{height: 4}} />
-              <MaterialIcons name="keyboard-arrow-down" size={22} color={atMin ? 'rgba(255,255,255,0.2)' : '#fff'} />
+              <Icon name="keyboard-arrow-down" size={22} color={atMin ? 'rgba(255,255,255,0.2)' : '#fff'} />
               <View style={{height: 6}} />
             </TouchableOpacity>
 

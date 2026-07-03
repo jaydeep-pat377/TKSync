@@ -13,7 +13,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
 import Config from 'react-native-config';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
@@ -168,7 +168,7 @@ export default function MapScreen({navigation, route}: Props) {
             onPress={() => hasCoords && flyTo(item.latitude!, item.longitude!)}>
             <View style={[styles.panelIconRow, {gap: isTablet ? 14 : 12}]}>
               <View style={[styles.panelIcon, {width: iconBox, height: iconBox, borderRadius: iconBox / 2, backgroundColor: colors.bg}]}>
-                <MaterialIcons name={item.type === 'Plant' ? 'factory' : item.type === 'Job Site' ? 'place' : 'local-shipping'} size={iconSize} color={colors.icon} />
+                <Icon name={item.type === 'Plant' ? 'factory' : item.type === 'Job Site' ? 'place' : 'local-shipping'} size={iconSize} color={colors.icon} />
               </View>
               <Text style={[styles.panelTitle, {fontSize: titleSize, color: c.textPrimary}]}>{item.type}</Text>
             </View>
@@ -231,14 +231,14 @@ export default function MapScreen({navigation, route}: Props) {
                 </View>
               ) : (
                 <View style={[styles.marker, {backgroundColor: colors.marker}]}>
-                  <MaterialIcons name={iconName} size={18} color="#fff" />
+                  <Icon name={iconName} size={18} color="#fff" />
                 </View>
               )}
               <MapboxGL.Callout title="">
                 <View style={styles.callout}>
                   <View style={styles.calloutHeader}>
                     <View style={[styles.calloutIcon, {backgroundColor: colors.bg}]}>
-                      <MaterialIcons name={iconName} size={16} color={colors.icon} />
+                      <Icon name={iconName} size={16} color={colors.icon} />
                     </View>
                     <Text style={styles.calloutTitle}>{item.type}</Text>
                   </View>
@@ -262,21 +262,21 @@ export default function MapScreen({navigation, route}: Props) {
         {!hasMapItems && delivery && (
           <MapboxGL.PointAnnotation id="delivery" coordinate={[delivery.lng, delivery.lat]} title={address || 'Delivery'}>
             <View style={[styles.marker, {backgroundColor: '#EF4444'}]}>
-              <MaterialIcons name="place" size={18} color="#fff" />
+              <Icon name="place" size={18} color="#fff" />
             </View>
           </MapboxGL.PointAnnotation>
         )}
         {!hasMapItems && plant && (
           <MapboxGL.PointAnnotation id="plant" coordinate={[plant.lng, plant.lat]} title="Plant">
             <View style={[styles.marker, {backgroundColor: '#00897B'}]}>
-              <MaterialIcons name="factory" size={18} color="#fff" />
+              <Icon name="factory" size={18} color="#fff" />
             </View>
           </MapboxGL.PointAnnotation>
         )}
         {!hasMapItems && truck && (
           <MapboxGL.PointAnnotation id="truck" coordinate={[truck.lng, truck.lat]} title="Truck">
             <View style={[styles.marker, {backgroundColor: '#1976D2'}]}>
-              <MaterialIcons name="local-shipping" size={18} color="#fff" />
+              <Icon name="local-shipping" size={18} color="#fff" />
             </View>
           </MapboxGL.PointAnnotation>
         )}
@@ -298,7 +298,7 @@ export default function MapScreen({navigation, route}: Props) {
         style={[styles.mapBtn, {top: 12, right: 56}]}
         onPress={() => setIsSatellite(s => !s)}
         activeOpacity={0.7}>
-        <MaterialIcons name={isSatellite ? 'map' : 'satellite'} size={20} color="#333" />
+        <Icon name={isSatellite ? 'map' : 'satellite'} size={20} color="#333" />
       </TouchableOpacity>
 
       {/* Close button */}
@@ -315,13 +315,13 @@ export default function MapScreen({navigation, route}: Props) {
           style={[styles.zoomBtn, {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ccc'}]}
           onPress={() => { const z = Math.min(20, zoomLevel + 1); setZoomLevel(z); cameraRef.current?.setCamera({zoomLevel: z, animationDuration: 300}); }}
           activeOpacity={0.7}>
-          <MaterialIcons name="add" size={22} color="#333" />
+          <Icon name="add" size={22} color="#333" />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.zoomBtn}
           onPress={() => { const z = Math.max(1, zoomLevel - 1); setZoomLevel(z); cameraRef.current?.setCamera({zoomLevel: z, animationDuration: 300}); }}
           activeOpacity={0.7}>
-          <MaterialIcons name="remove" size={22} color="#333" />
+          <Icon name="remove" size={22} color="#333" />
         </TouchableOpacity>
       </View>
 
@@ -373,7 +373,7 @@ export default function MapScreen({navigation, route}: Props) {
         },
       ]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <MaterialIcons name="arrow-back" size={22} color={c.textOnPrimary} />
+          <Icon name="arrow-back" size={22} color={c.textOnPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, {color: c.textOnPrimary}]}>
@@ -386,11 +386,11 @@ export default function MapScreen({navigation, route}: Props) {
           )}
         </View>
         <TouchableOpacity onPress={() => setIsSatellite(s => !s)} style={[styles.navBtn, {backgroundColor: c.overlay15}]} activeOpacity={0.7}>
-          <MaterialIcons name={isSatellite ? 'map' : 'satellite'} size={20} color={c.textOnPrimary} />
+          <Icon name={isSatellite ? 'map' : 'satellite'} size={20} color={c.textOnPrimary} />
         </TouchableOpacity>
         {delivery && (
           <TouchableOpacity onPress={() => openDirections(delivery.lat, delivery.lng)} style={[styles.navBtn, {backgroundColor: c.overlay15}]} activeOpacity={0.7}>
-            <MaterialIcons name="navigation" size={20} color={c.textOnPrimary} />
+            <Icon name="navigation" size={20} color={c.textOnPrimary} />
           </TouchableOpacity>
         )}
       </View>

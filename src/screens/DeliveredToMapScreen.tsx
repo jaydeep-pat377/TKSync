@@ -11,7 +11,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
 import Config from 'react-native-config';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
@@ -75,19 +75,19 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
       <View style={[styles.container, {backgroundColor: c.background}]}>
         <View style={[styles.header, {backgroundColor: c.primary, paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(12), insets.left + wp(6)), paddingRight: Math.max(wp(12), insets.right + wp(6))}]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <MaterialIcons name="arrow-back" size={22} color={c.textOnPrimary} />
+            <Icon name="arrow-back" size={22} color={c.textOnPrimary} />
           </TouchableOpacity>
           <View style={{flex: 1}}>
             <Text style={[styles.headerTitle, {color: c.textOnPrimary}]}>Delivered To</Text>
           </View>
         </View>
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30}}>
-          <MaterialIcons name="location-off" size={ms(48)} color={c.textMuted} />
+          <Icon name="location-off" size={ms(48)} color={c.textMuted} />
           <Text style={{fontSize: ms(16), fontWeight: '700', color: c.textPrimary, marginTop: 16, textAlign: 'center'}}>{address || 'No address'}</Text>
           <Text style={{fontSize: ms(12), color: c.textSecondary, marginTop: 8, textAlign: 'center'}}>No coordinates available for this delivery</Text>
           {address && (
             <TouchableOpacity style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, marginTop: 24, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 8}} onPress={openGoogleMaps} activeOpacity={0.8}>
-              <MaterialIcons name="directions" size={20} color="#fff" />
+              <Icon name="directions" size={20} color="#fff" />
               <Text style={{fontSize: 15, fontWeight: '800', color: '#fff'}}>Open in Google Maps</Text>
             </TouchableOpacity>
           )}
@@ -104,7 +104,7 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
       {/* Header */}
       <View style={[styles.header, {backgroundColor: c.primary, paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(12), insets.left + wp(6)), paddingRight: Math.max(wp(12), insets.right + wp(6))}]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <MaterialIcons name="arrow-back" size={22} color={c.textOnPrimary} />
+          <Icon name="arrow-back" size={22} color={c.textOnPrimary} />
         </TouchableOpacity>
         <View style={{flex: 1}}>
           <Text style={[styles.headerTitle, {color: c.textOnPrimary}]} numberOfLines={1}>
@@ -115,10 +115,10 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
           </Text>
         </View>
         <TouchableOpacity onPress={() => setIsSatellite(s => !s)} style={[styles.headerBtn, {backgroundColor: c.overlay15}]} activeOpacity={0.7}>
-          <MaterialIcons name={isSatellite ? 'map' : 'satellite'} size={20} color={c.textOnPrimary} />
+          <Icon name={isSatellite ? 'map' : 'satellite'} size={20} color={c.textOnPrimary} />
         </TouchableOpacity>
         <TouchableOpacity onPress={openGoogleMaps} style={[styles.headerBtn, {backgroundColor: c.overlay15}]} activeOpacity={0.7}>
-          <MaterialIcons name="directions" size={20} color={c.textOnPrimary} />
+          <Icon name="directions" size={20} color={c.textOnPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -139,7 +139,7 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
           />
           <MapboxGL.PointAnnotation id="delivery" coordinate={[delivery.lng, delivery.lat]} title={address || 'Delivery'}>
             <View style={[styles.marker, {backgroundColor: '#EF4444'}]}>
-              <MaterialIcons name="place" size={20} color="#fff" />
+              <Icon name="place" size={20} color="#fff" />
             </View>
           </MapboxGL.PointAnnotation>
         </MapboxGL.MapView>
@@ -150,24 +150,24 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
             style={[styles.zoomBtn, {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ccc'}]}
             onPress={() => { const z = Math.min(20, zoomLevel + 1); setZoomLevel(z); cameraRef.current?.setCamera({zoomLevel: z, animationDuration: 300}); }}
             activeOpacity={0.7}>
-            <MaterialIcons name="add" size={22} color="#333" />
+            <Icon name="add" size={22} color="#333" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.zoomBtn}
             onPress={() => { const z = Math.max(1, zoomLevel - 1); setZoomLevel(z); cameraRef.current?.setCamera({zoomLevel: z, animationDuration: 300}); }}
             activeOpacity={0.7}>
-            <MaterialIcons name="remove" size={22} color="#333" />
+            <Icon name="remove" size={22} color="#333" />
           </TouchableOpacity>
         </View>
 
         {/* Bottom bar: Directions + Recenter */}
         <View style={[styles.bottomBar, {paddingBottom: Math.max(insets.bottom, 12)}]}>
           <TouchableOpacity style={[styles.directionsBtn, {backgroundColor: '#2E7D32'}]} onPress={openGoogleMaps} activeOpacity={0.8}>
-            <MaterialIcons name="directions" size={20} color="#fff" />
+            <Icon name="directions" size={20} color="#fff" />
             <Text style={styles.directionsBtnText}>DIRECTIONS</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.recenterBtn} onPress={recenter} activeOpacity={0.8}>
-            <MaterialIcons name="my-location" size={20} color="#333" />
+            <Icon name="my-location" size={20} color="#333" />
           </TouchableOpacity>
         </View>
       </View>

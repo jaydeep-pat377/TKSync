@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
@@ -212,7 +212,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
     return (
       <View style={[s.container, s.centerContent, {backgroundColor: c.white}]}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-        <MaterialIcons name="error-outline" size={ms(48)} color={c.error} />
+        <Icon name="error-outline" size={ms(48)} color={c.error} />
         <Text style={[s.errorText, {color: c.textPrimary}]}>{loadError || 'No data available.'}</Text>
         <TouchableOpacity style={[s.retryBtn, {backgroundColor: c.accent}]} onPress={() => navigation.goBack()}>
           <Text style={[s.retryBtnText, {color: c.textOnPrimary}]}>GO BACK</Text>
@@ -248,14 +248,14 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
               hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-              <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+              <Icon name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Offline banner */}
           {loadedFromOffline && (
             <View style={[s.offlineBanner, {backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}]}>
-              <MaterialIcons name="cloud-off" size={ms(14)} color={c.warningDark} />
+              <Icon name="cloud-off" size={ms(14)} color={c.warningDark} />
               <Text style={[s.offlineBannerText, {color: c.warningDark}]}>Loaded from local data</Text>
             </View>
           )}
@@ -263,7 +263,7 @@ export default function DisputeTicketScreen({navigation, route}: Props) {
           {/* Already disputed banner */}
           {alreadyDisputed && !editable && (
             <View style={[s.banner, {backgroundColor: c.errorSurface}]}>
-              <MaterialIcons name="report-problem" size={ms(18)} color={c.error} />
+              <Icon name="report-problem" size={ms(18)} color={c.error} />
               <Text style={[s.bannerText, {color: c.error}]}>This ticket has already been disputed.</Text>
             </View>
           )}

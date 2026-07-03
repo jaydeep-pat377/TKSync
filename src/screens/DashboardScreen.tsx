@@ -15,7 +15,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
@@ -194,7 +194,7 @@ function buildMixInfoFromTicket(ticket: Ticket) {
 
 const BOTTOM_ACTIONS = [
   { icon: 'label', labelKey: 'actions.tag' },
-  { icon: 'factory', labelKey: 'actions.truck' },
+  { icon: 'local-shipping', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
 ];
 
@@ -836,7 +836,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
         <View style={{ backgroundColor: c.primary, paddingTop: insets.top + (isLandscape ? 2 : wp(4)), paddingBottom: isLandscape ? 4 : wp(6), paddingHorizontal: Math.max(wp(12), insets.right + wp(4)), flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
           <TouchableOpacity style={{ width: isLandscape ? 30 : Math.max(wp(34), 34), height: isLandscape ? 30 : Math.max(wp(34), 34), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' }} onPress={openMenu} activeOpacity={0.7}>
-            <MaterialIcons name="menu" size={ms(isLandscape ? 18 : 22)} color="#fff" />
+            <Icon name="menu" size={ms(isLandscape ? 18 : 22)} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(20) }}>
@@ -859,7 +859,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleTruckPress} activeOpacity={0.7} style={{ marginTop: isLandscape ? 8 : wp(16), alignItems: 'center' }}>
-                <MaterialIcons name="local-shipping" size={ms(isLandscape ? 60 : 80)} color="#555" />
+                <Icon name="local-shipping" size={ms(isLandscape ? 60 : 80)} color="#555" />
               </TouchableOpacity>
             </>
           )}
@@ -901,10 +901,10 @@ export default function DashboardScreen({ navigation }: Props) {
                       activeOpacity={0.6}
                       onPress={() => handleMenuItemPress(item.actionKey)}>
                       <View style={[styles.ddIcon, { backgroundColor: bgColor }]}>
-                        <MaterialIcons name={itemIcon as any} size={ms(18)} color={iconColor} />
+                        <Icon name={itemIcon as any} size={ms(18)} color={iconColor} />
                       </View>
                       <Text style={[styles.ddLabel, { color: labelColor }]}>{label}{suffix}</Text>
-                      <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
+                      <Icon name="chevron-right" size={ms(18)} color={c.textMuted} />
                     </TouchableOpacity>
                   );
                 })}
@@ -925,7 +925,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
             <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.plants')}</Text>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+              <Icon name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
           {plantsLoading ? (
@@ -966,16 +966,16 @@ export default function DashboardScreen({ navigation }: Props) {
   const renderNavBtn = (item: typeof BOTTOM_ACTIONS[0], i: number) => {
     const active = activeBottom === i;
     const isFontBtn = item.icon === 'text-fields';
-    const sz = L ? 20 : isTablet ? 24 : ms(20);
+    const sz = L ? 24 : isTablet ? 28 : ms(24);
     const iconEl = isFontBtn
       ? <Text style={{ fontSize: sz * 0.85, fontWeight: '900', color: active ? c.primary : isDark ? '#B0BEC5' : c.textMuted }}>A</Text>
-      : <MaterialIcons name={item.icon as any} size={sz} color={active ? c.primary : isDark ? '#B0BEC5' : c.textMuted} />;
+      : <Icon name={item.icon as any} size={sz} color={active ? c.primary : isDark ? '#B0BEC5' : c.textMuted} />;
     return (
       <TouchableOpacity
         key={item.labelKey}
         activeOpacity={0.6}
         onPress={() => handleNavPress(item, i)}
-        style={{ width: L ? 40 : wp(40), height: L ? 40 : wp(36), justifyContent: 'center', alignItems: 'center', borderRadius: 10, backgroundColor: active ? c.primarySurface : 'transparent' }}>
+        style={{ width: L ? 40 : wp(40), height: L ? 40 : wp(36), justifyContent: 'center', alignItems: 'center', borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: active ? c.primarySurface : 'transparent' }}>
         {iconEl}
       </TouchableOpacity>
     );
@@ -1071,21 +1071,21 @@ export default function DashboardScreen({ navigation }: Props) {
               })}
             </ScrollView>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(5), marginLeft: ms(6) }}>
-              <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: ms(12), paddingVertical: ms(3), paddingHorizontal: ms(8), flexDirection: 'row', alignItems: 'center', gap: ms(3) }}>
-                <MaterialIcons name="wifi" size={ms(10)} color="#fff" />
-                <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+              <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', height: L ? 25 : ms(28), borderRadius: 8, paddingHorizontal: ms(8), flexDirection: 'row', alignItems: 'center', gap: ms(3) }}>
+                <Icon name="wifi" size={L ? 13 : ms(14)} color="#fff" />
+                <Text style={{ fontSize: L ? 10 : ms(8), fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialIcons name="notifications" size={ms(14)} color={c.textSecondary} />
+              <TouchableOpacity activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <Icon name="notifications" size={L ? 13 : ms(14)} color={c.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setFontSizeVisible(true)} activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: ms(14), fontWeight: '900', color: c.textSecondary }}>A</Text>
+              <TouchableOpacity onPress={() => setFontSizeVisible(true)} activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: L ? 13 : ms(14), fontWeight: '900', color: c.textSecondary }}>A</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialIcons name={isDark ? 'light-mode' : 'dark-mode'} size={ms(14)} color={c.textSecondary} />
+              <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <Icon name={isDark ? 'light-mode' : 'dark-mode'} size={L ? 13 : ms(14)} color={c.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: ms(28), height: ms(28), borderRadius: ms(14), backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialIcons name="settings" size={ms(14)} color={c.textSecondary} />
+              <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <Icon name="settings" size={L ? 13 : ms(14)} color={c.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -1103,7 +1103,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 </View>
                 {/* Weather inline */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
-                  <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={14} color={c.textOnPrimary} />
+                  <Icon name={getWeatherIcon(detail?.weather?.icon)} size={14} color={c.textOnPrimary} />
                   <View>
                     <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
                     <Text style={{ fontSize: 8, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
@@ -1116,7 +1116,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 </View>
                 {/* Sync pill */}
                 <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }}>
-                  <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><MaterialIcons name="sync" size={13} color={c.textOnPrimary} /></Animated.View>
+                  <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><Icon name="sync" size={13} color={c.textOnPrimary} /></Animated.View>
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: refreshing ? c.warning : c.success }} />
                   <Text style={{ fontSize: 9, fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
                 </TouchableOpacity>
@@ -1124,7 +1124,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   <Text style={{ fontSize: 8, fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                 </View>
                 <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={openMenu} activeOpacity={0.7}>
-                  <MaterialIcons name="menu" size={15} color={c.textOnPrimary} />
+                  <Icon name="menu" size={15} color={c.textOnPrimary} />
                 </TouchableOpacity>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsRow, { marginTop: 4 }]}>
@@ -1154,7 +1154,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   {L && (
                     <>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12) }}>
-                        <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={ls(16)} color={c.textOnPrimary} />
+                        <Icon name={getWeatherIcon(detail?.weather?.icon)} size={ls(16)} color={c.textOnPrimary} />
                         <View>
                           <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
                           <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
@@ -1172,7 +1172,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     activeOpacity={0.7}
                     style={[{ flexDirection: 'row', alignItems: 'center', gap: wp(5), backgroundColor: c.overlay10, paddingHorizontal: wp(10), borderRadius: wp(14) }, L ? { paddingVertical: ls(5), paddingHorizontal: ls(8), borderRadius: ls(12), gap: ls(4) } : { paddingVertical: wp(5) }]}>
                     <Animated.View style={{ transform: [{ rotate: syncRotate }] }}>
-                      <MaterialIcons name="sync" size={L ? ls(15) : ms(16)} color={c.textOnPrimary} />
+                      <Icon name="sync" size={L ? ls(15) : ms(16)} color={c.textOnPrimary} />
                     </Animated.View>
                     <View style={{ width: ls(5), height: ls(5), borderRadius: 3, backgroundColor: refreshing ? c.warning : c.success }} />
                     <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
@@ -1181,7 +1181,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     <Text style={{ fontSize: L ? ms(8) : ms(9), fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                   </View>
                   <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={openMenu} activeOpacity={0.7}>
-                    <MaterialIcons name="menu" size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
+                    <Icon name="menu" size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1220,7 +1220,7 @@ export default function DashboardScreen({ navigation }: Props) {
               {/* Info Bar */}
               <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(4) : fs(6), paddingHorizontal: fs(12), marginBottom: fs(3), flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1 }}>
-                  <MaterialIcons name="local-shipping" size={fs(16)} color={c.primary} />
+                  <Icon name="local-shipping" size={fs(16)} color={c.primary} />
                   <View>
                     <Text style={{ fontSize: fst(14), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
                     <Text style={{ fontSize: fst(11), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
@@ -1232,7 +1232,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(10), flex: 1.5, justifyContent: 'flex-end' }}>
                   <View style={{ backgroundColor: c.overlay15, paddingVertical: fs(5), paddingHorizontal: fs(10), borderRadius: fs(8), flexDirection: 'row', alignItems: 'center', gap: fs(6) }}>
-                    <MaterialIcons name={getWeatherIcon(detail?.weather?.icon)} size={fs(14)} color={c.textOnPrimary} />
+                    <Icon name={getWeatherIcon(detail?.weather?.icon)} size={fs(14)} color={c.textOnPrimary} />
                     <View>
                       <Text style={{ fontSize: fst(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
                       <Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textOnDark60 }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : '-'}</Text>
@@ -1277,7 +1277,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             borderWidth: isActive ? fs(3) : 0,
                             borderColor: isActive ? '#90CAF9' : 'transparent',
                           }}>
-                            {item.done && !isActive && <MaterialIcons name="check" size={fs(13)} color="#fff" />}
+                            {item.done && !isActive && <Icon name="check" size={fs(13)} color="#fff" />}
                             {isActive && <View style={{ width: fs(10), height: fs(10), borderRadius: fs(5), backgroundColor: '#fff' }} />}
                           </View>
                           {isLast ? <View style={{ flex: 1 }} /> : (
@@ -1311,7 +1311,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
                         <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                          <MaterialIcons name="visibility" size={fs(16)} color={c.accent} />
+                          <Icon name="visibility" size={fs(16)} color={c.accent} />
                         </TouchableOpacity>
                       </View>
                       {/* Data row with titles */}
@@ -1374,7 +1374,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
                             {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
                           </Text>
-                          {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <MaterialIcons name="map" size={fst(14)} color={c.accent} style={{ marginLeft: fs(4) }} />}
+                          {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <Icon name="map" size={fst(14)} color={c.accent} style={{ marginLeft: fs(4) }} />}
                         </TouchableOpacity>
                       </View>
                       {/* Instructions row */}
@@ -1423,7 +1423,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             const Row = (
                               <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(4), gap: fs(6) }}>
                                 <View style={{ width: fs(16), height: fs(16), borderRadius: fs(8), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
-                                  <MaterialIcons name={item.filled ? 'check' : 'close'} size={fs(12)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
+                                  <Icon name={item.filled ? 'check' : 'close'} size={fs(12)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
                                 </View>
                                 <Text style={{ fontSize: fst(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
                                 {item.value ? <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fst(10), color: c.textMuted }}>--</Text>}
@@ -1455,7 +1455,7 @@ export default function DashboardScreen({ navigation }: Props) {
               )}
               {/* Quick Links + Additional Entries — same height row */}
               {!detailLoading && (
-                <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(1), marginBottom: '5%' }}>
+                <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(10), marginBottom: '5%' }}>
                   <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                       <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>QUICK LINKS</Text>
@@ -1521,7 +1521,7 @@ export default function DashboardScreen({ navigation }: Props) {
               {/* Info Bar */}
               <View style={{ backgroundColor: '#367000', borderRadius: 8, padding: wp(8), marginBottom: wp(6), flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                  <MaterialIcons name="local-shipping" size={ms(18)} color={c.primary} />
+                  <Icon name="local-shipping" size={ms(18)} color={c.primary} />
                   <View>
                     <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
                     <Text style={{ fontSize: ms(9), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
@@ -1561,7 +1561,7 @@ export default function DashboardScreen({ navigation }: Props) {
                           <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(14), width: '100%' }}>
                             {isFirst ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border }} />}
                             <View style={{ width: dotSz, height: dotSz, borderRadius: dotSz / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: isActive ? '#1E88E5' : item.done ? c.primary : c.surface, borderWidth: isActive ? 3 : item.done ? 0 : 1.5, borderColor: isActive ? '#90CAF9' : c.border }}>
-                              {item.done && !isActive && <MaterialIcons name="check" size={ms(5)} color={c.textOnPrimary} />}
+                              {item.done && !isActive && <Icon name="check" size={ms(5)} color={c.textOnPrimary} />}
                               {isActive && <View style={{ width: dotSz * 0.4, height: dotSz * 0.4, borderRadius: dotSz * 0.2, backgroundColor: '#fff' }} />}
                             </View>
                             {isLast ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border }} />}
@@ -1591,7 +1591,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
                       <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <MaterialIcons name="visibility" size={ms(16)} color={c.accent} />
+                        <Icon name="visibility" size={ms(16)} color={c.accent} />
                       </TouchableOpacity>
                     </View>
                     {/* Data row with titles */}
@@ -1643,7 +1643,7 @@ export default function DashboardScreen({ navigation }: Props) {
                           {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
                           {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
                         </Text>
-                        {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <MaterialIcons name="map" size={ms(12)} color={c.accent} style={{ marginLeft: wp(3) }} />}
+                        {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <Icon name="map" size={ms(12)} color={c.accent} style={{ marginLeft: wp(3) }} />}
                       </TouchableOpacity>
                     </View>
                     {/* Instructions row */}
@@ -1682,7 +1682,7 @@ export default function DashboardScreen({ navigation }: Props) {
                           const isWater = itemKey === 'customer_water' || itemKey === 'maintenance_water';
                           const Row = (
                             <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
-                              <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><MaterialIcons name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : c.error} /></View>
+                              <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><Icon name={item.filled ? 'check' : 'close'} size={11} color={item.filled ? '#fff' : c.error} /></View>
                               <Text style={{ fontSize: ms(8), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
                               {item.value ? <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(8), color: c.textMuted }}>--</Text>}
                             </View>
@@ -1708,7 +1708,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       </View>))}
                   </View>
                   {/* Additional Entries */}
-                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8), marginTop: 10 }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
                       <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
                     </View>
@@ -1749,14 +1749,14 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* Left: Refresh timestamp */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.primarySurface, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8 }}>
-            <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><MaterialIcons name="sync" size={12} color={c.primary} /></Animated.View>
+            <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><Icon name="sync" size={12} color={c.primary} /></Animated.View>
             <Text style={{ fontSize: 10, fontWeight: '600', color: c.primary }}>REFRESHED at {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </TouchableOpacity>
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isOnline ? c.success : c.error }} />
         </View>
         <View style={{ flex: 1 }} />
         {/* Right: Nav icons */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(2) }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(16) : wp(2) }}>
           {BOTTOM_ACTIONS.map(renderNavBtn)}
         </View>
       </View>
@@ -1803,10 +1803,10 @@ export default function DashboardScreen({ navigation }: Props) {
                     activeOpacity={0.6}
                     onPress={() => handleMenuItemPress(item.actionKey)}>
                     <View style={[styles.ddIcon, isLandscape && { width: lp ? 28 : ls(24), height: lp ? 28 : ls(24), borderRadius: lp ? 8 : ls(7) }, { backgroundColor: bgColor }]}>
-                      <MaterialIcons name={itemIcon as any} size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={iconColor} />
+                      <Icon name={itemIcon as any} size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={iconColor} />
                     </View>
                     <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, { color: labelColor }]}>{label}{suffix}</Text>
-                    <MaterialIcons name="chevron-right" size={isLandscape ? (lp ? 18 : ls(16)) : ms(18)} color={c.textMuted} />
+                    <Icon name="chevron-right" size={isLandscape ? (lp ? 18 : ls(16)) : ms(18)} color={c.textMuted} />
                   </TouchableOpacity>
                 );
               })}
@@ -2033,14 +2033,14 @@ export default function DashboardScreen({ navigation }: Props) {
           {/* Header */}
           <View style={[styles.qrHeader, { borderBottomColor: c.qrFg + '15' }, L && { paddingVertical: lt ? ls(6) : 6, paddingHorizontal: lt ? ls(10) : 10, gap: lt ? ls(6) : 6 }]}>
             <View style={[styles.qrHeaderIcon, { backgroundColor: c.qrFg + '18' }, L && { width: lt ? ls(26) : 24, height: lt ? ls(26) : 24, borderRadius: lt ? ls(7) : 7 }]}>
-              <MaterialIcons name="qr-code-2" size={L ? (lt ? ls(16) : 15) : ms(18)} color={c.qrFg} />
+              <Icon name="qr-code-2" size={L ? (lt ? ls(16) : 15) : ms(18)} color={c.qrFg} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.qrHeaderTitle, { color: c.qrFg }, L && { fontSize: ls(12) }]}>QR Code</Text>
               <Text style={[styles.qrHeaderSub, { color: c.qrFg + '90' }, L && { fontSize: ls(9) }]}>Scan to verify delivery</Text>
             </View>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.qrFg + '12' }, L && { width: ls(28), height: ls(28), borderRadius: ls(14) }]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="close" size={L ? ls(14) : ms(18)} color={c.qrFg} />
+              <Icon name="close" size={L ? ls(14) : ms(18)} color={c.qrFg} />
             </TouchableOpacity>
           </View>
 
@@ -2050,7 +2050,7 @@ export default function DashboardScreen({ navigation }: Props) {
             </View>
           ) : qrError ? (
             <View style={{ paddingVertical: L ? ls(20) : wp(30), alignItems: 'center', paddingHorizontal: L ? ls(16) : wp(20) }}>
-              <MaterialIcons name="error-outline" size={L ? ls(28) : ms(36)} color={c.qrFg + '60'} />
+              <Icon name="error-outline" size={L ? ls(28) : ms(36)} color={c.qrFg + '60'} />
               <Text style={{ fontSize: L ? ls(12) : ms(13), fontWeight: '700', color: c.qrFg, marginTop: L ? ls(8) : wp(10), textAlign: 'center' }}>Server Error</Text>
               <Text style={{ fontSize: L ? ls(10) : ms(11), color: c.qrFg + '80', marginTop: L ? ls(3) : wp(4), textAlign: 'center' }}>Unable to load QR code. Please try again later.</Text>
               <TouchableOpacity
@@ -2065,7 +2065,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 }}
                 activeOpacity={0.7}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(5), marginTop: L ? ls(12) : wp(16), backgroundColor: c.qrFg + '18', paddingVertical: L ? ls(6) : wp(8), paddingHorizontal: L ? ls(16) : wp(20), borderRadius: L ? ls(6) : wp(8) }}>
-                <MaterialIcons name="refresh" size={L ? ls(12) : ms(14)} color={c.qrFg} />
+                <Icon name="refresh" size={L ? ls(12) : ms(14)} color={c.qrFg} />
                 <Text style={{ fontSize: L ? ls(10) : ms(11), fontWeight: '700', color: c.qrFg }}>Retry</Text>
               </TouchableOpacity>
             </View>
@@ -2096,11 +2096,11 @@ export default function DashboardScreen({ navigation }: Props) {
               </View>
               <View style={[styles.qrFooter, L && { paddingHorizontal: ls(10), gap: ls(3) }]}>
                 <View style={[styles.qrFooterRow, { borderTopColor: c.qrFg + '12' }, L && { gap: ls(4), paddingTop: ls(2) }]}>
-                  <MaterialIcons name="local-shipping" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
+                  <Icon name="local-shipping" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
                   <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }, L && { fontSize: ls(10) }]}>{`TRUCK ${qrData.truck_code || '-'} · DRIVER ${qrData.driver_code || '-'}`}</Text>
                 </View>
                 <View style={[styles.qrFooterRow, L && { gap: ls(4) }]}>
-                  <MaterialIcons name="factory" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
+                  <Icon name="factory" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
                   <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }, L && { fontSize: ls(10) }]}>{qrData.plant_name || '-'}</Text>
                 </View>
               </View>
@@ -2118,7 +2118,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
           <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.plants')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+            <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
         {plantsLoading ? (
@@ -2127,7 +2127,7 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
         ) : plantsError ? (
           <View style={{ paddingVertical: wp(30), alignItems: 'center', paddingHorizontal: wp(20) }}>
-            <MaterialIcons name="error-outline" size={ms(36)} color={c.textSecondary} />
+            <Icon name="error-outline" size={ms(36)} color={c.textSecondary} />
             <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(10), textAlign: 'center' }}>Server Error</Text>
             <Text style={{ fontSize: ms(11), color: c.textSecondary, marginTop: wp(4), textAlign: 'center' }}>Unable to load plants. Please try again later.</Text>
             <TouchableOpacity
@@ -2144,7 +2144,7 @@ export default function DashboardScreen({ navigation }: Props) {
               }}
               activeOpacity={0.7}
               style={{ flexDirection: 'row', alignItems: 'center', gap: wp(5), marginTop: wp(16), backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8) }}>
-              <MaterialIcons name="refresh" size={ms(14)} color="#fff" />
+              <Icon name="refresh" size={ms(14)} color="#fff" />
               <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Retry</Text>
             </TouchableOpacity>
           </View>
@@ -2186,7 +2186,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
           <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.vehicle', 'Vehicle')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setVehicleVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+            <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
         <View style={{ alignItems: 'center', paddingVertical: wp(30), paddingHorizontal: wp(20) }}>
@@ -2229,18 +2229,18 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* Header */}
         <View style={[styles.etHeader, { borderBottomColor: c.border }]}>
           <View style={[styles.etHeaderIcon, { backgroundColor: c.primarySurface }]}>
-            <MaterialIcons name="edit" size={ms(18)} color={c.primary} />
+            <Icon name="edit" size={ms(18)} color={c.primary} />
           </View>
           <Text style={[styles.etHeaderTitle, { color: c.textPrimary }]}>{t('modals.editTicket')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setEditVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+            <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
           {/* Actions Section */}
           <View style={styles.etSectionHdr}>
-            <MaterialIcons name="touch-app" size={ms(16)} color={c.accent} />
+            <Icon name="touch-app" size={ms(16)} color={c.accent} />
             <Text style={[styles.etSectionTitle, { color: c.accent }]}>{t('modals.actions')}</Text>
           </View>
 
@@ -2269,10 +2269,10 @@ export default function DashboardScreen({ navigation }: Props) {
                 navigation.navigate(item.screen, params);
               }}>
               <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
-                <MaterialIcons name={item.icon as any} size={ms(18)} color={item.iconColor} />
+                <Icon name={item.icon as any} size={ms(18)} color={item.iconColor} />
               </View>
               <Text style={[styles.etActionLabel, { color: c.textPrimary }]}>{item.label}</Text>
-              <MaterialIcons name="chevron-right" size={ms(18)} color={c.textMuted} />
+              <Icon name="chevron-right" size={ms(18)} color={c.textMuted} />
             </TouchableOpacity>
           ))}
 
@@ -2289,7 +2289,7 @@ export default function DashboardScreen({ navigation }: Props) {
         maxHeightPercent={55}>
         <View style={[styles.pmHeader, { backgroundColor: c.primarySurface, borderBottomColor: c.primaryBorder }]}>
           <View style={[styles.pmHeaderIcon, { backgroundColor: c.primary }]}>
-            <MaterialIcons name="inventory-2" size={ms(16)} color={c.textOnPrimary} />
+            <Icon name="inventory-2" size={ms(16)} color={c.textOnPrimary} />
           </View>
           <View style={common.flex1}>
             <Text style={[styles.pmTitle, { color: c.textPrimary }]}>PRODUCTS, CHARGES & FEES</Text>
@@ -2349,7 +2349,7 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={isLandscape ? 40 : 80}>
         <View style={{ padding: wp(16), alignItems: 'center' }}>
           <View style={[styles.logoutIconWrap, { backgroundColor: logoutType === 'tenant' ? c.errorSurface : c.warningSurface }]}>
-            <MaterialIcons
+            <Icon
               name={logoutType === 'tenant' ? 'domain-disabled' : 'person-off'}
               size={ms(28)}
               color={logoutType === 'tenant' ? c.error : c.warningDark}
@@ -2392,10 +2392,10 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={isLandscape ? 40 : 80}>
         <View style={{ padding: wp(16), alignItems: 'center' }}>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface, position: 'absolute', top: wp(10), right: wp(10), zIndex: 10 }]} onPress={() => setLanguageVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+            <Icon name="close" size={ms(18)} color={c.textSecondary} />
           </TouchableOpacity>
           <View style={[styles.logoutIconWrap, { backgroundColor: c.primarySurface }]}>
-            <MaterialIcons name="translate" size={ms(28)} color={c.primary} />
+            <Icon name="translate" size={ms(28)} color={c.primary} />
           </View>
           <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>{t('menu.language')}</Text>
           <View style={{ width: '100%', gap: wp(8), marginTop: wp(4) }}>
@@ -2414,7 +2414,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   onPress={() => { i18n.changeLanguage(lang.code); setLanguageVisible(false); }}>
                   <Text style={{ fontSize: ms(16) }}>{lang.flag}</Text>
                   <Text style={{ fontSize: ms(12), fontWeight: '700', color: isSelected ? c.textOnPrimary : c.textPrimary }}>{lang.label}</Text>
-                  {isSelected && <MaterialIcons name="check-circle" size={ms(18)} color={c.textOnPrimary} />}
+                  {isSelected && <Icon name="check-circle" size={ms(18)} color={c.textOnPrimary} />}
                 </TouchableOpacity>
               );
             })}
@@ -2433,14 +2433,14 @@ export default function DashboardScreen({ navigation }: Props) {
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8), padding: wp(12), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
             <View style={{ width: wp(28), height: wp(28), borderRadius: wp(8), backgroundColor: c.warningSurface, justifyContent: 'center', alignItems: 'center' }}>
-              <MaterialIcons name="warning" size={ms(16)} color={c.warningDark} />
+              <Icon name="warning" size={ms(16)} color={c.warningDark} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary }}>Missing Fields</Text>
               <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted }}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
             </View>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+              <Icon name="close" size={ms(18)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -2523,7 +2523,7 @@ export default function DashboardScreen({ navigation }: Props) {
               if (missing.length === 0) {
                 return (
                   <View style={{ alignItems: 'center', paddingVertical: wp(20) }}>
-                    <MaterialIcons name="check-circle" size={ms(40)} color={c.primary} />
+                    <Icon name="check-circle" size={ms(40)} color={c.primary} />
                     <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(8) }}>All fields are filled</Text>
                   </View>
                 );
@@ -2532,7 +2532,7 @@ export default function DashboardScreen({ navigation }: Props) {
               return missing.map((group) => (
                 <View key={group.section}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), marginBottom: wp(6) }}>
-                    <MaterialIcons name={group.icon as any} size={ms(14)} color={c.warningDark} />
+                    <Icon name={group.icon as any} size={ms(14)} color={c.warningDark} />
                     <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary }}>{group.section}</Text>
                     <View style={{ backgroundColor: c.warningSurface, paddingHorizontal: wp(6), paddingVertical: wp(1), borderRadius: wp(8) }}>
                       <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.warningDark }}>{group.fields.length}</Text>
@@ -2540,7 +2540,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   </View>
                   {group.fields.map((field, idx) => (
                     <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingVertical: wp(4), borderBottomWidth: idx < group.fields.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                      <MaterialIcons name="radio-button-unchecked" size={ms(10)} color={c.error} />
+                      <Icon name="radio-button-unchecked" size={ms(10)} color={c.error} />
                       <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textSecondary }}>{field}</Text>
                     </View>
                   ))}
@@ -2559,7 +2559,7 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={isLandscape ? 40 : 80}>
         <View style={{ padding: wp(16), alignItems: 'center' }}>
           <View style={[styles.logoutIconWrap, { backgroundColor: c.warningSurface }]}>
-            <MaterialIcons name="directions-off" size={ms(28)} color={c.warningDark} />
+            <Icon name="directions-off" size={ms(28)} color={c.warningDark} />
           </View>
           <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>Directions Unavailable</Text>
           <Text style={[styles.logoutMessage, { color: c.textSecondary }]}>Directions are not available because this ticket has been completed.</Text>
@@ -2580,7 +2580,7 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={isLandscape ? 35 : 75}>
         <View style={{ padding: wp(16), alignItems: 'center' }}>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface, position: 'absolute', top: wp(10), right: wp(10), zIndex: 10 }]} onPress={() => setFontSizeVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+            <Icon name="close" size={ms(18)} color={c.textSecondary} />
           </TouchableOpacity>
           <View style={{ width: wp(44), height: wp(44), borderRadius: wp(22), backgroundColor: c.primarySurface, justifyContent: 'center', alignItems: 'center', marginBottom: wp(8) }}>
             <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary }}>A</Text>

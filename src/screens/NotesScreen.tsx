@@ -20,7 +20,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
@@ -87,7 +87,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
         )}
       </View>
       <TouchableOpacity style={[st.pickerToggle, _land && {width: wp(18), height: wp(18), borderRadius: wp(5)}, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
-        <MaterialIcons name="unfold-more" size={_land ? ms(9) : ms(11)} color={c.textSecondary} />
+        <Icon name="unfold-more" size={_land ? ms(9) : ms(11)} color={c.textSecondary} />
       </TouchableOpacity>
       {unit ? (
         <View style={[st.unitBadge, _land && {marginLeft: wp(1), paddingHorizontal: wp(3), paddingVertical: wp(1), borderRadius: wp(4)}, {backgroundColor: c.surface, borderColor: c.border}]}>
@@ -98,7 +98,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
         <View style={[st.pickerHeader, {borderBottomColor: c.border}]}>
           <Text style={[st.pickerTitle, {color: c.textPrimary}]}>Select Value</Text>
           <TouchableOpacity style={[st.pickerCloseBtn, {backgroundColor: c.surface}]} onPress={() => setPickerOpen(false)} activeOpacity={0.7}>
-            <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+            <Icon name="close" size={ms(18)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={st.pickerList}>
@@ -107,7 +107,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
             return (
               <TouchableOpacity key={v} style={[st.pickerItem, {borderBottomColor: c.borderLight}, isSelected && {backgroundColor: c.primarySurface}]} activeOpacity={0.6} onPress={() => { onChangeValue?.(v); setPickerOpen(false); }}>
                 <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}]}>{v}{unit ? ` ${unit}` : ''}</Text>
-                {isSelected && <MaterialIcons name="check-circle" size={ms(16)} color={c.primary} />}
+                {isSelected && <Icon name="check-circle" size={ms(16)} color={c.primary} />}
               </TouchableOpacity>
             );
           })}
@@ -165,7 +165,7 @@ function FieldCard({children, title, icon, fullWidth}: {children: React.ReactNod
     ]}>
       {title ? (
         <View style={st.fieldCardHeader}>
-          {icon && <MaterialIcons name={icon as any} size={ms(14)} color={c.primary} />}
+          {icon && <Icon name={icon as any} size={ms(14)} color={c.primary} />}
           <Text style={[st.fieldCardTitle, {color: c.textPrimary}]}>{title}</Text>
         </View>
       ) : null}
@@ -178,7 +178,7 @@ function MoreBtn({onPress}: {onPress?: () => void}) {
   const {c} = useTheme();
   return (
     <TouchableOpacity style={[st.moreBtn, {backgroundColor: c.surface}]} activeOpacity={0.6} onPress={onPress}>
-      <MaterialIcons name="more-horiz" size={ms(12)} color={c.primary} />
+      <Icon name="more-horiz" size={ms(12)} color={c.primary} />
     </TouchableOpacity>
   );
 }
@@ -204,7 +204,7 @@ function Check({checked, label, onPress}: {checked: boolean; label?: string; onP
         {borderColor: checked ? c.primary : isMandatory ? '#CCCC00' : c.border, backgroundColor: checked ? c.primary : isMandatory ? '#FFFF00' : c.white},
         {transform: [{scale}]},
       ]}>
-        {checked && <MaterialIcons name="check" size={_land ? ms(8) : ms(11)} color={c.textOnPrimary} />}
+        {checked && <Icon name="check" size={_land ? ms(8) : ms(11)} color={c.textOnPrimary} />}
       </Animated.View>
       {label && <Text style={[st.checkLabel, {color: c.textPrimary}, _land && {fontSize: ms(11)}]}>{label}</Text>}
     </TouchableOpacity>
@@ -296,7 +296,7 @@ function SaveResultModal({visible, success, message, onClose}: {visible: boolean
             backgroundColor: success ? c.successSurface || (c.success + '20') : (c.error + '20'),
             justifyContent: 'center', alignItems: 'center', marginBottom: wp(14),
           }}>
-            <MaterialIcons
+            <Icon
               name={success ? 'check-circle' : 'error'}
               size={ms(28)}
               color={success ? c.success : c.error}
@@ -322,7 +322,7 @@ function SaveResultModal({visible, success, message, onClose}: {visible: boolean
           }}
           activeOpacity={0.8}
           onPress={onClose}>
-          <MaterialIcons name={success ? 'done' : 'close'} size={ms(16)} color={c.textOnPrimary} />
+          <Icon name={success ? 'done' : 'close'} size={ms(16)} color={c.textOnPrimary} />
           <Text style={{fontSize: ms(13), fontWeight: '700', color: c.textOnPrimary}}>
             {success ? 'Done' : 'Dismiss'}
           </Text>
@@ -349,7 +349,7 @@ function SaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => vo
         onPress={onPress}
         onPressIn={() => !disabled && Animated.timing(scale, {toValue: 0.95, duration: 80, useNativeDriver: true}).start()}
         onPressOut={() => !disabled && Animated.spring(scale, {toValue: 1, friction: 4, tension: 100, useNativeDriver: true}).start()}>
-        <MaterialIcons name="check-circle" size={ms(16)} color={disabled ? c.textMuted : c.textOnPrimary} />
+        <Icon name="check-circle" size={ms(16)} color={disabled ? c.textMuted : c.textOnPrimary} />
         <Text style={[st.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}]}>Save Changes</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -360,7 +360,7 @@ function SectionTitle({title, icon}: {title: string; icon?: string}) {
   const {c} = useTheme();
   return (
     <View style={[st.secTitle, {borderBottomColor: c.border}]}>
-      {icon && <MaterialIcons name={icon as any} size={ms(16)} color={c.primary} />}
+      {icon && <Icon name={icon as any} size={ms(16)} color={c.primary} />}
       <Text style={[st.secTitleText, {color: c.textPrimary}]}>{title}</Text>
     </View>
   );
@@ -396,10 +396,10 @@ function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPr
       activeOpacity={0.6}
       onPress={onPress}>
       <View style={[st.timePickIcon, {backgroundColor: hasValue ? c.primary : c.primarySurface}]}>
-        <MaterialIcons name="schedule" size={ms(12)} color={hasValue ? c.textOnPrimary : c.primary} />
+        <Icon name="schedule" size={ms(12)} color={hasValue ? c.textOnPrimary : c.primary} />
       </View>
       <Text style={[st.timePickText, {color: hasValue ? c.primary : c.textMuted}]}>{displayText}</Text>
-      <MaterialIcons name="keyboard-arrow-down" size={ms(14)} color={hasValue ? c.primary : c.textMuted} />
+      <Icon name="keyboard-arrow-down" size={ms(14)} color={hasValue ? c.primary : c.textMuted} />
     </TouchableOpacity>
   );
 }
@@ -515,7 +515,7 @@ function LCard({children, title, icon, style, headerRight}: {children: React.Rea
         <View style={[ls.cardHeader, {borderBottomColor: c.borderLight}]}>
           {icon && (
             <View style={[ls.cardHeaderIcon, {backgroundColor: c.primarySurface}]}>
-              <MaterialIcons name={icon as any} size={ms(12)} color={c.primary} />
+              <Icon name={icon as any} size={ms(12)} color={c.primary} />
             </View>
           )}
           <Text style={[ls.cardTitle, {color: c.textPrimary}]}>{title}</Text>
@@ -535,7 +535,7 @@ function LSaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => v
       activeOpacity={disabled ? 1 : 0.8}
       disabled={disabled}
       onPress={onPress}>
-      <MaterialIcons name="check-circle" size={ms(14)} color={disabled ? c.textMuted : c.textOnPrimary} />
+      <Icon name="check-circle" size={ms(14)} color={disabled ? c.textMuted : c.textOnPrimary} />
       <Text style={[ls.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}]}>Save</Text>
     </TouchableOpacity>
   );
@@ -566,7 +566,7 @@ function ReasonListModal({
       <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
         <Text style={[st.popupTitle, {color: c.textPrimary}]}>LIST</Text>
         <TouchableOpacity style={[st.popupCloseBtn, {backgroundColor: c.surface}]} onPress={onClose} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+          <Icon name="close" size={ms(20)} color={c.textSecondary} />
         </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{paddingVertical: wp(4)}}>
@@ -614,7 +614,7 @@ function ProductsModal({visible, onClose, products}: {visible: boolean; onClose:
           onPress={onClose}
           activeOpacity={0.7}
           hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <MaterialIcons name="close" size={ms(14)} color={c.textSecondary} />
+          <Icon name="close" size={ms(14)} color={c.textSecondary} />
         </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={true} bounces={false} contentContainerStyle={{padding: wp(14)}}>
@@ -721,14 +721,14 @@ function SlumpPickerModal({
       {/* Header */}
       <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
         <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
-          <MaterialIcons name="straighten" size={ms(20)} color={c.textOnPrimary} />
+          <Icon name="straighten" size={ms(20)} color={c.textOnPrimary} />
         </View>
         <View style={common.flex1}>
           <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
           <Text style={[sm.headerSub, {color: c.textMuted}]}>Select or enter value (mm)</Text>
         </View>
         <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+          <Icon name="close" size={ms(20)} color={c.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -756,7 +756,7 @@ function SlumpPickerModal({
                 </Text>
                 {isSelected && (
                   <View style={slumpSt.gridCheck}>
-                    <MaterialIcons name="check-circle" size={ms(18)} color={c.primary} />
+                    <Icon name="check-circle" size={ms(18)} color={c.primary} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -775,7 +775,7 @@ function SlumpPickerModal({
             activeOpacity={0.6}
             onPress={handleCustomToggle}>
             <View style={[slumpSt.customIcon, {backgroundColor: customMode ? c.primary : c.border}]}>
-              <MaterialIcons name="edit" size={ms(16)} color={customMode ? c.textOnPrimary : c.textSecondary} />
+              <Icon name="edit" size={ms(16)} color={customMode ? c.textOnPrimary : c.textSecondary} />
             </View>
             <Text style={[slumpSt.customLabel, {color: customMode ? c.primary : c.textSecondary}]}>
               Custom Value
@@ -806,7 +806,7 @@ function SlumpPickerModal({
           style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
           activeOpacity={0.7}
           onPress={handleCancel}>
-          <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
+          <Icon name="close" size={ms(16)} color={c.textSecondary} />
           <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -816,7 +816,7 @@ function SlumpPickerModal({
           activeOpacity={canConfirm ? 0.7 : 1}
           disabled={!canConfirm}
           onPress={handleConfirm}>
-          <MaterialIcons name="check" size={ms(16)} color={canConfirm ? c.textOnPrimary : c.textMuted} />
+          <Icon name="check" size={ms(16)} color={canConfirm ? c.textOnPrimary : c.textMuted} />
           <Text style={[sm.footerBtnText, {color: canConfirm ? c.textOnPrimary : c.textMuted}]}>
             Confirm
           </Text>
@@ -1012,7 +1012,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
         <View style={[ls.topBar, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
           {!allFieldsFilled ? (
             <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setVoiceWizardVisible(true)} activeOpacity={0.7}>
-              <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+              <Icon name="mic" size={ms(14)} color="#FFF" />
             </TouchableOpacity>
           ) : <View />}
           <LSaveButton disabled={allFieldsFilled || mandatoryPlantMissing || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
@@ -1080,7 +1080,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                 <Animated.View style={{opacity: plantTestAnim, transform: [{translateY: plantTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
                   <View style={[ls.sectionDivider, {borderTopColor: c.primary}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
-                      <MaterialIcons name="science" size={ms(10)} color={c.primary} />
+                      <Icon name="science" size={ms(10)} color={c.primary} />
                       <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
                     </View>
                   </View>
@@ -1146,7 +1146,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
             style={[st.voiceBtn, {backgroundColor: c.primary}]}
             onPress={() => setVoiceWizardVisible(true)}
             activeOpacity={0.7}>
-            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+            <Icon name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
         <SaveButton disabled={allFieldsFilled || mandatoryPlantMissing || (hasApiData && !isDirty) || saving} onPress={handleSavePlant} />
@@ -1493,7 +1493,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
         <View style={[ls.topBar, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
           {!jAllFieldsFilled ? (
             <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setJVoiceWizardVisible(true)} activeOpacity={0.7}>
-              <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+              <Icon name="mic" size={ms(14)} color="#FFF" />
             </TouchableOpacity>
           ) : <View />}
           <LSaveButton disabled={jAllFieldsFilled || mandatoryJobMissing || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
@@ -1593,7 +1593,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
                 <Animated.View style={{opacity: jobTestAnim, transform: [{translateY: jobTestAnim.interpolate({inputRange: [0, 1], outputRange: [12, 0]})}]}}>
                   <View style={[ls.sectionDivider, {borderTopColor: 'transparent'}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
-                      <MaterialIcons name="science" size={ms(10)} color={c.primary} />
+                      <Icon name="science" size={ms(10)} color={c.primary} />
                       <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
                     </View>
                   </View>
@@ -1659,7 +1659,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8)}}>
         {!jAllFieldsFilled ? (
           <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setJVoiceWizardVisible(true)} activeOpacity={0.7}>
-            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+            <Icon name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
         <SaveButton disabled={jAllFieldsFilled || mandatoryJobMissing || (jHasApiData && !jIsDirty) || saving} onPress={handleSaveJobsite} />
@@ -1923,14 +1923,14 @@ function SelectionModal({
       {/* Header */}
       <View style={[sm.header, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
         <View style={[sm.headerIcon, {backgroundColor: c.primary}]}>
-          <MaterialIcons name={headerIcon as any} size={ms(20)} color={c.textOnPrimary} />
+          <Icon name={headerIcon as any} size={ms(20)} color={c.textOnPrimary} />
         </View>
         <View style={common.flex1}>
           <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
           <Text style={[sm.headerSub, {color: c.textMuted}]}>{subtitle}</Text>
         </View>
         <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+          <Icon name="close" size={ms(20)} color={c.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -1949,7 +1949,7 @@ function SelectionModal({
               activeOpacity={0.6}
               onPress={() => handleItemPress(opt.key)}>
               <View style={[sm.itemIcon, {backgroundColor: isSelected ? c.primary : c.surface}]}>
-                <MaterialIcons name={opt.icon as any} size={ms(20)} color={isSelected ? c.textOnPrimary : c.textSecondary} />
+                <Icon name={opt.icon as any} size={ms(20)} color={isSelected ? c.textOnPrimary : c.textSecondary} />
               </View>
               <Text style={[
                 sm.itemText,
@@ -1959,7 +1959,7 @@ function SelectionModal({
                 {opt.label || opt.key}
               </Text>
               {isSelected ? (
-                <MaterialIcons name="check-circle" size={ms(22)} color={c.primary} />
+                <Icon name="check-circle" size={ms(22)} color={c.primary} />
               ) : (
                 <View style={[sm.itemCircle, {borderColor: c.border}]} />
               )}
@@ -1975,7 +1975,7 @@ function SelectionModal({
             style={[sm.footerBtn, sm.cancelBtn, {backgroundColor: c.surface, borderColor: c.border}]}
             activeOpacity={0.7}
             onPress={handleCancel}>
-            <MaterialIcons name="close" size={ms(16)} color={c.textSecondary} />
+            <Icon name="close" size={ms(16)} color={c.textSecondary} />
             <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1985,7 +1985,7 @@ function SelectionModal({
             activeOpacity={hasTempSelection ? 0.7 : 1}
             disabled={!hasTempSelection}
             onPress={handleSave}>
-            <MaterialIcons name="check" size={ms(16)} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
+            <Icon name="check" size={ms(16)} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
             <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}]}>
               {hasChanged ? 'Save' : 'Confirm'}
             </Text>
@@ -2137,7 +2137,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
         <View style={[ls.topBar, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
           {!rAllFieldsFilled ? (
             <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setRVoiceWizardVisible(true)} activeOpacity={0.7}>
-              <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+              <Icon name="mic" size={ms(14)} color="#FFF" />
             </TouchableOpacity>
           ) : <View />}
           <LSaveButton disabled={rAllFieldsFilled || mandatoryRetMissing || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
@@ -2183,7 +2183,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
       <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8)}}>
         {!rAllFieldsFilled ? (
           <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setRVoiceWizardVisible(true)} activeOpacity={0.7}>
-            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+            <Icon name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
         <SaveButton disabled={rAllFieldsFilled || mandatoryRetMissing || !isConcreteValid || (rHasApiData && !rIsDirty) || saving} onPress={handleSave} />
@@ -2218,13 +2218,13 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
           onPress={() => setDisposalModal(true)}>
           {isDisposalValid && (
             <View style={[{width: wp(22), height: wp(22), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
-              <MaterialIcons name={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
+              <Icon name={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
           <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}]} numberOfLines={1} ellipsizeMode="tail">
             {DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || 'Select method'}
           </Text>
-          <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isDisposalValid ? c.primary : c.textMuted} />
+          <Icon name="keyboard-arrow-down" size={ms(20)} color={isDisposalValid ? c.primary : c.textMuted} />
         </TouchableOpacity>
       </Field>
 
@@ -2236,13 +2236,13 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
           onPress={() => setReasonModal(true)}>
           {isReasonValid && (
             <View style={[{width: wp(22), height: wp(22), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center', backgroundColor: c.primary}]}>
-              <MaterialIcons name={RETURN_REASONS.find(r => r.key === returnReason)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
+              <Icon name={RETURN_REASONS.find(r => r.key === returnReason)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
           <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}]} numberOfLines={1} ellipsizeMode="tail">
             {RETURN_REASONS.find(r => r.key === returnReason)?.label || returnReason || 'Select reason'}
           </Text>
-          <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={isReasonValid ? c.primary : c.textMuted} />
+          <Icon name="keyboard-arrow-down" size={ms(20)} color={isReasonValid ? c.primary : c.textMuted} />
         </TouchableOpacity>
       </Field>
       </FieldCard>
@@ -2365,7 +2365,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
       <View style={[tt.headerCard, {backgroundColor: c.white, shadowColor: c.shadowColor}]}>
         <View style={tt.headerTop}>
           <View style={[tt.headerIconWrap, {backgroundColor: c.primarySurface}]}>
-            <MaterialIcons name="schedule" size={ms(18)} color={c.primary} />
+            <Icon name="schedule" size={ms(18)} color={c.primary} />
           </View>
           <View style={common.flex1}>
             <Text style={[tt.headerTitle, {color: c.textPrimary}]}>Delivery Timeline</Text>
@@ -2400,7 +2400,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
               <View style={tt.stepCol}>
                 <View style={[tt.dot, {backgroundColor: hasValue ? c.primary : c.border, borderColor: hasValue ? c.primarySurface : c.surface}]}>
                   {hasValue
-                    ? <MaterialIcons name="check" size={ms(10)} color={c.textOnPrimary} />
+                    ? <Icon name="check" size={ms(10)} color={c.textOnPrimary} />
                     : <Text style={[tt.dotNum, {color: c.textMuted}]}>{i + 1}</Text>
                   }
                 </View>
@@ -2409,7 +2409,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
 
               {/* Center: icon + label */}
               <View style={[tt.iconWrap, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
-                <MaterialIcons name={event.icon as any} size={ms(15)} color={hasValue ? c.primary : c.textTertiary} />
+                <Icon name={event.icon as any} size={ms(15)} color={hasValue ? c.primary : c.textTertiary} />
               </View>
               <View style={common.flex1}>
                 <Text style={[tt.label, {color: c.textPrimary}]}>{ft(({'LEAVE PLANT':'leave_plant','ARRIVE JOB':'arrive_job','START POUR':'start_pour','WASHING':'washing','LEAVE JOB':'leave_job','AT PLANT':'at_plant'} as Record<string,string>)[event.key] || event.key)}</Text>
@@ -2420,7 +2420,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
 
               {/* Right: action */}
               <View style={[tt.editBtn, {backgroundColor: hasValue ? c.primarySurface : c.surface}]}>
-                <MaterialIcons name={hasValue ? 'edit' : 'add'} size={ms(13)} color={hasValue ? c.primary : c.textMuted} />
+                <Icon name={hasValue ? 'edit' : 'add'} size={ms(13)} color={hasValue ? c.primary : c.textMuted} />
               </View>
             </TouchableOpacity>
           );
@@ -2633,7 +2633,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
       <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8)}}>
         {!codAllFieldsFilled ? (
           <TouchableOpacity style={[st.voiceBtn, {backgroundColor: c.primary}]} onPress={() => setCodVoiceWizardVisible(true)} activeOpacity={0.7}>
-            <MaterialIcons name="mic" size={ms(14)} color="#FFF" />
+            <Icon name="mic" size={ms(14)} color="#FFF" />
           </TouchableOpacity>
         ) : <View />}
         <SaveButton disabled={codAllFieldsFilled || mandatoryCodMissing || saving} onPress={handleSaveCod} />
@@ -2653,7 +2653,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
           onPress={openModal}>
           {selectedPayment && (
             <View style={[cod.selectorIcon, {backgroundColor: paymentType ? c.primary : c.surface}]}>
-              <MaterialIcons
+              <Icon
                 name={selectedPayment.icon as any}
                 size={ms(16)}
                 color={paymentType ? c.textOnPrimary : c.textMuted}
@@ -2663,7 +2663,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
           <Text style={[cod.selectorText, {color: paymentType ? c.primary : c.textMuted}]} numberOfLines={1}>
             {selectedPayment?.label || 'Select Payment Type'}
           </Text>
-          <MaterialIcons name="keyboard-arrow-down" size={ms(20)} color={paymentType ? c.primary : c.textMuted} />
+          <Icon name="keyboard-arrow-down" size={ms(20)} color={paymentType ? c.primary : c.textMuted} />
         </TouchableOpacity>
       </Field>
 
@@ -2682,7 +2682,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
             />
           </View>
           <TouchableOpacity style={[st.pickerToggle, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setWaitPickerOpen(true)}>
-            <MaterialIcons name="unfold-more" size={ms(11)} color={c.textSecondary} />
+            <Icon name="unfold-more" size={ms(11)} color={c.textSecondary} />
           </TouchableOpacity>
           <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
             <Text style={[st.unitBadgeText, {color: c.textSecondary}]}>Min</Text>
@@ -2692,7 +2692,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
           <View style={[st.pickerHeader, {borderBottomColor: c.border}]}>
             <Text style={[st.pickerTitle, {color: c.textPrimary}]}>Select Wait Time</Text>
             <TouchableOpacity style={[st.pickerCloseBtn, {backgroundColor: c.surface}]} onPress={() => setWaitPickerOpen(false)} activeOpacity={0.7}>
-              <MaterialIcons name="close" size={ms(18)} color={c.textSecondary} />
+              <Icon name="close" size={ms(18)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
           <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={st.pickerList}>
@@ -2701,7 +2701,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
               return (
                 <TouchableOpacity key={v} style={[st.pickerItem, {borderBottomColor: c.borderLight}, isSelected && {backgroundColor: c.primarySurface}]} activeOpacity={0.6} onPress={() => { setWaitTime(parseInt(v)); setWaitPickerOpen(false); }}>
                   <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}]}>{v} Min</Text>
-                  {isSelected && <MaterialIcons name="check-circle" size={ms(16)} color={c.primary} />}
+                  {isSelected && <Icon name="check-circle" size={ms(16)} color={c.primary} />}
                 </TouchableOpacity>
               );
             })}
@@ -2755,14 +2755,14 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
         {/* Modal Header */}
         <View style={[cod.modalHeader, {backgroundColor: c.primarySurface, borderBottomColor: c.border}]}>
           <View style={[cod.modalHeaderIcon, {backgroundColor: c.primary}]}>
-            <MaterialIcons name="payments" size={ms(20)} color={c.textOnPrimary} />
+            <Icon name="payments" size={ms(20)} color={c.textOnPrimary} />
           </View>
           <View style={common.flex1}>
             <Text style={[cod.modalTitle, {color: c.textPrimary}]}>Payment Type</Text>
             <Text style={[cod.modalSubtitle, {color: c.textMuted}]}>Select a payment method</Text>
           </View>
           <TouchableOpacity style={[cod.modalCloseBtn, {backgroundColor: c.white}]} onPress={closeModal} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+            <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -2786,7 +2786,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
                 <View style={[cod.modalItemIcon, {
                   backgroundColor: isSelected ? c.primary : c.surface,
                 }]}>
-                  <MaterialIcons
+                  <Icon
                     name={opt.icon as any}
                     size={ms(20)}
                     color={isSelected ? c.textOnPrimary : c.textSecondary}
@@ -2800,7 +2800,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
                   {opt.label}
                 </Text>
                 {isSelected ? (
-                  <MaterialIcons name="check-circle" size={ms(22)} color={c.primary} />
+                  <Icon name="check-circle" size={ms(22)} color={c.primary} />
                 ) : (
                   <View style={[cod.modalItemCircle, {borderColor: c.border}]} />
                 )}
@@ -2975,7 +2975,7 @@ export default function NotesScreen({navigation, route}: Props) {
               const active = activeTab === i;
               return (
                 <TouchableOpacity key={tab.key} style={[ls.lhTab, active && {backgroundColor: c.primary}, !isTablet && {paddingHorizontal: wp(8)}]} activeOpacity={0.7} onPress={() => setActiveTab(i)}>
-                  <MaterialIcons name={tab.icon as any} size={ms(13)} color={active ? c.textOnPrimary : c.textOnDark60} />
+                  <Icon name={tab.icon as any} size={ms(13)} color={active ? c.textOnPrimary : c.textOnDark60} />
                   <Text style={[ls.lhTabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>{tab.label}</Text>
                 </TouchableOpacity>
               );
@@ -2983,7 +2983,7 @@ export default function NotesScreen({navigation, route}: Props) {
           </View>
           <View style={{flex: 1, minWidth: isTablet ? undefined : 4}} />
           <TouchableOpacity style={[st.closeBtn, {backgroundColor: c.overlay10}]} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <MaterialIcons name="close" size={ms(18)} color={c.textOnPrimary} />
+            <Icon name="close" size={ms(18)} color={c.textOnPrimary} />
           </TouchableOpacity>
         </View>
       ) : (
@@ -2997,7 +2997,7 @@ export default function NotesScreen({navigation, route}: Props) {
               style={[st.closeBtn, {backgroundColor: c.overlay10}]}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}>
-              <MaterialIcons name="close" size={ms(20)} color={c.textOnPrimary} />
+              <Icon name="close" size={ms(20)} color={c.textOnPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -3011,7 +3011,7 @@ export default function NotesScreen({navigation, route}: Props) {
                   activeOpacity={0.7}
                   onPress={() => setActiveTab(i)}>
                   <View style={[st.tabIconWrap, {backgroundColor: active ? c.overlay20 : c.overlay08}]}>
-                    <MaterialIcons name={tab.icon as any} size={ms(14)} color={active ? c.textOnPrimary : c.textOnDark60} />
+                    <Icon name={tab.icon as any} size={ms(14)} color={active ? c.textOnPrimary : c.textOnDark60} />
                   </View>
                   <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
                     {tab.label}

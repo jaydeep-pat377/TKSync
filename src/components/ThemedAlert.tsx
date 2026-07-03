@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from './Icon';
 import ResponsiveModal from './ResponsiveModal';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
@@ -30,7 +30,7 @@ export default function ThemedAlert({visible, type, title, message, onClose, but
     <ResponsiveModal visible={visible} onClose={onClose} maxWidth={360} widthPercent={80}>
       <View style={s.content}>
         <View style={[s.iconWrap, {backgroundColor: iconBg}]}>
-          <MaterialIcons name={iconName} size={ms(28)} color={iconColor} />
+          <Icon name={iconName} size={ms(28)} color={iconColor} />
         </View>
         <Text style={[s.title, {color: c.textPrimary}]}>{title}</Text>
         <Text style={[s.message, {color: c.textSecondary}]}>{message}</Text>

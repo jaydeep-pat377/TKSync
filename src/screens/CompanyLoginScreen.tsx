@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
@@ -223,7 +223,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
               {/* Login type indicator — hide in landscape phone */}
               {!landscapePhone && (
                 <View style={[styles.loginTypeBadge, {backgroundColor: c.primarySurface, borderColor: c.primaryBorder}]}>
-                  <MaterialIcons name="business" size={ms(14)} color={c.primary} />
+                  <Icon name="business" size={ms(14)} color={c.primary} />
                   <Text style={[styles.loginTypeText, {color: c.primary}]}>
                     {t('companyLogin.badge')}
                   </Text>
@@ -262,7 +262,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
                     landscapePhone && {width: 30, height: 30},
                     isTablet && {width: 42, height: 42},
                   ]}>
-                    <MaterialIcons name="vpn-key" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
+                    <Icon name="vpn-key" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
                   </View>
                   <TextInput
                     style={[
@@ -287,7 +287,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
               {/* Error Message */}
               {error ? (
                 <View style={[styles.errorBox, {backgroundColor: c.errorSurface, borderColor: c.error}]}>
-                  <MaterialIcons name="error-outline" size={ms(14)} color={c.error} />
+                  <Icon name="error-outline" size={ms(14)} color={c.error} />
                   <Text style={[styles.errorText, {color: c.error || '#EF4444'}]}>{error}</Text>
                 </View>
               ) : null}
@@ -307,7 +307,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
                 <Text style={[styles.connectButtonText, landscapePhone && {fontSize: ms(13)}, isTablet && {fontSize: ms(14)}, {color: c.textOnPrimary}]}>
                   {loading ? t('companyLogin.connecting', 'Connecting...') : t('companyLogin.connect')}
                 </Text>
-                {!loading && <MaterialIcons name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
+                {!loading && <Icon name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
               </TouchableOpacity>
 
               {/* Footer — hide in landscape phone */}

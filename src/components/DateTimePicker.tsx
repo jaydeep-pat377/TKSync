@@ -11,7 +11,7 @@ import {
   StatusBar,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 
@@ -250,7 +250,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
           {/* Header */}
           <View style={[ps.hdr, {borderBottomColor: c.borderLight}]}>
             <View style={[ps.hdrIcon, {backgroundColor: c.primarySurface}]}>
-              <MaterialIcons name={mode === 'time' ? 'access-time' : 'event'} size={ms(14)} color={c.primary} />
+              <Icon name={mode === 'time' ? 'access-time' : 'event'} size={ms(14)} color={c.primary} />
             </View>
             <Text style={[ps.hdrTitle, {color: c.textPrimary}]}>{mode === 'time' ? 'Select Time' : 'Select Date & Time'}</Text>
             <TouchableOpacity
@@ -258,7 +258,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
               onPress={onCancel}
               activeOpacity={0.7}
               hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-              <MaterialIcons name="close" size={ms(13)} color={c.textSecondary} />
+              <Icon name="close" size={ms(13)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -274,7 +274,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
                   <>
                     <View style={ps.landscapeCol}>
                       <View style={ps.sectionLabel}>
-                        <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
+                        <Icon name="calendar-today" size={ms(10)} color={c.primary} />
                         <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
                       </View>
                       <View style={ps.wheels}>
@@ -288,7 +288,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
                 )}
                 <View style={ps.landscapeCol}>
                   <View style={ps.sectionLabel}>
-                    <MaterialIcons name="access-time" size={ms(10)} color={c.primary} />
+                    <Icon name="access-time" size={ms(10)} color={c.primary} />
                     <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
                   </View>
                   <View style={ps.wheels}>
@@ -303,7 +303,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
                 {mode !== 'time' && (
                   <>
                     <View style={ps.sectionLabel}>
-                      <MaterialIcons name="calendar-today" size={ms(10)} color={c.primary} />
+                      <Icon name="calendar-today" size={ms(10)} color={c.primary} />
                       <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
                     </View>
                     <View style={ps.wheels}>
@@ -314,7 +314,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
                   </>
                 )}
                 <View style={ps.sectionLabel}>
-                  <MaterialIcons name="access-time" size={ms(10)} color={c.primary} />
+                  <Icon name="access-time" size={ms(10)} color={c.primary} />
                   <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
                 </View>
                 <View style={ps.wheels}>
@@ -338,7 +338,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
               style={[ps.confirmBtn, {backgroundColor: c.primary}]}
               onPress={() => onConfirm(new Date(year, month, day, hour, minute))}
               activeOpacity={0.8}>
-              <MaterialIcons name="check" size={ms(13)} color={c.textOnPrimary} />
+              <Icon name="check" size={ms(13)} color={c.textOnPrimary} />
               <Text style={[ps.btnText, {color: c.textOnPrimary}]}>Confirm</Text>
             </TouchableOpacity>
           </View>

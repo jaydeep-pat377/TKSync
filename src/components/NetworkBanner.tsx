@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Animated, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from './Icon';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
 
 const RESTORED_DISPLAY_MS = 4000;
@@ -68,7 +68,7 @@ export default function NetworkBanner() {
       ]}
       pointerEvents="none">
       <View style={styles.content}>
-        <MaterialIcons name={icon} size={16} color="#fff" />
+        <Icon name={icon} size={16} color="#fff" />
         <Text style={styles.text}>{message}</Text>
       </View>
     </Animated.View>

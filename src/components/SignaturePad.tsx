@@ -1,7 +1,7 @@
 import React, {useRef, useState, useCallback} from 'react';
 import {View, Text, Image, TouchableOpacity, StyleSheet, Platform} from 'react-native';
 import SignatureScreen from 'react-native-signature-canvas';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
@@ -81,25 +81,25 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
     return (
       <View style={st.wrapper}>
         <View style={st.labelRow}>
-          <MaterialIcons name="draw" size={ms(16)} color={c.textMuted} />
+          <Icon name="draw" size={ms(16)} color={c.textMuted} />
           <Text style={[st.label, {color: c.textMuted}]}>Signature</Text>
         </View>
         <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: c.primary}]}>
           <Image source={{uri: initialImage}} style={st.readOnlyImage} resizeMode="contain" />
           <View style={[st.signLine, {borderBottomColor: c.textMuted}]}>
-            <MaterialIcons name="play-arrow" size={ms(14)} color={c.textMuted} />
+            <Icon name="play-arrow" size={ms(14)} color={c.textMuted} />
           </View>
           {onEditPress && (
             <TouchableOpacity
               style={[st.editBtn, {backgroundColor: c.white, borderColor: c.border}]}
               onPress={onEditPress}
               activeOpacity={0.7}>
-              <MaterialIcons name="edit" size={ms(14)} color={c.textSecondary} />
+              <Icon name="edit" size={ms(14)} color={c.textSecondary} />
               <Text style={[st.editText, {color: c.textSecondary}]}>Edit</Text>
             </TouchableOpacity>
           )}
           <View style={[st.statusBadge, {backgroundColor: c.primarySurface}]}>
-            <MaterialIcons name="check" size={ms(12)} color={c.primary} />
+            <Icon name="check" size={ms(12)} color={c.primary} />
           </View>
         </View>
       </View>
@@ -109,7 +109,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
   return (
     <View style={st.wrapper}>
       <View style={st.labelRow}>
-        <MaterialIcons name="draw" size={ms(16)} color={c.textMuted} />
+        <Icon name="draw" size={ms(16)} color={c.textMuted} />
         <Text style={[st.label, {color: c.textMuted}]}>Draw your signature below</Text>
       </View>
 
@@ -136,13 +136,13 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
           style={[st.clearBtn, {backgroundColor: c.white, borderColor: c.border}]}
           onPress={handleClear}
           activeOpacity={0.7}>
-          <MaterialIcons name="refresh" size={ms(14)} color={c.textSecondary} />
+          <Icon name="refresh" size={ms(14)} color={c.textSecondary} />
           <Text style={[st.clearText, {color: c.textSecondary}]}>Clear</Text>
         </TouchableOpacity>
 
         {/* Sign line */}
         <View style={[st.signLine, {borderBottomColor: isDark ? c.textMuted : '#333'}]}>
-          <MaterialIcons name="play-arrow" size={ms(14)} color={isDark ? c.textMuted : '#333'} />
+          <Icon name="play-arrow" size={ms(14)} color={isDark ? c.textMuted : '#333'} />
         </View>
 
         {/* Sign here label */}
@@ -151,7 +151,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
         {/* Status indicator */}
         {hasSignature && (
           <View style={[st.statusBadge, {backgroundColor: c.primarySurface}]}>
-            <MaterialIcons name="check" size={ms(12)} color={c.primary} />
+            <Icon name="check" size={ms(12)} color={c.primary} />
           </View>
         )}
       </View>

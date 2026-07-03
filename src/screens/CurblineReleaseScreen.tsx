@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
@@ -239,14 +239,14 @@ export default function CurblineReleaseScreen({navigation, route}: Props) {
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
               hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-              <MaterialIcons name="close" size={ms(20)} color={c.textSecondary} />
+              <Icon name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Offline indicator */}
           {loadedFromOffline && (
             <View style={[s.offlineBanner, {backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}]}>
-              <MaterialIcons name="cloud-off" size={ms(14)} color={c.warningDark} />
+              <Icon name="cloud-off" size={ms(14)} color={c.warningDark} />
               <Text style={[s.offlineBannerText, {color: c.warningDark}]}>Loaded from local data</Text>
             </View>
           )}

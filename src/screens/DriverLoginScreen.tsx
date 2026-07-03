@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
@@ -220,7 +220,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                 {t('app.tagline')}
               </Text>
               <View style={[styles.companyBadge, {backgroundColor: c.textOnDark12}]}>
-                <MaterialIcons name="check-circle" size={ms(12)} color={c.success} />
+                <Icon name="check-circle" size={ms(12)} color={c.success} />
                 <Text style={[styles.companyBadgeText, {color: c.textOnDark70}]}>{company?.company_name ?? ''}</Text>
               </View>
             </Animated.View>
@@ -240,7 +240,7 @@ export default function DriverLoginScreen({navigation}: Props) {
               {/* Login type indicator — hide in landscape phone to save space */}
               {!landscapePhone && (
                 <View style={[styles.loginTypeBadge, {backgroundColor: c.primaryDark}]}>
-                  <MaterialIcons name="local-shipping" size={ms(14)} color={c.textOnPrimary} />
+                  <Icon name="local-shipping" size={ms(14)} color={c.textOnPrimary} />
                   <Text style={[styles.loginTypeText, {color: c.textOnPrimary}]}>
                     {t('driverLogin.badge')}
                   </Text>
@@ -279,7 +279,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                     landscapePhone && {width: 30, height: 30},
                     isTablet && {width: 42, height: 42},
                   ]}>
-                    <MaterialIcons name="local-shipping" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
+                    <Icon name="local-shipping" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
                   </View>
                   <TextInput
                     style={[
@@ -316,7 +316,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                     landscapePhone && {width: 30, height: 30},
                     isTablet && {width: 42, height: 42},
                   ]}>
-                    <MaterialIcons name="badge" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
+                    <Icon name="badge" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
                   </View>
                   <TextInput
                     style={[
@@ -342,7 +342,7 @@ export default function DriverLoginScreen({navigation}: Props) {
               {/* Error Message */}
               {error ? (
                 <View style={[styles.errorBox, {backgroundColor: c.errorSurface, borderColor: c.error}]}>
-                  <MaterialIcons name="error-outline" size={ms(14)} color={c.error} />
+                  <Icon name="error-outline" size={ms(14)} color={c.error} />
                   <Text style={[styles.errorText, {color: c.error || '#EF4444'}]}>{error}</Text>
                 </View>
               ) : null}
@@ -357,7 +357,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                   {borderColor: rememberMe ? c.primary : c.border},
                   rememberMe && {backgroundColor: c.primary},
                 ]}>
-                  {rememberMe && <MaterialIcons name="check" size={ms(12)} color={c.textOnPrimary} />}
+                  {rememberMe && <Icon name="check" size={ms(12)} color={c.textOnPrimary} />}
                 </View>
                 <Text style={[styles.rememberText, {color: c.textSecondary}]}>
                   {t('driverLogin.rememberMe', 'Remember Me')}
@@ -379,7 +379,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                 <Text style={[styles.loginButtonText, landscapePhone && {fontSize: ms(13)}, isTablet && {fontSize: ms(14)}, {color: c.textOnPrimary}]}>
                   {loading ? t('driverLogin.signingIn', 'Signing In...') : t('driverLogin.signIn')}
                 </Text>
-                {!loading && <MaterialIcons name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
+                {!loading && <Icon name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
               </TouchableOpacity>
 
               {/* Footer — hide in landscape phone to save space */}

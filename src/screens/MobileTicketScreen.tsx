@@ -8,9 +8,10 @@ import {
   StatusBar,
   useWindowDimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
@@ -51,7 +52,7 @@ const normalizeUOM = (unit: string | null): string => {
 function LSectionHead({icon, title, color, fs}: {icon: string; title: string; color: string; fs: (n: number) => number}) {
   return (
     <View style={{flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8}}>
-      <MaterialIcons name={icon as any} size={fs(12)} color={color} />
+      <Icon name={icon as any} size={fs(12)} color={color} />
       <Text style={{fontSize: fs(12), fontWeight: '800', letterSpacing: 0.5, color}}>{title}</Text>
     </View>
   );
@@ -74,7 +75,7 @@ function LRow({label, value, highlight, highlightBg, textColor, labelColor, labe
 function SLabel({text, icon, color}: {text: string; icon?: string; color: string}) {
   return (
     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(5), marginBottom: wp(6)}}>
-      {icon && <MaterialIcons name={icon as any} size={ms(13)} color={color} />}
+      {icon && <Icon name={icon as any} size={ms(13)} color={color} />}
       <Text style={{fontSize: ms(9), fontWeight: '800', letterSpacing: 0.6, color}}>{text}</Text>
     </View>
   );
@@ -195,14 +196,14 @@ export default function MobileTicketScreen({navigation, route}: Props) {
     return (
       <View style={[s.container, {backgroundColor: c.background, justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(24)}]}>
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-        <MaterialIcons name="error-outline" size={ms(48)} color={c.textSecondary} />
+        <Icon name="error-outline" size={ms(48)} color={c.textSecondary} />
         <Text style={{fontSize: ms(15), fontWeight: '700', color: c.textPrimary, marginTop: wp(12), textAlign: 'center'}}>Server Error</Text>
         <Text style={{fontSize: ms(12), color: c.textSecondary, marginTop: wp(6), textAlign: 'center'}}>Unable to connect to the server. Please try again later.</Text>
         <TouchableOpacity
           onPress={() => ticketId && fetchPrintable(ticketId)}
           activeOpacity={0.7}
           style={{flexDirection: 'row', alignItems: 'center', gap: wp(6), marginTop: wp(20), backgroundColor: c.primary, paddingVertical: wp(10), paddingHorizontal: wp(24), borderRadius: wp(8)}}>
-          <MaterialIcons name="refresh" size={ms(16)} color="#fff" />
+          <Icon name="refresh" size={ms(16)} color="#fff" />
           <Text style={{fontSize: ms(13), fontWeight: '700', color: '#fff'}}>Retry</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={{marginTop: wp(12)}}>
@@ -228,7 +229,7 @@ export default function MobileTicketScreen({navigation, route}: Props) {
           {/* Banner */}
           <View style={[s.banner, {backgroundColor: c.bannerBg}, wide && {paddingHorizontal: 16, paddingVertical: 12}]}>
             <View style={[s.bannerIcon, {backgroundColor: c.overlay15}, wide && {width: 34, height: 34, borderRadius: 10}]}>
-              <MaterialIcons name="receipt-long" size={wide ? 19 : ms(16)} color={c.textOnPrimary} />
+              <Icon name="receipt-long" size={wide ? 19 : ms(16)} color={c.textOnPrimary} />
             </View>
             <View style={{flex: 1}}>
               <Text style={[s.bannerTitle, {color: c.textOnPrimary}, wide && {fontSize: 18}]}>MOBILE TICKET</Text>
@@ -243,12 +244,12 @@ export default function MobileTicketScreen({navigation, route}: Props) {
             </View>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wide ? 6 : wp(6)}}>
               <View style={[s.qrPlaceholder, {backgroundColor: c.overlay15}, wide && {width: 30, height: 30, borderRadius: 7}]}>
-                <MaterialIcons name="qr-code-2" size={wide ? 20 : ms(20)} color={c.textOnPrimary} />
+                <Icon name="qr-code-2" size={wide ? 20 : ms(20)} color={c.textOnPrimary} />
               </View>
               <TouchableOpacity
                 style={[s.closeBtn, {backgroundColor: c.overlay15}, wide && {width: 30, height: 30, borderRadius: 15}]}
                 onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                <MaterialIcons name="close" size={wide ? 16 : ms(18)} color={c.textOnPrimary} />
+                <Icon name="close" size={wide ? 16 : ms(18)} color={c.textOnPrimary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -465,7 +466,7 @@ const createS = () => StyleSheet.create({
   ticketCard: {borderRadius: wp(12), overflow: 'hidden', elevation: 3, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 6},
   banner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(12), paddingVertical: wp(8), gap: wp(8)},
   bannerIcon: {width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
-  bannerTitle: {fontSize: ms(16), fontWeight: '900', letterSpacing: 0.6},
+  bannerTitle: {fontSize: ms(16), fontWeight: '900', letterSpacing: 3, fontFamily: Platform.OS === 'ios' ? 'Helvetica' : 'sans-serif'},
   qrPlaceholder: {width: wp(32), height: wp(32), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center'},
   closeBtn: {width: wp(34), height: wp(34), borderRadius: wp(17), justifyContent: 'center', alignItems: 'center'},
   section: {paddingHorizontal: wp(14), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth},
