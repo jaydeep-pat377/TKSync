@@ -142,6 +142,6 @@
     "actions": "ACTIONS",
     "signAccept": "SIGN & ACCEPT TICKET",
     "disputeLoad": "DISPUTE LOAD",
-    "signCurbline": "SIGN CURBLINE RELEASE"
+    "signCurbline": "CURBLINE RELEASE"
   }
 }

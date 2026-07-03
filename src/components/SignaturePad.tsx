@@ -14,9 +14,11 @@ type Props = {
   readOnly?: boolean;
   initialImage?: string | null;
   onEditPress?: () => void;
+  minimal?: boolean;
+  clearRef?: React.MutableRefObject<(() => void) | null>;
 };
 
-export default function SignaturePad({onSignatureChange, height = 280, onTouchStart, onTouchEnd, readOnly, initialImage, onEditPress}: Props) {
+export default function SignaturePad({onSignatureChange, height = 280, onTouchStart, onTouchEnd, readOnly, initialImage, onEditPress, minimal, clearRef}: Props) {
   useFontScaleRefresh();
   const st = createSt();
   const {c, isDark} = useTheme();
@@ -69,6 +71,9 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
     onSignatureChange(null);
   }, [onSignatureChange]);
 
+  // Expose clear to parent via ref
+  if (clearRef) clearRef.current = handleClear;
+
   const webStyle = `
     .m-signature-pad { box-shadow: none; border: none; margin: 0; }
     .m-signature-pad--body { border: none; }
@@ -107,13 +112,15 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
   }
 
   return (
-    <View style={st.wrapper}>
-      <View style={st.labelRow}>
-        <Icon name="draw" size={ms(16)} color={c.textMuted} />
-        <Text style={[st.label, {color: c.textMuted}]}>Draw your signature below</Text>
-      </View>
+    <View style={[st.wrapper, minimal && {marginTop: wp(4)}]}>
+      {!minimal && (
+        <View style={st.labelRow}>
+          <Icon name="draw" size={ms(16)} color={c.textMuted} />
+          <Text style={[st.label, {color: c.textMuted}]}>Draw your signature below</Text>
+        </View>
+      )}
 
-      <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: hasSignature ? c.primary : c.border}]}>
+      <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: hasSignature ? c.primary : c.border}, minimal && {borderRadius: wp(6), borderWidth: 1}]}>
         <SignatureScreen
           ref={sigRef}
           onBegin={handleBegin}
@@ -132,24 +139,28 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
         />
 
         {/* Clear button */}
-        <TouchableOpacity
-          style={[st.clearBtn, {backgroundColor: c.white, borderColor: c.border}]}
-          onPress={handleClear}
-          activeOpacity={0.7}>
-          <Icon name="refresh" size={ms(14)} color={c.textSecondary} />
-          <Text style={[st.clearText, {color: c.textSecondary}]}>Clear</Text>
-        </TouchableOpacity>
+        {!minimal && (
+          <TouchableOpacity
+            style={[st.clearBtn, {backgroundColor: c.white, borderColor: c.border}]}
+            onPress={handleClear}
+            activeOpacity={0.7}>
+            <Icon name="refresh" size={ms(14)} color={c.textSecondary} />
+            <Text style={[st.clearText, {color: c.textSecondary}]}>Clear</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Sign line */}
-        <View style={[st.signLine, {borderBottomColor: isDark ? c.textMuted : '#333'}]}>
-          <Icon name="play-arrow" size={ms(14)} color={isDark ? c.textMuted : '#333'} />
-        </View>
+        {!minimal && (
+          <View style={[st.signLine, {borderBottomColor: isDark ? c.textMuted : '#333'}]}>
+            <Icon name="play-arrow" size={ms(14)} color={isDark ? c.textMuted : '#333'} />
+          </View>
+        )}
 
         {/* Sign here label */}
-        <Text style={[st.signHere, {color: isDark ? c.textMuted : '#333'}]}>SIGN HERE</Text>
+        <Text style={[st.signHere, {color: isDark ? c.textMuted : '#999'}]}>SIGN HERE</Text>
 
         {/* Status indicator */}
-        {hasSignature && (
+        {!minimal && hasSignature && (
           <View style={[st.statusBadge, {backgroundColor: c.primarySurface}]}>
             <Icon name="check" size={ms(12)} color={c.primary} />
           </View>

@@ -30,6 +30,9 @@ import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
 import ResponsiveModal from '../components/ResponsiveModal';
 import AdditionalEntriesModal from '../components/AdditionalEntriesModal';
+import AcceptTicketModal from '../components/AcceptTicketModal';
+import DisputeTicketModal from '../components/DisputeTicketModal';
+import CurblineReleaseModal from '../components/CurblineReleaseModal';
 import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
@@ -403,6 +406,9 @@ export default function DashboardScreen({ navigation }: Props) {
   const [returnedPickerType, setReturnedPickerType] = useState<'reason' | 'disposal' | null>(null);
   const [additionalEntriesVisible, setAdditionalEntriesVisible] = useState(false);
   const [additionalEntriesTab, setAdditionalEntriesTab] = useState<'plant' | 'jobsite' | 'cod'>('plant');
+  const [acceptTicketVisible, setAcceptTicketVisible] = useState(false);
+  const [disputeTicketVisible, setDisputeTicketVisible] = useState(false);
+  const [curblineReleaseVisible, setCurblineReleaseVisible] = useState(false);
   const [timePickerStep, setTimePickerStep] = useState<{ key: string; label: string } | null>(null);
   const [timePickerHour, setTimePickerHour] = useState(0);
   const [timePickerMinute, setTimePickerMinute] = useState(0);
@@ -1114,7 +1120,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 return (
                   <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
                     style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
-                    <View style={{ width: isSelected ? ms(7) : ms(5), height: isSelected ? ms(7) : ms(5), borderRadius: ms(4), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
+                    <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
                     <Text style={[styles.tabText, { color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700' }]}>{ticket.ticket_code}</Text>
                   </TouchableOpacity>
                 );
@@ -1527,18 +1533,9 @@ export default function DashboardScreen({ navigation }: Props) {
                       ] as const).map((link, i, arr) => (
                         <View key={link.screen} style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <TouchableOpacity activeOpacity={0.6} onPress={() => {
-                            const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true };
-                            if (currentTicket) {
-                              params.ticketInfo = {
-                                customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
-                                customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
-                                project_name: detail?.job?.project_name || currentTicket.project_name || '',
-                                project_code: detail?.job?.project_code || currentTicket.project_code || '',
-                                order_code: currentTicket.order_code || '',
-                                ticket_code: currentTicket.ticket_code || '',
-                              };
-                            }
-                            navigation.navigate(link.screen, params);
+                            if (link.screen === 'AcceptTicket') { setAcceptTicketVisible(true); return; }
+                            if (link.screen === 'DisputeTicket') { setDisputeTicketVisible(true); return; }
+                            if (link.screen === 'CurblineRelease') { setCurblineReleaseVisible(true); return; }
                           }}>
                             <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.primary }}>{link.label}</Text>
                           </TouchableOpacity>
@@ -2242,6 +2239,54 @@ export default function DashboardScreen({ navigation }: Props) {
         isLandscape={L}
       />
 
+      {/* ─── ACCEPT TICKET MODAL ─── */}
+      <AcceptTicketModal
+        visible={acceptTicketVisible}
+        onClose={() => setAcceptTicketVisible(false)}
+        ticketId={currentTicket?.id || null}
+        ticketInfo={currentTicket ? {
+          customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
+          customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
+          project_name: detail?.job?.project_name || currentTicket.project_name || '',
+          project_code: detail?.job?.project_code || currentTicket.project_code || '',
+          order_code: currentTicket.order_code || '',
+          ticket_code: currentTicket.ticket_code || '',
+        } : null}
+        isLandscape={L}
+      />
+
+      {/* ─── DISPUTE TICKET MODAL ─── */}
+      <DisputeTicketModal
+        visible={disputeTicketVisible}
+        onClose={() => setDisputeTicketVisible(false)}
+        ticketId={currentTicket?.id || null}
+        ticketInfo={currentTicket ? {
+          customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
+          customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
+          project_name: detail?.job?.project_name || currentTicket.project_name || '',
+          project_code: detail?.job?.project_code || currentTicket.project_code || '',
+          order_code: currentTicket.order_code || '',
+          ticket_code: currentTicket.ticket_code || '',
+        } : null}
+        isLandscape={L}
+      />
+
+      {/* ─── CURBLINE RELEASE MODAL ─── */}
+      <CurblineReleaseModal
+        visible={curblineReleaseVisible}
+        onClose={() => setCurblineReleaseVisible(false)}
+        ticketId={currentTicket?.id || null}
+        ticketInfo={currentTicket ? {
+          customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
+          customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
+          project_name: detail?.job?.project_name || currentTicket.project_name || '',
+          project_code: detail?.job?.project_code || currentTicket.project_code || '',
+          order_code: currentTicket.order_code || '',
+          ticket_code: currentTicket.ticket_code || '',
+        } : null}
+        isLandscape={L}
+      />
+
       {/* ─── DELIVERY INSTRUCTIONS MODAL ─── */}
       <ResponsiveModal
         visible={instructionsModalVisible}
@@ -2502,18 +2547,9 @@ export default function DashboardScreen({ navigation }: Props) {
               activeOpacity={0.6}
               onPress={() => {
                 setEditVisible(false);
-                const params: Record<string, any> = { ticketId: currentTicket?.id, editable: true };
-                if (currentTicket) {
-                  params.ticketInfo = {
-                    customer_name: detail?.job?.customer_name || currentTicket.customer_name || '',
-                    customer_code: detail?.job?.customer_code || currentTicket.customer_code || '',
-                    project_name: detail?.job?.project_name || currentTicket.project_name || '',
-                    project_code: detail?.job?.project_code || currentTicket.project_code || '',
-                    order_code: currentTicket.order_code || '',
-                    ticket_code: currentTicket.ticket_code || '',
-                  };
-                }
-                navigation.navigate(item.screen, params);
+                if (item.screen === 'AcceptTicket') { setAcceptTicketVisible(true); return; }
+                if (item.screen === 'DisputeTicket') { setDisputeTicketVisible(true); return; }
+                if (item.screen === 'CurblineRelease') { setCurblineReleaseVisible(true); return; }
               }}>
               <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
                 <Icon name={item.icon as any} size={ms(18)} color={item.iconColor} />
