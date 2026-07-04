@@ -210,13 +210,11 @@ export default function DriverLoginScreen({navigation}: Props) {
               </View>
               <Text style={[
                 styles.appName,
-                landscapePhone && {fontSize: ms(22)},
-                isTablet && {fontSize: ms(28)},
-                {color: c.textOnPrimary},
+                {fontSize: ms(landscapePhone ? 16 : isTablet ? 20 : 18), color: c.textOnPrimary},
               ]}>
                 {t('app.name')}
               </Text>
-              <Text style={[styles.appTagline, {color: c.textOnDark70}]}>
+              <Text style={[styles.appTagline, {fontSize: ms(landscapePhone ? 9 : isTablet ? 11 : 10), color: c.textOnDark70}]}>
                 {t('app.tagline')}
               </Text>
               <View style={[styles.companyBadge, {backgroundColor: c.textOnDark12}]}>
@@ -249,17 +247,16 @@ export default function DriverLoginScreen({navigation}: Props) {
 
               <Text style={[
                 styles.welcomeText,
-                landscapePhone && {fontSize: ms(18), marginBottom: 1},
-                isTablet && {fontSize: ms(20)},
-                {color: c.textPrimary},
+                {fontSize: ms(landscapePhone ? 13 : isTablet ? 16 : 15), color: c.textPrimary},
+                landscapePhone && {marginBottom: 1},
               ]}>
                 {t('driverLogin.title')}
               </Text>
               <Text style={[
                 styles.welcomeSub,
-                landscapePhone && {marginBottom: 6, fontSize: ms(12)},
+                {fontSize: ms(landscapePhone ? 9 : isTablet ? 11 : 10), color: c.textTertiary},
+                landscapePhone && {marginBottom: 6},
                 isTablet && {marginBottom: 18},
-                {color: c.textTertiary},
               ]}>
                 {t('driverLogin.subtitle')}
               </Text>
@@ -284,9 +281,9 @@ export default function DriverLoginScreen({navigation}: Props) {
                   <TextInput
                     style={[
                       styles.input,
-                      landscapePhone && {paddingVertical: 6, fontSize: ms(13)},
-                      isTablet && {paddingVertical: 10, fontSize: ms(14)},
-                      {color: c.textPrimary},
+                      {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textPrimary},
+                      landscapePhone && {paddingVertical: 6},
+                      isTablet && {paddingVertical: 10},
                     ]}
                     placeholder={t('driverLogin.truckNumberPlaceholder')}
                     placeholderTextColor={c.textPlaceholder}
@@ -321,9 +318,9 @@ export default function DriverLoginScreen({navigation}: Props) {
                   <TextInput
                     style={[
                       styles.input,
-                      landscapePhone && {paddingVertical: 6, fontSize: ms(13)},
-                      isTablet && {paddingVertical: 10, fontSize: ms(14)},
-                      {color: c.textPrimary},
+                      {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textPrimary},
+                      landscapePhone && {paddingVertical: 6},
+                      isTablet && {paddingVertical: 10},
                     ]}
                     placeholder={t('driverLogin.driverPinPlaceholder')}
                     placeholderTextColor={c.textPlaceholder}
@@ -376,7 +373,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                 onPress={handleLogin}
                 activeOpacity={0.85}
                 disabled={loading}>
-                <Text style={[styles.loginButtonText, landscapePhone && {fontSize: ms(13)}, isTablet && {fontSize: ms(14)}, {color: c.textOnPrimary}]}>
+                <Text style={[styles.loginButtonText, {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textOnPrimary}]}>
                   {loading ? t('driverLogin.signingIn', 'Signing In...') : t('driverLogin.signIn')}
                 </Text>
                 {!loading && <Icon name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
@@ -410,27 +407,27 @@ const createStyles = () => StyleSheet.create({
   brandingSection: {alignItems: 'center', marginBottom: wp(24)},
   logoOuter: {width: wp(82), height: wp(82), borderRadius: wp(26), justifyContent: 'center', alignItems: 'center', borderWidth: 2},
   logoInner: {width: wp(60), height: wp(60), borderRadius: wp(18), justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
-  appName: {fontSize: ms(30), fontWeight: '800', letterSpacing: 2},
-  appTagline: {fontSize: ms(14), marginTop: 4, letterSpacing: 0.5},
+  appName: {fontWeight: '800', letterSpacing: 2},
+  appTagline: {marginTop: 4, letterSpacing: 0.5},
   companyBadge: {flexDirection: 'row', alignItems: 'center', gap: wp(6), marginTop: wp(10), paddingHorizontal: wp(14), paddingVertical: wp(5), borderRadius: wp(14)},
-  companyBadgeText: {fontSize: ms(12), fontWeight: '600', letterSpacing: 0.3},
+  companyBadgeText: {fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3},
   formCard: {borderRadius: wp(22), paddingHorizontal: wp(20), paddingVertical: wp(22), elevation: 20, shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.15, shadowRadius: 30},
   loginTypeBadge: {flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(20), gap: wp(6), marginBottom: wp(12)},
-  loginTypeText: {fontSize: ms(12), fontWeight: '700', letterSpacing: 0.3},
-  welcomeText: {fontSize: ms(24), fontWeight: '700', marginBottom: 4},
-  welcomeSub: {fontSize: ms(14), marginBottom: wp(16)},
-  fieldLabel: {fontSize: ms(13), fontWeight: '600', marginBottom: wp(6), letterSpacing: 0.3},
+  loginTypeText: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.3},
+  welcomeText: {fontWeight: '700', marginBottom: 4},
+  welcomeSub: {marginBottom: wp(16)},
+  fieldLabel: {fontSize: ms(10), fontWeight: '600', marginBottom: wp(6), letterSpacing: 0.3},
   inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(12), borderWidth: 1.5},
   inputIconBox: {width: wp(40), height: wp(40), justifyContent: 'center', alignItems: 'center', marginLeft: wp(4)},
-  input: {flex: 1, paddingVertical: wp(12), fontSize: ms(15), paddingRight: wp(14)},
+  input: {flex: 1, paddingVertical: wp(12), paddingRight: wp(14)},
   errorBox: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(8), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(10)},
-  errorText: {fontSize: ms(12), fontWeight: '500', flex: 1},
+  errorText: {fontSize: ms(9), fontWeight: '500', flex: 1},
   rememberRow: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(10)},
   checkbox: {width: wp(20), height: wp(20), borderRadius: wp(5), borderWidth: 1.5, justifyContent: 'center', alignItems: 'center'},
-  rememberText: {fontSize: ms(13), fontWeight: '500'},
+  rememberText: {fontSize: ms(10), fontWeight: '500'},
   loginButton: {flexDirection: 'row', borderRadius: wp(12), paddingVertical: wp(14), alignItems: 'center', justifyContent: 'center', gap: wp(8), marginTop: wp(6), elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
-  loginButtonText: {fontSize: ms(16), fontWeight: '700', letterSpacing: 0.5},
+  loginButtonText: {fontWeight: '700', letterSpacing: 0.5},
   footer: {flexDirection: 'row', alignItems: 'center', marginTop: wp(14), gap: wp(12)},
   footerDivider: {flex: 1, height: 1},
-  footerText: {fontSize: ms(12), fontWeight: '500'},
+  footerText: {fontSize: ms(9), fontWeight: '500'},
 });
