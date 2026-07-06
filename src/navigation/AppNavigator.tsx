@@ -7,11 +7,7 @@ import SplashScreen from '../screens/SplashScreen';
 import CompanyLoginScreen from '../screens/CompanyLoginScreen';
 import DriverLoginScreen from '../screens/DriverLoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
-import MobileTicketScreen from '../screens/MobileTicketScreen';
 import NotesScreen from '../screens/NotesScreen';
-import AcceptTicketScreen from '../screens/AcceptTicketScreen';
-import DisputeTicketScreen from '../screens/DisputeTicketScreen';
-import CurblineReleaseScreen from '../screens/CurblineReleaseScreen';
 import MapScreen from '../screens/MapScreen';
 import DeliveredToMapScreen from '../screens/DeliveredToMapScreen';
 import VehicleTrackingScreen from '../screens/VehicleTrackingScreen';
@@ -21,7 +17,6 @@ const Stack = createNativeStackNavigator();
 export default function AppNavigator() {
   const {c} = useTheme();
 
-  // Navigation theme with proper background to prevent white flashes
   const navTheme = useMemo(() => ({
     ...DefaultTheme,
     colors: {
@@ -62,29 +57,9 @@ export default function AppNavigator() {
           options={{contentStyle: {backgroundColor: c.background}}}
         />
         <Stack.Screen
-          name="MobileTicket"
-          component={MobileTicketScreen}
-          options={{animation: 'slide_from_bottom', contentStyle: {backgroundColor: c.accentBg}}}
-        />
-        <Stack.Screen
           name="Notes"
           component={NotesScreen}
           options={{animation: 'slide_from_bottom', contentStyle: {backgroundColor: c.primaryDark}}}
-        />
-        <Stack.Screen
-          name="AcceptTicket"
-          component={AcceptTicketScreen}
-          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.accentBg}}}
-        />
-        <Stack.Screen
-          name="DisputeTicket"
-          component={DisputeTicketScreen}
-          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.accentBg}}}
-        />
-        <Stack.Screen
-          name="CurblineRelease"
-          component={CurblineReleaseScreen}
-          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.accentBg}}}
         />
         <Stack.Screen
           name="Map"

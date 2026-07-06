@@ -1,8 +1,11 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Animated, StyleSheet, Text, View} from 'react-native';
+import {Animated, StyleSheet, Text, View, Platform,
+} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 const RESTORED_DISPLAY_MS = 4000;
 
@@ -67,9 +70,9 @@ export default function NetworkBanner() {
         },
       ]}
       pointerEvents="none">
-      <View style={styles.content}>
+      <View style={[styles.content, {fontFamily: MONO}]}>
         <Icon name={icon} size={16} color="#fff" />
-        <Text style={styles.text}>{message}</Text>
+        <Text style={[styles.text, {fontFamily: MONO}]}>{message}</Text>
       </View>
     </Animated.View>
   );

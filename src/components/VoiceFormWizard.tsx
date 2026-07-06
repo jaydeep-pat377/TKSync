@@ -9,6 +9,7 @@ import {
   Linking,
   TextInput,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import Icon from './Icon';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -16,6 +17,8 @@ import ResponsiveModal from './ResponsiveModal';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {deepgramSpeech, deepgramTTS, type DeepgramEvent} from '../services/deepgramSpeech';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 // ─── TYPES ───
 
@@ -508,11 +511,11 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
       <Animated.View style={[styles.container, {backgroundColor: c.white, opacity: fadeAnim}]}>
         {/* Header with real-time title + subtitle */}
         <View style={[styles.header, {borderBottomColor: c.border}]}>
-          <View style={styles.headerLeft}>
+          <View style={[styles.headerLeft, {fontFamily: MONO}]}>
             <Icon name="mic" size={ms(18)} color={c.primary} />
             <View>
-              <Text style={[styles.headerTitle, {color: c.textPrimary}]}>{getDynamicTitle()}</Text>
-              <Text style={[styles.headerSubtitle, {color: c.textSecondary}]}>{getDynamicSubtitle()}</Text>
+              <Text style={[styles.headerTitle, {color: c.textPrimary, fontFamily: MONO}]}>{getDynamicTitle()}</Text>
+              <Text style={[styles.headerSubtitle, {color: c.textSecondary, fontFamily: MONO}]}>{getDynamicSubtitle()}</Text>
             </View>
           </View>
           <TouchableOpacity onPress={handleCancel} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
@@ -530,7 +533,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               return (
                 <View key={f.key} style={[styles.fieldChip, isCurrent && {borderColor: c.primary, borderWidth: 1.5}, !isCurrent && {borderColor: 'transparent', borderWidth: 1.5}]}>
                   {val ? <VI status={v.status} /> : (isCurrent ? <Icon name="mic" size={ms(12)} color={c.primary} /> : <Icon name="radio-button-unchecked" size={ms(12)} color={c.textMuted} />)}
-                  <Text style={[styles.fieldChipText, {color: isCurrent ? c.primary : val ? c.textPrimary : c.textMuted}]} numberOfLines={1}>{val || f.label.split(' ')[0]}</Text>
+                  <Text style={[styles.fieldChipText, {color: isCurrent ? c.primary : val ? c.textPrimary : c.textMuted, fontFamily: MONO}]} numberOfLines={1}>{val || f.label.split(' ')[0]}</Text>
                 </View>
               );
             })}
@@ -546,37 +549,37 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
         {/* ═══ CONFIRM ═══ */}
         {phase === 'confirm' && (
-          <View style={styles.confirmContainer}>
-            <View style={styles.confirmHeader}>
+          <View style={[styles.confirmContainer, {fontFamily: MONO}]}>
+            <View style={[styles.confirmHeader, {fontFamily: MONO}]}>
               <Icon name="assignment-turned-in" size={ms(26)} color={c.primary} />
-              <Text style={[styles.confirmQuestion, {color: c.textPrimary}]}>
+              <Text style={[styles.confirmQuestion, {color: c.textPrimary, fontFamily: MONO}]}>
                 Voice capture complete
               </Text>
             </View>
 
             {/* Summary badges */}
-            <View style={styles.confirmStats}>
+            <View style={[styles.confirmStats, {fontFamily: MONO}]}>
               <View style={[styles.statBadge, {backgroundColor: c.successSurface}]}>
                 <Icon name="check-circle" size={ms(10)} color={c.success} />
-                <Text style={[styles.statText, {color: c.success}]}>{validCount} Filled</Text>
+                <Text style={[styles.statText, {color: c.success, fontFamily: MONO}]}>{validCount} Filled</Text>
               </View>
               {skippedFieldCount > 0 && (
                 <View style={[styles.statBadge, {backgroundColor: c.surface}]}>
                   <Icon name="remove-circle-outline" size={ms(10)} color={c.textMuted} />
-                  <Text style={[styles.statText, {color: c.textMuted}]}>{skippedFieldCount} Empty</Text>
+                  <Text style={[styles.statText, {color: c.textMuted, fontFamily: MONO}]}>{skippedFieldCount} Empty</Text>
                 </View>
               )}
               {invalidCount > 0 && (
                 <View style={[styles.statBadge, {backgroundColor: c.errorSurface}]}>
                   <Icon name="error" size={ms(10)} color={c.error} />
-                  <Text style={[styles.statText, {color: c.error}]}>{invalidCount} Invalid</Text>
+                  <Text style={[styles.statText, {color: c.error, fontFamily: MONO}]}>{invalidCount} Invalid</Text>
                 </View>
               )}
             </View>
 
             {/* Warning for invalid fields */}
             {invalidCount > 0 && (
-              <Text style={[styles.confirmWarning, {color: c.error}]}>
+              <Text style={[styles.confirmWarning, {color: c.error, fontFamily: MONO}]}>
                 {invalidCount} field{invalidCount > 1 ? 's have' : ' has'} invalid values and will be skipped.
               </Text>
             )}
@@ -589,8 +592,8 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                 return (
                   <View key={f.key} style={[styles.confirmSummaryRow, {borderBottomColor: c.borderLight}]}>
                     <VI status={v.status} />
-                    <Text style={[styles.confirmSummaryLabel, {color: v.status === 'skipped' ? c.textMuted : c.textSecondary}]} numberOfLines={1}>{f.label}</Text>
-                    <Text style={[styles.confirmSummaryValue, {color: v.status === 'invalid' ? c.error : val ? c.textPrimary : c.textMuted}]} numberOfLines={1}>
+                    <Text style={[styles.confirmSummaryLabel, {color: v.status === 'skipped' ? c.textMuted : c.textSecondary, fontFamily: MONO}]} numberOfLines={1}>{f.label}</Text>
+                    <Text style={[styles.confirmSummaryValue, {color: v.status === 'invalid' ? c.error : val ? c.textPrimary : c.textMuted, fontFamily: MONO}]} numberOfLines={1}>
                       {v.status === 'invalid' ? val : val || '—'}
                     </Text>
                   </View>
@@ -598,14 +601,14 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               })}
             </ScrollView>
 
-            <View style={styles.confirmButtons}>
+            <View style={[styles.confirmButtons, {fontFamily: MONO}]}>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]} onPress={() => setPhase('review')} activeOpacity={0.7}>
                 <Icon name="edit" size={ms(16)} color={c.textSecondary} />
-                <Text style={[styles.actionBtnText, {color: c.textSecondary}]}>Edit</Text>
+                <Text style={[styles.actionBtnText, {color: c.textSecondary, fontFamily: MONO}]}>Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.primary}]} onPress={handleConfirmOk} activeOpacity={0.7}>
                 <Icon name="check" size={ms(16)} color="#FFF" />
-                <Text style={[styles.actionBtnText, {color: '#FFF'}]}>OK</Text>
+                <Text style={[styles.actionBtnText, {color: '#FFF', fontFamily: MONO}]}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -613,16 +616,16 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
         {/* ═══ REVIEW ═══ */}
         {phase === 'review' && (
-          <View style={styles.reviewContainer}>
-            <View style={styles.reviewStats}>
+          <View style={[styles.reviewContainer, {fontFamily: MONO}]}>
+            <View style={[styles.reviewStats, {fontFamily: MONO}]}>
               <View style={[styles.statBadge, {backgroundColor: c.successSurface}]}>
                 <Icon name="check-circle" size={ms(12)} color={c.success} />
-                <Text style={[styles.statText, {color: c.success}]}>{validCount} Valid</Text>
+                <Text style={[styles.statText, {color: c.success, fontFamily: MONO}]}>{validCount} Valid</Text>
               </View>
               {invalidCount > 0 && (
                 <View style={[styles.statBadge, {backgroundColor: c.errorSurface}]}>
                   <Icon name="error" size={ms(12)} color={c.error} />
-                  <Text style={[styles.statText, {color: c.error}]}>{invalidCount} Invalid</Text>
+                  <Text style={[styles.statText, {color: c.error, fontFamily: MONO}]}>{invalidCount} Invalid</Text>
                 </View>
               )}
             </View>
@@ -633,12 +636,12 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                   const isEditing = editingKey === field.key;
                   return (
                     <View key={field.key} style={[styles.reviewRow, {borderBottomColor: c.borderLight}]}>
-                      <View style={styles.reviewRowHeader}>
+                      <View style={[styles.reviewRowHeader, {fontFamily: MONO}]}>
                         <VI status={v.status} />
-                        <Text style={[styles.reviewLabel, {color: c.textSecondary}]}>{field.label}</Text>
+                        <Text style={[styles.reviewLabel, {color: c.textSecondary, fontFamily: MONO}]}>{field.label}</Text>
                       </View>
                       {isEditing ? (
-                        <View style={styles.editRow}>
+                        <View style={[styles.editRow, {fontFamily: MONO}]}>
                           <TextInput
                             style={[styles.editInput, {color: c.textPrimary, borderColor: c.primary, backgroundColor: c.surface}]}
                             value={editValue}
@@ -658,9 +661,9 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <View style={styles.reviewValueRow}>
-                          <Text style={[styles.reviewValue, {color: val ? (v.status === 'invalid' ? c.error : c.textPrimary) : c.textMuted}]} numberOfLines={2}>{val || 'Skipped'}</Text>
-                          <View style={styles.reviewActions}>
+                        <View style={[styles.reviewValueRow, {fontFamily: MONO}]}>
+                          <Text style={[styles.reviewValue, {color: val ? (v.status === 'invalid' ? c.error : c.textPrimary) : c.textMuted, fontFamily: MONO}]} numberOfLines={2}>{val || 'Skipped'}</Text>
+                          <View style={[styles.reviewActions, {fontFamily: MONO}]}>
                             <TouchableOpacity onPress={() => handleStartEdit(field.key, val || '')} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
                               <Icon name="edit" size={ms(15)} color={c.textMuted} />
                             </TouchableOpacity>
@@ -671,19 +674,19 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                         </View>
                       )}
                       {v.status === 'invalid' && v.message && !isEditing && (
-                        <Text style={[styles.validationMsg, {color: c.error}]}>{v.message}</Text>
+                        <Text style={[styles.validationMsg, {color: c.error, fontFamily: MONO}]}>{v.message}</Text>
                       )}
                     </View>
                   );
                 })}
             </ScrollView>
-            <View style={styles.reviewButtons}>
+            <View style={[styles.reviewButtons, {fontFamily: MONO}]}>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]} onPress={handleCancel} activeOpacity={0.7}>
-                <Text style={[styles.actionBtnText, {color: c.textSecondary}]}>Cancel</Text>
+                <Text style={[styles.actionBtnText, {color: c.textSecondary, fontFamily: MONO}]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.primary}]} onPress={handleApply} activeOpacity={0.7}>
                 <Icon name="check" size={ms(16)} color="#FFF" />
-                <Text style={[styles.actionBtnText, {color: '#FFF'}]}>Apply All</Text>
+                <Text style={[styles.actionBtnText, {color: '#FFF', fontFamily: MONO}]}>Apply All</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -693,15 +696,15 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
         {(phase === 'ready' || phase === 'listening' || phase === 'processing') && (
           <>
           <ScrollView style={{maxHeight: Math.max(scrollableHeight, wp(80))}} contentContainerStyle={{alignItems: 'center', paddingHorizontal: wp(16), paddingTop: wp(8), paddingBottom: wp(8)}} showsVerticalScrollIndicator={true} bounces={false} nestedScrollEnabled>
-            <Text style={[styles.stepText, {color: c.textMuted}]}>Field {currentIdx + 1} of {activeFields.length}{results[currentField?.key] ? ' (re-record)' : ''}</Text>
-            <Text style={[styles.fieldLabel, {color: c.textPrimary}]}>{currentField?.label}</Text>
-            <Text style={[styles.promptText, {color: c.textSecondary}]}>{currentField?.prompt}</Text>
+            <Text style={[styles.stepText, {color: c.textMuted, fontFamily: MONO}]}>Field {currentIdx + 1} of {activeFields.length}{results[currentField?.key] ? ' (re-record)' : ''}</Text>
+            <Text style={[styles.fieldLabel, {color: c.textPrimary, fontFamily: MONO}]}>{currentField?.label}</Text>
+            <Text style={[styles.promptText, {color: c.textSecondary, fontFamily: MONO}]}>{currentField?.prompt}</Text>
 
             {currentField?.type === 'choice' && currentField.choices && (
               <View style={[styles.choicesHint, {backgroundColor: c.surface, borderColor: c.borderLight}]}>
-                <Text style={[styles.choicesTitle, {color: c.textMuted}]}>Say one of:</Text>
+                <Text style={[styles.choicesTitle, {color: c.textMuted, fontFamily: MONO}]}>Say one of:</Text>
                 {currentField.choices.map(ch => (
-                  <Text key={ch} style={[styles.choiceItem, {color: c.textSecondary}]}>{ch}</Text>
+                  <Text key={ch} style={[styles.choiceItem, {color: c.textSecondary, fontFamily: MONO}]}>{ch}</Text>
                 ))}
               </View>
             )}
@@ -710,14 +713,14 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               <View>
                 <View style={[styles.resultBox, {borderColor: phase === 'listening' ? c.primary :
                     (results[currentField?.key] && validations[currentField?.key]?.status === 'invalid') ? c.error : c.primary}]}>
-                  <Text style={[styles.resultText, {color: c.textPrimary}]}>
+                  <Text style={[styles.resultText, {color: c.textPrimary, fontFamily: MONO}]}>
                     {phase === 'listening' ? partialResult : results[currentField?.key]}
                   </Text>
                 </View>
                 {phase === 'processing' && results[currentField?.key] && (
-                  <View style={styles.inlineValidation}>
+                  <View style={[styles.inlineValidation, {fontFamily: MONO}]}>
                     <VI status={validations[currentField?.key]?.status || 'skipped'} />
-                    <Text style={[styles.inlineValidationText, {color: validations[currentField?.key]?.status === 'valid' ? c.success : c.error}]}>
+                    <Text style={[styles.inlineValidationText, {color: validations[currentField?.key]?.status === 'valid' ? c.success : c.error, fontFamily: MONO}]}>
                       {validations[currentField?.key]?.status === 'valid' ? 'Valid' : validations[currentField?.key]?.message}
                     </Text>
                   </View>
@@ -725,12 +728,12 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               </View>
             ) : null}
 
-            {error ? <Text style={[styles.errorText, {color: c.error}]}>{error}</Text> : null}
+            {error ? <Text style={[styles.errorText, {color: c.error, fontFamily: MONO}]}>{error}</Text> : null}
 
             {error.includes('permission') && (
               <TouchableOpacity onPress={openSettings} style={styles.settingsLink} activeOpacity={0.6}>
                 <Icon name="settings" size={ms(14)} color={c.linkBlue} />
-                <Text style={[styles.settingsText, {color: c.linkBlue}]}>Open Settings</Text>
+                <Text style={[styles.settingsText, {color: c.linkBlue, fontFamily: MONO}]}>Open Settings</Text>
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -745,11 +748,11 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                 <Icon name={phase === 'listening' ? 'stop' : 'mic'} size={ms(22)} color="#FFF" />
               </TouchableOpacity>
             </Animated.View>
-            <Text style={[styles.micHint, {color: c.textMuted}]}>
+            <Text style={[styles.micHint, {color: c.textMuted, fontFamily: MONO}]}>
               {isSpeakingPrompt ? 'Speaking prompt...' : phase === 'listening' ? 'Listening... Tap to stop' : phase === 'processing' ? 'Processing...' : 'Tap to speak'}
             </Text>
             <TouchableOpacity style={styles.skipButton} onPress={skipField} activeOpacity={0.6} disabled={phase === 'processing'}>
-              <Text style={[styles.skipText, {color: c.textMuted}]}>Skip this field</Text>
+              <Text style={[styles.skipText, {color: c.textMuted, fontFamily: MONO}]}>Skip this field</Text>
               <Icon name="skip-next" size={ms(14)} color={c.textMuted} />
             </TouchableOpacity>
           </View>

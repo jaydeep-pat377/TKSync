@@ -6,6 +6,8 @@ import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
 type Props = {
   onSignatureChange: (signature: string | null) => void;
   height?: number;
@@ -84,10 +86,10 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
 
   if (readOnly && initialImage) {
     return (
-      <View style={st.wrapper}>
-        <View style={st.labelRow}>
+      <View style={[st.wrapper, {fontFamily: MONO}]}>
+        <View style={[st.labelRow, {fontFamily: MONO}]}>
           <Icon name="draw" size={ms(16)} color={c.textMuted} />
-          <Text style={[st.label, {color: c.textMuted}]}>Signature</Text>
+          <Text style={[st.label, {color: c.textMuted, fontFamily: MONO}]}>Signature</Text>
         </View>
         <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: c.primary}]}>
           <Image source={{uri: initialImage}} style={st.readOnlyImage} resizeMode="contain" />
@@ -100,7 +102,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
               onPress={onEditPress}
               activeOpacity={0.7}>
               <Icon name="edit" size={ms(14)} color={c.textSecondary} />
-              <Text style={[st.editText, {color: c.textSecondary}]}>Edit</Text>
+              <Text style={[st.editText, {color: c.textSecondary, fontFamily: MONO}]}>Edit</Text>
             </TouchableOpacity>
           )}
           <View style={[st.statusBadge, {backgroundColor: c.primarySurface}]}>
@@ -114,9 +116,9 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
   return (
     <View style={[st.wrapper, minimal && {marginTop: wp(4)}]}>
       {!minimal && (
-        <View style={st.labelRow}>
+        <View style={[st.labelRow, {fontFamily: MONO}]}>
           <Icon name="draw" size={ms(16)} color={c.textMuted} />
-          <Text style={[st.label, {color: c.textMuted}]}>Draw your signature below</Text>
+          <Text style={[st.label, {color: c.textMuted, fontFamily: MONO}]}>Draw your signature below</Text>
         </View>
       )}
 
@@ -145,7 +147,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
             onPress={handleClear}
             activeOpacity={0.7}>
             <Icon name="refresh" size={ms(14)} color={c.textSecondary} />
-            <Text style={[st.clearText, {color: c.textSecondary}]}>Clear</Text>
+            <Text style={[st.clearText, {color: c.textSecondary, fontFamily: MONO}]}>Clear</Text>
           </TouchableOpacity>
         )}
 
@@ -157,7 +159,7 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
         )}
 
         {/* Sign here label */}
-        <Text style={[st.signHere, {color: isDark ? c.textMuted : '#999'}]}>SIGN HERE</Text>
+        <Text style={[st.signHere, {color: isDark ? c.textMuted : '#999', fontFamily: MONO}]}>SIGN HERE</Text>
 
         {/* Status indicator */}
         {!minimal && hasSignature && (

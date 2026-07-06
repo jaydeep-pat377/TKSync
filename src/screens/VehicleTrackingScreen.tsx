@@ -19,6 +19,8 @@ import {accelerometer, SensorTypes, setUpdateIntervalForType} from 'react-native
 import {useTheme} from '../contexts/ThemeContext';
 import {useAuth} from '../contexts/AuthContext';
 import {wp, ms} from '../utils/responsive';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {showToast} from '../utils/toast';
 import {gpsStorage} from '../services/gpsStorage';
 import {gpsSyncManager} from '../services/gpsSyncManager';
@@ -248,33 +250,33 @@ export default function VehicleTrackingScreen({navigation}: Props) {
     <View style={[st.heroSection, {backgroundColor: c.primaryDark}, L && {flex: 1, paddingVertical: wp(8), justifyContent: 'center'}]}>
       <View style={[st.speedRing, L && {width: wp(100), height: wp(100), borderRadius: wp(50), borderWidth: wp(3)}]}>
         <View style={[st.speedRingInner, {borderColor: 'rgba(255,255,255,0.08)'}, L && {width: wp(84), height: wp(84), borderRadius: wp(42)}]}>
-          <Text style={[st.speedValue, L && {fontSize: ms(32)}]}>{speedKmh}</Text>
-          <Text style={[st.speedUnit, L && {fontSize: ms(9)}]}>km/h</Text>
+          <Text style={[st.speedValue, L && {fontSize: ms(32), fontFamily: MONO}]}>{speedKmh}</Text>
+          <Text style={[st.speedUnit, L && {fontSize: ms(9), fontFamily: MONO}]}>km/h</Text>
         </View>
       </View>
       <View style={[st.heroStatsRow, L && {marginTop: wp(10)}]}>
-        <View style={st.heroStat}>
+        <View style={[st.heroStat, {fontFamily: MONO}]}>
           <Icon name="explore" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
-          <Text style={[st.heroStatValue, L && {fontSize: ms(9)}]}>{Math.round(heading)}° {compassDir}</Text>
-          <Text style={[st.heroStatLabel, L && {fontSize: ms(7)}]}>Heading</Text>
+          <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(heading)}° {compassDir}</Text>
+          <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Heading</Text>
         </View>
         <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-        <View style={st.heroStat}>
+        <View style={[st.heroStat, {fontFamily: MONO}]}>
           <Icon name="terrain" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
-          <Text style={[st.heroStatValue, L && {fontSize: ms(9)}]}>{Math.round(altitude)}m</Text>
-          <Text style={[st.heroStatLabel, L && {fontSize: ms(7)}]}>Altitude</Text>
+          <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(altitude)}m</Text>
+          <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Altitude</Text>
         </View>
         <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-        <View style={st.heroStat}>
+        <View style={[st.heroStat, {fontFamily: MONO}]}>
           <Icon name="gps-fixed" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
-          <Text style={[st.heroStatValue, L && {fontSize: ms(9)}]}>{Math.round(accuracy)}m</Text>
-          <Text style={[st.heroStatLabel, L && {fontSize: ms(7)}]}>Accuracy</Text>
+          <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(accuracy)}m</Text>
+          <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Accuracy</Text>
         </View>
       </View>
       {isIdle && isTracking && (
         <View style={[st.idleBadge, L && {marginTop: wp(6)}]}>
           <Icon name="pause-circle-filled" size={ms(11)} color="#EF4444" />
-          <Text style={[st.idleBadgeText, {color: '#EF4444'}]}>IDLE {formatDuration(idleTime)}</Text>
+          <Text style={[st.idleBadgeText, {color: '#EF4444', fontFamily: MONO}]}>IDLE {formatDuration(idleTime)}</Text>
         </View>
       )}
       <TouchableOpacity
@@ -282,7 +284,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
         activeOpacity={0.8}
         onPress={isTracking ? stopTracking : startTracking}>
         <Icon name={isTracking ? 'stop' : 'play-arrow'} size={ms(L ? 14 : 16)} color="#fff" />
-        <Text style={[st.trackBtnText, L && {fontSize: ms(10)}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
+        <Text style={[st.trackBtnText, L && {fontSize: ms(10), fontFamily: MONO}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -295,7 +297,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
           <View style={[st.cardIconBg, {backgroundColor: c.primary + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
             <Icon name="route" size={L ? fs(13) : ms(14)} color={c.primary} />
           </View>
-          <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), marginBottom: ls(4)}]}>Trip Statistics</Text>
+          <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), marginBottom: ls(4), fontFamily: MONO}]}>Trip Statistics</Text>
           {isTracking && <View style={[st.liveDot, {backgroundColor: '#22C55E'}]} />}
         </View>
         <View style={[st.statsGrid, L && {gap: ls(6)}]}>
@@ -307,8 +309,8 @@ export default function VehicleTrackingScreen({navigation}: Props) {
           ].map((item, i) => (
             <View key={i} style={[st.statItem, {borderColor: c.borderLight}, L && {paddingVertical: ls(12), borderRadius: ls(7)}]}>
               <Icon name={item.icon as any} size={L ? fs(16) : ms(15)} color={item.color} />
-              <Text style={[st.statValue, {color: c.textPrimary}, L && {fontSize: fs(16)}]}>{item.value}<Text style={[st.statUnit, {color: c.textMuted}]}> {item.unit}</Text></Text>
-              <Text style={[st.statLabel, {color: c.textMuted}, L && {fontSize: fs(11)}]}>{item.label}</Text>
+              <Text style={[st.statValue, {color: c.textPrimary}, L && {fontSize: fs(16)}, {fontFamily: MONO}]}>{item.value}<Text style={[st.statUnit, {color: c.textMuted, fontFamily: MONO}]}> {item.unit}</Text></Text>
+              <Text style={[st.statLabel, {color: c.textMuted}, L && {fontSize: fs(11), fontFamily: MONO}]}>{item.label}</Text>
             </View>
           ))}
         </View>
@@ -320,23 +322,23 @@ export default function VehicleTrackingScreen({navigation}: Props) {
           <View style={[st.cardIconBg, {backgroundColor: '#8B5CF6' + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
             <Icon name="shield" size={L ? fs(13) : ms(14)} color="#8B5CF6" />
           </View>
-          <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), marginBottom: ls(4)}]}>Driving Behaviour</Text>
+          <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), marginBottom: ls(4), fontFamily: MONO}]}>Driving Behaviour</Text>
         </View>
         <View style={[st.behaviourRow, L && {gap: ls(6)}]}>
           <View style={[st.behaviourItem, {backgroundColor: '#FEF2F2', borderColor: '#FECACA'}, L && {paddingVertical: ls(20), borderRadius: ls(7)}]}>
             <Icon name="warning" size={L ? fs(18) : ms(18)} color="#EF4444" />
-            <Text style={[st.behaviourValue, {color: '#EF4444'}, L && {fontSize: fs(16)}]}>{hardBrakes}</Text>
-            <Text style={[st.behaviourLabel, L && {fontSize: fs(10)}]}>Hard Brakes</Text>
+            <Text style={[st.behaviourValue, {color: '#EF4444'}, L && {fontSize: fs(16), fontFamily: MONO}]}>{hardBrakes}</Text>
+            <Text style={[st.behaviourLabel, L && {fontSize: fs(10), fontFamily: MONO}]}>Hard Brakes</Text>
           </View>
           <View style={[st.behaviourItem, {backgroundColor: '#FFFBEB', borderColor: '#FDE68A'}, L && {paddingVertical: ls(20), borderRadius: ls(7)}]}>
             <Icon name="turn-sharp-right" size={L ? fs(18) : ms(18)} color="#F59E0B" />
-            <Text style={[st.behaviourValue, {color: '#F59E0B'}, L && {fontSize: fs(16)}]}>{hardCorners}</Text>
-            <Text style={[st.behaviourLabel, L && {fontSize: fs(10)}]}>Hard Corners</Text>
+            <Text style={[st.behaviourValue, {color: '#F59E0B'}, L && {fontSize: fs(16), fontFamily: MONO}]}>{hardCorners}</Text>
+            <Text style={[st.behaviourLabel, L && {fontSize: fs(10), fontFamily: MONO}]}>Hard Corners</Text>
           </View>
           <View style={[st.behaviourItem, {backgroundColor: isIdle ? '#FEF2F2' : '#F0FDF4', borderColor: isIdle ? '#FECACA' : '#BBF7D0'}, L && {paddingVertical: ls(20), borderRadius: ls(7)}]}>
             <Icon name={isIdle ? 'pause-circle-filled' : 'directions-car'} size={L ? fs(18) : ms(18)} color={isIdle ? '#EF4444' : '#22C55E'} />
-            <Text style={[st.behaviourValue, {color: isIdle ? '#EF4444' : '#22C55E'}, L && {fontSize: fs(16)}]}>{isIdle ? formatDuration(idleTime) : 'Moving'}</Text>
-            <Text style={[st.behaviourLabel, L && {fontSize: fs(10)}]}>Status</Text>
+            <Text style={[st.behaviourValue, {color: isIdle ? '#EF4444' : '#22C55E'}, L && {fontSize: fs(16), fontFamily: MONO}]}>{isIdle ? formatDuration(idleTime) : 'Moving'}</Text>
+            <Text style={[st.behaviourLabel, L && {fontSize: fs(10), fontFamily: MONO}]}>Status</Text>
           </View>
         </View>
       </View>
@@ -348,7 +350,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
             <View style={[st.cardIconBg, {backgroundColor: '#F59E0B' + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
               <Icon name="vibration" size={L ? fs(13) : ms(14)} color="#F59E0B" />
             </View>
-            <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13)}]}>Accelerometer</Text>
+            <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), fontFamily: MONO}]}>Accelerometer</Text>
             <View style={[st.liveDot, {backgroundColor: '#F59E0B'}]} />
           </View>
           <View style={{gap: L ? ls(8) : wp(10)}}>
@@ -361,8 +363,8 @@ export default function VehicleTrackingScreen({navigation}: Props) {
               return (
                 <View key={i}>
                   <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: L ? ls(3) : wp(3)}}>
-                    <Text style={[st.accelLabel, {color: c.textMuted}, L && {fontSize: fs(12)}]}>{axis.label}</Text>
-                    <Text style={[st.accelVal, {color: isWarn ? axis.warnColor : c.textPrimary}, L && {fontSize: fs(12)}]}>{axis.value.toFixed(1)} m/s²</Text>
+                    <Text style={[st.accelLabel, {color: c.textMuted}, L && {fontSize: fs(12), fontFamily: MONO}]}>{axis.label}</Text>
+                    <Text style={[st.accelVal, {color: isWarn ? axis.warnColor : c.textPrimary}, L && {fontSize: fs(12), fontFamily: MONO}]}>{axis.value.toFixed(1)} m/s²</Text>
                   </View>
                   <View style={[st.progressTrack, {backgroundColor: c.borderLight}]}>
                     <View style={[st.progressFill, {backgroundColor: isWarn ? axis.warnColor : axis.color, width: `${pct}%`}]} />
@@ -381,8 +383,8 @@ export default function VehicleTrackingScreen({navigation}: Props) {
             <Icon name="my-location" size={L ? fs(13) : ms(14)} color={c.primary} />
           </View>
           <View style={{flex: 1}}>
-            <Text style={[st.coordLabel, {color: c.textMuted}, L && {fontSize: fs(12)}]}>Current Position</Text>
-            <Text style={[st.coordValue, {color: c.textPrimary}, L && {fontSize: fs(13)}]}>{latitude.toFixed(6)}, {longitude.toFixed(6)}</Text>
+            <Text style={[st.coordLabel, {color: c.textMuted}, L && {fontSize: fs(12), fontFamily: MONO}]}>Current Position</Text>
+            <Text style={[st.coordValue, {color: c.textPrimary}, L && {fontSize: fs(13), fontFamily: MONO}]}>{latitude.toFixed(6)}, {longitude.toFixed(6)}</Text>
           </View>
         </View>
       )}
@@ -394,8 +396,8 @@ export default function VehicleTrackingScreen({navigation}: Props) {
             <Icon name="cell-tower" size={L ? fs(13) : ms(14)} color={isBroadcasting ? '#22C55E' : c.textMuted} />
           </View>
           <View style={{flex: 1, marginLeft: L ? ls(8) : wp(10)}}>
-            <Text style={[st.broadcastTitle, {color: c.textPrimary}, L && {fontSize: fs(13)}]}>Broadcasting</Text>
-            <Text style={[st.broadcastSub, {color: isBroadcasting ? '#22C55E' : c.textMuted}, L && {fontSize: fs(11)}]}>
+            <Text style={[st.broadcastTitle, {color: c.textPrimary}, L && {fontSize: fs(13), fontFamily: MONO}]}>Broadcasting</Text>
+            <Text style={[st.broadcastSub, {color: isBroadcasting ? '#22C55E' : c.textMuted}, L && {fontSize: fs(11), fontFamily: MONO}]}>
               {isBroadcasting ? 'Sharing live location' : 'Location sharing off'}
             </Text>
           </View>
@@ -404,7 +406,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
             activeOpacity={0.8}
             onPress={() => setIsBroadcasting(b => !b)}>
             <Icon name={isBroadcasting ? 'stop' : 'play-arrow'} size={L ? fs(14) : ms(14)} color="#fff" />
-            <Text style={[st.broadcastToggleText, L && {fontSize: fs(11)}]}>{isBroadcasting ? 'STOP' : 'START'}</Text>
+            <Text style={[st.broadcastToggleText, L && {fontSize: fs(11), fontFamily: MONO}]}>{isBroadcasting ? 'STOP' : 'START'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -447,8 +449,8 @@ export default function VehicleTrackingScreen({navigation}: Props) {
                 <Icon name="arrow-back" size={ms(18)} color={c.textOnPrimary} />
               </TouchableOpacity>
               <View style={{flex: 1, marginLeft: wp(10)}}>
-                <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>Vehicle Tracking</Text>
-                <Text style={[st.headerSub, {color: c.textOnDark60}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
+                <Text style={[st.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]}>Vehicle Tracking</Text>
+                <Text style={[st.headerSub, {color: c.textOnDark60, fontFamily: MONO}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
               </View>
             </View>
             <View style={{flex: 1, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(255,255,255,0.08)'}}>
@@ -461,7 +463,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
               <Animated.View style={[st.gpsBadge, {backgroundColor: gpsActive ? '#22C55E' : c.textMuted, transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
                 <Icon name="gps-fixed" size={ms(10)} color="#fff" />
               </Animated.View>
-              <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+              <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60, fontFamily: MONO}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
             </View>
             {cardsContent}
           </View>
@@ -474,50 +476,50 @@ export default function VehicleTrackingScreen({navigation}: Props) {
               <Icon name="arrow-back" size={ms(18)} color={c.textOnPrimary} />
             </TouchableOpacity>
             <View style={{flex: 1, marginLeft: wp(10)}}>
-              <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>Vehicle Tracking</Text>
-              <Text style={[st.headerSub, {color: c.textOnDark60}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
+              <Text style={[st.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]}>Vehicle Tracking</Text>
+              <Text style={[st.headerSub, {color: c.textOnDark60, fontFamily: MONO}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
             </View>
             <Animated.View style={[st.gpsBadge, {backgroundColor: gpsActive ? '#22C55E' : c.textMuted, transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
               <Icon name="gps-fixed" size={ms(10)} color="#fff" />
             </Animated.View>
-            <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+            <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60, fontFamily: MONO}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
           </View>
           {/* Hero section — row layout: circle left, stats right */}
           <View style={{backgroundColor: c.primaryDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Math.max(wp(14), insets.left), paddingVertical: wp(10), gap: wp(10)}}>
             {/* Left: speedometer circle */}
             <View style={{alignItems: 'center'}}>
-              <View style={st.speedRing}>
+              <View style={[st.speedRing, {fontFamily: MONO}]}>
                 <View style={[st.speedRingInner, {borderColor: 'rgba(255,255,255,0.08)'}]}>
-                  <Text style={st.speedValue}>{speedKmh}</Text>
-                  <Text style={st.speedUnit}>km/h</Text>
+                  <Text style={[st.speedValue, {fontFamily: MONO}]}>{speedKmh}</Text>
+                  <Text style={[st.speedUnit, {fontFamily: MONO}]}>km/h</Text>
                 </View>
               </View>
             </View>
             {/* Right: stats + button */}
             <View style={{flex: 1, alignItems: 'center', gap: wp(8)}}>
-              <View style={st.heroStatsRow}>
-                <View style={st.heroStat}>
+              <View style={[st.heroStatsRow, {fontFamily: MONO}]}>
+                <View style={[st.heroStat, {fontFamily: MONO}]}>
                   <Icon name="explore" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={st.heroStatValue}>{Math.round(heading)}° {compassDir}</Text>
-                  <Text style={st.heroStatLabel}>Heading</Text>
+                  <Text style={[st.heroStatValue, {fontFamily: MONO}]}>{Math.round(heading)}° {compassDir}</Text>
+                  <Text style={[st.heroStatLabel, {fontFamily: MONO}]}>Heading</Text>
                 </View>
                 <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-                <View style={st.heroStat}>
+                <View style={[st.heroStat, {fontFamily: MONO}]}>
                   <Icon name="terrain" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={st.heroStatValue}>{Math.round(altitude)}m</Text>
-                  <Text style={st.heroStatLabel}>Altitude</Text>
+                  <Text style={[st.heroStatValue, {fontFamily: MONO}]}>{Math.round(altitude)}m</Text>
+                  <Text style={[st.heroStatLabel, {fontFamily: MONO}]}>Altitude</Text>
                 </View>
                 <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-                <View style={st.heroStat}>
+                <View style={[st.heroStat, {fontFamily: MONO}]}>
                   <Icon name="gps-fixed" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={st.heroStatValue}>{Math.round(accuracy)}m</Text>
-                  <Text style={st.heroStatLabel}>Accuracy</Text>
+                  <Text style={[st.heroStatValue, {fontFamily: MONO}]}>{Math.round(accuracy)}m</Text>
+                  <Text style={[st.heroStatLabel, {fontFamily: MONO}]}>Accuracy</Text>
                 </View>
               </View>
               {isIdle && isTracking && (
-                <View style={st.idleBadge}>
+                <View style={[st.idleBadge, {fontFamily: MONO}]}>
                   <Icon name="pause-circle-filled" size={ms(11)} color="#EF4444" />
-                  <Text style={[st.idleBadgeText, {color: '#EF4444'}]}>IDLE {formatDuration(idleTime)}</Text>
+                  <Text style={[st.idleBadgeText, {color: '#EF4444', fontFamily: MONO}]}>IDLE {formatDuration(idleTime)}</Text>
                 </View>
               )}
               <TouchableOpacity
@@ -525,7 +527,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
                 activeOpacity={0.8}
                 onPress={isTracking ? stopTracking : startTracking}>
                 <Icon name={isTracking ? 'stop' : 'play-arrow'} size={ms(14)} color="#fff" />
-                <Text style={[st.trackBtnText, {fontSize: ms(11)}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
+                <Text style={[st.trackBtnText, {fontSize: ms(11)}, {fontFamily: MONO}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
               </TouchableOpacity>
             </View>
           </View>

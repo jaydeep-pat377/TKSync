@@ -36,6 +36,8 @@ import {setForceOffline, getForceOffline} from '../hooks/useNetworkStatus';
 import {getFontScale, useFontScaleRefresh} from '../contexts/FontSizeContext';
 import VoiceFormWizard, {type VoiceField, type VoiceResults} from '../components/VoiceFormWizard';
 
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<any>;
@@ -83,7 +85,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
             onChangeText={text => onChangeValue(text.replace(/[^0-9]/g, ''))}
           />
         ) : (
-          <Text style={[st.numInputText, _land && {fontSize: ms(9), minWidth: wp(16)}, {color: c.textPrimary}]}>{value || '0'}</Text>
+          <Text style={[st.numInputText, _land && {fontSize: ms(9), minWidth: wp(16)}, {color: c.textPrimary}, {fontFamily: MONO}]}>{value || '0'}</Text>
         )}
       </View>
       <TouchableOpacity style={[st.pickerToggle, _land && {width: wp(18), height: wp(18), borderRadius: wp(5)}, {backgroundColor: c.surface, borderColor: c.border}]} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
@@ -91,12 +93,12 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
       </TouchableOpacity>
       {unit ? (
         <View style={[st.unitBadge, _land && {marginLeft: wp(1), paddingHorizontal: wp(3), paddingVertical: wp(1), borderRadius: wp(4)}, {backgroundColor: c.surface, borderColor: c.border}]}>
-          <Text style={[st.unitBadgeText, _land && {fontSize: ms(8)}, {color: c.textSecondary}]}>{unit}</Text>
+          <Text style={[st.unitBadgeText, _land && {fontSize: ms(8)}, {color: c.textSecondary}, {fontFamily: MONO}]}>{unit}</Text>
         </View>
       ) : null}
       <ResponsiveModal visible={pickerOpen} onClose={() => setPickerOpen(false)} maxWidth={320} maxHeightPercent={50}>
         <View style={[st.pickerHeader, {borderBottomColor: c.border}]}>
-          <Text style={[st.pickerTitle, {color: c.textPrimary}]}>Select Value</Text>
+          <Text style={[st.pickerTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>Select Value</Text>
           <TouchableOpacity style={[st.pickerCloseBtn, {backgroundColor: c.surface}]} onPress={() => setPickerOpen(false)} activeOpacity={0.7}>
             <Icon name="close" size={ms(18)} color={c.textSecondary} />
           </TouchableOpacity>
@@ -106,7 +108,7 @@ function Stepper({value, unit, highlight, onChangeValue, pickerValues}: {value: 
             const isSelected = v === value;
             return (
               <TouchableOpacity key={v} style={[st.pickerItem, {borderBottomColor: c.borderLight}, isSelected && {backgroundColor: c.primarySurface}]} activeOpacity={0.6} onPress={() => { onChangeValue?.(v); setPickerOpen(false); }}>
-                <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}]}>{v}{unit ? ` ${unit}` : ''}</Text>
+                <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}, {fontFamily: MONO}]}>{v}{unit ? ` ${unit}` : ''}</Text>
                 {isSelected && <Icon name="check-circle" size={ms(16)} color={c.primary} />}
               </TouchableOpacity>
             );
@@ -126,14 +128,14 @@ function Field({label, children, wide, compact, last, mandatory}: {label: string
   if (compact) {
     return (
       <View style={[st.fieldCompact, {borderBottomColor: c.borderLight}]}>
-        <Text style={[st.fieldCompactLabel, {color: c.textMuted}]}>{label}</Text>
+        <Text style={[st.fieldCompactLabel, {color: c.textMuted}, {fontFamily: MONO}]}>{label}</Text>
         <View style={st.fieldCompactBody}>{content}</View>
       </View>
     );
   }
   return (
     <View style={[st.field, {borderBottomColor: c.borderLight}, wide && st.fieldWide, last && {borderBottomWidth: 0}]}>
-      <Text style={[st.fieldLabel, {color: c.textPrimary}, wide && st.fieldLabelWide]} numberOfLines={1}>{label}</Text>
+      <Text style={[st.fieldLabel, {color: c.textPrimary}, wide && st.fieldLabelWide, {fontFamily: MONO}]} numberOfLines={1}>{label}</Text>
       <View style={st.fieldBody}>{content}</View>
     </View>
   );
@@ -166,7 +168,7 @@ function FieldCard({children, title, icon, fullWidth}: {children: React.ReactNod
       {title ? (
         <View style={st.fieldCardHeader}>
           {icon && <Icon name={icon as any} size={ms(14)} color={c.primary} />}
-          <Text style={[st.fieldCardTitle, {color: c.textPrimary}]}>{title}</Text>
+          <Text style={[st.fieldCardTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>{title}</Text>
         </View>
       ) : null}
       {children}
@@ -206,7 +208,7 @@ function Check({checked, label, onPress}: {checked: boolean; label?: string; onP
       ]}>
         {checked && <Icon name="check" size={_land ? ms(8) : ms(11)} color={c.textOnPrimary} />}
       </Animated.View>
-      {label && <Text style={[st.checkLabel, {color: c.textPrimary}, _land && {fontSize: ms(11)}]}>{label}</Text>}
+      {label && <Text style={[st.checkLabel, {color: c.textPrimary}, _land && {fontSize: ms(11)}, {fontFamily: MONO}]}>{label}</Text>}
     </TouchableOpacity>
   );
 }
@@ -220,7 +222,7 @@ function Radio({selected, label, onPress}: {selected: boolean; label: string; on
       <View style={[st.radioCircle, _land && {width: wp(12), height: wp(12), borderRadius: wp(6), borderWidth: 1.5}, {borderColor: selected ? c.primary : c.border}]}>
         {selected && <View style={[st.radioDot, _land && {width: wp(6), height: wp(6), borderRadius: wp(3)}, {backgroundColor: c.primary}]} />}
       </View>
-      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}, _land && {fontSize: ms(11)}]}>{label}</Text>
+      <Text style={[st.radioLabel, {color: selected ? c.primary : c.textPrimary}, _land && {fontSize: ms(11)}, {fontFamily: MONO}]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -229,7 +231,7 @@ function YellowInput({value}: {value: string}) {
   const {c} = useTheme();
   return (
     <View style={[st.hlInput, {backgroundColor: c.highlight, borderColor: c.primaryBorder}]}>
-      <Text style={[st.hlInputText, {color: c.textPrimary}]}>{value}</Text>
+      <Text style={[st.hlInputText, {color: c.textPrimary}, {fontFamily: MONO}]}>{value}</Text>
     </View>
   );
 }
@@ -238,7 +240,7 @@ function GrayInput({placeholder}: {placeholder?: string}) {
   const {c} = useTheme();
   return (
     <View style={[st.grayInput, {backgroundColor: c.surface, borderColor: c.border}]}>
-      {placeholder && <Text style={[st.grayPlaceholder, {color: c.textMuted}]}>{placeholder}</Text>}
+      {placeholder && <Text style={[st.grayPlaceholder, {color: c.textMuted}, {fontFamily: MONO}]}>{placeholder}</Text>}
     </View>
   );
 }
@@ -252,7 +254,7 @@ function LineInput({width: w, placeholder, value, onPress, editable, keyboardTyp
   if (onPress && !onChangeText) {
     return (
       <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={[st.lineInput, {borderBottomColor: c.border, justifyContent: 'center'}, sizeStyle, hlStyle]}>
-        <Text style={[st.lineInputText, {color: value ? c.textPrimary : c.textMuted}]} numberOfLines={1}>
+        <Text style={[st.lineInputText, {color: value ? c.textPrimary : c.textMuted}, {fontFamily: MONO}]} numberOfLines={1}>
           {value || placeholder || ''}
         </Text>
       </TouchableOpacity>
@@ -303,10 +305,10 @@ function SaveResultModal({visible, success, message, onClose}: {visible: boolean
             />
           </View>
         </Animated.View>
-        <Text style={{fontSize: ms(16), fontWeight: '800', color: c.textPrimary, marginBottom: wp(6), textAlign: 'center'}}>
+        <Text style={{fontSize: ms(16), fontWeight: '800', color: c.textPrimary, marginBottom: wp(6), textAlign: 'center', fontFamily: MONO}}>
           {success ? 'Saved Successfully' : 'Save Failed'}
         </Text>
-        <Text style={{fontSize: ms(12), fontWeight: '500', color: c.textSecondary, textAlign: 'center', lineHeight: ms(18)}}>
+        <Text style={{fontSize: ms(12), fontWeight: '500', color: c.textSecondary, textAlign: 'center', lineHeight: ms(18), fontFamily: MONO}}>
           {message}
         </Text>
         <TouchableOpacity
@@ -323,7 +325,7 @@ function SaveResultModal({visible, success, message, onClose}: {visible: boolean
           activeOpacity={0.8}
           onPress={onClose}>
           <Icon name={success ? 'done' : 'close'} size={ms(16)} color={c.textOnPrimary} />
-          <Text style={{fontSize: ms(13), fontWeight: '700', color: c.textOnPrimary}}>
+          <Text style={{fontSize: ms(13), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO}}>
             {success ? 'Done' : 'Dismiss'}
           </Text>
         </TouchableOpacity>
@@ -350,7 +352,7 @@ function SaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => vo
         onPressIn={() => !disabled && Animated.timing(scale, {toValue: 0.95, duration: 80, useNativeDriver: true}).start()}
         onPressOut={() => !disabled && Animated.spring(scale, {toValue: 1, friction: 4, tension: 100, useNativeDriver: true}).start()}>
         <Icon name="check-circle" size={ms(16)} color={disabled ? c.textMuted : c.textOnPrimary} />
-        <Text style={[st.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}]}>Save Changes</Text>
+        <Text style={[st.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}, {fontFamily: MONO}]}>Save Changes</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -361,7 +363,7 @@ function SectionTitle({title, icon}: {title: string; icon?: string}) {
   return (
     <View style={[st.secTitle, {borderBottomColor: c.border}]}>
       {icon && <Icon name={icon as any} size={ms(16)} color={c.primary} />}
-      <Text style={[st.secTitleText, {color: c.textPrimary}]}>{title}</Text>
+      <Text style={[st.secTitleText, {color: c.textPrimary}, {fontFamily: MONO}]}>{title}</Text>
     </View>
   );
 }
@@ -372,7 +374,7 @@ function SubHeader({labels}: {labels: string[]}) {
     <View style={st.subHeaderRow}>
       {labels.map(l => (
         <View key={l} style={[st.subHeaderPill, {backgroundColor: c.surface, borderColor: c.border}]}>
-          <Text style={[st.subHeaderText, {color: c.textMuted}]}>{l}</Text>
+          <Text style={[st.subHeaderText, {color: c.textMuted}, {fontFamily: MONO}]}>{l}</Text>
         </View>
       ))}
     </View>
@@ -398,7 +400,7 @@ function TimePicker({label, value, onPress}: {label?: string; value?: Date; onPr
       <View style={[st.timePickIcon, {backgroundColor: hasValue ? c.primary : c.primarySurface}]}>
         <Icon name="schedule" size={ms(12)} color={hasValue ? c.textOnPrimary : c.primary} />
       </View>
-      <Text style={[st.timePickText, {color: hasValue ? c.primary : c.textMuted}]}>{displayText}</Text>
+      <Text style={[st.timePickText, {color: hasValue ? c.primary : c.textMuted}, {fontFamily: MONO}]}>{displayText}</Text>
       <Icon name="keyboard-arrow-down" size={ms(14)} color={hasValue ? c.primary : c.textMuted} />
     </TouchableOpacity>
   );
@@ -489,14 +491,14 @@ function LField({label, children, wide, compact, noBorder, mandatory}: {label: s
   if (compact) {
     return (
       <View style={[ls.fieldCompact, {borderBottomColor: c.borderLight}]}>
-        <Text style={[ls.fieldCompactLabel, {color: c.textSecondary}]}>{label}</Text>
+        <Text style={[ls.fieldCompactLabel, {color: c.textSecondary}, {fontFamily: MONO}]}>{label}</Text>
         <View style={ls.fieldCompactBody}>{content}</View>
       </View>
     );
   }
   return (
     <View style={[ls.field, {borderBottomColor: c.borderLight}, wide && ls.fieldWide, noBorder && {borderBottomWidth: 0}]}>
-      <Text style={[ls.fieldLabel, {color: c.textSecondary}, wide && [ls.fieldLabelWide, {maxWidth: undefined}]]} numberOfLines={wide ? undefined : 1}>{label}</Text>
+      <Text style={[ls.fieldLabel, {color: c.textSecondary}, wide && [ls.fieldLabelWide, {maxWidth: undefined}], {fontFamily: MONO}]} numberOfLines={wide ? undefined : 1}>{label}</Text>
       <View style={ls.fieldBody}>{content}</View>
     </View>
   );
@@ -518,7 +520,7 @@ function LCard({children, title, icon, style, headerRight}: {children: React.Rea
               <Icon name={icon as any} size={ms(12)} color={c.primary} />
             </View>
           )}
-          <Text style={[ls.cardTitle, {color: c.textPrimary}]}>{title}</Text>
+          <Text style={[ls.cardTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>{title}</Text>
           {headerRight}
         </View>
       ) : null}
@@ -536,7 +538,7 @@ function LSaveButton({disabled, onPress}: {disabled?: boolean; onPress?: () => v
       disabled={disabled}
       onPress={onPress}>
       <Icon name="check-circle" size={ms(14)} color={disabled ? c.textMuted : c.textOnPrimary} />
-      <Text style={[ls.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}]}>Save</Text>
+      <Text style={[ls.saveBtnText, {color: disabled ? c.textMuted : c.textOnPrimary}, {fontFamily: MONO}]}>Save</Text>
     </TouchableOpacity>
   );
 }
@@ -564,7 +566,7 @@ function ReasonListModal({
       maxWidth={480}
       maxHeightPercent={75}>
       <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
-        <Text style={[st.popupTitle, {color: c.textPrimary}]}>LIST</Text>
+        <Text style={[st.popupTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>LIST</Text>
         <TouchableOpacity style={[st.popupCloseBtn, {backgroundColor: c.surface}]} onPress={onClose} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
           <Icon name="close" size={ms(20)} color={c.textSecondary} />
         </TouchableOpacity>
@@ -576,7 +578,7 @@ function ReasonListModal({
             style={[common.modalOptionRow, {minHeight: wp(34)}]}
             activeOpacity={0.6}
             onPress={() => { onSelect(opt); onClose(); }}>
-            <Text style={[st.modalOptionText, {color: c.textPrimary}]}>{opt}</Text>
+            <Text style={[st.modalOptionText, {color: c.textPrimary}, {fontFamily: MONO}]}>{opt}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -608,7 +610,7 @@ function ProductsModal({visible, onClose, products}: {visible: boolean; onClose:
       maxWidth={520}
       maxHeightPercent={80}>
       <View style={[st.popupHeader, {borderBottomColor: c.border}]}>
-        <Text style={[st.popupTitle, {color: c.textPrimary}]}>PRODUCTS</Text>
+        <Text style={[st.popupTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>PRODUCTS</Text>
         <TouchableOpacity
           style={[st.popupCloseBtn, {backgroundColor: c.surface}]}
           onPress={onClose}
@@ -619,17 +621,17 @@ function ProductsModal({visible, onClose, products}: {visible: boolean; onClose:
       </View>
       <ScrollView showsVerticalScrollIndicator={true} bounces={false} contentContainerStyle={{padding: wp(14)}}>
         <View style={st.tableHeader}>
-          <Text style={[st.tableCellCode, {fontWeight: '900', color: c.textPrimary}]}>CODE</Text>
-          <Text style={[st.tableCellDesc, {fontWeight: '900', color: c.textPrimary}]}>DESCRIPTION</Text>
-          <Text style={[st.tableCellQty, {fontWeight: '900', color: c.textPrimary}]}>QTY</Text>
-          <Text style={[st.tableCellUnit, {fontWeight: '900', color: c.textPrimary}]}>UNIT</Text>
+          <Text style={[st.tableCellCode, {fontWeight: '900', color: c.textPrimary}, {fontFamily: MONO}]}>CODE</Text>
+          <Text style={[st.tableCellDesc, {fontWeight: '900', color: c.textPrimary}, {fontFamily: MONO}]}>DESCRIPTION</Text>
+          <Text style={[st.tableCellQty, {fontWeight: '900', color: c.textPrimary}, {fontFamily: MONO}]}>QTY</Text>
+          <Text style={[st.tableCellUnit, {fontWeight: '900', color: c.textPrimary}, {fontFamily: MONO}]}>UNIT</Text>
         </View>
         {items.map((item, idx) => (
           <View key={`${item.item_code}-${idx}`} style={common.tableRow}>
-            <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}]}>{item.item_code}</Text>
-            <Text style={[st.tableCellDesc, {fontWeight: '500', color: c.textPrimary}]}>{item.description}</Text>
-            <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}]}>{item.quantity ?? '0'}</Text>
-            <Text style={[st.tableCellUnit, {fontWeight: '500', color: c.textPrimary}]}>{item.unit || '-'}</Text>
+            <Text style={[st.tableCellCode, {fontWeight: '500', color: c.textPrimary}, {fontFamily: MONO}]}>{item.item_code}</Text>
+            <Text style={[st.tableCellDesc, {fontWeight: '500', color: c.textPrimary}, {fontFamily: MONO}]}>{item.description}</Text>
+            <Text style={[st.tableCellQty, {fontWeight: '500', color: c.textPrimary}, {fontFamily: MONO}]}>{item.quantity ?? '0'}</Text>
+            <Text style={[st.tableCellUnit, {fontWeight: '500', color: c.textPrimary}, {fontFamily: MONO}]}>{item.unit || '-'}</Text>
           </View>
         ))}
       </ScrollView>
@@ -724,8 +726,8 @@ function SlumpPickerModal({
           <Icon name="straighten" size={ms(20)} color={c.textOnPrimary} />
         </View>
         <View style={common.flex1}>
-          <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
-          <Text style={[sm.headerSub, {color: c.textMuted}]}>Select or enter value (mm)</Text>
+          <Text style={[sm.headerTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>{title}</Text>
+          <Text style={[sm.headerSub, {color: c.textMuted}, {fontFamily: MONO}]}>Select or enter value (mm)</Text>
         </View>
         <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
           <Icon name="close" size={ms(20)} color={c.textSecondary} />
@@ -751,7 +753,7 @@ function SlumpPickerModal({
                   slumpSt.gridItemText,
                   {color: c.textPrimary},
                   isSelected && {color: c.primary, fontWeight: '900'},
-                ]}>
+                , {fontFamily: MONO}]}>
                   {val}
                 </Text>
                 {isSelected && (
@@ -777,7 +779,7 @@ function SlumpPickerModal({
             <View style={[slumpSt.customIcon, {backgroundColor: customMode ? c.primary : c.border}]}>
               <Icon name="edit" size={ms(16)} color={customMode ? c.textOnPrimary : c.textSecondary} />
             </View>
-            <Text style={[slumpSt.customLabel, {color: customMode ? c.primary : c.textSecondary}]}>
+            <Text style={[slumpSt.customLabel, {color: customMode ? c.primary : c.textSecondary}, {fontFamily: MONO}]}>
               Custom Value
             </Text>
           </TouchableOpacity>
@@ -794,7 +796,7 @@ function SlumpPickerModal({
                 maxLength={4}
                 autoFocus
               />
-              <Text style={[slumpSt.customUnit, {color: c.textSecondary}]}>mm</Text>
+              <Text style={[slumpSt.customUnit, {color: c.textSecondary}, {fontFamily: MONO}]}>mm</Text>
             </View>
           )}
         </View>
@@ -807,7 +809,7 @@ function SlumpPickerModal({
           activeOpacity={0.7}
           onPress={handleCancel}>
           <Icon name="close" size={ms(16)} color={c.textSecondary} />
-          <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
+          <Text style={[sm.footerBtnText, {color: c.textSecondary}, {fontFamily: MONO}]}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[sm.footerBtn, sm.confirmBtn, {
@@ -817,7 +819,7 @@ function SlumpPickerModal({
           disabled={!canConfirm}
           onPress={handleConfirm}>
           <Icon name="check" size={ms(16)} color={canConfirm ? c.textOnPrimary : c.textMuted} />
-          <Text style={[sm.footerBtnText, {color: canConfirm ? c.textOnPrimary : c.textMuted}]}>
+          <Text style={[sm.footerBtnText, {color: canConfirm ? c.textOnPrimary : c.textMuted}, {fontFamily: MONO}]}>
             Confirm
           </Text>
         </TouchableOpacity>
@@ -1061,7 +1063,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                 <LField label={ft('hand_added')} mandatory={mf('hand_added')}>
                   <Check checked={!!handAdded} onPress={() => setHandAdded(!handAdded)} />
                   <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
-                    <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
+                    <Text style={[st.linkText, {color: c.linkBlue}, {fontFamily: MONO}]}>VIEW PRODUCTS</Text>
                   </TouchableOpacity>
                 </LField>
                 <View style={{paddingVertical: wp(4)}}>
@@ -1081,7 +1083,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
                   <View style={[ls.sectionDivider, {borderTopColor: c.primary}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
                       <Icon name="science" size={ms(10)} color={c.primary} />
-                      <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
+                      <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}, {fontFamily: MONO}]}>TEST RESULTS</Text>
                     </View>
                   </View>
                   <LFieldRow>
@@ -1198,7 +1200,7 @@ function PlantTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord
       <Field label={ft('hand_added')} mandatory={mf('hand_added')}>
         <Check checked={!!handAdded} onPress={() => setHandAdded(!handAdded)} />
         <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsModalVisible(true)}>
-          <Text style={[st.linkText, {color: c.linkBlue}]}>VIEW PRODUCTS</Text>
+          <Text style={[st.linkText, {color: c.linkBlue}, {fontFamily: MONO}]}>VIEW PRODUCTS</Text>
         </TouchableOpacity>
       </Field>
       <FieldRow>
@@ -1581,7 +1583,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               </LField>
               <>
               <View style={[ls.sectionDivider, {borderTopColor: c.borderLight}]}>
-                <Text style={[ls.sectionLabel, {color: c.textMuted}]}>LOAD TESTING</Text>
+                <Text style={[ls.sectionLabel, {color: c.textMuted}, {fontFamily: MONO}]}>LOAD TESTING</Text>
               </View>
               <LField label={ft('load_tested')} noBorder mandatory={mf('load_tested')}>
                 <View style={st.radioRow}>
@@ -1594,7 +1596,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
                   <View style={[ls.sectionDivider, {borderTopColor: 'transparent'}]}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
                       <Icon name="science" size={ms(10)} color={c.primary} />
-                      <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}]}>TEST RESULTS</Text>
+                      <Text style={[ls.sectionLabel, {color: c.primary, marginBottom: 0}, {fontFamily: MONO}]}>TEST RESULTS</Text>
                     </View>
                   </View>
                   <LFieldRow>
@@ -1617,7 +1619,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
               )}
               </>
               <View style={[ls.notesSection, {borderTopColor: c.borderLight}]}>
-                <Text style={[ls.notesSectionLabel, {color: c.textMuted}]}>INTERNAL JOBSITE NOTES</Text>
+                <Text style={[ls.notesSectionLabel, {color: c.textMuted}, {fontFamily: MONO}]}>INTERNAL JOBSITE NOTES</Text>
                 <TextInput
                   style={[ls.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white, minHeight: wp(60)}]}
                   multiline
@@ -1744,11 +1746,11 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
       </FieldRow>
       <View style={{flexDirection: 'row', gap: wp(8), paddingVertical: wp(5), borderBottomWidth: 0.5, borderBottomColor: c.borderLight}}>
         <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
-          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>{ft('load_disputed')}</Text>
+          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}, {fontFamily: MONO}]}>{ft('load_disputed')}</Text>
           <Check checked={!!loadDisputed} onPress={() => setLoadDisputed(!loadDisputed)} />
         </View>
         <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(4)}}>
-          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}]}>{ft('unloaded_conveyor')}</Text>
+          <Text style={[st.fieldCompactLabel, {color: c.textMuted, marginBottom: 0}, {fontFamily: MONO}]}>{ft('unloaded_conveyor')}</Text>
           <Check checked={!!unloadedConveyor} onPress={() => setUnloadedConveyor(!unloadedConveyor)} />
         </View>
       </View>
@@ -1771,7 +1773,7 @@ function JobsiteTab({data, ticketId, onSaveResult, setSavingOverlay, refreshReco
           <FieldRow>
             <Field label="SLUMP" compact>
               <Stepper value={jobLoadSlump} unit="" onIncrement={() => setJobLoadSlump(v => String((parseInt(v) || 0) + 10))} onDecrement={() => setJobLoadSlump(v => String(Math.max(0, (parseInt(v) || 0) - 10)))} onChangeValue={setJobLoadSlump} />
-              <Text style={[st.unitInline, {color: c.textSecondary}]}>mm</Text>
+              <Text style={[st.unitInline, {color: c.textSecondary}, {fontFamily: MONO}]}>mm</Text>
             </Field>
             <Field label="CYLINDERS" compact>
               <Stepper value={String(jobLoadCylinders)} unit="" onIncrement={() => setJobLoadCylinders(v => v + 1)} onDecrement={() => setJobLoadCylinders(v => Math.max(0, v - 1))} onChangeValue={v => setJobLoadCylinders(parseInt(v) || 0)} />
@@ -1926,8 +1928,8 @@ function SelectionModal({
           <Icon name={headerIcon as any} size={ms(20)} color={c.textOnPrimary} />
         </View>
         <View style={common.flex1}>
-          <Text style={[sm.headerTitle, {color: c.textPrimary}]}>{title}</Text>
-          <Text style={[sm.headerSub, {color: c.textMuted}]}>{subtitle}</Text>
+          <Text style={[sm.headerTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>{title}</Text>
+          <Text style={[sm.headerSub, {color: c.textMuted}, {fontFamily: MONO}]}>{subtitle}</Text>
         </View>
         <TouchableOpacity style={[sm.closeBtn, {backgroundColor: c.white}]} onPress={handleCancel} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
           <Icon name="close" size={ms(20)} color={c.textSecondary} />
@@ -1955,7 +1957,7 @@ function SelectionModal({
                 sm.itemText,
                 {color: c.textPrimary},
                 isSelected && {color: c.primary, fontWeight: '800'},
-              ]}>
+              , {fontFamily: MONO}]}>
                 {opt.label || opt.key}
               </Text>
               {isSelected ? (
@@ -1976,7 +1978,7 @@ function SelectionModal({
             activeOpacity={0.7}
             onPress={handleCancel}>
             <Icon name="close" size={ms(16)} color={c.textSecondary} />
-            <Text style={[sm.footerBtnText, {color: c.textSecondary}]}>Cancel</Text>
+            <Text style={[sm.footerBtnText, {color: c.textSecondary}, {fontFamily: MONO}]}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[sm.footerBtn, sm.confirmBtn, {
@@ -1986,7 +1988,7 @@ function SelectionModal({
             disabled={!hasTempSelection}
             onPress={handleSave}>
             <Icon name="check" size={ms(16)} color={hasTempSelection ? c.textOnPrimary : c.textMuted} />
-            <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}]}>
+            <Text style={[sm.footerBtnText, {color: hasTempSelection ? c.textOnPrimary : c.textMuted}, {fontFamily: MONO}]}>
               {hasChanged ? 'Save' : 'Confirm'}
             </Text>
           </TouchableOpacity>
@@ -2158,7 +2160,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
                   placeholderTextColor={c.textMuted}
                 />
               </View>
-              <Text style={[st.unitInline, {color: c.textSecondary}]}>M3</Text>
+              <Text style={[st.unitInline, {color: c.textSecondary}, {fontFamily: MONO}]}>M3</Text>
             </LField>
             <LField label={ft('disposal_method')} mandatory={mf('disposal_method')}>
               <LineInput placeholder="Select method" value={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || ''} onPress={() => setDisposalModal(true)} />
@@ -2207,7 +2209,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
             placeholderTextColor={c.textMuted}
           />
         </View>
-        <Text style={[st.unitInline, {color: c.textSecondary}]}>M3</Text>
+        <Text style={[st.unitInline, {color: c.textSecondary}, {fontFamily: MONO}]}>M3</Text>
       </Field>
 
       {/* Disposal Method */}
@@ -2221,7 +2223,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
               <Icon name={DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
-          <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}]} numberOfLines={1} ellipsizeMode="tail">
+          <Text style={[st.selectorText, {color: isDisposalValid ? c.primary : c.textMuted}, {fontFamily: MONO}]} numberOfLines={1} ellipsizeMode="tail">
             {DISPOSAL_METHODS.find(m => m.key === disposalMethod)?.label || disposalMethod || 'Select method'}
           </Text>
           <Icon name="keyboard-arrow-down" size={ms(20)} color={isDisposalValid ? c.primary : c.textMuted} />
@@ -2239,7 +2241,7 @@ function ReturnedTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRec
               <Icon name={RETURN_REASONS.find(r => r.key === returnReason)?.icon as any} size={ms(16)} color={c.textOnPrimary} />
             </View>
           )}
-          <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}]} numberOfLines={1} ellipsizeMode="tail">
+          <Text style={[st.selectorText, {color: isReasonValid ? c.primary : c.textMuted}, {fontFamily: MONO}]} numberOfLines={1} ellipsizeMode="tail">
             {RETURN_REASONS.find(r => r.key === returnReason)?.label || returnReason || 'Select reason'}
           </Text>
           <Icon name="keyboard-arrow-down" size={ms(20)} color={isReasonValid ? c.primary : c.textMuted} />
@@ -2368,8 +2370,8 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
             <Icon name="schedule" size={ms(18)} color={c.primary} />
           </View>
           <View style={common.flex1}>
-            <Text style={[tt.headerTitle, {color: c.textPrimary}]}>Delivery Timeline</Text>
-            <Text style={[tt.headerSub, {color: c.textMuted}]}>
+            <Text style={[tt.headerTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>Delivery Timeline</Text>
+            <Text style={[tt.headerSub, {color: c.textMuted}, {fontFamily: MONO}]}>
               {allFilled ? 'All timestamps recorded' : `${filledCount} of ${TIME_EVENTS.length} completed`}
             </Text>
           </View>
@@ -2401,7 +2403,7 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
                 <View style={[tt.dot, {backgroundColor: hasValue ? c.primary : c.border, borderColor: hasValue ? c.primarySurface : c.surface}]}>
                   {hasValue
                     ? <Icon name="check" size={ms(10)} color={c.textOnPrimary} />
-                    : <Text style={[tt.dotNum, {color: c.textMuted}]}>{i + 1}</Text>
+                    : <Text style={[tt.dotNum, {color: c.textMuted}, {fontFamily: MONO}]}>{i + 1}</Text>
                   }
                 </View>
                 {!isLast && <View style={[tt.line, {backgroundColor: selectedTimes[TIME_EVENTS[i + 1]?.key] || hasValue ? c.primaryMuted : c.border}]} />}
@@ -2412,8 +2414,8 @@ function TimeAdjustTab({data, ticketId, onSaveResult, setSavingOverlay, refreshR
                 <Icon name={event.icon as any} size={ms(15)} color={hasValue ? c.primary : c.textTertiary} />
               </View>
               <View style={common.flex1}>
-                <Text style={[tt.label, {color: c.textPrimary}]}>{ft(({'LEAVE PLANT':'leave_plant','ARRIVE JOB':'arrive_job','START POUR':'start_pour','WASHING':'washing','LEAVE JOB':'leave_job','AT PLANT':'at_plant'} as Record<string,string>)[event.key] || event.key)}</Text>
-                <Text style={[tt.value, {color: hasValue ? c.primary : c.textMuted}]}>
+                <Text style={[tt.label, {color: c.textPrimary}, {fontFamily: MONO}]}>{ft(({'LEAVE PLANT':'leave_plant','ARRIVE JOB':'arrive_job','START POUR':'start_pour','WASHING':'washing','LEAVE JOB':'leave_job','AT PLANT':'at_plant'} as Record<string,string>)[event.key] || event.key)}</Text>
+                <Text style={[tt.value, {color: hasValue ? c.primary : c.textMuted}, {fontFamily: MONO}]}>
                   {hasValue ? formatPickerTime(selectedTimes[event.key]) : 'Not set'}
                 </Text>
               </View>
@@ -2660,7 +2662,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
               />
             </View>
           )}
-          <Text style={[cod.selectorText, {color: paymentType ? c.primary : c.textMuted}]} numberOfLines={1}>
+          <Text style={[cod.selectorText, {color: paymentType ? c.primary : c.textMuted}, {fontFamily: MONO}]} numberOfLines={1}>
             {selectedPayment?.label || 'Select Payment Type'}
           </Text>
           <Icon name="keyboard-arrow-down" size={ms(20)} color={paymentType ? c.primary : c.textMuted} />
@@ -2685,12 +2687,12 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
             <Icon name="unfold-more" size={ms(11)} color={c.textSecondary} />
           </TouchableOpacity>
           <View style={[st.unitBadge, {backgroundColor: c.surface, borderColor: c.border}]}>
-            <Text style={[st.unitBadgeText, {color: c.textSecondary}]}>Min</Text>
+            <Text style={[st.unitBadgeText, {color: c.textSecondary}, {fontFamily: MONO}]}>Min</Text>
           </View>
         </View>
         <ResponsiveModal visible={waitPickerOpen} onClose={() => setWaitPickerOpen(false)} maxWidth={320} maxHeightPercent={50}>
           <View style={[st.pickerHeader, {borderBottomColor: c.border}]}>
-            <Text style={[st.pickerTitle, {color: c.textPrimary}]}>Select Wait Time</Text>
+            <Text style={[st.pickerTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>Select Wait Time</Text>
             <TouchableOpacity style={[st.pickerCloseBtn, {backgroundColor: c.surface}]} onPress={() => setWaitPickerOpen(false)} activeOpacity={0.7}>
               <Icon name="close" size={ms(18)} color={c.textSecondary} />
             </TouchableOpacity>
@@ -2700,7 +2702,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
               const isSelected = v === String(waitTime);
               return (
                 <TouchableOpacity key={v} style={[st.pickerItem, {borderBottomColor: c.borderLight}, isSelected && {backgroundColor: c.primarySurface}]} activeOpacity={0.6} onPress={() => { setWaitTime(parseInt(v)); setWaitPickerOpen(false); }}>
-                  <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}]}>{v} Min</Text>
+                  <Text style={[st.pickerItemText, {color: isSelected ? c.primary : c.textPrimary}, isSelected && {fontWeight: '800'}, {fontFamily: MONO}]}>{v} Min</Text>
                   {isSelected && <Icon name="check-circle" size={ms(16)} color={c.primary} />}
                 </TouchableOpacity>
               );
@@ -2758,8 +2760,8 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
             <Icon name="payments" size={ms(20)} color={c.textOnPrimary} />
           </View>
           <View style={common.flex1}>
-            <Text style={[cod.modalTitle, {color: c.textPrimary}]}>Payment Type</Text>
-            <Text style={[cod.modalSubtitle, {color: c.textMuted}]}>Select a payment method</Text>
+            <Text style={[cod.modalTitle, {color: c.textPrimary}, {fontFamily: MONO}]}>Payment Type</Text>
+            <Text style={[cod.modalSubtitle, {color: c.textMuted}, {fontFamily: MONO}]}>Select a payment method</Text>
           </View>
           <TouchableOpacity style={[cod.modalCloseBtn, {backgroundColor: c.white}]} onPress={closeModal} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
             <Icon name="close" size={ms(20)} color={c.textSecondary} />
@@ -2796,7 +2798,7 @@ function CodTab({data, ticketId, onSaveResult, setSavingOverlay, refreshRecord}:
                   cod.modalItemText,
                   {color: c.textPrimary},
                   isSelected && {color: c.primary, fontWeight: '800'},
-                ]}>
+                , {fontFamily: MONO}]}>
                   {opt.label}
                 </Text>
                 {isSelected ? (
@@ -2858,14 +2860,14 @@ function OfflineDebugBanner() {
 
   return (
     <View style={{flexDirection: 'row', alignItems: 'center', backgroundColor: bg, paddingHorizontal: 12, paddingVertical: 8, gap: 10}}>
-      <Text style={{color: '#fff', fontSize: 12, fontWeight: '700', flex: 1}}>
+      <Text style={{color: '#fff', fontSize: 12, fontWeight: '700', flex: 1, fontFamily: MONO}}>
         {label}
       </Text>
       <TouchableOpacity
         style={{backgroundColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4}}
         onPress={handleToggle}
         activeOpacity={0.6}>
-        <Text style={{color: '#fff', fontSize: 11, fontWeight: '800'}}>
+        <Text style={{color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: MONO}}>
           {btnLabel}
         </Text>
       </TouchableOpacity>
@@ -2966,8 +2968,8 @@ export default function NotesScreen({navigation, route}: Props) {
       {isLandscape ? (
         <View style={[ls.lhRow, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
           <View style={!isTablet ? {flexShrink: 1, minWidth: 0} : undefined}>
-            <Text style={[ls.lhTitle, {color: c.textOnPrimary}]} numberOfLines={1}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
-            {isTablet && <Text style={{fontSize: ms(9), fontWeight: '500', color: c.textOnDark60}}>Delivery Notes & Records</Text>}
+            <Text style={[ls.lhTitle, {color: c.textOnPrimary}, {fontFamily: MONO}]} numberOfLines={1}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
+            {isTablet && <Text style={{fontSize: ms(9), fontWeight: '500', color: c.textOnDark60, fontFamily: MONO}}>Delivery Notes & Records</Text>}
           </View>
           <View style={{flex: 1, minWidth: isTablet ? undefined : 4}} />
           <View style={[ls.lhTabGroup, {backgroundColor: c.overlay10}]}>
@@ -2976,7 +2978,7 @@ export default function NotesScreen({navigation, route}: Props) {
               return (
                 <TouchableOpacity key={tab.key} style={[ls.lhTab, active && {backgroundColor: c.primary}, !isTablet && {paddingHorizontal: wp(8)}]} activeOpacity={0.7} onPress={() => setActiveTab(i)}>
                   <Icon name={tab.icon as any} size={ms(13)} color={active ? c.textOnPrimary : c.textOnDark60} />
-                  <Text style={[ls.lhTabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>{tab.label}</Text>
+                  <Text style={[ls.lhTabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}, {fontFamily: MONO}]}>{tab.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -2990,8 +2992,8 @@ export default function NotesScreen({navigation, route}: Props) {
         <View style={[st.header, {paddingTop: insets.top + wp(1), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right)}]}>
           <View style={st.headerRow}>
             <View>
-              <Text style={[st.headerTitle, {color: c.textOnPrimary}]}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
-              <Text style={[st.headerSub, {color: c.textOnDark60}]}>Delivery Notes & Records</Text>
+              <Text style={[st.headerTitle, {color: c.textOnPrimary}, {fontFamily: MONO}]}>ORDER {deliveryRecord?.ticket?.order_code || '-'} / TICKET {deliveryRecord?.ticket?.ticket_code || '-'}</Text>
+              <Text style={[st.headerSub, {color: c.textOnDark60}, {fontFamily: MONO}]}>Delivery Notes & Records</Text>
             </View>
             <TouchableOpacity
               style={[st.closeBtn, {backgroundColor: c.overlay10}]}
@@ -3013,7 +3015,7 @@ export default function NotesScreen({navigation, route}: Props) {
                   <View style={[st.tabIconWrap, {backgroundColor: active ? c.overlay20 : c.overlay08}]}>
                     <Icon name={tab.icon as any} size={ms(14)} color={active ? c.textOnPrimary : c.textOnDark60} />
                   </View>
-                  <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}]}>
+                  <Text style={[st.tabLabel, {color: active ? c.textOnPrimary : c.textOnDark60}, {fontFamily: MONO}]}>
                     {tab.label}
                   </Text>
                 </TouchableOpacity>
@@ -3044,8 +3046,8 @@ export default function NotesScreen({navigation, route}: Props) {
         <View style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', zIndex: 100}}>
           <View style={{backgroundColor: c.white, borderRadius: wp(14), padding: wp(24), alignItems: 'center', gap: wp(12), elevation: 10, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.2, shadowRadius: 12}}>
             <ActivityIndicator size="large" color={c.primary} />
-            <Text style={{fontSize: ms(13), fontWeight: '700', color: c.textPrimary}}>{savingOverlay ? 'Saving...' : 'Loading...'}</Text>
-            <Text style={{fontSize: ms(10), fontWeight: '500', color: c.textSecondary}}>Please wait</Text>
+            <Text style={{fontSize: ms(13), fontWeight: '700', color: c.textPrimary, fontFamily: MONO}}>{savingOverlay ? 'Saving...' : 'Loading...'}</Text>
+            <Text style={{fontSize: ms(10), fontWeight: '500', color: c.textSecondary, fontFamily: MONO}}>Please wait</Text>
           </View>
         </View>
       )}

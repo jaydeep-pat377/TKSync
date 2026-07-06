@@ -16,6 +16,8 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms, wp} from '../utils/responsive';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 MapboxGL.setAccessToken(Config.MAPBOX_ACCESS_TOKEN || '');
@@ -78,21 +80,21 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
             <Icon name="arrow-back" size={22} color={c.textOnPrimary} />
           </TouchableOpacity>
           <View style={{flex: 1}}>
-            <Text style={[styles.headerTitle, {color: c.textOnPrimary}]}>Delivered To</Text>
+            <Text style={[styles.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]}>Delivered To</Text>
           </View>
         </View>
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30}}>
           <Icon name="location-off" size={ms(48)} color={c.textMuted} />
-          <Text style={{fontSize: ms(16), fontWeight: '700', color: c.textPrimary, marginTop: 16, textAlign: 'center'}}>{address || 'No address'}</Text>
-          <Text style={{fontSize: ms(12), color: c.textSecondary, marginTop: 8, textAlign: 'center'}}>No coordinates available for this delivery</Text>
+          <Text style={{fontSize: ms(16), fontWeight: '700', color: c.textPrimary, marginTop: 16, textAlign: 'center', fontFamily: MONO}}>{address || 'No address'}</Text>
+          <Text style={{fontSize: ms(12), color: c.textSecondary, marginTop: 8, textAlign: 'center', fontFamily: MONO}}>No coordinates available for this delivery</Text>
           {address && (
             <TouchableOpacity style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, marginTop: 24, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 8}} onPress={openGoogleMaps} activeOpacity={0.8}>
               <Icon name="directions" size={20} color="#fff" />
-              <Text style={{fontSize: 15, fontWeight: '800', color: '#fff'}}>Open in Google Maps</Text>
+              <Text style={{fontSize: 15, fontWeight: '800', color: '#fff', fontFamily: MONO}}>Open in Google Maps</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={{marginTop: 16}} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={{fontSize: ms(14), fontWeight: '600', color: c.accent}}>Go Back</Text>
+            <Text style={{fontSize: ms(14), fontWeight: '600', color: c.accent, fontFamily: MONO}}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -107,10 +109,10 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
           <Icon name="arrow-back" size={22} color={c.textOnPrimary} />
         </TouchableOpacity>
         <View style={{flex: 1}}>
-          <Text style={[styles.headerTitle, {color: c.textOnPrimary}]} numberOfLines={1}>
+          <Text style={[styles.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]} numberOfLines={1}>
             {address || 'Delivery Location'}
           </Text>
-          <Text style={[styles.headerSub, {color: c.textOnDark70}]}>
+          <Text style={[styles.headerSub, {color: c.textOnDark70, fontFamily: MONO}]}>
             {delivery.lat.toFixed(6)}, {delivery.lng.toFixed(6)}
           </Text>
         </View>
@@ -164,7 +166,7 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
         <View style={[styles.bottomBar, {paddingBottom: Math.max(insets.bottom, 12)}]}>
           <TouchableOpacity style={[styles.directionsBtn, {backgroundColor: '#2E7D32'}]} onPress={openGoogleMaps} activeOpacity={0.8}>
             <Icon name="directions" size={20} color="#fff" />
-            <Text style={styles.directionsBtnText}>DIRECTIONS</Text>
+            <Text style={[styles.directionsBtnText, {fontFamily: MONO}]}>DIRECTIONS</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.recenterBtn} onPress={recenter} activeOpacity={0.8}>
             <Icon name="my-location" size={20} color="#333" />

@@ -1,10 +1,13 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, Platform,
+} from 'react-native';
 import Icon from './Icon';
 import ResponsiveModal from './ResponsiveModal';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 type Props = {
   visible: boolean;
@@ -32,13 +35,13 @@ export default function ThemedAlert({visible, type, title, message, onClose, but
         <View style={[s.iconWrap, {backgroundColor: iconBg}]}>
           <Icon name={iconName} size={ms(28)} color={iconColor} />
         </View>
-        <Text style={[s.title, {color: c.textPrimary}]}>{title}</Text>
-        <Text style={[s.message, {color: c.textSecondary}]}>{message}</Text>
+        <Text style={[s.title, {color: c.textPrimary, fontFamily: MONO}]}>{title}</Text>
+        <Text style={[s.message, {color: c.textSecondary, fontFamily: MONO}]}>{message}</Text>
         <TouchableOpacity
           style={[s.btn, {backgroundColor: btnBg}]}
           onPress={onClose}
           activeOpacity={0.7}>
-          <Text style={[s.btnText, {color: c.textOnPrimary}]}>{buttonText}</Text>
+          <Text style={[s.btnText, {color: c.textOnPrimary, fontFamily: MONO}]}>{buttonText}</Text>
         </TouchableOpacity>
       </View>
     </ResponsiveModal>

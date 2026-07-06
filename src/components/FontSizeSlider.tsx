@@ -15,6 +15,8 @@ import Icon from './Icon';
 import {useFontSize, setGlobalFontScale} from '../contexts/FontSizeContext';
 import {useTheme} from '../contexts/ThemeContext';
 
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
 const MIN_SCALE = 0.85;
 const MAX_SCALE = 1.30;
 const STEPS = Math.round((MAX_SCALE - MIN_SCALE) / 0.05);
@@ -244,11 +246,11 @@ export default function FontSizeSlider() {
         {/* ── COLLAPSED ── */}
         {!expanded && (
           <Animated.View style={[st.collapsedWrap, {opacity: iconOpacity}]}>
-            <TouchableOpacity onPress={toggleExpand} activeOpacity={0.7} style={st.iconBtn}>
-              <View style={st.iconCircle}>
+            <TouchableOpacity onPress={toggleExpand} activeOpacity={0.7} style={[st.iconBtn, {fontFamily: MONO}]}>
+              <View style={[st.iconCircle, {fontFamily: MONO}]}>
                 <CurveIcon size={26} color="#fff" side={side} />
               </View>
-              <Text style={st.aaLabel} allowFontScaling={false}>Aa</Text>
+              <Text style={[st.aaLabel, {fontFamily: MONO}]} allowFontScaling={false}>Aa</Text>
               {!isDefault && <View style={[st.dot, {backgroundColor: '#4FC3F7'}]} />}
             </TouchableOpacity>
           </Animated.View>
@@ -256,10 +258,10 @@ export default function FontSizeSlider() {
 
         {/* ── EXPANDED ── */}
         {expanded && (
-          <Animated.View style={[st.expandedWrap, {opacity: controlsOpacity}]}>
+          <Animated.View style={[st.expandedWrap, {opacity: controlsOpacity}, {fontFamily: MONO}]}>
 
             {/* Close toggle */}
-            <TouchableOpacity onPress={toggleExpand} activeOpacity={0.7} style={st.closeBtn}>
+            <TouchableOpacity onPress={toggleExpand} activeOpacity={0.7} style={[st.closeBtn, {fontFamily: MONO}]}>
               <CurveIcon size={20} color="#fff" side={side} />
             </TouchableOpacity>
 
@@ -269,17 +271,17 @@ export default function FontSizeSlider() {
               activeOpacity={0.6}
               disabled={atMax}
               hitSlop={{top: 8, bottom: 4, left: 10, right: 10}}
-              style={st.arrowGroup}>
+              style={[st.arrowGroup, {fontFamily: MONO}]}>
               <View style={{height: 6}} />
               <Icon name="keyboard-arrow-up" size={22} color={atMax ? 'rgba(255,255,255,0.2)' : '#fff'} />
               <View style={{height: 4}} />
-              <Text style={[st.arrowAa, {fontSize: 13}, atMax && st.arrowAaOff]} allowFontScaling={false}>A</Text>
+              <Text style={[st.arrowAa, {fontSize: 13, fontFamily: MONO}, atMax && st.arrowAaOff]} allowFontScaling={false}>A</Text>
               <View style={{height: 6}} />
             </TouchableOpacity>
 
             {/* Track */}
-            <View style={st.track}>
-              <View style={st.trackBg}>
+            <View style={[st.track, {fontFamily: MONO}]}>
+              <View style={[st.trackBg, {fontFamily: MONO}]}>
                 <View style={[st.trackFill, {height: TRACK_H * progress}]} />
               </View>
               {Array.from({length: STEPS + 1}, (_, i) => {
@@ -294,8 +296,8 @@ export default function FontSizeSlider() {
               activeOpacity={isDefault ? 1 : 0.6}
               hitSlop={{top: 4, bottom: 4, left: 10, right: 10}}>
               <View style={[st.badge, !isDefault && st.badgeOn]}>
-                <Text style={st.pctNum} allowFontScaling={false}>{pct}</Text>
-                <Text style={st.pctSign} allowFontScaling={false}>%</Text>
+                <Text style={[st.pctNum, {fontFamily: MONO}]} allowFontScaling={false}>{pct}</Text>
+                <Text style={[st.pctSign, {fontFamily: MONO}]} allowFontScaling={false}>%</Text>
               </View>
             </TouchableOpacity>
 
@@ -305,9 +307,9 @@ export default function FontSizeSlider() {
               activeOpacity={0.6}
               disabled={atMin}
               hitSlop={{top: 4, bottom: 8, left: 10, right: 10}}
-              style={st.arrowGroup}>
+              style={[st.arrowGroup, {fontFamily: MONO}]}>
               <View style={{height: 6}} />
-              <Text style={[st.arrowAa, {fontSize: 10}, atMin && st.arrowAaOff]} allowFontScaling={false}>A</Text>
+              <Text style={[st.arrowAa, {fontSize: 10, fontFamily: MONO}, atMin && st.arrowAaOff]} allowFontScaling={false}>A</Text>
               <View style={{height: 4}} />
               <Icon name="keyboard-arrow-down" size={22} color={atMin ? 'rgba(255,255,255,0.2)' : '#fff'} />
               <View style={{height: 6}} />

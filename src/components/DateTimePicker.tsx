@@ -9,11 +9,14 @@ import {
   Animated,
   useWindowDimensions,
   StatusBar,
+  Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 // Item height is computed at render time via the hook, not at module level
 const VISIBLE = 5;
@@ -252,7 +255,7 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
             <View style={[ps.hdrIcon, {backgroundColor: c.primarySurface}]}>
               <Icon name={mode === 'time' ? 'access-time' : 'event'} size={ms(14)} color={c.primary} />
             </View>
-            <Text style={[ps.hdrTitle, {color: c.textPrimary}]}>{mode === 'time' ? 'Select Time' : 'Select Date & Time'}</Text>
+            <Text style={[ps.hdrTitle, {color: c.textPrimary, fontFamily: MONO}]}>{mode === 'time' ? 'Select Time' : 'Select Date & Time'}</Text>
             <TouchableOpacity
               style={[ps.closeBtn, {backgroundColor: c.surface}]}
               onPress={onCancel}
@@ -269,15 +272,15 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
             contentContainerStyle={isLandscape ? ps.landscapeContent : ps.portraitContent}>
 
             {isLandscape ? (
-              <View style={ps.landscapeRow}>
+              <View style={[ps.landscapeRow, {fontFamily: MONO}]}>
                 {mode !== 'time' && (
                   <>
-                    <View style={ps.landscapeCol}>
-                      <View style={ps.sectionLabel}>
+                    <View style={[ps.landscapeCol, {fontFamily: MONO}]}>
+                      <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
                         <Icon name="calendar-today" size={ms(10)} color={c.primary} />
-                        <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
+                        <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>DATE</Text>
                       </View>
-                      <View style={ps.wheels}>
+                      <View style={[ps.wheels, {fontFamily: MONO}]}>
                         <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
                         <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
                         <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
@@ -286,14 +289,14 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
                     <View style={[ps.dividerV, {backgroundColor: c.borderLight}]} />
                   </>
                 )}
-                <View style={ps.landscapeCol}>
-                  <View style={ps.sectionLabel}>
+                <View style={[ps.landscapeCol, {fontFamily: MONO}]}>
+                  <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
                     <Icon name="access-time" size={ms(10)} color={c.primary} />
-                    <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
+                    <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>TIME</Text>
                   </View>
-                  <View style={ps.wheels}>
+                  <View style={[ps.wheels, {fontFamily: MONO}]}>
                     <Wheel data={hourData} selected={hour} onSelect={setHour} width={wHour} itemH={itemH} />
-                    <Text style={[ps.colon, {color: c.textPrimary}]}>:</Text>
+                    <Text style={[ps.colon, {color: c.textPrimary, fontFamily: MONO}]}>:</Text>
                     <Wheel data={minData} selected={minute} onSelect={setMinute} width={wMin} itemH={itemH} />
                   </View>
                 </View>
@@ -302,24 +305,24 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
               <>
                 {mode !== 'time' && (
                   <>
-                    <View style={ps.sectionLabel}>
+                    <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
                       <Icon name="calendar-today" size={ms(10)} color={c.primary} />
-                      <Text style={[ps.labelText, {color: c.primary}]}>DATE</Text>
+                      <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>DATE</Text>
                     </View>
-                    <View style={ps.wheels}>
+                    <View style={[ps.wheels, {fontFamily: MONO}]}>
                       <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
                       <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
                       <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
                     </View>
                   </>
                 )}
-                <View style={ps.sectionLabel}>
+                <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
                   <Icon name="access-time" size={ms(10)} color={c.primary} />
-                  <Text style={[ps.labelText, {color: c.primary}]}>TIME</Text>
+                  <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>TIME</Text>
                 </View>
-                <View style={ps.wheels}>
+                <View style={[ps.wheels, {fontFamily: MONO}]}>
                   <Wheel data={hourData} selected={hour} onSelect={setHour} width={wHour} itemH={itemH} />
-                  <Text style={[ps.colon, {color: c.textPrimary}]}>:</Text>
+                  <Text style={[ps.colon, {color: c.textPrimary, fontFamily: MONO}]}>:</Text>
                   <Wheel data={minData} selected={minute} onSelect={setMinute} width={wMin} itemH={itemH} />
                 </View>
               </>
@@ -332,14 +335,14 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
               style={[ps.cancelBtn, {borderColor: c.border}]}
               onPress={onCancel}
               activeOpacity={0.7}>
-              <Text style={[ps.btnText, {color: c.textSecondary}]}>Cancel</Text>
+              <Text style={[ps.btnText, {color: c.textSecondary, fontFamily: MONO}]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[ps.confirmBtn, {backgroundColor: c.primary}]}
               onPress={() => onConfirm(new Date(year, month, day, hour, minute))}
               activeOpacity={0.8}>
               <Icon name="check" size={ms(13)} color={c.textOnPrimary} />
-              <Text style={[ps.btnText, {color: c.textOnPrimary}]}>Confirm</Text>
+              <Text style={[ps.btnText, {color: c.textOnPrimary, fontFamily: MONO}]}>Confirm</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>

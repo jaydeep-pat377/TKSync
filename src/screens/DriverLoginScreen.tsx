@@ -25,6 +25,8 @@ import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
@@ -211,15 +213,15 @@ export default function DriverLoginScreen({navigation}: Props) {
               <Text style={[
                 styles.appName,
                 {fontSize: ms(landscapePhone ? 16 : isTablet ? 20 : 18), color: c.textOnPrimary},
-              ]}>
+              , {fontFamily: MONO}]}>
                 {t('app.name')}
               </Text>
-              <Text style={[styles.appTagline, {fontSize: ms(landscapePhone ? 9 : isTablet ? 11 : 10), color: c.textOnDark70}]}>
+              <Text style={[styles.appTagline, {fontSize: ms(landscapePhone ? 9 : isTablet ? 11 : 10), color: c.textOnDark70}, {fontFamily: MONO}]}>
                 {t('app.tagline')}
               </Text>
               <View style={[styles.companyBadge, {backgroundColor: c.textOnDark12}]}>
                 <Icon name="check-circle" size={ms(12)} color={c.success} />
-                <Text style={[styles.companyBadgeText, {color: c.textOnDark70}]}>{company?.company_name ?? ''}</Text>
+                <Text style={[styles.companyBadgeText, {color: c.textOnDark70}, {fontFamily: MONO}]}>{company?.company_name ?? ''}</Text>
               </View>
             </Animated.View>
 
@@ -239,7 +241,7 @@ export default function DriverLoginScreen({navigation}: Props) {
               {!landscapePhone && (
                 <View style={[styles.loginTypeBadge, {backgroundColor: c.primaryDark}]}>
                   <Icon name="local-shipping" size={ms(14)} color={c.textOnPrimary} />
-                  <Text style={[styles.loginTypeText, {color: c.textOnPrimary}]}>
+                  <Text style={[styles.loginTypeText, {color: c.textOnPrimary}, {fontFamily: MONO}]}>
                     {t('driverLogin.badge')}
                   </Text>
                 </View>
@@ -249,7 +251,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                 styles.welcomeText,
                 {fontSize: ms(landscapePhone ? 13 : isTablet ? 16 : 15), color: c.textPrimary},
                 landscapePhone && {marginBottom: 1},
-              ]}>
+              , {fontFamily: MONO}]}>
                 {t('driverLogin.title')}
               </Text>
               <Text style={[
@@ -257,13 +259,13 @@ export default function DriverLoginScreen({navigation}: Props) {
                 {fontSize: ms(landscapePhone ? 9 : isTablet ? 11 : 10), color: c.textTertiary},
                 landscapePhone && {marginBottom: 6},
                 isTablet && {marginBottom: 18},
-              ]}>
+              , {fontFamily: MONO}]}>
                 {t('driverLogin.subtitle')}
               </Text>
 
               {/* Truck Number */}
               <View style={{marginBottom: landscapePhone ? 6 : isTablet ? 14 : wp(18)}}>
-                <Text style={[styles.fieldLabel, landscapePhone && {marginBottom: 3}, {color: c.textSecondary}]}>
+                <Text style={[styles.fieldLabel, landscapePhone && {marginBottom: 3}, {color: c.textSecondary}, {fontFamily: MONO}]}>
                   {t('driverLogin.truckNumber')}
                 </Text>
                 <View style={[
@@ -300,7 +302,7 @@ export default function DriverLoginScreen({navigation}: Props) {
 
               {/* Driver PIN */}
               <View style={{marginBottom: landscapePhone ? 6 : isTablet ? 14 : wp(18)}}>
-                <Text style={[styles.fieldLabel, landscapePhone && {marginBottom: 3}, {color: c.textSecondary}]}>
+                <Text style={[styles.fieldLabel, landscapePhone && {marginBottom: 3}, {color: c.textSecondary}, {fontFamily: MONO}]}>
                   {t('driverLogin.driverPin')}
                 </Text>
                 <View style={[
@@ -340,7 +342,7 @@ export default function DriverLoginScreen({navigation}: Props) {
               {error ? (
                 <View style={[styles.errorBox, {backgroundColor: c.errorSurface, borderColor: c.error}]}>
                   <Icon name="error-outline" size={ms(14)} color={c.error} />
-                  <Text style={[styles.errorText, {color: c.error || '#EF4444'}]}>{error}</Text>
+                  <Text style={[styles.errorText, {color: c.error || '#EF4444'}, {fontFamily: MONO}]}>{error}</Text>
                 </View>
               ) : null}
 
@@ -356,7 +358,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                 ]}>
                   {rememberMe && <Icon name="check" size={ms(12)} color={c.textOnPrimary} />}
                 </View>
-                <Text style={[styles.rememberText, {color: c.textSecondary}]}>
+                <Text style={[styles.rememberText, {color: c.textSecondary}, {fontFamily: MONO}]}>
                   {t('driverLogin.rememberMe', 'Remember Me')}
                 </Text>
               </TouchableOpacity>
@@ -373,7 +375,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                 onPress={handleLogin}
                 activeOpacity={0.85}
                 disabled={loading}>
-                <Text style={[styles.loginButtonText, {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textOnPrimary}]}>
+                <Text style={[styles.loginButtonText, {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textOnPrimary}, {fontFamily: MONO}]}>
                   {loading ? t('driverLogin.signingIn', 'Signing In...') : t('driverLogin.signIn')}
                 </Text>
                 {!loading && <Icon name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
@@ -383,7 +385,7 @@ export default function DriverLoginScreen({navigation}: Props) {
               {!landscapePhone && (
                 <View style={[styles.footer, isTablet && {marginTop: 16}]}>
                   <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
-                  <Text style={[styles.footerText, {color: c.textPlaceholder}]}>{t('app.poweredBy')}</Text>
+                  <Text style={[styles.footerText, {color: c.textPlaceholder}, {fontFamily: MONO}]}>{t('app.poweredBy')}</Text>
                   <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
                 </View>
               )}

@@ -2332,85 +2332,52 @@ export default function DashboardScreen({ navigation }: Props) {
       <ResponsiveModal
         visible={qrVisible}
         onClose={() => setQrVisible(false)}
-        maxWidth={L ? (lt ? 440 : 380) : isTablet ? 440 : 380}
-        widthPercent={L ? (lt ? 50 : 70) : isTablet ? 55 : 85}
-        maxHeightPercent={L ? 95 : 80}>
-        <View style={{ backgroundColor: c.qrBg }}>
-          {/* Header */}
-          <View style={[styles.qrHeader, { borderBottomColor: c.qrFg + '15' }, L && { paddingVertical: lt ? ls(6) : 6, paddingHorizontal: lt ? ls(10) : 10, gap: lt ? ls(6) : 6 }]}>
-            <View style={[styles.qrHeaderIcon, { backgroundColor: c.qrFg + '18' }, L && { width: lt ? ls(26) : 24, height: lt ? ls(26) : 24, borderRadius: lt ? ls(7) : 7 }]}>
-              <Icon name="qr-code-2" size={L ? (lt ? ls(16) : 15) : ms(18)} color={c.qrFg} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.qrHeaderTitle, {color: c.qrFg, fontFamily: MONO}, L && { fontSize: ls(12) }]}>QR Code</Text>
-              <Text style={[styles.qrHeaderSub, {color: c.qrFg + '90', fontFamily: MONO}, L && { fontSize: ls(9) }]}>Scan to verify delivery</Text>
-            </View>
-            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.qrFg + '12' }, L && { width: ls(28), height: ls(28), borderRadius: ls(14) }]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Icon name="close" size={L ? ls(14) : ms(18)} color={c.qrFg} />
-            </TouchableOpacity>
-          </View>
-
+        maxWidth={320}
+        widthPercent={L ? 28 : 65}
+        maxHeightPercent={60}>
+        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: 20, alignItems: 'center' }}>
           {qrLoading ? (
-            <View style={{ paddingVertical: L ? ls(30) : wp(40), alignItems: 'center' }}>
-              <ActivityIndicator size={L ? 'small' : 'large'} color={c.qrFg} />
+            <View style={{ paddingVertical: 40 }}>
+              <ActivityIndicator size="large" color={c.qrFg} />
             </View>
           ) : qrError ? (
-            <View style={{ paddingVertical: L ? ls(20) : wp(30), alignItems: 'center', paddingHorizontal: L ? ls(16) : wp(20) }}>
-              <Icon name="error-outline" size={L ? ls(28) : ms(36)} color={c.qrFg + '60'} />
-              <Text style={{ fontSize: L ? ls(12) : ms(13), fontWeight: '700', color: c.qrFg, marginTop: L ? ls(8) : wp(10), textAlign: 'center' , fontFamily: MONO}}>Server Error</Text>
-              <Text style={{ fontSize: L ? ls(10) : ms(11), color: c.qrFg + '80', marginTop: L ? ls(3) : wp(4), textAlign: 'center' , fontFamily: MONO}}>Unable to load QR code. Please try again later.</Text>
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <Icon name="error-outline" size={ms(32)} color={c.qrFg + '60'} />
+              <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.qrFg, marginTop: 8, textAlign: 'center', fontFamily: MONO }}>Unable to load QR code</Text>
               <TouchableOpacity
                 onPress={() => {
                   if (!currentTicket) return;
-                  setQrLoading(true);
-                  setQrError(false);
+                  setQrLoading(true); setQrError(false);
                   ticketsApi.getQr(currentTicket.id)
                     .then(res => { if (res.data) setQrData(res.data); })
                     .catch(() => { setQrError(true); })
                     .finally(() => setQrLoading(false));
                 }}
                 activeOpacity={0.7}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(5), marginTop: L ? ls(12) : wp(16), backgroundColor: c.qrFg + '18', paddingVertical: L ? ls(6) : wp(8), paddingHorizontal: L ? ls(16) : wp(20), borderRadius: L ? ls(6) : wp(8) }}>
-                <Icon name="refresh" size={L ? ls(12) : ms(14)} color={c.qrFg} />
-                <Text style={{ fontSize: L ? ls(10) : ms(11), fontWeight: '700', color: c.qrFg , fontFamily: MONO}}>Retry</Text>
+                style={{ marginTop: 12, backgroundColor: '#157a15', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 6 }}>
+                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff', fontFamily: MONO }}>Retry</Text>
               </TouchableOpacity>
             </View>
           ) : qrData ? (
-            <ScrollView
-              bounces={false}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ alignItems: 'center', paddingVertical: L ? ls(4) : wp(6) }}>
-              <View style={[styles.qrChipRow, L && { gap: ls(5), paddingHorizontal: ls(10) }]}>
-                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }, L && { paddingVertical: ls(5), borderRadius: ls(6) }]}>
-                  <Text style={[styles.qrChipLabel, {color: c.qrFg + '80', fontFamily: MONO}, L && { fontSize: ls(9) }]}>ORDER</Text>
-                  <Text style={[styles.qrChipValue, {color: c.qrFg, fontFamily: MONO}, L && { fontSize: ls(11) }]}>{qrData.order_code || '-'}</Text>
-                </View>
-                <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }, L && { paddingVertical: ls(5), borderRadius: ls(6) }]}>
-                  <Text style={[styles.qrChipLabel, {color: c.qrFg + '80', fontFamily: MONO}, L && { fontSize: ls(9) }]}>TICKET</Text>
-                  <Text style={[styles.qrChipValue, {color: c.qrFg, fontFamily: MONO}, L && { fontSize: ls(11) }]}>{qrData.ticket_code || '-'}</Text>
-                </View>
+            <>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: ms(9), fontWeight: '800', color: c.qrFg, letterSpacing: 0.3, marginBottom: 16, fontFamily: MONO }}>
+                ORDER: {qrData.order_code || '-'}  TICKET: {qrData.ticket_code || '-'}
+              </Text>
+              <QRCode
+                value={qrData.qr_token}
+                size={200}
+                backgroundColor={c.white}
+                color={c.qrFg}
+              />
+              <View style={{ alignItems: 'flex-end', width: '100%', marginTop: 20 }}>
+                <TouchableOpacity
+                  onPress={() => setQrVisible(false)}
+                  activeOpacity={0.8}
+                  style={{ backgroundColor: '#157a15', paddingVertical: 8, paddingHorizontal: 24, borderRadius: 6 }}>
+                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#fff', fontFamily: MONO }}>Close</Text>
+                </TouchableOpacity>
               </View>
-              <View style={[styles.qrCodeSection, L && { paddingVertical: ls(8), paddingHorizontal: ls(8) }]}>
-                <View style={[styles.qrCodeCard, { backgroundColor: c.white, shadowColor: c.shadowColor }, L && { padding: ls(10), borderRadius: ls(10) }]}>
-                  <QRCode
-                    value={qrData.qr_token}
-                    size={L ? Math.round(Math.min(Math.max((winHeight - insets.top - insets.bottom) * 0.35, 120), lt ? 220 : 160)) : Math.round(Math.min(Math.max((width - insets.left - insets.right) * 0.45, 150), isTablet ? 260 : 200))}
-                    backgroundColor={c.white}
-                    color={c.qrFg}
-                  />
-                </View>
-              </View>
-              <View style={[styles.qrFooter, L && { paddingHorizontal: ls(10), gap: ls(3) }]}>
-                <View style={[styles.qrFooterRow, { borderTopColor: c.qrFg + '12' }, L && { gap: ls(4), paddingTop: ls(2) }]}>
-                  <Icon name="local-shipping" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70', fontFamily: MONO}, L && { fontSize: ls(10) }]}>{`TRUCK ${qrData.truck_code || '-'} · DRIVER ${qrData.driver_code || '-'}`}</Text>
-                </View>
-                <View style={[styles.qrFooterRow, L && { gap: ls(4) }]}>
-                  <Icon name="factory" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70', fontFamily: MONO}, L && { fontSize: ls(10) }]}>{qrData.plant_name || '-'}</Text>
-                </View>
-              </View>
-            </ScrollView>
+            </>
           ) : null}
         </View>
       </ResponsiveModal>

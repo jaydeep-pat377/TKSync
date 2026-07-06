@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Animated,
   StatusBar,
+  Platform,
   useWindowDimensions,
   Easing,
 } from 'react-native';
@@ -12,6 +13,8 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms} from '../utils/responsive';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 import YellowTruck from '../assets/svgs/yellowTruck.svg';
 
@@ -453,9 +456,9 @@ export default function SplashScreen({navigation}: Props) {
             {opacity: versionOpacity},
           ]}>
           <View style={[styles.versionBadge, {backgroundColor: c.overlay10, borderColor: c.overlay08}]}>
-            <Text style={[styles.versionText, {color: c.textOnDark60}]}>v1.20.0</Text>
+            <Text style={[styles.versionText, {color: c.textOnDark60, fontFamily: MONO}]}>v1.20.0</Text>
           </View>
-          <Text style={[styles.copyrightText, {color: c.textOnDark35}]}>Powered by TKSync</Text>
+          <Text style={[styles.copyrightText, {color: c.textOnDark35, fontFamily: MONO}]}>Powered by TKSync</Text>
         </Animated.View>
       </View>
     </Animated.View>
