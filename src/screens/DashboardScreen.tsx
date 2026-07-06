@@ -39,6 +39,8 @@ import { offlineStorage } from '../services/offlineStorage';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
 import { useFontScaleRefresh, useFontSize } from '../contexts/FontSizeContext';
 
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
 const WEATHER_ICONS: Record<string, string> = {
   '01d': 'wb-sunny', '01n': 'nightlight-round',
   '02d': 'partly-cloudy-day', '02n': 'nights-stay',
@@ -898,13 +900,13 @@ export default function DashboardScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: wp(20) }}>
-          <Text style={{ fontSize: ms(isLandscape ? 12 : 16), fontWeight: '400', color: '#222', textAlign: 'center' }}>
+          <Text style={{ fontSize: ms(isLandscape ? 12 : 16), fontWeight: '400', color: '#222', textAlign: 'center' , fontFamily: MONO}}>
             COMPANY: {company?.company_name || '-'}
           </Text>
-          <Text style={{ fontSize: ms(isLandscape ? 11 : 15), fontWeight: '400', color: '#222', textAlign: 'center', marginTop: isLandscape ? 1 : wp(6) }}>
+          <Text style={{ fontSize: ms(isLandscape ? 11 : 15), fontWeight: '400', color: '#222', textAlign: 'center', marginTop: isLandscape ? 1 : wp(6) , fontFamily: MONO}}>
             VEHICLE: {driver?.truck_code || '-'}
           </Text>
-          <Text style={{ fontSize: ms(isLandscape ? 13 : 18), fontWeight: '800', color: '#111', textAlign: 'center', marginTop: isLandscape ? 6 : wp(24) }}>
+          <Text style={{ fontSize: ms(isLandscape ? 13 : 18), fontWeight: '800', color: '#111', textAlign: 'center', marginTop: isLandscape ? 6 : wp(24) , fontFamily: MONO}}>
             TICKET NOT ASSIGNED
           </Text>
           {loading ? (
@@ -912,7 +914,7 @@ export default function DashboardScreen({ navigation }: Props) {
           ) : (
             <>
               <TouchableOpacity onPress={() => fetchTickets()} activeOpacity={0.7} style={{ marginTop: isLandscape ? 2 : wp(8) }}>
-                <Text style={{ fontSize: ms(isLandscape ? 11 : 15), fontWeight: '600', color: '#2e7d32', textDecorationLine: 'underline', textAlign: 'center' }}>
+                <Text style={{ fontSize: ms(isLandscape ? 11 : 15), fontWeight: '600', color: '#2e7d32', textDecorationLine: 'underline', textAlign: 'center' , fontFamily: MONO}}>
                   REFRESH
                 </Text>
               </TouchableOpacity>
@@ -961,14 +963,14 @@ export default function DashboardScreen({ navigation }: Props) {
                       <View style={[styles.ddIcon, { backgroundColor: bgColor }]}>
                         <Icon name={itemIcon as any} size={ms(18)} color={iconColor} />
                       </View>
-                      <Text style={[styles.ddLabel, { color: labelColor }]}>{label}{suffix}</Text>
+                      <Text style={[styles.ddLabel, {color: labelColor, fontFamily: MONO}]}>{label}{suffix}</Text>
                       <Icon name="chevron-right" size={ms(18)} color={c.textMuted} />
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
               <View style={[styles.ddFooter, { borderTopColor: c.borderLight }]}>
-                <Text style={[styles.ddVersion, { color: c.textMuted }]}>{appVersion ? `v${appVersion}` : '...'}</Text>
+                <Text style={[styles.ddVersion, {color: c.textMuted, fontFamily: MONO}]}>{appVersion ? `v${appVersion}` : '...'}</Text>
               </View>
             </Animated.View>
           </View>
@@ -981,7 +983,7 @@ export default function DashboardScreen({ navigation }: Props) {
           maxWidth={450}
           maxHeightPercent={70}>
           <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
-            <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.plants')}</Text>
+            <Text style={[styles.mHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.plants')}</Text>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Icon name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
@@ -1005,7 +1007,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
                   activeOpacity={0.6}
                   onPress={() => setPlantsVisible(false)}>
-                  <Text style={[styles.plantText, { color: c.textPrimary }]}>{plant.code}-{plant.name}</Text>
+                  <Text style={[styles.plantText, {color: c.textPrimary, fontFamily: MONO}]}>{plant.code}-{plant.name}</Text>
                 </TouchableOpacity>
               ))}
               {plantsLoadingMore && (
@@ -1026,7 +1028,7 @@ export default function DashboardScreen({ navigation }: Props) {
     const isFontBtn = item.icon === 'text-fields';
     const sz = L ? 24 : isTablet ? 24 : ms(20);
     const iconEl = isFontBtn
-      ? <Text style={{ fontSize: sz * 0.85, fontWeight: '900', color: active ? c.primary : isDark ? '#B0BEC5' : c.textMuted }}>A</Text>
+      ? <Text style={{ fontSize: sz * 0.85, fontWeight: '900', color: active ? c.primary : isDark ? '#B0BEC5' : c.textMuted , fontFamily: MONO}}>A</Text>
       : <Icon name={item.icon as any} size={sz} color={active ? c.primary : isDark ? '#B0BEC5' : c.textMuted} />;
     return (
       <TouchableOpacity
@@ -1123,7 +1125,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
                     style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
                     <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
-                    <Text style={[styles.tabText, { color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700' }]}>{ticket.ticket_code}</Text>
+                    <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700', fontFamily: MONO}]}>{ticket.ticket_code}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -1131,13 +1133,13 @@ export default function DashboardScreen({ navigation }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(5), marginLeft: ms(6) }}>
               <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', height: L ? 25 : ms(28), borderRadius: 8, paddingHorizontal: ms(8), flexDirection: 'row', alignItems: 'center', gap: ms(3) }}>
                 <Icon name="wifi" size={L ? 13 : ms(14)} color="#fff" />
-                <Text style={{ fontSize: L ? 10 : ms(8), fontWeight: '800', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                <Text style={{ fontSize: L ? 10 : ms(8), fontWeight: '800', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
               </View>
               <TouchableOpacity activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
                 <Icon name="notifications" size={L ? 13 : ms(14)} color={c.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setFontSizeVisible(true)} activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: L ? 13 : ms(14), fontWeight: '900', color: c.textSecondary }}>A</Text>
+                <Text style={{ fontSize: L ? 13 : ms(14), fontWeight: '900', color: c.textSecondary , fontFamily: MONO}}>A</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => toggle()} activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
                 <Icon name={isDark ? 'light-mode' : 'dark-mode'} size={L ? 13 : ms(14)} color={c.textSecondary} />
@@ -1157,29 +1159,29 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                   <Image source={require('../assets/images/logo.png')} style={{ width: 26, height: 26, borderRadius: 13 }} />
-                  <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary }}>{company?.company_name || t('app.name')}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary , fontFamily: MONO}}>{company?.company_name || t('app.name')}</Text>
                 </View>
                 {/* Weather inline */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
                   <Icon name={getWeatherIcon(detail?.weather?.icon)} size={14} color={c.textOnPrimary} />
                   <View>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                    <Text style={{ fontSize: 8, fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                    <Text style={{ fontSize: 8, fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                   </View>
                 </View>
                 {/* Vehicle & Employee stacked */}
                 <View style={{ backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, gap: 2 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
-                  <Text style={{ fontSize: 8, fontWeight: '500', color: c.textOnDark60 }}>{driver?.driver_code || '-'}</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
+                  <Text style={{ fontSize: 8, fontWeight: '500', color: c.textOnDark60 , fontFamily: MONO}}>{driver?.driver_code || '-'}</Text>
                 </View>
                 {/* Sync pill */}
                 <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }}>
                   <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><Icon name="sync" size={13} color={c.textOnPrimary} /></Animated.View>
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: refreshing ? c.warning : c.success }} />
-                  <Text style={{ fontSize: 9, fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>{syncAgo}</Text>
                 </TouchableOpacity>
                 <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 8, fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                  <Text style={{ fontSize: 8, fontWeight: '700', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                 </View>
                 <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={openMenu} activeOpacity={0.7}>
                   <Icon name="menu" size={15} color={c.textOnPrimary} />
@@ -1192,7 +1194,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   return (
                     <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
                       <View style={{ width: ms(5), height: ms(5), borderRadius: ms(3), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
-                      <Text style={[styles.tabText, { color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700' }]}>{ticket.ticket_code}</Text>
+                      <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700', fontFamily: MONO}]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1205,6 +1207,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={styles.headerLeft}>
                   <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && { width: ls(30), height: ls(30), borderRadius: ls(15) }]} />
                   <Text numberOfLines={1} style={[styles.logoTitle,
+                    {fontFamily: MONO},
                   { color: c.textOnPrimary, marginLeft: L ? ls(8) : wp(10), flexShrink: 1 }, L && { fontSize: ls(20) }]}>{company?.company_name || t('app.name')}</Text>
                 </View>
                 <View style={[styles.headerActions, L && { gap: ls(5) }]}>
@@ -1214,13 +1217,13 @@ export default function DashboardScreen({ navigation }: Props) {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12) }}>
                         <Icon name={getWeatherIcon(detail?.weather?.icon)} size={ls(16)} color={c.textOnPrimary} />
                         <View>
-                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                         </View>
                       </View>
                       <View style={{ backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), gap: ls(2) }}>
-                        <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary }}>{driver?.truck_code || '-'}</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark60 }}>{driver?.driver_code || '-'}</Text>
+                        <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark60 , fontFamily: MONO}}>{driver?.driver_code || '-'}</Text>
                       </View>
                     </>
                   )}
@@ -1233,10 +1236,10 @@ export default function DashboardScreen({ navigation }: Props) {
                       <Icon name="sync" size={L ? ls(15) : ms(16)} color={c.textOnPrimary} />
                     </Animated.View>
                     <View style={{ width: ls(5), height: ls(5), borderRadius: 3, backgroundColor: refreshing ? c.warning : c.success }} />
-                    <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textOnDark60 }}>{syncAgo}</Text>
+                    <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>{syncAgo}</Text>
                   </TouchableOpacity>
                   <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: L ? ls(10) : wp(10), paddingVertical: L ? ls(4) : wp(4), paddingHorizontal: L ? ls(8) : wp(8), justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: L ? ms(8) : ms(9), fontWeight: '700', color: '#fff' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                    <Text style={{ fontSize: L ? ms(8) : ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                   </View>
                   <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={openMenu} activeOpacity={0.7}>
                     <Icon name="menu" size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
@@ -1250,7 +1253,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   return (
                     <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
                       <View style={{ width: ms(5), height: ms(5), borderRadius: ms(3), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
-                      <Text style={[styles.tabText, { color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700' }]}>{ticket.ticket_code}</Text>
+                      <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700', fontFamily: MONO}]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1280,20 +1283,20 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1.5 }}>
                   <Image source={require('../assets/images/logo.png')} style={{ width: fs(34), height: fs(34), borderRadius: fs(17) }} />
                   <View>
-                    <Text style={{ fontSize: fst(14), fontWeight: '700', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
-                    <Text style={{ fontSize: fst(11), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
+                    <Text style={{ fontSize: fst(14), fontWeight: '700', color: c.textOnDark60 , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
+                    <Text style={{ fontSize: fst(11), fontWeight: '500', color: c.textOnDark35 , fontFamily: MONO}}>{driver?.driver_code || '-'}</Text>
                   </View>
                 </View>
                 <View style={{ alignItems: 'center', flex: 2 }}>
-                  <Text style={{ fontSize: fst(16), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
-                  <Text style={{ fontSize: fst(12), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+                  <Text style={{ fontSize: fst(16), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 , fontFamily: MONO}}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+                  <Text style={{ fontSize: fst(12), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>ORDER {currentTicket?.order_code || '-'}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(10), flex: 1.5, justifyContent: 'flex-end' }}>
                   <View style={{ backgroundColor: c.overlay15, paddingVertical: fs(5), paddingHorizontal: fs(10), borderRadius: fs(8), flexDirection: 'row', alignItems: 'center', gap: fs(6) }}>
                     <Icon name={getWeatherIcon(detail?.weather?.icon)} size={fs(14)} color={c.textOnPrimary} />
                     <View>
-                      <Text style={{ fontSize: fst(10), fontWeight: '700', color: c.textOnPrimary }} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
-                      <Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textOnDark60 }} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : '-'}</Text>
+                      <Text style={{ fontSize: fst(10), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
+                      <Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : '-'}</Text>
                     </View>
                   </View>
                   {currentTicket != null && (
@@ -1302,11 +1305,11 @@ export default function DashboardScreen({ navigation }: Props) {
                         const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
                           <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: fs(5) }}>
                             <View style={{ width: fs(6), height: fs(6), borderRadius: fs(3), backgroundColor: '#fff' }} />
-                            <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
+                            <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 , fontFamily: MONO}}>{isActive ? 'IN TRANSIT' : status.label}</Text>
                           </View>);
                       })()}
                       <View style={{ backgroundColor: '#E53935', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4 }}>
-                        <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+                        <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 , fontFamily: MONO}}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
                       </View>
                     </View>
                   )}
@@ -1323,7 +1326,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     const dotSz = isActive ? fs(isSmallLandscape ? 20 : 24) : item.done ? fs(isSmallLandscape ? 14 : 18) : fs(isSmallLandscape ? 10 : 14);
                     return (
                       <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                        <Text style={{ fontSize: fst(isSmallLandscape ? 10 : 12), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: fs(isSmallLandscape ? 2 : 4) }} numberOfLines={1}>{item.label}</Text>
+                        <Text style={{ fontSize: fst(isSmallLandscape ? 10 : 12), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: fs(isSmallLandscape ? 2 : 4) , fontFamily: MONO}} numberOfLines={1}>{item.label}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', height: fs(isSmallLandscape ? 22 : 26), width: '100%' }}>
                           {isFirst ? <View style={{ flex: 1 }} /> : (
                             <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : 'transparent', borderBottomWidth: item.done ? 0 : 1.5, borderBottomColor: '#888', borderStyle: item.done ? 'solid' : 'dashed' }} />
@@ -1342,7 +1345,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : 'transparent', borderBottomWidth: lineDone ? 0 : 1.5, borderBottomColor: '#888', borderStyle: lineDone ? 'solid' : 'dashed' }} />
                           )}
                         </View>
-                        <Text style={{ fontSize: fst(isSmallLandscape ? 11 : 13), fontWeight: '800', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: fs(isSmallLandscape ? 1 : 3) }}>{item.time || '—'}</Text>
+                        <Text style={{ fontSize: fst(isSmallLandscape ? 11 : 13), fontWeight: '800', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: fs(isSmallLandscape ? 1 : 3) , fontFamily: MONO}}>{item.time || '—'}</Text>
                       </View>);
                   })}
                 </View>
@@ -1355,19 +1358,19 @@ export default function DashboardScreen({ navigation }: Props) {
                   <View style={{ flex: 1, gap: ct ? fs(6) : fs(8) }}>
                     <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                       <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Customer</Text>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>Customer</Text>
                       </View>
                       {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
                         <View key={i} style={{ flexDirection: 'row', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%', letterSpacing: 0.5 }}>{row.label}</Text>
-                          <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%', letterSpacing: 0.5 , fontFamily: MONO}}>{row.label}</Text>
+                          <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}} numberOfLines={1}>{row.value}</Text>
                         </View>
                       ))}
                     </View>
                     {/* Product */}
                     <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>PRODUCTS</Text>
                         <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                           <Icon name="visibility" size={fs(16)} color={c.accent} />
                         </TouchableOpacity>
@@ -1375,35 +1378,35 @@ export default function DashboardScreen({ navigation }: Props) {
                       {/* Data row with titles */}
                       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
                         <View style={{ flex: 0.7, paddingRight: fs(3) }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>CODE</Text>
-                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) , fontFamily: MONO}}>CODE</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
                         </View>
-                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) , fontFamily: MONO}}>|</Text>
                         <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 2.5, paddingHorizontal: fs(3) }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>DESCRIPTION</Text>
-                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) , fontFamily: MONO}}>DESCRIPTION</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
                         </TouchableOpacity>
-                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) , fontFamily: MONO}}>|</Text>
                         <View style={{ flex: 1.2, paddingHorizontal: fs(3) }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>SLUMP</Text>
-                          <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) , fontFamily: MONO}}>SLUMP</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
                         </View>
-                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) , fontFamily: MONO}}>|</Text>
                         <View style={{ flex: 1.6, paddingHorizontal: fs(3) }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>QTY/UOM</Text>
-                          <Text style={{ fontSize: fst(11), fontWeight: '900', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) , fontFamily: MONO}}>QTY/UOM</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '900', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
                         </View>
-                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) }}>|</Text>
+                        <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) , fontFamily: MONO}}>|</Text>
                         <View style={{ flex: 1.2, paddingLeft: fs(3) }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) }}>USAGE</Text>
-                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) , fontFamily: MONO}}>USAGE</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
                         </View>
                       </View>
                     </View>
                     {/* Delivery Location */}
                     <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                       <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>Delivery Location</Text>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>Delivery Location</Text>
                       </View>
                       {[
                         { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' },
@@ -1412,24 +1415,24 @@ export default function DashboardScreen({ navigation }: Props) {
                         { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
                       ].map((row, i, arr) => (
                         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>{row.label}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' , fontFamily: MONO}}>{row.label}</Text>
                           {row.isLink ? (
                             <TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}>
-                              <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }} numberOfLines={1}>{row.value}</Text>
+                              <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' , fontFamily: MONO}} numberOfLines={1}>{row.value}</Text>
                             </TouchableOpacity>
                           ) : (
-                            <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{row.value}</Text>
+                            <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}} numberOfLines={1}>{row.value}</Text>
                           )}
                         </View>
                       ))}
                       {/* Trucks row */}
                       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                        <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>TRUCKS</Text>
+                        <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' , fontFamily: MONO}}>TRUCKS</Text>
                         <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 }}>
-                            {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_ahead.status}</Text></> : null}
+                          <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>
+                            {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary , fontFamily: MONO}}>{detail.mix.truck_ahead.status}</Text></> : null}
                             {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '  |  ' : ''}
-                            {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
+                            {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: fst(10), fontWeight: '500', color: c.textSecondary , fontFamily: MONO}}>{detail.mix.truck_behind.status}</Text></> : null}
                             {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
                           </Text>
                           {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <Icon name="map" size={fst(14)} color={c.accent} style={{ marginLeft: fs(4) }} />}
@@ -1437,18 +1440,18 @@ export default function DashboardScreen({ navigation }: Props) {
                       </View>
                       {/* Instructions row */}
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: ct ? fs(7) : fs(8) }}>
-                        <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' }}>INSTRUCTIONS</Text>
+                        <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' , fontFamily: MONO}}>INSTRUCTIONS</Text>
                         {detail?.job?.instructions ? (
                           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
                             <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: fs(3), paddingHorizontal: fs(5) }}>
-                              <Text style={{ fontSize: fst(12), fontWeight: '800', color: '#000', lineHeight: fs(18) }} numberOfLines={1}>{detail.job.instructions}</Text>
+                              <Text style={{ fontSize: fst(12), fontWeight: '800', color: '#000', lineHeight: fs(18) , fontFamily: MONO}} numberOfLines={1}>{detail.job.instructions}</Text>
                             </View>
                             <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsModalVisible(true)} style={{ marginLeft: fs(6), paddingVertical: fs(2), paddingHorizontal: fs(6) }}>
-                              <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.accent }}>VIEW ALL</Text>
+                              <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.accent , fontFamily: MONO}}>VIEW ALL</Text>
                             </TouchableOpacity>
                           </View>
                         ) : (
-                          <Text style={{ fontSize: fst(14), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
+                          <Text style={{ fontSize: fst(14), fontWeight: '800', color: c.textMuted, flex: 1 , fontFamily: MONO}}>—</Text>
                         )}
                       </View>
                     </View>
@@ -1457,9 +1460,9 @@ export default function DashboardScreen({ navigation }: Props) {
                   <View style={{ flex: 1 }}>
                     <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(6) : fs(2) }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(1) : fs(3), marginBottom: fs(1) }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(2), paddingHorizontal: fs(6), borderRadius: 10, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
-                          <Text style={{ fontSize: fst(10), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                          <Text style={{ fontSize: fst(10), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error , fontFamily: MONO}}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                         </View>
                       </View>
                       {[
@@ -1470,8 +1473,8 @@ export default function DashboardScreen({ navigation }: Props) {
                       ].map((section, si, arr) => (
                         <View key={si} style={{ marginBottom: si < arr.length - 1 ? fs(4) : 0, paddingBottom: si < arr.length - 1 ? fs(6) : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: fs(3) }}>
-                            <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
-                            <Text style={{ fontSize: fst(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
+                            <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 , fontFamily: MONO}}>{section.label}</Text>
+                            <Text style={{ fontSize: fst(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error , fontFamily: MONO}}>{section.data.filled}/{section.data.total}</Text>
                           </View>
                           {section.data.items.map((item, ii) => {
                             const itemKey = (item as any).key;
@@ -1484,8 +1487,8 @@ export default function DashboardScreen({ navigation }: Props) {
                                 <View style={{ width: fs(12), height: fs(12), borderRadius: fs(6), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
                                   <Icon name={item.filled ? 'check' : 'close'} size={fs(8)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
                                 </View>
-                                <Text style={{ fontSize: fst(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }} numberOfLines={1}>{item.name}</Text>
-                                {item.value ? <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fst(10), color: c.textMuted }}>--</Text>}
+                                <Text style={{ fontSize: fst(12), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 , fontFamily: MONO}} numberOfLines={1}>{item.name}</Text>
+                                {item.value ? <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fst(10), color: c.textMuted , fontFamily: MONO}}>--</Text>}
                               </View>
                             );
                             if (isReturned) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
@@ -1525,7 +1528,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(10), marginBottom: '5%' }}>
                   <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' }}>QUICK LINKS</Text>
+                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>QUICK LINKS</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: fs(4) }}>
                       {([
@@ -1539,28 +1542,28 @@ export default function DashboardScreen({ navigation }: Props) {
                             if (link.screen === 'DisputeTicket') { setDisputeTicketVisible(true); return; }
                             if (link.screen === 'CurblineRelease') { setCurblineReleaseVisible(true); return; }
                           }}>
-                            <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.primary }}>{link.label}</Text>
+                            <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.primary , fontFamily: MONO}}>{link.label}</Text>
                           </TouchableOpacity>
-                          {i < arr.length - 1 && <Text style={{ fontSize: fst(10), color: c.textMuted, marginHorizontal: fs(6) }}>|</Text>}
+                          {i < arr.length - 1 && <Text style={{ fontSize: fst(10), color: c.textMuted, marginHorizontal: fs(6) , fontFamily: MONO}}>|</Text>}
                         </View>
                       ))}
                     </View>
                   </View>
                   <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
+                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>ADDITIONAL ENTRIES</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8) }}>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('plant'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>PLANT</Text>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>PLANT</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
+                      <Text style={{ fontSize: fst(11), color: c.textMuted , fontFamily: MONO}}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('jobsite'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>JOB SITE</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: fst(11), color: c.textMuted }}>|</Text>
+                      <Text style={{ fontSize: fst(11), color: c.textMuted , fontFamily: MONO}}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('cod'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary }}>COD</Text>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>COD</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1581,13 +1584,13 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                   <Image source={require('../assets/images/logo.png')} style={{ width: ms(34), height: ms(34), borderRadius: ms(17) }} />
                   <View>
-                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 }}>{driver?.truck_code || '-'}</Text>
-                    <Text style={{ fontSize: ms(9), fontWeight: '500', color: c.textOnDark35 }}>{driver?.driver_code || '-'}</Text>
+                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
+                    <Text style={{ fontSize: ms(9), fontWeight: '500', color: c.textOnDark35 , fontFamily: MONO}}>{driver?.driver_code || '-'}</Text>
                   </View>
                 </View>
                 <View style={{ alignItems: 'center', flex: 2 }}>
-                  <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 }}>TICKET {currentTicket?.ticket_code || '-'}</Text>
-                  <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textOnDark60 }}>ORDER {currentTicket?.order_code || '-'}</Text>
+                  <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 , fontFamily: MONO}}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+                  <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>ORDER {currentTicket?.order_code || '-'}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', flex: 1, gap: 3 }}>
                   {currentTicket != null && (<>
@@ -1595,11 +1598,11 @@ export default function DashboardScreen({ navigation }: Props) {
                       const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
                         <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                           <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' }} />
-                          <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' }}>{isActive ? 'IN TRANSIT' : status.label}</Text>
+                          <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' , fontFamily: MONO}}>{isActive ? 'IN TRANSIT' : status.label}</Text>
                         </View>);
                     })()}
                     <View style={{ backgroundColor: '#E53935', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4 }}>
-                      <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' }}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+                      <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' , fontFamily: MONO}}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
                     </View>
                   </>)}
                 </View>
@@ -1615,7 +1618,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       const lineDone = item.done && !isLast && timeline[i + 1]?.done;
                       return (
                         <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                          <Text style={{ fontSize: ms(8), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }} numberOfLines={1}>{item.label}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 , fontFamily: MONO}} numberOfLines={1}>{item.label}</Text>
                           <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(14), width: '100%' }}>
                             {isFirst ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border }} />}
                             <View style={{ width: dotSz, height: dotSz, borderRadius: dotSz / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: isActive ? '#1E88E5' : item.done ? c.primary : c.surface, borderWidth: isActive ? 3 : item.done ? 0 : 1.5, borderColor: isActive ? '#90CAF9' : c.border }}>
@@ -1624,7 +1627,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             </View>
                             {isLast ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border }} />}
                           </View>
-                          <Text style={{ fontSize: ms(9), fontWeight: '900', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: 4 }}>{item.time}</Text>
+                          <Text style={{ fontSize: ms(9), fontWeight: '900', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: 4 , fontFamily: MONO}}>{item.time}</Text>
                         </View>);
                     })}
                   </View>
@@ -1636,18 +1639,18 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ gap: wp(6) }}>
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Customer</Text>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>Customer</Text>
                     </View>
                     {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
                       <View key={i} style={{ flexDirection: 'row', paddingVertical: 7, borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>{row.label}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>{row.value}</Text>
                       </View>))}
                   </View>
                   {/* Product */}
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>PRODUCTS</Text>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>PRODUCTS</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Icon name="visibility" size={ms(16)} color={c.accent} />
                       </TouchableOpacity>
@@ -1655,50 +1658,50 @@ export default function DashboardScreen({ navigation }: Props) {
                     {/* Data row with titles */}
                     <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
                       <View style={{ flex: 0.7, paddingRight: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>CODE</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>CODE</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
                       </View>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 2.5, paddingHorizontal: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>DESCRIPTION</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary }} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>DESCRIPTION</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
                       <View style={{ flex: 1.2, paddingHorizontal: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>SLUMP</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>SLUMP</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
                       </View>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
                       <View style={{ flex: 1.6, paddingHorizontal: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>QTY/UOM</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: c.textPrimary }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>QTY/UOM</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
                       </View>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 }}>|</Text>
+                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
                       <View style={{ flex: 1.2, paddingLeft: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 }}>USAGE</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>USAGE</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
                       </View>
                     </View>
                   </View>
                   {/* Delivery Location */}
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Delivery Location</Text>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>Delivery Location</Text>
                     </View>
                     {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find((p: any) => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }].map((row, i) => (
                       <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>{row.label}</Text>
-                        {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(8), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' }}>{row.value}</Text></TouchableOpacity>
-                        ) : (<Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 }}>{row.value}</Text>)}
+                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>{row.label}</Text>
+                        {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(8), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' , fontFamily: MONO}}>{row.value}</Text></TouchableOpacity>
+                        ) : (<Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>{row.value}</Text>)}
                       </View>))}
                     {/* Trucks row */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>TRUCKS</Text>
+                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>TRUCKS</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 }}>
-                          {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_ahead.status}</Text></> : null}
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>
+                          {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary , fontFamily: MONO}}>{detail.mix.truck_ahead.status}</Text></> : null}
                           {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '  |  ' : ''}
-                          {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary }}>{detail.mix.truck_behind.status}</Text></> : null}
+                          {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary , fontFamily: MONO}}>{detail.mix.truck_behind.status}</Text></> : null}
                           {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
                         </Text>
                         {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <Icon name="map" size={ms(12)} color={c.accent} style={{ marginLeft: wp(3) }} />}
@@ -1706,33 +1709,33 @@ export default function DashboardScreen({ navigation }: Props) {
                     </View>
                     {/* Instructions row */}
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 }}>INSTRUCTIONS</Text>
+                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>INSTRUCTIONS</Text>
                       {detail?.job?.instructions ? (
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
                           <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: 4, paddingHorizontal: 6 }}>
-                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#000', lineHeight: ms(16) }} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
+                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#000', lineHeight: ms(16) , fontFamily: MONO}} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
                           </View>
                           <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsModalVisible(true)} style={{ marginLeft: 6, paddingVertical: 3, paddingHorizontal: 6 }}>
-                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.accent }}>VIEW ALL</Text>
+                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.accent , fontFamily: MONO}}>VIEW ALL</Text>
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textMuted, flex: 1 }}>—</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textMuted, flex: 1 , fontFamily: MONO}}>—</Text>
                       )}
                     </View>
                   </View>
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 }}>REQUIRED ENTRIES</Text>
+                      <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error , fontFamily: MONO}}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                       </View>
                     </View>
                     {[{ label: 'PLANT', data: plantMandatory, icon: 'factory' as const }, { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const }, { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const }, { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const }].map((section, si, arr) => (
                       <View key={si} style={{ marginBottom: si < arr.length - 1 ? 4 : 0, paddingBottom: si < arr.length - 1 ? 8 : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                          <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 }}>{section.label}</Text>
-                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error }}>{section.data.filled}/{section.data.total}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 , fontFamily: MONO}}>{section.label}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error , fontFamily: MONO}}>{section.data.filled}/{section.data.total}</Text>
                         </View>
                         {section.data.items.map((item, ii) => {
                           const itemKey = (item as any).key;
@@ -1742,8 +1745,8 @@ export default function DashboardScreen({ navigation }: Props) {
                           const Row = (
                             <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
                               <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><Icon name={item.filled ? 'check' : 'close'} size={8} color={item.filled ? '#fff' : c.error} /></View>
-                              <Text style={{ fontSize: ms(8), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 }}>{item.name}</Text>
-                              {item.value ? <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.primary }}>{item.value}</Text> : <Text style={{ fontSize: ms(8), color: c.textMuted }}>--</Text>}
+                              <Text style={{ fontSize: ms(8), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>{item.name}</Text>
+                              {item.value ? <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.primary , fontFamily: MONO}}>{item.value}</Text> : <Text style={{ fontSize: ms(8), color: c.textMuted , fontFamily: MONO}}>--</Text>}
                             </View>
                           );
                           if (isReturned) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
@@ -1776,19 +1779,19 @@ export default function DashboardScreen({ navigation }: Props) {
                   {/* Additional Entries */}
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8), marginTop: 10 }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' }}>ADDITIONAL ENTRIES</Text>
+                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>ADDITIONAL ENTRIES</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('plant'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>PLANT</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary , fontFamily: MONO}}>PLANT</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: ms(8), color: c.textMuted }}>|</Text>
+                      <Text style={{ fontSize: ms(8), color: c.textMuted , fontFamily: MONO}}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('jobsite'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>JOB SITE</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary , fontFamily: MONO}}>JOB SITE</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: ms(8), color: c.textMuted }}>|</Text>
+                      <Text style={{ fontSize: ms(8), color: c.textMuted , fontFamily: MONO}}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('cod'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary }}>COD</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary , fontFamily: MONO}}>COD</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1816,7 +1819,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.primarySurface, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8 }}>
             <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><Icon name="sync" size={12} color={c.primary} /></Animated.View>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: c.primary }}>REFRESHED at {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: c.primary , fontFamily: MONO}}>REFRESHED at {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </TouchableOpacity>
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isOnline ? c.success : c.error }} />
         </View>
@@ -1871,7 +1874,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={[styles.ddIcon, isLandscape && { width: lp ? 28 : ls(24), height: lp ? 28 : ls(24), borderRadius: lp ? 8 : ls(7) }, { backgroundColor: bgColor }]}>
                       <Icon name={itemIcon as any} size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={iconColor} />
                     </View>
-                    <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, { color: labelColor }]}>{label}{suffix}</Text>
+                    <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, {color: labelColor, fontFamily: MONO}]}>{label}{suffix}</Text>
                     <Icon name="chevron-right" size={isLandscape ? (lp ? 18 : ls(16)) : ms(18)} color={c.textMuted} />
                   </TouchableOpacity>
                 );
@@ -1880,7 +1883,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
             {/* Version footer */}
             <View style={[styles.ddFooter, isLandscape && { paddingVertical: lp ? 6 : ls(4) }, { borderTopColor: c.borderLight }]}>
-              <Text style={[styles.ddVersion, { color: c.textMuted }]}>{appVersion ? `v${appVersion}` : '...'}</Text>
+              <Text style={[styles.ddVersion, {color: c.textMuted, fontFamily: MONO}]}>{appVersion ? `v${appVersion}` : '...'}</Text>
             </View>
           </Animated.View>
         </View>
@@ -1902,8 +1905,8 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={L ? 20 : 50}
         maxHeightPercent={50}>
         <View style={{ paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), alignItems: 'center' }}>
-          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
-          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' }}>SELECT SLUMP <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted }}>mm</Text></Text>
+          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
+          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' , fontFamily: MONO}}>SELECT SLUMP <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>mm</Text></Text>
         </View>
         <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
             {Array.from({ length: 21 }, (_, i) => String(80 + i * 10)).map(val => {
@@ -1935,7 +1938,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     } catch { }
                   }}
                   style={{ paddingVertical: ms(5), paddingHorizontal: ms(10), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: isSelected ? c.primarySurface : 'transparent', alignItems: 'center' }}>
-                  <Text style={{ fontSize: ms(8), fontWeight: isSelected ? '900' : '600', color: isSelected ? c.primary : c.textPrimary, textAlign: 'center' }}>{val}</Text>
+                  <Text style={{ fontSize: ms(8), fontWeight: isSelected ? '900' : '600', color: isSelected ? c.primary : c.textPrimary, textAlign: 'center' , fontFamily: MONO}}>{val}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -1953,7 +1956,7 @@ export default function DashboardScreen({ navigation }: Props) {
             }}
             activeOpacity={0.7}
             style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
-            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' }}>Close</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -1965,11 +1968,11 @@ export default function DashboardScreen({ navigation }: Props) {
         maxWidth={L ? 280 : isTablet ? 280 : 240}
         widthPercent={L ? 22 : 55}>
         <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(10) }}>
-          <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>REQUIRED ENTRIES</Text>
-          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(12) }}>SELECT TIME</Text>
+          <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
+          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(12) , fontFamily: MONO}}>SELECT TIME</Text>
           <View style={{ flexDirection: 'row', marginBottom: wp(4) }}>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted }}>Hours</Text>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted }}>Minutes</Text>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>Hours</Text>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>Minutes</Text>
           </View>
           <View style={{ flexDirection: 'row', height: 120, overflow: 'hidden' }}>
             <View style={{ flex: 1, position: 'relative' }}>
@@ -1980,7 +1983,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerHour(Math.max(0, Math.min(23, idx))); }}>
                 {Array.from({ length: 24 }, (_, i) => (
                   <TouchableOpacity key={i} onPress={() => setTimePickerHour(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: ms(12), fontWeight: timePickerHour === i ? '900' : '400', color: timePickerHour === i ? c.textPrimary : c.textMuted }}>{String(i).padStart(2, '0')}</Text>
+                    <Text style={{ fontSize: ms(12), fontWeight: timePickerHour === i ? '900' : '400', color: timePickerHour === i ? c.textPrimary : c.textMuted , fontFamily: MONO}}>{String(i).padStart(2, '0')}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -1993,7 +1996,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerMinute(Math.max(0, Math.min(59, idx))); }}>
                 {Array.from({ length: 60 }, (_, i) => (
                   <TouchableOpacity key={i} onPress={() => setTimePickerMinute(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: ms(12), fontWeight: timePickerMinute === i ? '900' : '400', color: timePickerMinute === i ? c.textPrimary : c.textMuted }}>{String(i).padStart(2, '0')}</Text>
+                    <Text style={{ fontSize: ms(12), fontWeight: timePickerMinute === i ? '900' : '400', color: timePickerMinute === i ? c.textPrimary : c.textMuted , fontFamily: MONO}}>{String(i).padStart(2, '0')}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -2001,7 +2004,7 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(8), marginTop: wp(12) }}>
             <TouchableOpacity onPress={() => setTimePickerStep(null)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border }}>
-              <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
+              <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary , fontFamily: MONO}}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -2023,7 +2026,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 } catch { }
               }}
               style={{ paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary }}>
-              <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' }}>OK</Text>
+              <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2038,9 +2041,9 @@ export default function DashboardScreen({ navigation }: Props) {
         avoidKeyboard>
         <ScrollView bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={{ backgroundColor: c.white, borderRadius: 10, overflow: 'hidden', padding: wp(10) }}>
-            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
-            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' }}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 }}>Liters</Text>
+            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
+            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' , fontFamily: MONO}}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Liters</Text>
             <TextInput
               style={{ borderWidth: 1.5, borderColor: c.accent, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), fontSize: ms(10), fontWeight: '600', color: c.textPrimary, marginBottom: wp(4) }}
               value={waterLitresInput}
@@ -2049,7 +2052,7 @@ export default function DashboardScreen({ navigation }: Props) {
               placeholderTextColor={c.textMuted}
               keyboardType="numeric"
             />
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 }}>Slump (mm)</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Slump (mm)</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -2063,11 +2066,11 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(5) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: waterMmInput ? c.textPrimary : c.textMuted }}>{waterMmInput ? `${waterMmInput} mm` : 'Select slump'}</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: waterMmInput ? c.textPrimary : c.textMuted , fontFamily: MONO}}>{waterMmInput ? `${waterMmInput} mm` : 'Select slump'}</Text>
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(6) }}>
               <TouchableOpacity onPress={() => setWaterModalField(null)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), borderWidth: 1.5, borderColor: c.border }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
+                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary , fontFamily: MONO}}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -2087,7 +2090,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   } catch { }
                 }}
                 style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), backgroundColor: c.primary }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' }}>Save</Text>
+                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2103,9 +2106,9 @@ export default function DashboardScreen({ navigation }: Props) {
         avoidKeyboard>
         <ScrollView bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={{ backgroundColor: c.white, borderRadius: 10, overflow: 'hidden', padding: wp(10) }}>
-            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
-            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' }}>Returned</Text>
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 }}>Qty (m3)</Text>
+            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
+            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' , fontFamily: MONO}}>Returned</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Qty (m3)</Text>
             <TextInput
               style={{ borderWidth: 1.5, borderColor: c.accent, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), fontSize: ms(10), fontWeight: '600', color: c.textPrimary, marginBottom: wp(4) }}
               value={returnedQtyInput}
@@ -2114,7 +2117,7 @@ export default function DashboardScreen({ navigation }: Props) {
               placeholderTextColor={c.textMuted}
               keyboardType="numeric"
             />
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 }}>Reason</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Reason</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -2127,9 +2130,9 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(4) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedReason ? c.textPrimary : c.textMuted }} numberOfLines={1}>{REASON_OPTIONS.find(r => r.key === returnedReason)?.label || 'Select reason'}</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedReason ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{REASON_OPTIONS.find(r => r.key === returnedReason)?.label || 'Select reason'}</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(1), marginBottom: wp(2), letterSpacing: 0.3 }}>Disposal</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(1), marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Disposal</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -2142,11 +2145,11 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(5) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedDisposal ? c.textPrimary : c.textMuted }} numberOfLines={1}>{DISPOSAL_OPTIONS.find(d => d.key === returnedDisposal)?.label || 'Select method'}</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedDisposal ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{DISPOSAL_OPTIONS.find(d => d.key === returnedDisposal)?.label || 'Select method'}</Text>
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(6), marginTop: wp(3) }}>
               <TouchableOpacity onPress={() => setReturnedModalVisible(false)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), borderWidth: 1.5, borderColor: c.border }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary }}>Cancel</Text>
+                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary , fontFamily: MONO}}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -2165,7 +2168,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   } catch { }
                 }}
                 style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), backgroundColor: c.primary }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' }}>Save</Text>
+                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2185,8 +2188,8 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={L ? 22 : 55}
         maxHeightPercent={55}>
         <View style={{ paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), alignItems: 'center' }}>
-          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>REQUIRED ENTRIES</Text>
-          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' }}>{returnedPickerType === 'reason' ? 'SELECT REASON' : 'SELECT DISPOSAL'}</Text>
+          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
+          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' , fontFamily: MONO}}>{returnedPickerType === 'reason' ? 'SELECT REASON' : 'SELECT DISPOSAL'}</Text>
         </View>
         <ScrollView showsVerticalScrollIndicator persistentScrollbar indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
           {(returnedPickerType === 'reason' ? REASON_OPTIONS : DISPOSAL_OPTIONS).map(opt => {
@@ -2204,7 +2207,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   }
                 }}
                 style={{ paddingVertical: ms(6), paddingHorizontal: ms(10), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: selected ? c.primarySurface : 'transparent', alignItems: 'center' }}>
-                <Text style={{ fontSize: ms(9), fontWeight: selected ? '900' : '600', color: selected ? c.primary : c.textPrimary, textAlign: 'center' }}>{opt.label}</Text>
+                <Text style={{ fontSize: ms(9), fontWeight: selected ? '900' : '600', color: selected ? c.primary : c.textPrimary, textAlign: 'center' , fontFamily: MONO}}>{opt.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -2219,7 +2222,7 @@ export default function DashboardScreen({ navigation }: Props) {
             }}
             activeOpacity={0.7}
             style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
-            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' }}>Close</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2306,13 +2309,13 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={L ? 40 : 80}>
         <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden' }}>
           <View style={{ paddingHorizontal: wp(16), paddingTop: wp(16), paddingBottom: wp(10) }}>
-            <Text style={{ fontSize: ms(12), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' }}>DELIVERY INSTRUCTIONS</Text>
+            <Text style={{ fontSize: ms(12), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>DELIVERY INSTRUCTIONS</Text>
           </View>
           <View style={{ paddingHorizontal: wp(16), paddingBottom: wp(16) }}>
             {(detail?.job?.instructions || '').split(/[*•\n]+/).filter((s: string) => s.trim()).map((line: string, i: number) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: wp(8) }}>
-                <Text style={{ fontSize: ms(11), color: c.textPrimary, marginRight: wp(8) }}>•</Text>
-                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textPrimary, flex: 1, lineHeight: ms(18) }}>{line.trim()}</Text>
+                <Text style={{ fontSize: ms(11), color: c.textPrimary, marginRight: wp(8) , fontFamily: MONO}}>•</Text>
+                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textPrimary, flex: 1, lineHeight: ms(18) , fontFamily: MONO}}>{line.trim()}</Text>
               </View>
             ))}
           </View>
@@ -2320,7 +2323,7 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => setInstructionsModalVisible(false)}
             activeOpacity={0.7}
             style={{ alignSelf: 'flex-end', backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: 8, margin: wp(16), marginTop: 0 }}>
-            <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Close</Text>
+            <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2339,8 +2342,8 @@ export default function DashboardScreen({ navigation }: Props) {
               <Icon name="qr-code-2" size={L ? (lt ? ls(16) : 15) : ms(18)} color={c.qrFg} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.qrHeaderTitle, { color: c.qrFg }, L && { fontSize: ls(12) }]}>QR Code</Text>
-              <Text style={[styles.qrHeaderSub, { color: c.qrFg + '90' }, L && { fontSize: ls(9) }]}>Scan to verify delivery</Text>
+              <Text style={[styles.qrHeaderTitle, {color: c.qrFg, fontFamily: MONO}, L && { fontSize: ls(12) }]}>QR Code</Text>
+              <Text style={[styles.qrHeaderSub, {color: c.qrFg + '90', fontFamily: MONO}, L && { fontSize: ls(9) }]}>Scan to verify delivery</Text>
             </View>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.qrFg + '12' }, L && { width: ls(28), height: ls(28), borderRadius: ls(14) }]} onPress={() => setQrVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Icon name="close" size={L ? ls(14) : ms(18)} color={c.qrFg} />
@@ -2354,8 +2357,8 @@ export default function DashboardScreen({ navigation }: Props) {
           ) : qrError ? (
             <View style={{ paddingVertical: L ? ls(20) : wp(30), alignItems: 'center', paddingHorizontal: L ? ls(16) : wp(20) }}>
               <Icon name="error-outline" size={L ? ls(28) : ms(36)} color={c.qrFg + '60'} />
-              <Text style={{ fontSize: L ? ls(12) : ms(13), fontWeight: '700', color: c.qrFg, marginTop: L ? ls(8) : wp(10), textAlign: 'center' }}>Server Error</Text>
-              <Text style={{ fontSize: L ? ls(10) : ms(11), color: c.qrFg + '80', marginTop: L ? ls(3) : wp(4), textAlign: 'center' }}>Unable to load QR code. Please try again later.</Text>
+              <Text style={{ fontSize: L ? ls(12) : ms(13), fontWeight: '700', color: c.qrFg, marginTop: L ? ls(8) : wp(10), textAlign: 'center' , fontFamily: MONO}}>Server Error</Text>
+              <Text style={{ fontSize: L ? ls(10) : ms(11), color: c.qrFg + '80', marginTop: L ? ls(3) : wp(4), textAlign: 'center' , fontFamily: MONO}}>Unable to load QR code. Please try again later.</Text>
               <TouchableOpacity
                 onPress={() => {
                   if (!currentTicket) return;
@@ -2369,7 +2372,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 activeOpacity={0.7}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: L ? ls(4) : wp(5), marginTop: L ? ls(12) : wp(16), backgroundColor: c.qrFg + '18', paddingVertical: L ? ls(6) : wp(8), paddingHorizontal: L ? ls(16) : wp(20), borderRadius: L ? ls(6) : wp(8) }}>
                 <Icon name="refresh" size={L ? ls(12) : ms(14)} color={c.qrFg} />
-                <Text style={{ fontSize: L ? ls(10) : ms(11), fontWeight: '700', color: c.qrFg }}>Retry</Text>
+                <Text style={{ fontSize: L ? ls(10) : ms(11), fontWeight: '700', color: c.qrFg , fontFamily: MONO}}>Retry</Text>
               </TouchableOpacity>
             </View>
           ) : qrData ? (
@@ -2379,12 +2382,12 @@ export default function DashboardScreen({ navigation }: Props) {
               contentContainerStyle={{ alignItems: 'center', paddingVertical: L ? ls(4) : wp(6) }}>
               <View style={[styles.qrChipRow, L && { gap: ls(5), paddingHorizontal: ls(10) }]}>
                 <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }, L && { paddingVertical: ls(5), borderRadius: ls(6) }]}>
-                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }, L && { fontSize: ls(9) }]}>ORDER</Text>
-                  <Text style={[styles.qrChipValue, { color: c.qrFg }, L && { fontSize: ls(11) }]}>{qrData.order_code || '-'}</Text>
+                  <Text style={[styles.qrChipLabel, {color: c.qrFg + '80', fontFamily: MONO}, L && { fontSize: ls(9) }]}>ORDER</Text>
+                  <Text style={[styles.qrChipValue, {color: c.qrFg, fontFamily: MONO}, L && { fontSize: ls(11) }]}>{qrData.order_code || '-'}</Text>
                 </View>
                 <View style={[styles.qrChip, { backgroundColor: c.qrFg + '12' }, L && { paddingVertical: ls(5), borderRadius: ls(6) }]}>
-                  <Text style={[styles.qrChipLabel, { color: c.qrFg + '80' }, L && { fontSize: ls(9) }]}>TICKET</Text>
-                  <Text style={[styles.qrChipValue, { color: c.qrFg }, L && { fontSize: ls(11) }]}>{qrData.ticket_code || '-'}</Text>
+                  <Text style={[styles.qrChipLabel, {color: c.qrFg + '80', fontFamily: MONO}, L && { fontSize: ls(9) }]}>TICKET</Text>
+                  <Text style={[styles.qrChipValue, {color: c.qrFg, fontFamily: MONO}, L && { fontSize: ls(11) }]}>{qrData.ticket_code || '-'}</Text>
                 </View>
               </View>
               <View style={[styles.qrCodeSection, L && { paddingVertical: ls(8), paddingHorizontal: ls(8) }]}>
@@ -2400,11 +2403,11 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={[styles.qrFooter, L && { paddingHorizontal: ls(10), gap: ls(3) }]}>
                 <View style={[styles.qrFooterRow, { borderTopColor: c.qrFg + '12' }, L && { gap: ls(4), paddingTop: ls(2) }]}>
                   <Icon name="local-shipping" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }, L && { fontSize: ls(10) }]}>{`TRUCK ${qrData.truck_code || '-'} · DRIVER ${qrData.driver_code || '-'}`}</Text>
+                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70', fontFamily: MONO}, L && { fontSize: ls(10) }]}>{`TRUCK ${qrData.truck_code || '-'} · DRIVER ${qrData.driver_code || '-'}`}</Text>
                 </View>
                 <View style={[styles.qrFooterRow, L && { gap: ls(4) }]}>
                   <Icon name="factory" size={L ? ls(10) : ms(12)} color={c.qrFg + '70'} />
-                  <Text style={[styles.qrFooterText, { color: c.qrFg + '70' }, L && { fontSize: ls(10) }]}>{qrData.plant_name || '-'}</Text>
+                  <Text style={[styles.qrFooterText, {color: c.qrFg + '70', fontFamily: MONO}, L && { fontSize: ls(10) }]}>{qrData.plant_name || '-'}</Text>
                 </View>
               </View>
             </ScrollView>
@@ -2419,7 +2422,7 @@ export default function DashboardScreen({ navigation }: Props) {
         maxWidth={450}
         maxHeightPercent={70}>
         <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
-          <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.plants')}</Text>
+          <Text style={[styles.mHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.plants')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
@@ -2431,8 +2434,8 @@ export default function DashboardScreen({ navigation }: Props) {
         ) : plantsError ? (
           <View style={{ paddingVertical: wp(30), alignItems: 'center', paddingHorizontal: wp(20) }}>
             <Icon name="error-outline" size={ms(36)} color={c.textSecondary} />
-            <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(10), textAlign: 'center' }}>Server Error</Text>
-            <Text style={{ fontSize: ms(11), color: c.textSecondary, marginTop: wp(4), textAlign: 'center' }}>Unable to load plants. Please try again later.</Text>
+            <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(10), textAlign: 'center' , fontFamily: MONO}}>Server Error</Text>
+            <Text style={{ fontSize: ms(11), color: c.textSecondary, marginTop: wp(4), textAlign: 'center' , fontFamily: MONO}}>Unable to load plants. Please try again later.</Text>
             <TouchableOpacity
               onPress={() => {
                 setPlantsLoading(true);
@@ -2448,7 +2451,7 @@ export default function DashboardScreen({ navigation }: Props) {
               activeOpacity={0.7}
               style={{ flexDirection: 'row', alignItems: 'center', gap: wp(5), marginTop: wp(16), backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8) }}>
               <Icon name="refresh" size={ms(14)} color="#fff" />
-              <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' }}>Retry</Text>
+              <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Retry</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -2467,7 +2470,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
                 activeOpacity={0.6}
                 onPress={() => setPlantsVisible(false)}>
-                <Text style={[styles.plantText, { color: c.textPrimary }]}>{plant.code}-{plant.name}</Text>
+                <Text style={[styles.plantText, {color: c.textPrimary, fontFamily: MONO}]}>{plant.code}-{plant.name}</Text>
               </TouchableOpacity>
             ))}
             {plantsLoadingMore && (
@@ -2487,18 +2490,18 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={isTablet ? 60 : 85}
         maxHeightPercent={60}>
         <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
-          <Text style={[styles.mHeaderTitle, { color: c.textPrimary }]}>{t('modals.vehicle', 'Vehicle')}</Text>
+          <Text style={[styles.mHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.vehicle', 'Vehicle')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setVehicleVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
         <View style={{ alignItems: 'center', paddingVertical: wp(30), paddingHorizontal: wp(20) }}>
-          <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' }}>CURRENT VEHICLE ID</Text>
-          <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: 8 }}>{driver?.truck_code || '-'}</Text>
+          <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>CURRENT VEHICLE ID</Text>
+          <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: 8 , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
 
           <View style={{ marginTop: wp(30), alignItems: 'center' }}>
-            <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' }}>BROADCASTING STATUS</Text>
-            <Text style={{ fontSize: ms(10), fontWeight: '500', color: c.textSecondary, marginTop: 8 }}>
+            <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>BROADCASTING STATUS</Text>
+            <Text style={{ fontSize: ms(10), fontWeight: '500', color: c.textSecondary, marginTop: 8 , fontFamily: MONO}}>
               {isBroadcasting ? 'BROADCASTING' : 'NOT BROADCASTING'}
             </Text>
             <TouchableOpacity
@@ -2513,7 +2516,7 @@ export default function DashboardScreen({ navigation }: Props) {
               }}
               activeOpacity={0.8}
               onPress={() => setIsBroadcasting(b => !b)}>
-              <Text style={{ fontSize: ms(10), fontWeight: '700', color: '#fff', letterSpacing: 0.5 }}>
+              <Text style={{ fontSize: ms(10), fontWeight: '700', color: '#fff', letterSpacing: 0.5 , fontFamily: MONO}}>
                 {isBroadcasting ? 'TURN OFF' : 'TURN ON'}
               </Text>
             </TouchableOpacity>
@@ -2534,7 +2537,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={[styles.etHeaderIcon, { backgroundColor: c.primarySurface }]}>
             <Icon name="edit" size={ms(18)} color={c.primary} />
           </View>
-          <Text style={[styles.etHeaderTitle, { color: c.textPrimary }]}>{t('modals.editTicket')}</Text>
+          <Text style={[styles.etHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.editTicket')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setEditVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
@@ -2544,7 +2547,7 @@ export default function DashboardScreen({ navigation }: Props) {
           {/* Actions Section */}
           <View style={styles.etSectionHdr}>
             <Icon name="touch-app" size={ms(16)} color={c.accent} />
-            <Text style={[styles.etSectionTitle, { color: c.accent }]}>{t('modals.actions')}</Text>
+            <Text style={[styles.etSectionTitle, {color: c.accent, fontFamily: MONO}]}>{t('modals.actions')}</Text>
           </View>
 
           {([
@@ -2565,7 +2568,7 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
                 <Icon name={item.icon as any} size={ms(18)} color={item.iconColor} />
               </View>
-              <Text style={[styles.etActionLabel, { color: c.textPrimary }]}>{item.label}</Text>
+              <Text style={[styles.etActionLabel, {color: c.textPrimary, fontFamily: MONO}]}>{item.label}</Text>
               <Icon name="chevron-right" size={ms(18)} color={c.textMuted} />
             </TouchableOpacity>
           ))}
@@ -2586,18 +2589,18 @@ export default function DashboardScreen({ navigation }: Props) {
             <Icon name="inventory-2" size={ms(16)} color={c.textOnPrimary} />
           </View>
           <View style={common.flex1}>
-            <Text style={[styles.pmTitle, { color: c.textPrimary }]}>PRODUCTS, CHARGES & FEES</Text>
-            <Text style={[styles.pmSubtitle, { color: c.textMuted }]} numberOfLines={1}>Ticket {currentTicket?.ticket_code || '-'}</Text>
+            <Text style={[styles.pmTitle, {color: c.textPrimary, fontFamily: MONO}]}>PRODUCTS, CHARGES & FEES</Text>
+            <Text style={[styles.pmSubtitle, {color: c.textMuted, fontFamily: MONO}]} numberOfLines={1}>Ticket {currentTicket?.ticket_code || '-'}</Text>
           </View>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.pmBody}>
           {/* Table Header */}
           <View style={[styles.pmRow, styles.pmRowHeader, { borderBottomColor: c.textPrimary }]}>
-            <Text style={[styles.pmColCode, styles.pmTh, { color: c.textPrimary }]}>CODE</Text>
-            <Text style={[styles.pmColDesc, styles.pmTh, { color: c.textPrimary }]}>DESCRIPTION</Text>
-            <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTh, { color: c.textPrimary }]}>SLUMP</Text>
-            <Text style={[styles.pmColQty, styles.pmTh, { color: c.textPrimary }]}>QTY</Text>
-            <Text style={[styles.pmColUnit, styles.pmTh, { color: c.textPrimary }]}>UNIT</Text>
+            <Text style={[styles.pmColCode, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>CODE</Text>
+            <Text style={[styles.pmColDesc, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>DESCRIPTION</Text>
+            <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>SLUMP</Text>
+            <Text style={[styles.pmColQty, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>QTY</Text>
+            <Text style={[styles.pmColUnit, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>UNIT</Text>
           </View>
           {/* Table Rows */}
           {(() => {
@@ -2612,15 +2615,15 @@ export default function DashboardScreen({ navigation }: Props) {
             } as any] : []);
             return rows.length > 0 ? rows.map((product: any, i: number) => (
               <View key={`${product.code}-${i}`} style={[styles.pmRow, { borderBottomColor: c.borderLight }]}>
-                <Text style={[styles.pmColCode, styles.pmTd, { color: c.textPrimary }]} numberOfLines={1}>{product.code || '-'}</Text>
-                <Text style={[styles.pmColDesc, styles.pmTd, { color: c.textPrimary }]} numberOfLines={2}>{product.description || '-'}</Text>
-                <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTd, { color: c.textPrimary }]}>{product.is_mix ? (product.slump_text || detail?.mix?.slump || '-') : '-'}</Text>
-                <Text style={[styles.pmColQty, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
-                <Text style={[styles.pmColUnit, styles.pmTd, { color: c.textPrimary }]}>{product.delivered_unit || '-'}</Text>
+                <Text style={[styles.pmColCode, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]} numberOfLines={1}>{product.code || '-'}</Text>
+                <Text style={[styles.pmColDesc, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]} numberOfLines={2}>{product.description || '-'}</Text>
+                <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]}>{product.is_mix ? (product.slump_text || detail?.mix?.slump || '-') : '-'}</Text>
+                <Text style={[styles.pmColQty, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
+                <Text style={[styles.pmColUnit, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]}>{product.delivered_unit || '-'}</Text>
               </View>
             )) : (
               <View style={{ padding: wp(16), alignItems: 'center' }}>
-                <Text style={{ color: c.textMuted, fontSize: ms(10) }}>No product data available</Text>
+                <Text style={{ color: c.textMuted, fontSize: ms(10) , fontFamily: MONO}}>No product data available</Text>
               </View>
             );
           })()}
@@ -2630,7 +2633,7 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => setProductsVisible(false)}
             activeOpacity={0.7}
             style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
-            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' }}>Close</Text>
+            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2649,10 +2652,10 @@ export default function DashboardScreen({ navigation }: Props) {
               color={logoutType === 'tenant' ? c.error : c.warningDark}
             />
           </View>
-          <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>
+          <Text style={[styles.logoutTitle, { color: c.textPrimary, fontFamily: MONO }]}>
             {logoutType === 'tenant' ? t('logout.tenantTitle') : t('logout.driverTitle')}
           </Text>
-          <Text style={[styles.logoutMessage, { color: c.textSecondary }]}>
+          <Text style={[styles.logoutMessage, { color: c.textSecondary, fontFamily: MONO }]}>
             {logoutType === 'tenant' ? t('logout.tenantMessage') : t('logout.driverMessage')}
           </Text>
           <View style={styles.logoutButtons}>
@@ -2661,7 +2664,7 @@ export default function DashboardScreen({ navigation }: Props) {
               onPress={() => setLogoutType(null)}
               activeOpacity={0.7}
               disabled={loggingOut}>
-              <Text style={[styles.logoutBtnText, { color: c.textPrimary }]}>{t('logout.cancel')}</Text>
+              <Text style={[styles.logoutBtnText, {color: c.textPrimary, fontFamily: MONO}]}>{t('logout.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.logoutBtn, { backgroundColor: logoutType === 'tenant' ? c.error : c.warningDark }, loggingOut && { opacity: 0.7 }]}
@@ -2671,7 +2674,7 @@ export default function DashboardScreen({ navigation }: Props) {
               {loggingOut ? (
                 <ActivityIndicator size="small" color={c.textOnPrimary} />
               ) : (
-                <Text style={[styles.logoutBtnText, { color: c.textOnPrimary }]}>{t('logout.confirm')}</Text>
+                <Text style={[styles.logoutBtnText, {color: c.textOnPrimary, fontFamily: MONO}]}>{t('logout.confirm')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -2691,7 +2694,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={[styles.logoutIconWrap, { backgroundColor: c.primarySurface }]}>
             <Icon name="translate" size={ms(28)} color={c.primary} />
           </View>
-          <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>{t('menu.language')}</Text>
+          <Text style={[styles.logoutTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('menu.language')}</Text>
           <View style={{ width: '100%', gap: wp(8), marginTop: wp(4) }}>
             {[
               { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -2706,8 +2709,8 @@ export default function DashboardScreen({ navigation }: Props) {
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(8), paddingVertical: wp(10), borderRadius: wp(10), backgroundColor: isSelected ? c.primary : c.surface, borderWidth: 1, borderColor: isSelected ? c.primary : c.border }}
                   activeOpacity={0.7}
                   onPress={() => { i18n.changeLanguage(lang.code); setLanguageVisible(false); }}>
-                  <Text style={{ fontSize: ms(16) }}>{lang.flag}</Text>
-                  <Text style={{ fontSize: ms(12), fontWeight: '700', color: isSelected ? c.textOnPrimary : c.textPrimary }}>{lang.label}</Text>
+                  <Text style={{ fontSize: ms(16) , fontFamily: MONO}}>{lang.flag}</Text>
+                  <Text style={{ fontSize: ms(12), fontWeight: '700', color: isSelected ? c.textOnPrimary : c.textPrimary , fontFamily: MONO}}>{lang.label}</Text>
                   {isSelected && <Icon name="check-circle" size={ms(18)} color={c.textOnPrimary} />}
                 </TouchableOpacity>
               );
@@ -2730,8 +2733,8 @@ export default function DashboardScreen({ navigation }: Props) {
               <Icon name="warning" size={ms(16)} color={c.warningDark} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary }}>Missing Fields</Text>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted }}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
+              <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary , fontFamily: MONO}}>Missing Fields</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
             </View>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Icon name="close" size={ms(18)} color={c.textSecondary} />
@@ -2818,7 +2821,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 return (
                   <View style={{ alignItems: 'center', paddingVertical: wp(20) }}>
                     <Icon name="check-circle" size={ms(40)} color={c.primary} />
-                    <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(8) }}>All fields are filled</Text>
+                    <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(8) , fontFamily: MONO}}>All fields are filled</Text>
                   </View>
                 );
               }
@@ -2827,15 +2830,15 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View key={group.section}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), marginBottom: wp(6) }}>
                     <Icon name={group.icon as any} size={ms(14)} color={c.warningDark} />
-                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary }}>{group.section}</Text>
+                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary , fontFamily: MONO}}>{group.section}</Text>
                     <View style={{ backgroundColor: c.warningSurface, paddingHorizontal: wp(6), paddingVertical: wp(1), borderRadius: wp(8) }}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.warningDark }}>{group.fields.length}</Text>
+                      <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.warningDark , fontFamily: MONO}}>{group.fields.length}</Text>
                     </View>
                   </View>
                   {group.fields.map((field, idx) => (
                     <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingVertical: wp(4), borderBottomWidth: idx < group.fields.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                       <Icon name="radio-button-unchecked" size={ms(10)} color={c.error} />
-                      <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textSecondary }}>{field}</Text>
+                      <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textSecondary , fontFamily: MONO}}>{field}</Text>
                     </View>
                   ))}
                 </View>
@@ -2855,13 +2858,13 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={[styles.logoutIconWrap, { backgroundColor: c.warningSurface }]}>
             <Icon name="directions-off" size={ms(28)} color={c.warningDark} />
           </View>
-          <Text style={[styles.logoutTitle, { color: c.textPrimary }]}>Directions Unavailable</Text>
-          <Text style={[styles.logoutMessage, { color: c.textSecondary }]}>Directions are not available because this ticket has been completed.</Text>
+          <Text style={[styles.logoutTitle, {color: c.textPrimary, fontFamily: MONO}]}>Directions Unavailable</Text>
+          <Text style={[styles.logoutMessage, {color: c.textSecondary, fontFamily: MONO}]}>Directions are not available because this ticket has been completed.</Text>
           <TouchableOpacity
             style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: wp(10), borderRadius: wp(10), backgroundColor: c.primary, width: '100%' }}
             onPress={() => setDirectionsAlert(false)}
             activeOpacity={0.7}>
-            <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary }}>OK</Text>
+            <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}}>OK</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2877,17 +2880,17 @@ export default function DashboardScreen({ navigation }: Props) {
             <Icon name="close" size={ms(18)} color={c.textSecondary} />
           </TouchableOpacity>
           <View style={{ width: wp(44), height: wp(44), borderRadius: wp(22), backgroundColor: c.primarySurface, justifyContent: 'center', alignItems: 'center', marginBottom: wp(8) }}>
-            <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary }}>A</Text>
+            <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary , fontFamily: MONO}}>A</Text>
           </View>
-          <Text style={{ fontSize: ms(14), fontWeight: '800', color: c.textPrimary, marginBottom: wp(4) }}>Font Size</Text>
-          <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary, marginBottom: wp(12) }}>{Math.round(fontScale * 100)}%</Text>
+          <Text style={{ fontSize: ms(14), fontWeight: '800', color: c.textPrimary, marginBottom: wp(4) , fontFamily: MONO}}>Font Size</Text>
+          <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary, marginBottom: wp(12) , fontFamily: MONO}}>{Math.round(fontScale * 100)}%</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(12), marginBottom: wp(12) }}>
             <TouchableOpacity
               onPress={fontDecrease}
               disabled={fontScale <= 0.85}
               activeOpacity={0.7}
               style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale <= 0.85 ? c.surface : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
-              <Text style={{ fontSize: ms(14), fontWeight: '800', color: fontScale <= 0.85 ? c.textMuted : c.textPrimary }}>A-</Text>
+              <Text style={{ fontSize: ms(14), fontWeight: '800', color: fontScale <= 0.85 ? c.textMuted : c.textPrimary , fontFamily: MONO}}>A-</Text>
             </TouchableOpacity>
             <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: c.surface, overflow: 'hidden' }}>
               <View style={{ width: `${((fontScale - 0.85) / (1.30 - 0.85)) * 100}%`, height: '100%', borderRadius: 3, backgroundColor: c.primary }} />
@@ -2897,7 +2900,7 @@ export default function DashboardScreen({ navigation }: Props) {
               disabled={fontScale >= 1.30}
               activeOpacity={0.7}
               style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale >= 1.30 ? c.surface : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
-              <Text style={{ fontSize: ms(18), fontWeight: '800', color: fontScale >= 1.30 ? c.textMuted : c.textPrimary }}>A+</Text>
+              <Text style={{ fontSize: ms(18), fontWeight: '800', color: fontScale >= 1.30 ? c.textMuted : c.textPrimary , fontFamily: MONO}}>A+</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
@@ -2905,7 +2908,7 @@ export default function DashboardScreen({ navigation }: Props) {
             disabled={Math.round(fontScale * 100) === 100}
             activeOpacity={0.7}
             style={{ paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8), backgroundColor: Math.round(fontScale * 100) === 100 ? c.surface : c.primary }}>
-            <Text style={{ fontSize: ms(12), fontWeight: '700', color: Math.round(fontScale * 100) === 100 ? c.textMuted : c.textOnPrimary }}>Reset to 100%</Text>
+            <Text style={{ fontSize: ms(12), fontWeight: '700', color: Math.round(fontScale * 100) === 100 ? c.textMuted : c.textOnPrimary , fontFamily: MONO}}>Reset to 100%</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>

@@ -13,8 +13,11 @@ import {
 } from 'react-native';
 import Icon from './Icon';
 import ResponsiveModal from './ResponsiveModal';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 type Props = {
   visible: boolean;
@@ -260,69 +263,69 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     <>
       {/* Water Added */}
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, flex: 0, width: wp(50)}]}>WATER{'\n'}ADDED{'\n'}(FULL)</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, flex: 0, width: wp(50), fontFamily: MONO}]}>WATER{'\n'}ADDED{'\n'}(FULL)</Text>
         <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
           <TouchableOpacity onPress={() => setWaterLitres(Math.max(0, waterLitres - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-            <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
           </TouchableOpacity>
           <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
             <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(waterLitres)} onChangeText={t => setWaterLitres(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
           </View>
           <TouchableOpacity onPress={() => setWaterLitres(waterLitres + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-            <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
           </TouchableOpacity>
         </View>
-        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, marginHorizontal: wp(3)}}>L</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, marginHorizontal: wp(3), fontFamily: MONO}}>L</Text>
         <TouchableOpacity onPress={() => setPickerType('reason')} style={[s.selectBox, {borderColor: c.border, flex: 1}]}>
-          <Text style={{fontSize: ms(6), fontWeight: '600', color: waterReason ? c.textPrimary : c.textMuted}} numberOfLines={1}>{waterReason || 'SELECT REASON'}</Text>
+          <Text style={{fontSize: ms(6), fontWeight: '600', color: waterReason ? c.textPrimary : c.textMuted, fontFamily: MONO}} numberOfLines={1}>{waterReason || 'SELECT REASON'}</Text>
         </TouchableOpacity>
       </View>
       <Sep />
 
       {/* Nitrogen */}
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>NITROGEN ADDED</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>NITROGEN ADDED</Text>
         <TouchableOpacity onPress={() => setPickerType('nitrogen')} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: nitrogenAdded ? c.textPrimary : c.textMuted}}>{nitrogenAdded || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: nitrogenAdded ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{nitrogenAdded || 'Select'}</Text>
         </TouchableOpacity>
       </View>
       <Sep />
 
       {/* Fibers */}
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>FIBERS ADDED</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>FIBERS ADDED</Text>
         <TouchableOpacity onPress={() => setPickerType('fibers')} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: fibersAdded ? c.textPrimary : c.textMuted}}>{fibersAdded || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: fibersAdded ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{fibersAdded || 'Select'}</Text>
         </TouchableOpacity>
       </View>
       <Sep />
 
       {/* Truck Rental */}
-      <Text style={[s.sectionLabel, {color: c.textPrimary}]}>TRUCK RENTAL</Text>
+      <Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>TRUCK RENTAL</Text>
       <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(6), marginTop: wp(4), marginBottom: wp(4)}}>
-        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>START</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>START</Text>
         <TouchableOpacity onPress={() => {
           const now = new Date();
           if (truckStart) { setTruckTimeHour(parseInt(truckStart.split(':')[0], 10)); setTruckTimeMinute(parseInt(truckStart.split(':')[1], 10)); }
           else { setTruckTimeHour(now.getHours()); setTruckTimeMinute(now.getMinutes()); }
           setTruckTimePicker('start');
         }} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: truckStart ? c.textPrimary : c.textMuted}}>{truckStart || 'Select Time'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: truckStart ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{truckStart || 'Select Time'}</Text>
         </TouchableOpacity>
-        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>END</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>END</Text>
         <TouchableOpacity onPress={() => {
           const now = new Date();
           if (truckEnd) { setTruckTimeHour(parseInt(truckEnd.split(':')[0], 10)); setTruckTimeMinute(parseInt(truckEnd.split(':')[1], 10)); }
           else { setTruckTimeHour(now.getHours()); setTruckTimeMinute(now.getMinutes()); }
           setTruckTimePicker('end');
         }} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: truckEnd ? c.textPrimary : c.textMuted}}>{truckEnd || 'Select Time'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: truckEnd ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{truckEnd || 'Select Time'}</Text>
         </TouchableOpacity>
       </View>
       <Sep />
 
       {/* Plant Notes */}
-      <Text style={[s.sectionLabel, {color: c.textPrimary}]}>PLANT NOTES</Text>
+      <Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>PLANT NOTES</Text>
       <TextInput
         style={[s.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white}]}
         value={plantNotes}
@@ -337,13 +340,13 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
 
       {/* Load Tested */}
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>LOAD TESTED</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>LOAD TESTED</Text>
         <View style={{flexDirection: 'row', gap: wp(4)}}>
           <TouchableOpacity onPress={() => setLoadTested('yes')} style={[s.toggleBtn, loadTested === 'yes' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'yes' ? '#fff' : c.textPrimary}}>Yes</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'yes' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setLoadTested('no')} style={[s.toggleBtn, loadTested === 'no' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'no' ? '#fff' : c.textPrimary}}>No</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'no' ? '#fff' : c.textPrimary, fontFamily: MONO}}>No</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -353,56 +356,56 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         <>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>TEMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>TEMP</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setLoadTemp(Math.max(0, loadTemp - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
                 </TouchableOpacity>
                 <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                   <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(loadTemp)} onChangeText={t => setLoadTemp(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
                 </View>
                 <TouchableOpacity onPress={() => setLoadTemp(loadTemp + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>C</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>C</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>AIR</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>AIR</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setLoadAir(Math.max(0, loadAir - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
                 </TouchableOpacity>
                 <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                   <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(loadAir)} onChangeText={t => setLoadAir(Number(t.replace(/[^0-9.]/g, '')) || 0)} keyboardType="numeric" />
                 </View>
                 <TouchableOpacity onPress={() => setLoadAir(loadAir + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>%</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>%</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>SLUMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>SLUMP</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setLoadSlump(Math.max(0, loadSlump - 10))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
                 </TouchableOpacity>
                 <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                   <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(loadSlump)} onChangeText={t => setLoadSlump(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
                 </View>
                 <TouchableOpacity onPress={() => setLoadSlump(loadSlump + 10)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>mm</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>mm</Text>
               <TouchableOpacity onPress={() => setPickerType('loadSlump')} style={{width: wp(12), height: wp(12), borderRadius: wp(6), borderWidth: 1, borderColor: c.primary, alignItems: 'center', justifyContent: 'center'}}>
                 <Icon name="more-horiz" size={ms(7)} color={c.primary} />
               </TouchableOpacity>
@@ -410,16 +413,16 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>CYLINDERS</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CYLINDERS</Text>
             <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
               <TouchableOpacity onPress={() => setLoadCylinders(Math.max(0, loadCylinders - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
               </TouchableOpacity>
               <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                 <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(loadCylinders)} onChangeText={t => setLoadCylinders(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
               </View>
               <TouchableOpacity onPress={() => setLoadCylinders(loadCylinders + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -437,9 +440,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
   const renderJobsiteTab = () => (
     <>
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>SUPER PLASTICIZER</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>SUPER PLASTICIZER</Text>
         <TouchableOpacity onPress={() => setPickerType('superPlasticizer')} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: superPlasticizer ? c.textPrimary : c.textMuted}}>{superPlasticizer || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: superPlasticizer ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{superPlasticizer || 'Select'}</Text>
         </TouchableOpacity>
         {(superPlasticizer === 'CUSTOMER' || superPlasticizer === 'DRIVER') && (
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={superPlasticizerQty} onChangeText={t => setSuperPlasticizerQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
@@ -447,9 +450,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>COLOR</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>COLOR</Text>
         <TouchableOpacity onPress={() => setPickerType('colorAdded')} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: colorAdded ? c.textPrimary : c.textMuted}}>{colorAdded || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: colorAdded ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{colorAdded || 'Select'}</Text>
         </TouchableOpacity>
         {(colorAdded === 'CUSTOMER' || colorAdded === 'DRIVER') && (
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={colorQty} onChangeText={t => setColorQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
@@ -457,9 +460,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>FIBER</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>FIBER</Text>
         <TouchableOpacity onPress={() => setPickerType('fiberJob')} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: fiberJob ? c.textPrimary : c.textMuted}}>{fiberJob || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: fiberJob ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{fiberJob || 'Select'}</Text>
         </TouchableOpacity>
         {(fiberJob === 'CUSTOMER' || fiberJob === 'DRIVER') && (
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={fiberQty} onChangeText={t => setFiberQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
@@ -467,7 +470,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>OTHER</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>OTHER</Text>
         <TextInput
           style={{flex: 1, borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(2), marginLeft: wp(10)}}
           value={otherAdded}
@@ -477,36 +480,36 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>CONVEYOR</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CONVEYOR</Text>
         <TouchableOpacity onPress={() => setPickerType('conveyor')} style={[s.selectBox, {borderColor: c.border, width: wp(60), alignItems: 'center'}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: conveyor ? c.textPrimary : c.textMuted}}>{conveyor || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: conveyor ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{conveyor || 'Select'}</Text>
         </TouchableOpacity>
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>CONVEYOR ORDERED NOT USED</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CONVEYOR ORDERED NOT USED</Text>
         <Checkbox value={conveyorOrdered} onToggle={() => setConveyorOrdered(!conveyorOrdered)} />
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>UNLOADED OVER CONVEYOR, NOT USED</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>UNLOADED OVER CONVEYOR, NOT USED</Text>
         <Checkbox value={unloadedConveyor} onToggle={() => setUnloadedConveyor(!unloadedConveyor)} />
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>LOAD DISPUTED</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>LOAD DISPUTED</Text>
         <Checkbox value={loadDisputed} onToggle={() => setLoadDisputed(!loadDisputed)} />
       </View>
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>WASHOUT AREA</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>WASHOUT AREA</Text>
         <TouchableOpacity onPress={() => setPickerType('washout')} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: washoutArea ? c.textPrimary : c.textMuted}} numberOfLines={1}>{washoutArea || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: washoutArea ? c.textPrimary : c.textMuted, fontFamily: MONO}} numberOfLines={1}>{washoutArea || 'Select'}</Text>
         </TouchableOpacity>
       </View>
       {washoutArea === 'OTHER' && (
         <>
-          <Text style={[s.sectionLabel, {color: c.textPrimary}]}>WASHOUT — COMMENTS</Text>
+          <Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>WASHOUT — COMMENTS</Text>
           <TextInput
             style={[s.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white, minHeight: wp(28)}]}
             value={washoutComments}
@@ -520,7 +523,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       )}
       <Sep />
       <View style={{flexDirection: 'row', alignItems: 'center', marginTop: wp(2)}}>
-        <Text style={[s.sectionLabel, {color: c.textPrimary, marginTop: 0}]}>INTERNAL JOBSITE NOTES</Text>
+        <Text style={[s.sectionLabel, {color: c.textPrimary, marginTop: 0, fontFamily: MONO}]}>INTERNAL JOBSITE NOTES</Text>
         <TouchableOpacity onPress={() => setPickerType('jobsiteNotes')} style={{width: wp(14), height: wp(14), borderRadius: wp(7), borderWidth: 1.5, borderColor: c.primary, alignItems: 'center', justifyContent: 'center', marginLeft: wp(4)}}>
           <Icon name="more-horiz" size={ms(8)} color={c.primary} />
         </TouchableOpacity>
@@ -537,13 +540,13 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       />
       <Sep />
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>LOAD TESTED</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>LOAD TESTED</Text>
         <View style={{flexDirection: 'row', gap: wp(4)}}>
           <TouchableOpacity onPress={() => setJobLoadTested('yes')} style={[s.toggleBtn, jobLoadTested === 'yes' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'yes' ? '#fff' : c.textPrimary}}>Yes</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'yes' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setJobLoadTested('no')} style={[s.toggleBtn, jobLoadTested === 'no' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'no' ? '#fff' : c.textPrimary}}>No</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'no' ? '#fff' : c.textPrimary, fontFamily: MONO}}>No</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -551,56 +554,56 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         <>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>TEMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>TEMP</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setJobLoadTemp(Math.max(0, jobLoadTemp - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
                 </TouchableOpacity>
                 <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                   <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(jobLoadTemp)} onChangeText={t => setJobLoadTemp(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
                 </View>
                 <TouchableOpacity onPress={() => setJobLoadTemp(jobLoadTemp + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>C</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>C</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>AIR</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>AIR</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setJobLoadAir(Math.max(0, jobLoadAir - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
                 </TouchableOpacity>
                 <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                   <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(jobLoadAir)} onChangeText={t => setJobLoadAir(Number(t.replace(/[^0-9.]/g, '')) || 0)} keyboardType="numeric" />
                 </View>
                 <TouchableOpacity onPress={() => setJobLoadAir(jobLoadAir + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>%</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>%</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>SLUMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>SLUMP</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setJobLoadSlump(Math.max(0, jobLoadSlump - 10))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
                 </TouchableOpacity>
                 <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                   <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(jobLoadSlump)} onChangeText={t => setJobLoadSlump(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
                 </View>
                 <TouchableOpacity onPress={() => setJobLoadSlump(jobLoadSlump + 10)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                  <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>mm</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>mm</Text>
               <TouchableOpacity onPress={() => setPickerType('jobLoadSlump')} style={{width: wp(12), height: wp(12), borderRadius: wp(6), borderWidth: 1, borderColor: c.primary, alignItems: 'center', justifyContent: 'center'}}>
                 <Icon name="more-horiz" size={ms(7)} color={c.primary} />
               </TouchableOpacity>
@@ -608,16 +611,16 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary}]}>CYLINDERS</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CYLINDERS</Text>
             <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
               <TouchableOpacity onPress={() => setJobLoadCylinders(Math.max(0, jobLoadCylinders - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
               </TouchableOpacity>
               <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
                 <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(jobLoadCylinders)} onChangeText={t => setJobLoadCylinders(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
               </View>
               <TouchableOpacity onPress={() => setJobLoadCylinders(jobLoadCylinders + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+                <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -630,35 +633,35 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     <>
       {/* Payment */}
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>PAYMENT</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>PAYMENT</Text>
         <TouchableOpacity onPress={() => setPickerType('payment')} style={[s.selectBox, {borderColor: c.border}]}>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: paymentType ? c.textPrimary : c.textMuted}}>{paymentType || 'Select'}</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: paymentType ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{paymentType || 'Select'}</Text>
         </TouchableOpacity>
       </View>
       <Sep />
 
       {/* Wait Time */}
       <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary}]}>WAIT TIME</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>WAIT TIME</Text>
         <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
           <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
             <TouchableOpacity onPress={() => setWaitTime(Math.max(0, waitTime - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
-              <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>—</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
             </TouchableOpacity>
             <View style={{minWidth: wp(20), height: wp(15), alignItems: 'center', justifyContent: 'center'}}>
               <TextInput style={{fontSize: ms(7), fontWeight: '700', color: c.textPrimary, textAlign: 'center', padding: 0, minWidth: wp(20)}} value={String(waitTime)} onChangeText={t => setWaitTime(Number(t.replace(/[^0-9]/g, '')) || 0)} keyboardType="numeric" />
             </View>
             <TouchableOpacity onPress={() => setWaitTime(waitTime + 1)} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderLeftWidth: 1, borderLeftColor: c.primary}}>
-              <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary}}>+</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
             </TouchableOpacity>
           </View>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>Minute(s)</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>Minute(s)</Text>
         </View>
       </View>
       <Sep />
 
       {/* COD Notes */}
-      <Text style={[s.sectionLabel, {color: c.textPrimary}]}>COD NOTES</Text>
+      <Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>COD NOTES</Text>
       <TextInput
         style={[s.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white}]}
         value={codNotes}
@@ -678,8 +681,8 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       <View style={[s.container, {backgroundColor: c.white}]}>
         {/* Header */}
         <View style={s.header}>
-          <Text style={[s.subtitle, {color: c.textMuted}]}>ADDITIONAL ENTRIES</Text>
-          <Text style={[s.title, {color: c.textPrimary}]}>ORDER {orderCode} / TICKET {ticketCode}</Text>
+          <Text style={[s.subtitle, {color: c.textMuted, fontFamily: MONO}]}>ADDITIONAL ENTRIES</Text>
+          <Text style={[s.title, {color: c.textPrimary, fontFamily: MONO}]}>ORDER {orderCode} / TICKET {ticketCode}</Text>
         </View>
 
         {/* Tabs */}
@@ -689,7 +692,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
             return (
               <TouchableOpacity key={tab.key} activeOpacity={0.7} onPress={() => setActiveTab(tab.key)}
                 style={[s.tabPill, active ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-                <Text style={{fontSize: ms(6), fontWeight: '700', letterSpacing: 0.5, color: active ? '#fff' : c.textMuted}}>{tab.label}</Text>
+                <Text style={{fontSize: ms(6), fontWeight: '700', letterSpacing: 0.5, color: active ? '#fff' : c.textMuted, fontFamily: MONO}}>{tab.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -734,10 +737,10 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         {/* Footer */}
         <View style={[s.footer, {borderTopColor: c.border}]}>
           <TouchableOpacity activeOpacity={0.7} onPress={onClose} style={[s.cancelBtn, {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textPrimary}}>Cancel</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textPrimary, fontFamily: MONO}}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7} onPress={handleSave} disabled={saving} style={[s.saveBtn, {backgroundColor: c.primary}]}>
-            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{fontSize: ms(7), fontWeight: '700', color: '#fff'}}>Save Changes</Text>}
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{fontSize: ms(7), fontWeight: '700', color: '#fff', fontFamily: MONO}}>Save Changes</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -753,8 +756,8 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       {pickerConfig && (
         <>
           <View style={{paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), alignItems: 'center'}}>
-            <Text style={{fontSize: ms(6), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center'}}>ADDITIONAL ENTRIES</Text>
-            <Text style={{fontSize: ms(6), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center'}}>{pickerConfig.title}</Text>
+            <Text style={{fontSize: ms(6), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', fontFamily: MONO}}>ADDITIONAL ENTRIES</Text>
+            <Text style={{fontSize: ms(6), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center', fontFamily: MONO}}>{pickerConfig.title}</Text>
           </View>
           <View style={{marginHorizontal: ms(10), borderWidth: 1.5, borderColor: c.border, borderRadius: wp(6), overflow: 'hidden'}}>
             <ScrollView showsVerticalScrollIndicator persistentScrollbar bounces={false} style={{maxHeight: isLandscape ? 200 : 280}}>
@@ -764,7 +767,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                 return (
                   <TouchableOpacity key={opt} activeOpacity={0.6} onPress={() => { pickerConfig.onSelect(opt); setPickerType(null); }}
                     style={{paddingVertical: ms(8), paddingHorizontal: ms(12), borderBottomWidth: isLast ? 0 : 1, borderBottomColor: c.border, backgroundColor: sel ? c.primary : 'transparent', alignItems: 'center'}}>
-                    <Text style={{fontSize: ms(7), fontWeight: '700', color: sel ? '#fff' : c.textPrimary, textAlign: 'center', letterSpacing: 0.5}}>{opt}</Text>
+                    <Text style={{fontSize: ms(7), fontWeight: '700', color: sel ? '#fff' : c.textPrimary, textAlign: 'center', letterSpacing: 0.5, fontFamily: MONO}}>{opt}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -773,7 +776,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           <View style={{alignItems: 'flex-end', paddingHorizontal: ms(10), paddingTop: ms(6), paddingBottom: ms(4)}}>
             <TouchableOpacity onPress={() => setPickerType(null)} activeOpacity={0.7}
               style={{backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5)}}>
-              <Text style={{fontSize: ms(6), fontWeight: '700', color: '#fff'}}>Close</Text>
+              <Text style={{fontSize: ms(6), fontWeight: '700', color: '#fff', fontFamily: MONO}}>Close</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -788,11 +791,11 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       widthPercent={isLandscape ? 22 : 55}
       maxHeightPercent={55}>
       <View style={{backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(10)}}>
-        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1}}>ADDITIONAL ENTRIES</Text>
-        <Text style={{fontSize: ms(7), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4)}}>SELECT TIME</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, fontFamily: MONO}}>ADDITIONAL ENTRIES</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), fontFamily: MONO}}>SELECT TIME</Text>
         <View style={{flexDirection: 'row', marginBottom: wp(2)}}>
-          <Text style={{flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>Hours</Text>
-          <Text style={{flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted}}>Minutes</Text>
+          <Text style={{flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>Hours</Text>
+          <Text style={{flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>Minutes</Text>
         </View>
         <View style={{flexDirection: 'row', height: 120, overflow: 'hidden'}}>
           <View style={{flex: 1, position: 'relative'}}>
@@ -802,7 +805,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
               onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTruckTimeHour(Math.max(0, Math.min(23, idx))); }}>
               {Array.from({length: 24}, (_, i) => (
                 <TouchableOpacity key={i} onPress={() => setTruckTimeHour(i)} style={{height: 40, justifyContent: 'center', alignItems: 'center'}}>
-                  <Text style={{fontSize: ms(12), fontWeight: truckTimeHour === i ? '900' : '400', color: truckTimeHour === i ? c.textPrimary : c.textMuted}}>{String(i).padStart(2, '0')}</Text>
+                  <Text style={{fontSize: ms(12), fontWeight: truckTimeHour === i ? '900' : '400', color: truckTimeHour === i ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{String(i).padStart(2, '0')}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -814,7 +817,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
               onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTruckTimeMinute(Math.max(0, Math.min(59, idx))); }}>
               {Array.from({length: 60}, (_, i) => (
                 <TouchableOpacity key={i} onPress={() => setTruckTimeMinute(i)} style={{height: 40, justifyContent: 'center', alignItems: 'center'}}>
-                  <Text style={{fontSize: ms(12), fontWeight: truckTimeMinute === i ? '900' : '400', color: truckTimeMinute === i ? c.textPrimary : c.textMuted}}>{String(i).padStart(2, '0')}</Text>
+                  <Text style={{fontSize: ms(12), fontWeight: truckTimeMinute === i ? '900' : '400', color: truckTimeMinute === i ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{String(i).padStart(2, '0')}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -822,7 +825,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         </View>
         <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: wp(8), marginTop: wp(8)}}>
           <TouchableOpacity onPress={() => setTruckTimePicker(null)} activeOpacity={0.7} style={{paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border}}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textPrimary}}>Cancel</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textPrimary, fontFamily: MONO}}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7} onPress={() => {
             const timeStr = `${String(truckTimeHour).padStart(2, '0')}:${String(truckTimeMinute).padStart(2, '0')}`;
@@ -830,7 +833,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
             else setTruckEnd(timeStr);
             setTruckTimePicker(null);
           }} style={{paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary}}>
-            <Text style={{fontSize: ms(7), fontWeight: '700', color: '#fff'}}>OK</Text>
+            <Text style={{fontSize: ms(7), fontWeight: '700', color: '#fff', fontFamily: MONO}}>OK</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -10,16 +10,18 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import ResponsiveModal from './ResponsiveModal';
 import SignaturePad from './SignaturePad';
 import ThemedAlert from './ThemedAlert';
 import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
-import {ms} from '../utils/responsive';
 import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 type Props = {
   visible: boolean;
@@ -46,6 +48,7 @@ export default function AcceptTicketModal({
   const {c, isDark} = useTheme();
   const {isOnline, enqueueOffline} = useOfflineSync();
   const {width: screenW, height: screenH} = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const shortDim = Math.min(screenW, screenH);
 
   // ── Same scaling as Dashboard / MobileTicketModal ──
@@ -236,7 +239,7 @@ export default function AcceptTicketModal({
       return (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: fs(40)}}>
           <ActivityIndicator size="large" color={c.accent} />
-          <Text style={{fontSize: fst(12), marginTop: fs(8), color: c.textSecondary}}>Loading ticket...</Text>
+          <Text style={{fontSize: fst(12), marginTop: fs(8), color: c.textSecondary, fontFamily: MONO}}>Loading ticket...</Text>
         </View>
       );
     }
@@ -245,11 +248,11 @@ export default function AcceptTicketModal({
       return (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: fs(40)}}>
           <Icon name="error-outline" size={fs(36)} color={c.error} />
-          <Text style={{fontSize: fst(12), fontWeight: '600', marginTop: fs(8), color: c.textPrimary, textAlign: 'center'}}>
+          <Text style={{fontSize: fst(12), fontWeight: '600', marginTop: fs(8), color: c.textPrimary, textAlign: 'center', fontFamily: MONO}}>
             {loadError || 'No data available.'}
           </Text>
           <TouchableOpacity style={{marginTop: fs(10), paddingVertical: fs(6), paddingHorizontal: fs(16), borderRadius: fs(6), backgroundColor: c.accent}} onPress={onClose}>
-            <Text style={{fontSize: fst(12), fontWeight: '800', color: c.textOnPrimary}}>CLOSE</Text>
+            <Text style={{fontSize: fst(12), fontWeight: '800', color: c.textOnPrimary, fontFamily: MONO}}>CLOSE</Text>
           </TouchableOpacity>
         </View>
       );
@@ -271,7 +274,7 @@ export default function AcceptTicketModal({
         {loadedFromOffline && (
           <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: fs(4), paddingVertical: fs(4), borderBottomWidth: 1, backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}}>
             <Icon name="cloud-off" size={fst(11)} color={c.warningDark} />
-            <Text style={{fontSize: fst(11), fontWeight: '600', color: c.warningDark}}>Loaded from local data</Text>
+            <Text style={{fontSize: fst(11), fontWeight: '600', color: c.warningDark, fontFamily: MONO}}>Loaded from local data</Text>
           </View>
         )}
 
@@ -279,7 +282,7 @@ export default function AcceptTicketModal({
         {isFormDisabled && (
           <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), paddingHorizontal: pad, gap: fs(6), backgroundColor: alreadySigned ? c.successSurface : c.errorSurface}}>
             <Icon name={alreadySigned ? 'check-circle' : 'report-problem'} size={fst(14)} color={alreadySigned ? c.success : c.error} />
-            <Text style={{fontSize: fst(12), fontWeight: '700', flex: 1, color: alreadySigned ? c.success : c.error}}>
+            <Text style={{fontSize: fst(12), fontWeight: '700', flex: 1, color: alreadySigned ? c.success : c.error, fontFamily: MONO}}>
               {alreadySigned ? 'This ticket has already been signed.' : 'This ticket has been disputed.'}
             </Text>
           </View>
@@ -287,40 +290,40 @@ export default function AcceptTicketModal({
 
         {/* Caution — .tkCenterHd + .tkSmall */}
         <View style={{paddingHorizontal: pad, paddingVertical: fs(16), borderBottomWidth: 1, borderBottomColor: c.border}}>
-          <Text style={{fontSize: fst(13), fontWeight: '800', textAlign: 'center', letterSpacing: 0.5, marginBottom: fs(10), color: c.textPrimary}}>CAUTION</Text>
-          <Text style={{fontSize: fst(12), fontWeight: '400', lineHeight: fst(12) * 1.5, color: c.textPrimary}}>
+          <Text style={{fontSize: fst(13), fontWeight: '800', textAlign: 'center', letterSpacing: 0.5, marginBottom: fs(10), color: c.textPrimary, fontFamily: MONO}}>CAUTION</Text>
+          <Text style={{fontSize: fst(12), fontWeight: '400', lineHeight: fst(12) * 1.5, color: c.textPrimary, fontFamily: MONO}}>
             {legal.caution ? legal.caution.charAt(0).toUpperCase() + legal.caution.slice(1).toLowerCase() : ''}
           </Text>
         </View>
 
         {/* Products — .tkProducts */}
         <View style={{paddingHorizontal: pad, paddingVertical: fs(16), borderBottomWidth: 1, borderBottomColor: c.border}}>
-          <Text style={{fontSize: fst(13), fontWeight: '800', textAlign: 'center', letterSpacing: 0.5, marginBottom: fs(6), color: c.textPrimary}}>PRODUCTS</Text>
+          <Text style={{fontSize: fst(13), fontWeight: '800', textAlign: 'center', letterSpacing: 0.5, marginBottom: fs(6), color: c.textPrimary, fontFamily: MONO}}>PRODUCTS</Text>
 
           {/* Table header */}
           <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), borderTopWidth: 1, borderTopColor: c.border, borderBottomWidth: 2, borderBottomColor: '#4e8a2f', backgroundColor: '#f4f6f8'}}>
-            <Text style={{width: '15%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350'}}>CODE</Text>
-            <Text style={{flex: 1, fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350'}}>DESCRIPTION</Text>
-            <Text style={{width: '12%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', textAlign: 'right'}}>QTY</Text>
-            <Text style={{width: '10%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', textAlign: 'right'}}>UNIT</Text>
+            <Text style={{width: '15%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', fontFamily: MONO}}>CODE</Text>
+            <Text style={{flex: 1, fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', fontFamily: MONO}}>DESCRIPTION</Text>
+            <Text style={{width: '12%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', textAlign: 'right', fontFamily: MONO}}>QTY</Text>
+            <Text style={{width: '10%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', textAlign: 'right', fontFamily: MONO}}>UNIT</Text>
           </View>
 
           {/* Table rows */}
           {products.map((row, i) => (
             <View key={`${row.code}-${i}`} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(9), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: i % 2 === 1 ? '#fafbfc' : 'transparent'}}>
-              <Text style={{width: '15%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary}}>{row.code}</Text>
-              <Text style={{flex: 1, fontSize: fst(13), fontWeight: '600', color: c.textPrimary}}>{row.description}</Text>
-              <Text style={{width: '12%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary, textAlign: 'right'}}>{row.quantity != null ? row.quantity : '-'}</Text>
-              <Text style={{width: '10%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary, textAlign: 'right'}}>{row.unit || '-'}</Text>
+              <Text style={{width: '15%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary, fontFamily: MONO}}>{row.code}</Text>
+              <Text style={{flex: 1, fontSize: fst(13), fontWeight: '600', color: c.textPrimary, fontFamily: MONO}}>{row.description}</Text>
+              <Text style={{width: '12%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary, textAlign: 'right', fontFamily: MONO}}>{row.quantity != null ? row.quantity : '-'}</Text>
+              <Text style={{width: '10%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary, textAlign: 'right', fontFamily: MONO}}>{row.unit || '-'}</Text>
             </View>
           ))}
         </View>
 
         {/* Email — .tkField */}
         <View style={{paddingHorizontal: pad, paddingVertical: fs(16), borderBottomWidth: 1, borderBottomColor: c.border}}>
-          <Text style={{fontSize: fst(13), fontWeight: '800', textAlign: 'center', letterSpacing: 0.5, marginBottom: fs(10), color: c.textPrimary}}>EMAIL MOBILE TICKET</Text>
+          <Text style={{fontSize: fst(13), fontWeight: '800', textAlign: 'center', letterSpacing: 0.5, marginBottom: fs(10), color: c.textPrimary, fontFamily: MONO}}>EMAIL MOBILE TICKET</Text>
 
-          <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary}}>EMAIL ADDRESS</Text>
+          <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary, fontFamily: MONO}}>EMAIL ADDRESS</Text>
           <TextInput
             style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff'}}
             value={email}
@@ -332,7 +335,7 @@ export default function AcceptTicketModal({
             editable={!isFormDisabled}
           />
 
-          <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), marginTop: fs(14), color: c.textPrimary}}>CUSTOMER NOTES</Text>
+          <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), marginTop: fs(14), color: c.textPrimary, fontFamily: MONO}}>CUSTOMER NOTES</Text>
           <TextInput
             style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff'}}
             value={customerNotes}
@@ -345,15 +348,15 @@ export default function AcceptTicketModal({
 
         {/* Terms — .tkTerms */}
         <View style={{paddingHorizontal: pad, paddingVertical: fs(14), borderBottomWidth: 1, borderBottomColor: c.border}}>
-          <Text style={{fontSize: fst(11), fontWeight: '400', lineHeight: fst(11) * 1.5, color: '#5a6573'}}>{legal.terms_en}</Text>
+          <Text style={{fontSize: fst(11), fontWeight: '400', lineHeight: fst(11) * 1.5, color: '#5a6573', fontFamily: MONO}}>{legal.terms_en}</Text>
           {legal.terms_fr ? (
-            <Text style={{fontSize: fst(11), fontWeight: '400', lineHeight: fst(11) * 1.5, color: '#5a6573', marginTop: fs(6)}}>{legal.terms_fr}</Text>
+            <Text style={{fontSize: fst(11), fontWeight: '400', lineHeight: fst(11) * 1.5, color: '#5a6573', marginTop: fs(6), fontFamily: MONO}}>{legal.terms_fr}</Text>
           ) : null}
         </View>
 
         {/* Type Name + Signature + Submit */}
         <View style={{paddingHorizontal: pad, paddingVertical: fs(16)}}>
-          <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary}}>TYPE NAME</Text>
+          <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary, fontFamily: MONO}}>TYPE NAME</Text>
           <TextInput
             style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff'}}
             value={typeName}
@@ -363,32 +366,30 @@ export default function AcceptTicketModal({
             editable={!isFormDisabled}
           />
 
-          {/* Signature pad — .tkPadWrap height:170px */}
-          <View style={{marginTop: fs(6)}}>
-            {loadedSignature && !editingSignature ? (
-              <SignaturePad
-                onSignatureChange={handleSignatureChange}
-                height={sigHeight}
-                readOnly
-                initialImage={loadedSignature}
-                onEditPress={() => setEditingSignature(true)}
-                minimal
-              />
-            ) : (
-              <SignaturePad
-                onSignatureChange={handleSignatureChange}
-                height={sigHeight}
-                onTouchStart={() => setScrollEnabled(false)}
-                onTouchEnd={() => setScrollEnabled(true)}
-                minimal
-                clearRef={sigClearRef}
-              />
-            )}
-          </View>
+          {/* Signature pad */}
+          {loadedSignature && !editingSignature ? (
+            <SignaturePad
+              onSignatureChange={handleSignatureChange}
+              height={sigHeight}
+              readOnly
+              initialImage={loadedSignature}
+              onEditPress={() => setEditingSignature(true)}
+              minimal
+            />
+          ) : (
+            <SignaturePad
+              onSignatureChange={handleSignatureChange}
+              height={sigHeight}
+              onTouchStart={() => setScrollEnabled(false)}
+              onTouchEnd={() => setScrollEnabled(true)}
+              minimal
+              clearRef={sigClearRef}
+            />
+          )}
 
           {/* Clear — .tkClear */}
           <TouchableOpacity onPress={() => { sigClearRef.current?.(); setSignature(null); setLoadedSignature(null); setEditingSignature(false); }} activeOpacity={0.7} style={{marginTop: fs(8)}}>
-            <Text style={{fontSize: fst(12), fontWeight: '400', color: '#2f7ed0'}}>Clear signature</Text>
+            <Text style={{fontSize: fst(12), fontWeight: '400', color: '#2f7ed0', fontFamily: MONO}}>Clear signature</Text>
           </TouchableOpacity>
 
           {/* Submit — .tkSubmit */}
@@ -401,7 +402,7 @@ export default function AcceptTicketModal({
               {submitting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={{fontSize: fst(14), fontWeight: '800', letterSpacing: 1, color: canSubmit ? '#fff' : '#9E9E9E'}}>SUBMIT</Text>
+                <Text style={{fontSize: fst(14), fontWeight: '800', letterSpacing: 1, color: canSubmit ? '#fff' : '#9E9E9E', fontFamily: MONO}}>SUBMIT</Text>
               )}
             </TouchableOpacity>
           )}
@@ -411,7 +412,9 @@ export default function AcceptTicketModal({
   };
 
   // Modal width — compact, matching MobileTicketModal proportions
-  const modalMaxW = isLandscape ? Math.round(screenW * 0.55) : Math.round(screenW * 0.85);
+  // Match MobileTicketModal sizing: 76% width, 92% height
+  const safeW = screenW - (insets?.left || 0) - (insets?.right || 0);
+  const modalMaxW = Math.round(safeW * 0.76);
 
   return (
     <>
@@ -419,18 +422,18 @@ export default function AcceptTicketModal({
         visible={visible}
         onClose={onClose}
         maxWidth={modalMaxW}
-        widthPercent={isLandscape ? 55 : 85}
-        maxHeightPercent={isLandscape ? 90 : 88}
+        widthPercent={76}
+        maxHeightPercent={92}
         avoidKeyboard>
         {/* Header — .tkAcceptHead */}
         <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: fs(16), paddingHorizontal: pad, borderBottomWidth: 1, borderBottomColor: c.border}}>
-          <Text style={{fontSize: fst(16), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center', color: c.textPrimary}}>SIGN & ACCEPT TICKET</Text>
+          <Text style={{fontSize: fst(16), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center', color: c.textPrimary, fontFamily: MONO}}>SIGN & ACCEPT TICKET</Text>
           <TouchableOpacity
             style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: '#1a2230', backgroundColor: '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
             onPress={onClose}
             activeOpacity={0.7}
             hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Text style={{fontSize: fst(13), fontWeight: '400', color: '#1a2230'}}>✕</Text>
+            <Text style={{fontSize: fst(13), fontWeight: '400', color: '#1a2230', fontFamily: MONO}}>✕</Text>
           </TouchableOpacity>
         </View>
 

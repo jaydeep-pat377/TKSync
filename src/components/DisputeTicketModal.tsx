@@ -7,18 +7,21 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import ResponsiveModal from './ResponsiveModal';
 import SignaturePad from './SignaturePad';
 import ThemedAlert from './ThemedAlert';
 import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
-import {wp, ms} from '../utils/responsive';
 import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 type Props = {
   visible: boolean;
@@ -42,9 +45,17 @@ export default function DisputeTicketModal({
   ticketInfo,
   isLandscape,
 }: Props) {
-  const s = createS();
   const {c, isDark} = useTheme();
   const {isOnline, enqueueOffline} = useOfflineSync();
+  const {width: screenW, height: screenH} = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const shortDim = Math.min(screenW, screenH);
+
+  // ── Same scaling as Dashboard / MobileTicketModal ──
+  const LREF = 810;
+  const sc = Math.max(0.65, Math.min(1.35, shortDim / LREF));
+  const fs = (base: number) => Math.round(base * sc);
+  const fst = (base: number) => Math.round((base - 1) * sc);
 
   const [data, setData] = useState<SigningData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +76,6 @@ export default function DisputeTicketModal({
   const [loadedFromOffline, setLoadedFromOffline] = useState(false);
   const [loadedSignature, setLoadedSignature] = useState<string | null>(null);
 
-  // Reset state when modal opens/closes or ticketId changes
   useEffect(() => {
     if (!visible) {
       setData(null);
@@ -94,9 +104,7 @@ export default function DisputeTicketModal({
         const res = await ticketsApi.getSigning(ticketId);
         if (cancelled) return;
         setData(res.data);
-        // Cache full signing data for offline use
         offlineStorage.cacheSigningData(ticketId, res.data);
-        // Cache ticket info
         if (ticketInfo) {
           offlineStorage.cacheCurblineTicketInfo(ticketId, ticketInfo);
         }
@@ -110,14 +118,10 @@ export default function DisputeTicketModal({
             setLoadedSignature(d.signature_image);
           }
         }
-        // Overlay any pending offline submit
         applyPendingOfflineData(ticketId);
       } catch (err: any) {
         if (cancelled) return;
-        // API failed — try local cache
-        const cached = offlineStorage.getCachedSigningData(
-          ticketId,
-        ) as SigningData | null;
+        const cached = offlineStorage.getCachedSigningData(ticketId) as SigningData | null;
         if (cached) {
           setData(cached);
           const d = cached.status?.dispute;
@@ -140,9 +144,7 @@ export default function DisputeTicketModal({
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [visible, ticketId]);
 
   function applyPendingOfflineData(tid: number) {
@@ -167,12 +169,7 @@ export default function DisputeTicketModal({
   const alreadyDisputed = data?.status?.is_disputed === true;
   const isFormDisabled = alreadyDisputed;
 
-  const canSubmit =
-    typeName.trim().length > 0 &&
-    signature !== null &&
-    signature.length > 0 &&
-    !submitting &&
-    !isFormDisabled;
+  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting && !isFormDisabled;
 
   const handleDispute = useCallback(async () => {
     if (!canSubmit || !ticketId || !signature) return;
@@ -184,19 +181,12 @@ export default function DisputeTicketModal({
       signature_image: signature,
     };
     const updateSigningCache = () => {
-      const cached = offlineStorage.getCachedSigningData(
-        ticketId,
-      ) as SigningData | null;
+      const cached = offlineStorage.getCachedSigningData(ticketId) as SigningData | null;
       if (cached) {
         cached.status = {
           ...cached.status,
           is_disputed: true,
-          dispute: {
-            quantity: body.quantity,
-            reason: body.reason,
-            signed_name: body.signed_name,
-            signature_image: body.signature_image,
-          },
+          dispute: { quantity: body.quantity, reason: body.reason, signed_name: body.signed_name, signature_image: body.signature_image },
         };
         offlineStorage.cacheSigningData(ticketId, cached);
       }
@@ -205,54 +195,24 @@ export default function DisputeTicketModal({
       if (!isOnline) {
         enqueueOffline(ticketId, 'dispute', body, 'dispute');
         updateSigningCache();
-        setAlert({
-          type: 'success',
-          title: 'Saved Offline',
-          message:
-            'Dispute will be submitted automatically when connection is restored.',
-        });
+        setAlert({ type: 'success', title: 'Saved Offline', message: 'Dispute will be submitted automatically when connection is restored.' });
       } else {
         await ticketsApi.dispute(ticketId, body);
         updateSigningCache();
-        setAlert({
-          type: 'success',
-          title: 'Success',
-          message: 'Ticket disputed successfully.',
-        });
+        setAlert({ type: 'success', title: 'Success', message: 'Ticket disputed successfully.' });
       }
     } catch (err: any) {
-      if (
-        err?.message?.includes('Network request failed') ||
-        err?.name === 'AbortError'
-      ) {
+      if (err?.message?.includes('Network request failed') || err?.name === 'AbortError') {
         enqueueOffline(ticketId, 'dispute', body, 'dispute');
         updateSigningCache();
-        setAlert({
-          type: 'success',
-          title: 'Saved Offline',
-          message:
-            'Dispute will be submitted automatically when connection is restored.',
-        });
+        setAlert({ type: 'success', title: 'Saved Offline', message: 'Dispute will be submitted automatically when connection is restored.' });
       } else {
-        setAlert({
-          type: 'error',
-          title: 'Error',
-          message: err.message || 'Failed to dispute ticket.',
-        });
+        setAlert({ type: 'error', title: 'Error', message: err.message || 'Failed to dispute ticket.' });
       }
     } finally {
       setSubmitting(false);
     }
-  }, [
-    canSubmit,
-    ticketId,
-    quantity,
-    reason,
-    typeName,
-    signature,
-    isOnline,
-    enqueueOffline,
-  ]);
+  }, [canSubmit, ticketId, quantity, reason, typeName, signature, isOnline, enqueueOffline]);
 
   const handleAlertClose = useCallback(() => {
     const wasSuccess = alert?.type === 'success';
@@ -264,40 +224,31 @@ export default function DisputeTicketModal({
     setQuantity(text.replace(/[^0-9.]/g, ''));
   };
 
-  const {width: screenW, height: screenH} = useWindowDimensions();
-  const sigHeight = isLandscape
-    ? Math.round(screenH * 0.2)
-    : Math.round(screenH * 0.18);
+  const sigHeight = fs(170);
   const scrollMaxH = Math.round(screenH * (isLandscape ? 0.72 : 0.75));
+  const pad = fs(24);
+  const safeW = screenW - insets.left - insets.right;
+  const modalMaxW = Math.round(safeW * 0.76);
 
-  // Render modal content
   const renderContent = () => {
-    // Loading state
     if (loading) {
       return (
-        <View style={s.centerContent}>
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: fs(40)}}>
           <ActivityIndicator size="large" color={c.accent} />
-          <Text style={[s.loadingText, {color: c.textSecondary}]}>
-            Loading ticket...
-          </Text>
+          <Text style={{fontSize: fst(12), marginTop: fs(8), color: c.textSecondary, fontFamily: MONO}}>Loading ticket...</Text>
         </View>
       );
     }
 
-    // Error state
     if (loadError || !data) {
       return (
-        <View style={s.centerContent}>
-          <Icon name="error-outline" size={ms(36)} color={c.error} />
-          <Text style={[s.errorText, {color: c.textPrimary}]}>
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: fs(40)}}>
+          <Icon name="error-outline" size={fs(36)} color={c.error} />
+          <Text style={{fontSize: fst(12), fontWeight: '600', marginTop: fs(8), color: c.textPrimary, textAlign: 'center', fontFamily: MONO}}>
             {loadError || 'No data available.'}
           </Text>
-          <TouchableOpacity
-            style={[s.retryBtn, {backgroundColor: c.accent}]}
-            onPress={onClose}>
-            <Text style={[s.retryBtnText, {color: c.textOnPrimary}]}>
-              CLOSE
-            </Text>
+          <TouchableOpacity style={{marginTop: fs(10), paddingVertical: fs(6), paddingHorizontal: fs(16), borderRadius: fs(6), backgroundColor: c.accent}} onPress={onClose}>
+            <Text style={{fontSize: fst(12), fontWeight: '800', color: c.textOnPrimary, fontFamily: MONO}}>CLOSE</Text>
           </TouchableOpacity>
         </View>
       );
@@ -308,81 +259,60 @@ export default function DisputeTicketModal({
     return (
       <ScrollView
         style={{maxHeight: scrollMaxH}}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={{paddingBottom: fs(8)}}
         showsVerticalScrollIndicator={true}
         persistentScrollbar
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
         nestedScrollEnabled>
+
         {/* Offline banner */}
         {loadedFromOffline && (
-          <View
-            style={[
-              s.offlineBanner,
-              {
-                backgroundColor: c.warningSurface,
-                borderBottomColor: c.warningBorder,
-              },
-            ]}>
-            <Icon name="cloud-off" size={ms(11)} color={c.warningDark} />
-            <Text style={[s.offlineBannerText, {color: c.warningDark}]}>
-              Loaded from local data
-            </Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: fs(4), paddingVertical: fs(4), borderBottomWidth: 1, backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}}>
+            <Icon name="cloud-off" size={fst(11)} color={c.warningDark} />
+            <Text style={{fontSize: fst(11), fontWeight: '600', color: c.warningDark, fontFamily: MONO}}>Loaded from local data</Text>
           </View>
         )}
 
-        {/* Already disputed banner */}
+        {/* Already disputed */}
         {alreadyDisputed && (
-          <View style={[s.banner, {backgroundColor: c.errorSurface}]}>
-            <Icon
-              name="report-problem"
-              size={ms(14)}
-              color={c.error}
-            />
-            <Text style={[s.bannerText, {color: c.error}]}>
-              This ticket has already been disputed.
-            </Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), paddingHorizontal: pad, gap: fs(6), backgroundColor: c.errorSurface}}>
+            <Icon name="report-problem" size={fst(14)} color={c.error} />
+            <Text style={{fontSize: fst(12), fontWeight: '700', flex: 1, color: c.error, fontFamily: MONO}}>This ticket has already been disputed.</Text>
           </View>
         )}
 
         {/* Info Section */}
-        <View style={[s.infoSection, {borderBottomColor: c.border}]}>
-          <View style={s.infoRow}>
-            <Text style={[s.infoLabel, {color: c.textPrimary}]}>TICKET</Text>
-            <Text style={[s.infoValue, {color: c.textPrimary}]}>
-              {ticketInfo?.ticket_code || data.ticket?.ticket_code || '-'}
-            </Text>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={[s.infoLabel, {color: c.textPrimary}]}>PRODUCT</Text>
-            <Text style={[s.infoValue, {color: c.textPrimary}]}>
-              {products.length > 0 ? products[0].description : '-'}
-            </Text>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={[s.infoLabel, {color: c.textPrimary}]}>QUANTITY</Text>
-            <View style={s.qtyRow}>
-              <TextInput
-                style={[
-                  s.qtyInput,
-                  {borderBottomColor: c.border, color: c.textPrimary},
-                ]}
-                value={quantity}
-                onChangeText={handleQuantityChange}
-                keyboardType="decimal-pad"
-                maxLength={6}
-                editable={!isFormDisabled}
-              />
-              <Text style={[s.qtyUnit, {color: c.textPrimary}]}>M3</Text>
+        <View style={{paddingHorizontal: pad, paddingVertical: fs(16), borderBottomWidth: 1, borderBottomColor: c.border}}>
+          {[
+            {l: 'TICKET', v: ticketInfo?.ticket_code || data.ticket?.ticket_code || '-'},
+            {l: 'PRODUCT', v: products.length > 0 ? products[0].description : '-'},
+          ].map(row => (
+            <View key={row.l} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), gap: fs(8)}}>
+              <Text style={{width: fs(108), fontSize: fst(11), fontWeight: '800', letterSpacing: 0.4, color: c.textPrimary, fontFamily: MONO}}>{row.l}</Text>
+              <Text style={{flex: 1, fontSize: fst(13), fontWeight: '500', color: c.textPrimary, fontFamily: MONO}}>{row.v}</Text>
             </View>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={[s.infoLabel, {color: c.textPrimary}]}>REASON</Text>
+          ))}
+
+          {/* Quantity */}
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), gap: fs(8)}}>
+            <Text style={{width: fs(108), fontSize: fst(11), fontWeight: '800', letterSpacing: 0.4, color: c.textPrimary, fontFamily: MONO}}>QUANTITY</Text>
             <TextInput
-              style={[
-                s.reasonInput,
-                {borderBottomColor: c.border, color: c.textPrimary},
-              ]}
+              style={{width: fs(74), borderBottomWidth: 1.5, borderBottomColor: c.border, paddingVertical: fs(3), fontSize: fst(15), fontWeight: '700', color: c.textPrimary, textAlign: 'center', fontFamily: MONO}}
+              value={quantity}
+              onChangeText={handleQuantityChange}
+              keyboardType="decimal-pad"
+              maxLength={6}
+              editable={!isFormDisabled}
+            />
+            <Text style={{fontSize: fst(13), fontWeight: '600', color: c.textPrimary, fontFamily: MONO}}>M3</Text>
+          </View>
+
+          {/* Reason */}
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), gap: fs(8)}}>
+            <Text style={{width: fs(108), fontSize: fst(11), fontWeight: '800', letterSpacing: 0.4, color: c.textPrimary, fontFamily: MONO}}>REASON</Text>
+            <TextInput
+              style={{flex: 1, borderBottomWidth: 1.5, borderBottomColor: c.border, paddingVertical: fs(3), fontSize: fst(14), color: c.textPrimary, fontFamily: MONO}}
               value={reason}
               onChangeText={setReason}
               placeholder="Enter reason"
@@ -392,17 +322,11 @@ export default function DisputeTicketModal({
           </View>
         </View>
 
-        {/* Separator */}
-        <View style={[s.separator, {backgroundColor: c.border}]} />
-
         {/* Type Name + Signature + Submit */}
-        <View style={s.signSection}>
-          <Text style={[s.inputLabel, {color: c.textPrimary}]}>TYPE NAME</Text>
+        <View style={{paddingHorizontal: pad, paddingVertical: fs(16)}}>
+          <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary, fontFamily: MONO}}>TYPE NAME</Text>
           <TextInput
-            style={[
-              s.typeNameInput,
-              {borderBottomColor: c.border, color: c.textPrimary},
-            ]}
+            style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff', fontFamily: MONO}}
             value={typeName}
             onChangeText={setTypeName}
             placeholder="Enter name"
@@ -410,6 +334,7 @@ export default function DisputeTicketModal({
             editable={!isFormDisabled}
           />
 
+          {/* Signature pad */}
           {loadedSignature && !editingSignature ? (
             <SignaturePad
               onSignatureChange={handleSignatureChange}
@@ -430,50 +355,22 @@ export default function DisputeTicketModal({
             />
           )}
 
-          <TouchableOpacity
-            onPress={() => {
-              sigClearRef.current?.();
-              setSignature(null);
-              setLoadedSignature(null);
-              setEditingSignature(false);
-            }}
-            activeOpacity={0.7}
-            style={{marginTop: wp(3)}}>
-            <Text
-              style={{
-                fontSize: ms(8),
-                fontWeight: '600',
-                color: c.primary,
-              }}>
-              Clear signature
-            </Text>
+          {/* Clear */}
+          <TouchableOpacity onPress={() => { sigClearRef.current?.(); setSignature(null); setLoadedSignature(null); setEditingSignature(false); }} activeOpacity={0.7} style={{marginTop: fs(8)}}>
+            <Text style={{fontSize: fst(12), fontWeight: '400', color: '#2f7ed0', fontFamily: MONO}}>Clear signature</Text>
           </TouchableOpacity>
 
+          {/* Submit */}
           {!isFormDisabled && (
             <TouchableOpacity
-              style={[
-                s.disputeBtn,
-                {
-                  backgroundColor: canSubmit
-                    ? '#8a1414'
-                    : isDark
-                      ? '#4A5B6E'
-                      : '#cfd6de',
-                },
-              ]}
+              style={{marginTop: fs(16), paddingVertical: fs(16), borderRadius: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? '#8a1414' : isDark ? '#4A5B6E' : '#cfd6de'}}
               activeOpacity={canSubmit ? 0.8 : 1}
               disabled={!canSubmit}
               onPress={handleDispute}>
               {submitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text
-                  style={[
-                    s.disputeBtnText,
-                    {color: canSubmit ? '#FFFFFF' : '#9E9E9E'},
-                  ]}>
-                  DISPUTE
-                </Text>
+                <Text style={{fontSize: fst(14), fontWeight: '800', letterSpacing: 1, color: canSubmit ? '#fff' : '#9E9E9E', fontFamily: MONO}}>DISPUTE</Text>
               )}
             </TouchableOpacity>
           )}
@@ -487,25 +384,19 @@ export default function DisputeTicketModal({
       <ResponsiveModal
         visible={visible}
         onClose={onClose}
-        maxWidth={
-          isLandscape
-            ? Math.round(screenW * 0.75)
-            : Math.round(screenW * 0.95)
-        }
-        widthPercent={isLandscape ? 75 : 95}
-        maxHeightPercent={isLandscape ? 92 : 90}
+        maxWidth={modalMaxW}
+        widthPercent={76}
+        maxHeightPercent={92}
         avoidKeyboard>
         {/* Header */}
-        <View style={[s.header, {borderBottomColor: c.border}]}>
-          <Text style={[s.headerTitle, {color: c.textPrimary}]}>
-            DISPUTE LOAD
-          </Text>
+        <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: fs(16), paddingHorizontal: pad, borderBottomWidth: 1, borderBottomColor: c.border}}>
+          <Text style={{fontSize: fst(16), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center', color: c.textPrimary, fontFamily: MONO}}>DISPUTE LOAD</Text>
           <TouchableOpacity
-            style={[s.closeBtn, {backgroundColor: c.surface}]}
+            style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: '#1a2230', backgroundColor: '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
             onPress={onClose}
             activeOpacity={0.7}
             hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Icon name="close" size={ms(12)} color={c.textSecondary} />
+            <Text style={{fontSize: fst(13), fontWeight: '400', color: '#1a2230', fontFamily: MONO}}>✕</Text>
           </TouchableOpacity>
         </View>
 
@@ -522,166 +413,3 @@ export default function DisputeTicketModal({
     </>
   );
 }
-
-const createS = () =>
-  StyleSheet.create({
-    centerContent: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingVertical: wp(30),
-      paddingHorizontal: wp(16),
-    },
-
-    // Loading / Error
-    loadingText: {fontSize: ms(9), marginTop: wp(8)},
-    errorText: {
-      fontSize: ms(9),
-      fontWeight: '600',
-      marginTop: wp(8),
-      textAlign: 'center',
-      paddingHorizontal: wp(12),
-    },
-    retryBtn: {
-      marginTop: wp(10),
-      paddingVertical: wp(6),
-      paddingHorizontal: wp(16),
-      borderRadius: wp(6),
-    },
-    retryBtnText: {fontSize: ms(8), fontWeight: '800'},
-
-    // Header
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: wp(5),
-      paddingHorizontal: wp(8),
-      borderBottomWidth: 0,
-    },
-    headerTitle: {
-      fontSize: ms(10),
-      fontWeight: '800',
-      letterSpacing: 0.5,
-      flex: 1,
-      textAlign: 'center',
-    },
-    closeBtn: {
-      width: wp(20),
-      height: wp(20),
-      borderRadius: wp(10),
-      justifyContent: 'center',
-      alignItems: 'center',
-      position: 'absolute',
-      right: wp(6),
-    },
-
-    // Banners
-    offlineBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: wp(4),
-      paddingVertical: wp(4),
-      borderBottomWidth: 1,
-    },
-    offlineBannerText: {fontSize: ms(7), fontWeight: '600'},
-    banner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: wp(6),
-      paddingHorizontal: wp(8),
-      gap: wp(6),
-    },
-    bannerText: {fontSize: ms(8), fontWeight: '700', flex: 1},
-
-    // Scroll
-    scrollContent: {paddingBottom: wp(8)},
-
-    // Info Section
-    infoSection: {
-      paddingHorizontal: wp(10),
-      paddingVertical: wp(5),
-      borderBottomWidth: 0,
-    },
-    infoRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      paddingVertical: wp(4),
-      gap: wp(6),
-    },
-    infoLabel: {
-      fontSize: ms(8),
-      fontWeight: '800',
-      minWidth: wp(55),
-    },
-    infoValue: {
-      fontSize: ms(8),
-      fontWeight: '500',
-      flex: 1,
-      minWidth: 60,
-    },
-    qtyRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: wp(6),
-    },
-    qtyInput: {
-      width: wp(60),
-      borderBottomWidth: 1,
-      paddingVertical: wp(3),
-      fontSize: ms(9),
-      fontWeight: '600',
-    },
-    qtyUnit: {
-      fontSize: ms(9),
-      fontWeight: '600',
-    },
-    reasonInput: {
-      flex: 1,
-      borderBottomWidth: 1,
-      paddingVertical: wp(3),
-      fontSize: ms(9),
-    },
-
-    // Separator
-    separator: {
-      height: StyleSheet.hairlineWidth,
-      marginHorizontal: wp(10),
-    },
-
-    // Sign section
-    signSection: {
-      paddingHorizontal: wp(10),
-      paddingVertical: wp(5),
-    },
-    inputLabel: {
-      fontSize: ms(7),
-      fontWeight: '800',
-      marginBottom: wp(1),
-      marginTop: wp(3),
-    },
-    typeNameInput: {
-      borderBottomWidth: 1,
-      paddingVertical: wp(3),
-      fontSize: ms(9),
-      marginBottom: wp(4),
-    },
-
-    // Dispute button
-    disputeBtn: {
-      marginTop: wp(6),
-      paddingVertical: wp(7),
-      borderRadius: 2,
-      minHeight: wp(30),
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '100%',
-    },
-    disputeBtnText: {
-      fontSize: ms(8),
-      fontWeight: '800',
-      letterSpacing: 1,
-    },
-  });
