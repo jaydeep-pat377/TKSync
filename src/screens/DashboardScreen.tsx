@@ -33,6 +33,7 @@ import AdditionalEntriesModal from '../components/AdditionalEntriesModal';
 import AcceptTicketModal from '../components/AcceptTicketModal';
 import DisputeTicketModal from '../components/DisputeTicketModal';
 import CurblineReleaseModal from '../components/CurblineReleaseModal';
+import MobileTicketModal from '../components/MobileTicketModal';
 import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
@@ -409,6 +410,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [acceptTicketVisible, setAcceptTicketVisible] = useState(false);
   const [disputeTicketVisible, setDisputeTicketVisible] = useState(false);
   const [curblineReleaseVisible, setCurblineReleaseVisible] = useState(false);
+  const [mobileTicketVisible, setMobileTicketVisible] = useState(false);
   const [timePickerStep, setTimePickerStep] = useState<{ key: string; label: string } | null>(null);
   const [timePickerHour, setTimePickerHour] = useState(0);
   const [timePickerMinute, setTimePickerMinute] = useState(0);
@@ -676,7 +678,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
   const handleNavPress = useCallback((item: typeof BOTTOM_ACTIONS[0], i: number) => {
     setActiveBottom(i);
-    if (item.icon === 'label') { navigation.navigate('MobileTicket', { ticketId: currentTicket?.id }); }
+    if (item.icon === 'label') { setMobileTicketVisible(true); }
     if (item.icon === 'note-alt') { navigation.navigate('Notes', { ticketId: currentTicket?.id }); }
     if (item.icon === 'edit') { console.log('[DEBUG] Edit button pressed, setting editVisible=true'); setEditVisible(true); }
     if (item.icon === 'text-fields') { setFontSizeVisible(true); }
@@ -2285,6 +2287,15 @@ export default function DashboardScreen({ navigation }: Props) {
           ticket_code: currentTicket.ticket_code || '',
         } : null}
         isLandscape={L}
+      />
+
+      {/* ─── MOBILE TICKET MODAL ─── */}
+      <MobileTicketModal
+        visible={mobileTicketVisible}
+        onClose={() => setMobileTicketVisible(false)}
+        ticketId={currentTicket?.id}
+        onSign={() => { setMobileTicketVisible(false); setAcceptTicketVisible(true); }}
+        onDispute={() => { setMobileTicketVisible(false); setDisputeTicketVisible(true); }}
       />
 
       {/* ─── DELIVERY INSTRUCTIONS MODAL ─── */}
