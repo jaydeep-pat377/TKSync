@@ -7,7 +7,7 @@ import SplashScreen from '../screens/SplashScreen';
 import CompanyLoginScreen from '../screens/CompanyLoginScreen';
 import DriverLoginScreen from '../screens/DriverLoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
-import NotesScreen from '../screens/NotesScreen';
+// NotesScreen removed — delivery entries handled by AdditionalEntriesModal
 import MapScreen from '../screens/MapScreen';
 import DeliveredToMapScreen from '../screens/DeliveredToMapScreen';
 import VehicleTrackingScreen from '../screens/VehicleTrackingScreen';
@@ -55,11 +55,6 @@ export default function AppNavigator() {
           name="Dashboard"
           component={DashboardScreen}
           options={{contentStyle: {backgroundColor: c.background}}}
-        />
-        <Stack.Screen
-          name="Notes"
-          component={NotesScreen}
-          options={{animation: 'slide_from_bottom', contentStyle: {backgroundColor: c.primaryDark}}}
         />
         <Stack.Screen
           name="Map"

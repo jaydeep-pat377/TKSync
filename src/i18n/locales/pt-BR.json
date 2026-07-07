@@ -117,7 +117,8 @@
     "logoutDriver": "Sair motorista",
     "logoutTenant": "Sair empresa",
     "language": "Idioma",
-    "about": "Sobre"
+    "about": "Sobre",
+    "forceOffline": "Force Offline"
   },
   "logout": {
     "driverTitle": "Sair motorista",

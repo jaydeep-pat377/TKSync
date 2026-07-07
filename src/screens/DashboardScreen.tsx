@@ -380,6 +380,9 @@ export default function DashboardScreen({ navigation }: Props) {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [pendingDetails, setPendingDetails] = useState(false);
   const [productsVisible, setProductsVisible] = useState(false);
+  const productsScrollY = useRef(new Animated.Value(0)).current;
+  const [productsContentH, setProductsContentH] = useState(0);
+  const [productsViewH, setProductsViewH] = useState(0);
   const [vehicleVisible, setVehicleVisible] = useState(false);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [directionsAlert, setDirectionsAlert] = useState(false);
@@ -540,6 +543,7 @@ export default function DashboardScreen({ navigation }: Props) {
         .then(res => {
           setDeliveryRecord(res.data);
           offlineStorage.cacheDeliveryRecord(ticket.id, res.data);
+          if (res.data?.field_definitions) offlineStorage.cacheFieldDefinitions(res.data.field_definitions);
         })
         .catch(() => { });
     }
@@ -556,6 +560,17 @@ export default function DashboardScreen({ navigation }: Props) {
     return () => clearInterval(iv);
   }, [silentRefreshAll]);
 
+  // Refresh all data when connection is restored (offline → online)
+  const wasOnline = useRef(isOnline);
+  useEffect(() => {
+    if (isOnline && !wasOnline.current) {
+      console.log('[Dashboard] Connection restored — refreshing all data');
+      // Wait for sync to upload pending saves first, then refresh
+      setTimeout(() => silentRefreshAll(), 3000);
+    }
+    wasOnline.current = isOnline;
+  }, [isOnline, silentRefreshAll]);
+
   // Fetch detail + delivery record when ticket changes
   useEffect(() => {
     const ticket = tickets[activeTicket];
@@ -568,6 +583,7 @@ export default function DashboardScreen({ navigation }: Props) {
         .then(res => {
           setDeliveryRecord(res.data);
           offlineStorage.cacheDeliveryRecord(ticket.id, res.data);
+          if (res.data?.field_definitions) offlineStorage.cacheFieldDefinitions(res.data.field_definitions);
           setPendingDetails(prev => { if (prev) { setDetailsVisible(true); } return false; });
         })
         .catch(() => {
@@ -578,6 +594,10 @@ export default function DashboardScreen({ navigation }: Props) {
             let merged = { ...cached };
             for (const item of pending) {
               merged[item.tab] = { ...(merged[item.tab] || {}), ...item.body };
+            }
+            // Ensure field_definitions are available even from cache
+            if (!merged.field_definitions) {
+              merged.field_definitions = offlineStorage.getCachedFieldDefinitions();
             }
             setDeliveryRecord(merged as DeliveryRecord);
           } else {
@@ -735,7 +755,6 @@ export default function DashboardScreen({ navigation }: Props) {
   const handleNavPress = useCallback((item: typeof BOTTOM_ACTIONS[0], i: number) => {
     setActiveBottom(i);
     if (item.icon === 'label') { setMobileTicketVisible(true); }
-    if (item.icon === 'note-alt') { navigation.navigate('Notes', { ticketId: currentTicket?.id }); }
     if (item.icon === 'edit') { console.log('[DEBUG] Edit button pressed, setting editVisible=true'); setEditVisible(true); }
     if (item.icon === 'text-fields') { setFontSizeVisible(true); }
     if (item.icon === 'qr-code-scanner' && currentTicket) {
@@ -1194,8 +1213,8 @@ export default function DashboardScreen({ navigation }: Props) {
       const filled = (hasQty ? r?.returned_concrete_m3 != null : true) && (hasReason ? !!r?.reason_for_return : true) && (hasDisposal ? !!r?.disposal_method : true);
       const valueParts: string[] = [];
       if (hasQty) valueParts.push(r?.returned_concrete_m3 != null ? `${r.returned_concrete_m3} m3` : '-');
-      if (hasReason) valueParts.push(r?.reason_for_return ? (REASON_OPTIONS.find(o => o.key === r.reason_for_return)?.label || r.reason_for_return) : '-');
-      if (hasDisposal) valueParts.push(r?.disposal_method ? (DISPOSAL_OPTIONS.find(o => o.key === r.disposal_method)?.label || r.disposal_method) : '-');
+      if (hasReason) { const rOpts = fieldDefs?.returned?.reason_for_return?.config?.options || []; valueParts.push(r?.reason_for_return ? (rOpts.find((o: any) => (o.key || o.value) === r.reason_for_return)?.label || r.reason_for_return) : '-'); }
+      if (hasDisposal) { const dOpts = fieldDefs?.returned?.disposal_method?.config?.options || []; valueParts.push(r?.disposal_method ? (dOpts.find((o: any) => (o.key || o.value) === r.disposal_method)?.label || r.disposal_method) : '-'); }
       const ws = deliveryRecord?.jobsite?.washout_area;
       let display = valueParts.join(' | ');
       if (ws) display += ` · ${ws}`;
@@ -1524,7 +1543,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       </View>
                       {[
                         { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' },
-                        ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []),
+                        ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.quantity || '-' }] : []),
                         { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
                         { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
                       ].map((row, i, arr) => (
@@ -1776,7 +1795,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
                       <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>Delivery Location</Text>
                     </View>
-                    {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: 'LOAD', value: `${detail.mix.loads.current} · ${stripUnit(detail?.mix?.quantity) || '-'} of ${stripUnit(detail?.mix?.loads?.total) || '-'} ${normalizeUOM(detail?.mix?.products?.find((p: any) => p.is_mix)?.delivered_unit) || 'M\u00B3'}` }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }].map((row, i) => (
+                    {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.quantity || '-' }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }].map((row, i) => (
                       <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
                         <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>{row.label}</Text>
                         {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(8), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' , fontFamily: MONO}}>{row.value}</Text></TouchableOpacity>
@@ -1973,7 +1992,11 @@ export default function DashboardScreen({ navigation }: Props) {
           <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' , fontFamily: MONO}}>SELECT SLUMP <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>mm</Text></Text>
         </View>
         <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
-            {Array.from({ length: 21 }, (_, i) => String(80 + i * 10)).map(val => {
+            {((() => {
+              const fd = (deliveryRecord as any)?.field_definitions;
+              if (slumpPickerField === 'water_slump') return fd?.jobsite?.full_load_mm?.config?.options || fd?.plant?.slump_from_plant?.config?.options || [];
+              return fd?.plant?.[slumpPickerField || '']?.config?.options || [];
+            })()).map((val: string) => {
               const currentVal = slumpPickerField === 'water_slump' ? waterMmInput : slumpPickerField === 'slump_from_plant' ? deliveryRecord?.plant?.slump_from_plant : deliveryRecord?.plant?.slump_to_job;
               const isSelected = currentVal != null && String(currentVal) === val;
               return (
@@ -2201,7 +2224,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(4) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedReason ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{REASON_OPTIONS.find(r => r.key === returnedReason)?.label || 'Select reason'}</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedReason ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{(() => { const opts = (deliveryRecord as any)?.field_definitions?.returned?.reason_for_return?.config?.options || []; return opts.find((o: any) => (o.key || o.value) === returnedReason)?.label || returnedReason || 'Select reason'; })()}</Text>
             </TouchableOpacity>
             <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(1), marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Disposal</Text>
             <TouchableOpacity
@@ -2216,7 +2239,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(5) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedDisposal ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{DISPOSAL_OPTIONS.find(d => d.key === returnedDisposal)?.label || 'Select method'}</Text>
+              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedDisposal ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{(() => { const opts = (deliveryRecord as any)?.field_definitions?.returned?.disposal_method?.config?.options || []; return opts.find((d: any) => (d.key || d.value) === returnedDisposal)?.label || returnedDisposal || 'Select method'; })()}</Text>
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(6), marginTop: wp(3) }}>
               <TouchableOpacity onPress={() => setReturnedModalVisible(false)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), borderWidth: 1.5, borderColor: c.border }}>
@@ -2263,7 +2286,10 @@ export default function DashboardScreen({ navigation }: Props) {
           <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' , fontFamily: MONO}}>{returnedPickerType === 'reason' ? 'SELECT REASON' : 'SELECT DISPOSAL'}</Text>
         </View>
         <ScrollView showsVerticalScrollIndicator persistentScrollbar indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
-          {(returnedPickerType === 'reason' ? REASON_OPTIONS : DISPOSAL_OPTIONS).map(opt => {
+          {(() => {
+            const fdOpts = (deliveryRecord as any)?.field_definitions?.returned?.[returnedPickerType === 'reason' ? 'reason_for_return' : 'disposal_method']?.config?.options || [];
+            return fdOpts.map((o: any) => typeof o === 'object' ? {key: o.key || o.value || o.label, label: o.label || o.key || o.value} : {key: o, label: o});
+          })().map((opt: any) => {
             const selected = returnedPickerType === 'reason' ? returnedReason === opt.key : returnedDisposal === opt.key;
             return (
               <TouchableOpacity
@@ -2405,7 +2431,7 @@ export default function DashboardScreen({ navigation }: Props) {
         onClose={() => setQrVisible(false)}
         maxWidth={320}
         widthPercent={L ? 28 : 65}
-        maxHeightPercent={60}>
+        maxHeightPercent={L ? 80 : 60}>
         <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: 20, alignItems: 'center' }}>
           {qrLoading ? (
             <View style={{ paddingVertical: 40 }}>
@@ -2436,7 +2462,7 @@ export default function DashboardScreen({ navigation }: Props) {
               </Text>
               <QRCode
                 value={qrData.qr_token}
-                size={200}
+                size={L ? Math.min(200, winHeight * 0.35) : 200}
                 backgroundColor={c.white}
                 color={c.qrFg}
               />
@@ -2621,7 +2647,7 @@ export default function DashboardScreen({ navigation }: Props) {
         onClose={() => setProductsVisible(false)}
         widthPercent={L ? 40 : 50}
         maxWidth={560}
-        maxHeightPercent={55}>
+        maxHeightPercent={L ? 75 : 55}>
         <View style={[styles.pmHeader, { backgroundColor: c.primarySurface, borderBottomColor: c.primaryBorder }]}>
           <View style={[styles.pmHeaderIcon, { backgroundColor: c.primary }]}>
             <Icon name="inventory-2" size={ms(16)} color={c.textOnPrimary} />
@@ -2631,7 +2657,13 @@ export default function DashboardScreen({ navigation }: Props) {
             <Text style={[styles.pmSubtitle, {color: c.textMuted, fontFamily: MONO}]} numberOfLines={1}>Ticket {currentTicket?.ticket_code || '-'}</Text>
           </View>
         </View>
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.pmBody}>
+        <View style={{position: 'relative'}}>
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.pmBody}
+          style={{maxHeight: winHeight * 0.45}}
+          onScroll={Animated.event([{nativeEvent: {contentOffset: {y: productsScrollY}}}], {useNativeDriver: false})}
+          scrollEventThrottle={16}
+          onContentSizeChange={(_, h) => setProductsContentH(h)}
+          onLayout={e => setProductsViewH(e.nativeEvent.layout.height)}>
           {/* Table Header */}
           <View style={[styles.pmRow, styles.pmRowHeader, { borderBottomColor: c.textPrimary }]}>
             <Text style={[styles.pmColCode, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>CODE</Text>
@@ -2666,6 +2698,19 @@ export default function DashboardScreen({ navigation }: Props) {
             );
           })()}
         </ScrollView>
+        {productsContentH > productsViewH && (
+          <Animated.View style={{
+            position: 'absolute', right: 1, top: 0, width: wp(2.5), borderRadius: wp(2),
+            backgroundColor: c.textMuted + '80',
+            height: productsViewH > 0 ? Math.max(20, (productsViewH / productsContentH) * productsViewH) : 20,
+            transform: [{translateY: productsScrollY.interpolate({
+              inputRange: [0, Math.max(1, productsContentH - productsViewH)],
+              outputRange: [0, productsViewH - Math.max(20, (productsViewH / productsContentH) * productsViewH)],
+              extrapolate: 'clamp',
+            })}],
+          }} />
+        )}
+        </View>
         <View style={{ alignItems: 'flex-end', paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
           <TouchableOpacity
             onPress={() => setProductsVisible(false)}

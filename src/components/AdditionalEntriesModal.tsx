@@ -32,27 +32,12 @@ type Props = {
 
 type Tab = 'plant' | 'jobsite' | 'cod';
 
-const WATER_REASONS = ['NOT ADDED', 'EXCEEDED', 'BRING UP TO'];
-const ADDITIVE_OPTIONS = ['NOT ADDED', 'ADDED — ON TICKET', 'ADDED — NOT ON TICKET'];
-const JOBSITE_SELECT_OPTIONS = ['NOT ADDED', 'CUSTOMER', 'DRIVER'];
-const WASHOUT_OPTIONS = ['WHEELBARROW', 'DUMPSTER', 'BEHIND CURB LINE', 'STONE PILE ON JOB SITE', 'TRUCK MOUNTED WASHOUT', 'PUMP', 'OTHER'];
-const JOBSITE_NOTES_OPTIONS = [
-  'Uneven Subgrade',
-  'Wet/Hot/Frozen Subgrade',
-  'Old Concrete > 2 Hours',
-  'Bleeding Surface',
-  'Surface Rained-on',
-  'No Curing of Concrete',
-  'Incorrect Amount of Cust. Added Product',
-  'Not Sampling Between 10 & 90% of Load',
-  'Minimum Sample Size Not 1ft/3 Buckets',
-  'Slump Test Incorrect',
-  'Air Test Incorrect',
-  'Cylinder Making Incorrect',
-  'Cylinder Storage Incorrect',
-  'No Comment',
-];
-const PAYMENT_TYPES = ['CASH', 'CHEQUE', 'CREDIT CARD', 'DEBIT', 'MONEY ORDER', 'ON ACCOUNT'];
+// Options now come from API field_definitions config
+
+
+
+
+
 const TABS: {key: Tab; label: string}[] = [
   {key: 'plant', label: 'PLANT'},
   {key: 'jobsite', label: 'JOBSITE'},
@@ -62,6 +47,13 @@ const TABS: {key: Tab; label: string}[] = [
 export default function AdditionalEntriesModal({visible, onClose, ticketCode, orderCode, deliveryRecord, initialTab, onSave, isLandscape}: Props) {
   const {c} = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'plant');
+
+  // 100% Dynamic: all field data from API
+  const getFd = (tab: string) => deliveryRecord?.field_definitions?.[tab] || {};
+  const hasField = (tab: string, key: string) => key in getFd(tab);
+  const ft = (tab: string, key: string) => (getFd(tab) as any)?.[key]?.title || key.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+  const fc = (tab: string, key: string) => (getFd(tab) as any)?.[key]?.config || {};
+  const fOpts = (tab: string, key: string): any[] => fc(tab, key).options || [];
   const [saving, setSaving] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const [scrollViewHeight, setScrollViewHeight] = useState(0);
@@ -135,8 +127,8 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     setWaterReason(p?.water_reason || '');
     setNitrogenAdded(p?.nitrogen_added === true ? 'CUSTOMER' : p?.nitrogen_added === false ? 'NOT ADDED' : '');
     setFibersAdded(p?.fibers_added === true ? 'CUSTOMER' : p?.fibers_added === false ? 'NOT ADDED' : '');
-    setTruckStart('');
-    setTruckEnd('');
+    setTruckStart(p?.truck_start ? (() => { try { const d = new Date(p.truck_start); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch { return ''; } })() : '');
+    setTruckEnd(p?.truck_end ? (() => { try { const d = new Date(p.truck_end); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch { return ''; } })() : '');
     setPlantNotes(p?.notes || '');
     setLoadTested(p?.load_tested === true ? 'yes' : p?.load_tested === false ? 'no' : null);
     setLoadTemp(p?.load_temp ?? 0);
@@ -188,8 +180,8 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
             load_slump: loadSlump || null,
             load_cylinders: loadCylinders || null,
           } : {}),
-          truck_start: truckStart ? new Date(new Date().toDateString() + ' ' + truckStart).toISOString() : null,
-          truck_end: truckEnd ? new Date(new Date().toDateString() + ' ' + truckEnd).toISOString() : null,
+          truck_start: truckStart ? (() => { try { const [h, m] = truckStart.split(':'); const d = new Date(); d.setHours(Number(h), Number(m), 0, 0); return d.toISOString(); } catch { return null; } })() : null,
+          truck_end: truckEnd ? (() => { try { const [h, m] = truckEnd.split(':'); const d = new Date(); d.setHours(Number(h), Number(m), 0, 0); return d.toISOString(); } catch { return null; } })() : null,
           notes: plantNotes || null,
         };
       } else if (activeTab === 'jobsite') {
@@ -225,45 +217,54 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           notes: codNotes || null,
         };
       }
-      await onSave(activeTab, body);
+      // Only send fields that exist in field_definitions
+      const tabFd = getFd(activeTab);
+      const filtered: Record<string, any> = {};
+      for (const key of Object.keys(tabFd)) {
+        if (key in body) filtered[key] = body[key];
+      }
+      await onSave(activeTab, filtered);
+    } catch (err) {
+      console.log('[Modal] Save error:', err);
     } finally {
       setSaving(false);
+      onClose();
     }
-  }, [activeTab, waterLitres, waterReason, nitrogenAdded, fibersAdded, loadTested, loadTemp, loadAir, loadSlump, loadCylinders, truckStart, truckEnd, plantNotes, superPlasticizer, colorAdded, fiberJob, otherAdded, conveyor, conveyorOrdered, unloadedConveyor, loadDisputed, washoutArea, jobsiteNotes, jobLoadTested, jobLoadTemp, jobLoadAir, jobLoadSlump, jobLoadCylinders, paymentType, codAmount, waitTime, codNotes, onSave]);
+  }, [activeTab, waterLitres, waterReason, nitrogenAdded, fibersAdded, loadTested, loadTemp, loadAir, loadSlump, loadCylinders, truckStart, truckEnd, plantNotes, superPlasticizer, colorAdded, fiberJob, otherAdded, conveyor, conveyorOrdered, unloadedConveyor, loadDisputed, washoutArea, jobsiteNotes, jobLoadTested, jobLoadTemp, jobLoadAir, jobLoadSlump, jobLoadCylinders, paymentType, codAmount, waitTime, codNotes, onSave, getFd]);
 
   const Sep = () => <View style={{height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginVertical: wp(2)}} />;
 
   const pickerConfig = pickerType === 'reason'
-    ? {title: 'REASON', options: WATER_REASONS, selected: waterReason, onSelect: setWaterReason}
+    ? {title: ft('plant', 'water_reason'), options: fOpts('plant', 'water_reason'), selected: waterReason, onSelect: setWaterReason}
     : pickerType === 'nitrogen'
-    ? {title: 'SELECT', options: ADDITIVE_OPTIONS, selected: nitrogenAdded, onSelect: setNitrogenAdded}
+    ? {title: ft('plant', 'nitrogen_added'), options: fOpts('plant', 'nitrogen_added'), selected: nitrogenAdded, onSelect: setNitrogenAdded}
     : pickerType === 'fibers'
-    ? {title: 'SELECT', options: ADDITIVE_OPTIONS, selected: fibersAdded, onSelect: setFibersAdded}
+    ? {title: ft('plant', 'fibers_added'), options: fOpts('plant', 'fibers_added'), selected: fibersAdded, onSelect: setFibersAdded}
     : pickerType === 'washout'
-    ? {title: 'WASHOUT AREA', options: WASHOUT_OPTIONS, selected: washoutArea, onSelect: setWashoutArea}
+    ? {title: ft('jobsite', 'washout_area'), options: fOpts('jobsite', 'washout_area'), selected: washoutArea, onSelect: setWashoutArea}
     : pickerType === 'loadSlump'
-    ? {title: 'SELECT SLUMP  mm', options: Array.from({length: 21}, (_, i) => String(80 + i * 10)), selected: String(loadSlump), onSelect: (v: string) => setLoadSlump(Number(v))}
+    ? {title: ft('plant', 'load_slump'), options: fOpts('plant', 'load_slump'), selected: String(loadSlump), onSelect: (v: string) => setLoadSlump(Number(v))}
     : pickerType === 'jobLoadSlump'
-    ? {title: 'SELECT SLUMP  mm', options: Array.from({length: 21}, (_, i) => String(80 + i * 10)), selected: String(jobLoadSlump), onSelect: (v: string) => setJobLoadSlump(Number(v))}
+    ? {title: ft('jobsite', 'load_slump'), options: fOpts('jobsite', 'load_slump'), selected: String(jobLoadSlump), onSelect: (v: string) => setJobLoadSlump(Number(v))}
     : pickerType === 'jobsiteNotes'
-    ? {title: 'JOBSITE NOTES', options: JOBSITE_NOTES_OPTIONS, selected: '', onSelect: (v: string) => setJobsiteNotes(prev => prev ? prev + '\n' + v : v)}
+    ? {title: ft('jobsite', 'notes'), options: fOpts('jobsite', 'notes'), selected: '', onSelect: (v: string) => setJobsiteNotes(prev => prev ? prev + '\n' + v : v)}
     : pickerType === 'payment'
-    ? {title: 'SELECT PAYMENT', options: PAYMENT_TYPES, selected: paymentType, onSelect: setPaymentType}
+    ? {title: ft('cod', 'payment_type'), options: fOpts('cod', 'payment_type'), selected: paymentType, onSelect: setPaymentType}
     : pickerType === 'superPlasticizer'
-    ? {title: 'SELECT', options: JOBSITE_SELECT_OPTIONS, selected: superPlasticizer, onSelect: setSuperPlasticizer}
+    ? {title: ft('jobsite', 'super_plasticizer'), options: fOpts('jobsite', 'super_plasticizer'), selected: superPlasticizer, onSelect: setSuperPlasticizer}
     : pickerType === 'colorAdded'
-    ? {title: 'SELECT', options: JOBSITE_SELECT_OPTIONS, selected: colorAdded, onSelect: setColorAdded}
+    ? {title: ft('jobsite', 'color'), options: fOpts('jobsite', 'color'), selected: colorAdded, onSelect: setColorAdded}
     : pickerType === 'fiberJob'
-    ? {title: 'SELECT', options: JOBSITE_SELECT_OPTIONS, selected: fiberJob, onSelect: setFiberJob}
+    ? {title: ft('jobsite', 'fiber'), options: fOpts('jobsite', 'fiber'), selected: fiberJob, onSelect: setFiberJob}
     : pickerType === 'conveyor'
-    ? {title: 'SELECT', options: JOBSITE_SELECT_OPTIONS, selected: conveyor, onSelect: setConveyor}
+    ? {title: ft('jobsite', 'conveyor'), options: fOpts('jobsite', 'conveyor'), selected: conveyor, onSelect: setConveyor}
     : null;
 
   const renderPlantTab = () => (
     <>
       {/* Water Added */}
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, flex: 0, width: wp(50), fontFamily: MONO}]}>WATER{'\n'}ADDED{'\n'}(FULL)</Text>
+      {hasField('plant', 'water_added_full') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, flex: 0, width: wp(50), fontFamily: MONO}]}>{ft('plant', 'water_added_full')}</Text>
         <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
           <TouchableOpacity onPress={() => setWaterLitres(Math.max(0, waterLitres - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
             <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
@@ -275,35 +276,35 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
             <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
           </TouchableOpacity>
         </View>
-        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, marginHorizontal: wp(3), fontFamily: MONO}}>L</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, marginHorizontal: wp(3), fontFamily: MONO}}>{fc('plant', 'water_added_full').unit || 'L'}</Text>
         <TouchableOpacity onPress={() => setPickerType('reason')} style={[s.selectBox, {borderColor: c.border, flex: 1}]}>
           <Text style={{fontSize: ms(6), fontWeight: '600', color: waterReason ? c.textPrimary : c.textMuted, fontFamily: MONO}} numberOfLines={1}>{waterReason || 'SELECT REASON'}</Text>
         </TouchableOpacity>
       </View>
-      <Sep />
+      <Sep /></>}
 
       {/* Nitrogen */}
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>NITROGEN ADDED</Text>
+      {hasField('plant', 'nitrogen_added') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'nitrogen_added')}</Text>
         <TouchableOpacity onPress={() => setPickerType('nitrogen')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: nitrogenAdded ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{nitrogenAdded || 'Select'}</Text>
         </TouchableOpacity>
       </View>
-      <Sep />
+      <Sep /></>}
 
       {/* Fibers */}
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>FIBERS ADDED</Text>
+      {hasField('plant', 'fibers_added') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'fibers_added')}</Text>
         <TouchableOpacity onPress={() => setPickerType('fibers')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: fibersAdded ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{fibersAdded || 'Select'}</Text>
         </TouchableOpacity>
       </View>
-      <Sep />
+      <Sep /></>}
 
       {/* Truck Rental */}
-      <Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>TRUCK RENTAL</Text>
+      {hasField('plant', 'truck_start') && <><Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>{fc('plant', 'truck_start').group_title || 'Truck Rental'}</Text>
       <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(6), marginTop: wp(4), marginBottom: wp(4)}}>
-        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>START</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{ft('plant', 'truck_start')}</Text>
         <TouchableOpacity onPress={() => {
           const now = new Date();
           if (truckStart) { setTruckTimeHour(parseInt(truckStart.split(':')[0], 10)); setTruckTimeMinute(parseInt(truckStart.split(':')[1], 10)); }
@@ -312,7 +313,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         }} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: truckStart ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{truckStart || 'Select Time'}</Text>
         </TouchableOpacity>
-        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>END</Text>
+        <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{ft('plant', 'truck_end')}</Text>
         <TouchableOpacity onPress={() => {
           const now = new Date();
           if (truckEnd) { setTruckTimeHour(parseInt(truckEnd.split(':')[0], 10)); setTruckTimeMinute(parseInt(truckEnd.split(':')[1], 10)); }
@@ -322,10 +323,10 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           <Text style={{fontSize: ms(7), fontWeight: '600', color: truckEnd ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{truckEnd || 'Select Time'}</Text>
         </TouchableOpacity>
       </View>
-      <Sep />
+      <Sep /></>}
 
       {/* Plant Notes */}
-      <Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>PLANT NOTES</Text>
+      {hasField('plant', 'notes') && <><Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'notes')}</Text>
       <TextInput
         style={[s.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white}]}
         value={plantNotes}
@@ -336,11 +337,11 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         numberOfLines={3}
         textAlignVertical="top"
       />
-      <Sep />
+      <Sep /></>}
 
       {/* Load Tested */}
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>LOAD TESTED</Text>
+      {hasField('plant', 'load_tested') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'load_tested')}</Text>
         <View style={{flexDirection: 'row', gap: wp(4)}}>
           <TouchableOpacity onPress={() => setLoadTested('yes')} style={[s.toggleBtn, loadTested === 'yes' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
             <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'yes' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
@@ -356,7 +357,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         <>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>TEMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'load_temp')}</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setLoadTemp(Math.max(0, loadTemp - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
@@ -369,12 +370,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                   <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>C</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{fc('plant', 'load_temp').unit || 'C'}</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>AIR</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'load_air')}</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setLoadAir(Math.max(0, loadAir - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
@@ -387,12 +388,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                   <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>%</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{fc('plant', 'load_air').unit || '%'}</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>SLUMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'load_slump')}</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setLoadSlump(Math.max(0, loadSlump - 10))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
@@ -405,7 +406,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                   <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>mm</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{fc('plant', 'load_slump').unit || 'mm'}</Text>
               <TouchableOpacity onPress={() => setPickerType('loadSlump')} style={{width: wp(12), height: wp(12), borderRadius: wp(6), borderWidth: 1, borderColor: c.primary, alignItems: 'center', justifyContent: 'center'}}>
                 <Icon name="more-horiz" size={ms(7)} color={c.primary} />
               </TouchableOpacity>
@@ -413,7 +414,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CYLINDERS</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'load_cylinders')}</Text>
             <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
               <TouchableOpacity onPress={() => setLoadCylinders(Math.max(0, loadCylinders - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
                 <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
@@ -427,7 +428,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
             </View>
           </View>
         </>
-      )}
+      )}</>}
     </>
   );
 
@@ -439,8 +440,8 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
 
   const renderJobsiteTab = () => (
     <>
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>SUPER PLASTICIZER</Text>
+      {hasField('jobsite', 'super_plasticizer') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'super_plasticizer')}</Text>
         <TouchableOpacity onPress={() => setPickerType('superPlasticizer')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: superPlasticizer ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{superPlasticizer || 'Select'}</Text>
         </TouchableOpacity>
@@ -448,9 +449,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={superPlasticizerQty} onChangeText={t => setSuperPlasticizerQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
         )}
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>COLOR</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'color') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'color')}</Text>
         <TouchableOpacity onPress={() => setPickerType('colorAdded')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: colorAdded ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{colorAdded || 'Select'}</Text>
         </TouchableOpacity>
@@ -458,9 +459,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={colorQty} onChangeText={t => setColorQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
         )}
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>FIBER</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'fiber') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'fiber')}</Text>
         <TouchableOpacity onPress={() => setPickerType('fiberJob')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: fiberJob ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{fiberJob || 'Select'}</Text>
         </TouchableOpacity>
@@ -468,9 +469,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={fiberQty} onChangeText={t => setFiberQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
         )}
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>OTHER</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'other') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'other')}</Text>
         <TextInput
           style={{flex: 1, borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(2), marginLeft: wp(10)}}
           value={otherAdded}
@@ -478,31 +479,31 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           placeholderTextColor={c.textMuted}
         />
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CONVEYOR</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'conveyor') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'conveyor')}</Text>
         <TouchableOpacity onPress={() => setPickerType('conveyor')} style={[s.selectBox, {borderColor: c.border, width: wp(60), alignItems: 'center'}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: conveyor ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{conveyor || 'Select'}</Text>
         </TouchableOpacity>
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CONVEYOR ORDERED NOT USED</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'conveyor_ordered_not_used') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'conveyor_ordered_not_used')}</Text>
         <Checkbox value={conveyorOrdered} onToggle={() => setConveyorOrdered(!conveyorOrdered)} />
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>UNLOADED OVER CONVEYOR, NOT USED</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'unloaded_conveyor') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'unloaded_conveyor')}</Text>
         <Checkbox value={unloadedConveyor} onToggle={() => setUnloadedConveyor(!unloadedConveyor)} />
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>LOAD DISPUTED</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'load_disputed') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'load_disputed')}</Text>
         <Checkbox value={loadDisputed} onToggle={() => setLoadDisputed(!loadDisputed)} />
       </View>
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>WASHOUT AREA</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'washout_area') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'washout_area')}</Text>
         <TouchableOpacity onPress={() => setPickerType('washout')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: washoutArea ? c.textPrimary : c.textMuted, fontFamily: MONO}} numberOfLines={1}>{washoutArea || 'Select'}</Text>
         </TouchableOpacity>
@@ -521,9 +522,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           />
         </>
       )}
-      <Sep />
-      <View style={{flexDirection: 'row', alignItems: 'center', marginTop: wp(2)}}>
-        <Text style={[s.sectionLabel, {color: c.textPrimary, marginTop: 0, fontFamily: MONO}]}>INTERNAL JOBSITE NOTES</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'notes') && <><View style={{flexDirection: 'row', alignItems: 'center', marginTop: wp(2)}}>
+        <Text style={[s.sectionLabel, {color: c.textPrimary, marginTop: 0, fontFamily: MONO}]}>{ft('jobsite', 'notes')}</Text>
         <TouchableOpacity onPress={() => setPickerType('jobsiteNotes')} style={{width: wp(14), height: wp(14), borderRadius: wp(7), borderWidth: 1.5, borderColor: c.primary, alignItems: 'center', justifyContent: 'center', marginLeft: wp(4)}}>
           <Icon name="more-horiz" size={ms(8)} color={c.primary} />
         </TouchableOpacity>
@@ -538,9 +539,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         numberOfLines={3}
         textAlignVertical="top"
       />
-      <Sep />
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>LOAD TESTED</Text>
+      <Sep /></>}
+      {hasField('jobsite', 'load_tested') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'load_tested')}</Text>
         <View style={{flexDirection: 'row', gap: wp(4)}}>
           <TouchableOpacity onPress={() => setJobLoadTested('yes')} style={[s.toggleBtn, jobLoadTested === 'yes' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
             <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'yes' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
@@ -554,7 +555,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         <>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>TEMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'load_temp')}</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setJobLoadTemp(Math.max(0, jobLoadTemp - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
@@ -567,12 +568,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                   <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>C</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{fc('jobsite', 'load_temp').unit || 'C'}</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>AIR</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'load_air')}</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setJobLoadAir(Math.max(0, jobLoadAir - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
@@ -585,12 +586,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                   <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>%</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{fc('jobsite', 'load_air').unit || '%'}</Text>
             </View>
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>SLUMP</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'load_slump')}</Text>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
               <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
                 <TouchableOpacity onPress={() => setJobLoadSlump(Math.max(0, jobLoadSlump - 10))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
@@ -603,7 +604,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                   <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>mm</Text>
+              <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{fc('jobsite', 'load_slump').unit || 'mm'}</Text>
               <TouchableOpacity onPress={() => setPickerType('jobLoadSlump')} style={{width: wp(12), height: wp(12), borderRadius: wp(6), borderWidth: 1, borderColor: c.primary, alignItems: 'center', justifyContent: 'center'}}>
                 <Icon name="more-horiz" size={ms(7)} color={c.primary} />
               </TouchableOpacity>
@@ -611,7 +612,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           </View>
           <Sep />
           <View style={s.row}>
-            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>CYLINDERS</Text>
+            <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'load_cylinders')}</Text>
             <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
               <TouchableOpacity onPress={() => setJobLoadCylinders(Math.max(0, jobLoadCylinders - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
                 <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
@@ -625,24 +626,24 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
             </View>
           </View>
         </>
-      )}
+      )}</>}
     </>
   );
 
   const renderCodTab = () => (
     <>
       {/* Payment */}
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>PAYMENT</Text>
+      {hasField('cod', 'payment_type') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('cod', 'payment_type')}</Text>
         <TouchableOpacity onPress={() => setPickerType('payment')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: paymentType ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{paymentType || 'Select'}</Text>
         </TouchableOpacity>
       </View>
-      <Sep />
+      <Sep /></>}
 
       {/* Wait Time */}
-      <View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>WAIT TIME</Text>
+      {hasField('cod', 'wait_time_minutes') && <><View style={s.row}>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('cod', 'wait_time_minutes')}</Text>
         <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(3)}}>
           <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
             <TouchableOpacity onPress={() => setWaitTime(Math.max(0, waitTime - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
@@ -655,13 +656,13 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
               <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>+</Text>
             </TouchableOpacity>
           </View>
-          <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>Minute(s)</Text>
+          <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO}}>{fc('cod', 'wait_time_minutes').unit || 'Minute(s)'}</Text>
         </View>
       </View>
-      <Sep />
+      <Sep /></>}
 
       {/* COD Notes */}
-      <Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>COD NOTES</Text>
+      {hasField('cod', 'notes') && <><Text style={[s.sectionLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('cod', 'notes')}</Text>
       <TextInput
         style={[s.notesInput, {borderColor: c.border, color: c.textPrimary, backgroundColor: c.white}]}
         value={codNotes}
@@ -671,13 +672,13 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         multiline
         numberOfLines={3}
         textAlignVertical="top"
-      />
+      /></>}
     </>
   );
 
   return (
     <>
-    <ResponsiveModal visible={visible} onClose={onClose} maxWidth={isLandscape ? 400 : 380} widthPercent={isLandscape ? 34 : 85} maxHeightPercent={isLandscape ? 85 : 80} avoidKeyboard>
+    <ResponsiveModal visible={visible} onClose={onClose} maxWidth={isLandscape ? 480 : 440} widthPercent={isLandscape ? 40 : 90} maxHeightPercent={isLandscape ? 85 : 88} avoidKeyboard>
       <View style={[s.container, {backgroundColor: c.white}]}>
         {/* Header */}
         <View style={s.header}>
@@ -699,7 +700,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         </View>
 
         {/* Content */}
-        <View style={{flexDirection: 'row', maxHeight: keyboardHeight > 0 ? (isLandscape ? 150 : 200) : (isLandscape ? 250 : 350)}}>
+        <View style={{flexDirection: 'row', maxHeight: keyboardHeight > 0 ? (isLandscape ? 120 : 200) : (isLandscape ? 250 : 350)}}>
           <ScrollView
             ref={scrollRef}
             bounces={false}
@@ -735,11 +736,11 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         </View>
 
         {/* Footer */}
-        <View style={[s.footer, {borderTopColor: c.border}]}>
-          <TouchableOpacity activeOpacity={0.7} onPress={onClose} style={[s.cancelBtn, {borderColor: c.border}]}>
+        <View style={[s.footer, {borderTopColor: c.border}]} pointerEvents="box-none">
+          <TouchableOpacity activeOpacity={0.7} onPress={() => { console.log('[Modal] Cancel tapped'); Keyboard.dismiss(); onClose(); }} style={[s.cancelBtn, {borderColor: c.border}]}>
             <Text style={{fontSize: ms(7), fontWeight: '600', color: c.textPrimary, fontFamily: MONO}}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.7} onPress={handleSave} disabled={saving} style={[s.saveBtn, {backgroundColor: c.primary}]}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => { console.log('[Modal] Save tapped'); Keyboard.dismiss(); handleSave(); }} disabled={saving} style={[s.saveBtn, {backgroundColor: c.primary}]}>
             {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{fontSize: ms(7), fontWeight: '700', color: '#fff', fontFamily: MONO}}>Save Changes</Text>}
           </TouchableOpacity>
         </View>
@@ -761,13 +762,16 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           </View>
           <View style={{marginHorizontal: ms(10), borderWidth: 1.5, borderColor: c.border, borderRadius: wp(6), overflow: 'hidden'}}>
             <ScrollView showsVerticalScrollIndicator persistentScrollbar bounces={false} style={{maxHeight: isLandscape ? 200 : 280}}>
-              {pickerConfig.options.map((opt, i) => {
-                const sel = pickerConfig.selected === opt;
+              {pickerConfig.options.map((opt: any, i: number) => {
+                const isObj = typeof opt === 'object' && opt !== null;
+                const label = isObj ? opt.label : String(opt);
+                const val = isObj ? opt.value : String(opt);
+                const sel = pickerConfig.selected === val;
                 const isLast = i === pickerConfig.options.length - 1;
                 return (
-                  <TouchableOpacity key={opt} activeOpacity={0.6} onPress={() => { pickerConfig.onSelect(opt); setPickerType(null); }}
+                  <TouchableOpacity key={val} activeOpacity={0.6} onPress={() => { pickerConfig.onSelect(val); setPickerType(null); }}
                     style={{paddingVertical: ms(8), paddingHorizontal: ms(12), borderBottomWidth: isLast ? 0 : 1, borderBottomColor: c.border, backgroundColor: sel ? c.primary : 'transparent', alignItems: 'center'}}>
-                    <Text style={{fontSize: ms(7), fontWeight: '700', color: sel ? '#fff' : c.textPrimary, textAlign: 'center', letterSpacing: 0.5, fontFamily: MONO}}>{opt}</Text>
+                    <Text style={{fontSize: ms(7), fontWeight: '700', color: sel ? '#fff' : c.textPrimary, textAlign: 'center', letterSpacing: 0.5, fontFamily: MONO}}>{label}</Text>
                   </TouchableOpacity>
                 );
               })}

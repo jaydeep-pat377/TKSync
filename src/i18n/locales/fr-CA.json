@@ -117,7 +117,8 @@
     "logoutDriver": "Déconnexion chauffeur",
     "logoutTenant": "Déconnexion entreprise",
     "language": "Langue",
-    "about": "À propos"
+    "about": "À propos",
+    "forceOffline": "Force Offline"
   },
   "logout": {
     "driverTitle": "Déconnexion chauffeur",

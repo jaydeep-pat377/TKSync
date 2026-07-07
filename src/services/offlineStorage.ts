@@ -10,6 +10,7 @@ const DETAIL_CACHE_PREFIX = 'detail_cache_';
 const CURBLINE_CACHE_PREFIX = 'curbline_cache_';
 const CURBLINE_INFO_PREFIX = 'curbline_info_';
 const SIGNING_CACHE_PREFIX = 'signing_cache_';
+const FIELD_DEFS_CACHE_KEY = 'field_definitions_cache';
 
 export type PendingSave = {
   id: string;
@@ -46,36 +47,41 @@ export const offlineStorage = {
   enqueue(ticketId: number, tab: string, body: Record<string, any>, action?: PendingSave['action']): PendingSave {
     const queue = getQueue();
 
-    // Deduplicate: if there's already a pending save for same ticket+tab+action, replace it
+    // Deduplicate: if there's already a pending save for same ticket+tab+action, MERGE bodies
     const effectiveAction = action || 'delivery';
     const existingIdx = queue.findIndex(
       item => item.ticketId === ticketId && item.tab === tab && (item.action || 'delivery') === effectiveAction,
     );
 
-    const entry: PendingSave = {
-      id: nextId(),
-      ticketId,
-      tab,
-      action: action || 'delivery',
-      body,
-      createdAt: new Date().toISOString(),
-      retryCount: 0,
-    };
-
     if (existingIdx >= 0) {
+      // Merge new body into existing entry (preserves previously saved fields)
+      const existing = queue[existingIdx];
+      existing.body = {...existing.body, ...body};
+      existing.createdAt = new Date().toISOString();
+      existing.retryCount = 0;
       console.log(
-        `[OfflineStorage] Replacing existing entry for ticket ${ticketId}/${tab}`,
+        `[OfflineStorage] Merged into existing entry for ticket ${ticketId}/${tab}:`,
+        Object.keys(existing.body).join(', '),
       );
-      queue[existingIdx] = entry;
     } else {
+      const entry: PendingSave = {
+        id: nextId(),
+        ticketId,
+        tab,
+        action: action || 'delivery',
+        body,
+        createdAt: new Date().toISOString(),
+        retryCount: 0,
+      };
       queue.push(entry);
     }
 
     setQueue(queue);
+    const result = existingIdx >= 0 ? queue[existingIdx] : queue[queue.length - 1];
     console.log(
       `[OfflineStorage] Enqueued save: ticket ${ticketId}/${tab} (${queue.length} pending)`,
     );
-    return entry;
+    return result;
   },
 
   dequeue(id: string): void {
@@ -166,6 +172,17 @@ export const offlineStorage = {
       return;
     }
     cached[tab] = {...(cached[tab] || {}), ...body};
+    // For time tab: also update steps array so UI reflects saved values
+    if (tab === 'time' && cached[tab]?.steps) {
+      cached[tab].steps = cached[tab].steps.map((s: any) => {
+        if (body[s.key]) {
+          const d = new Date(body[s.key]);
+          const time_local = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          return {...s, done: true, time: body[s.key], time_local};
+        }
+        return s;
+      });
+    }
     this.cacheDeliveryRecord(ticketId, cached);
   },
 
@@ -214,6 +231,22 @@ export const offlineStorage = {
 
   getCachedSigningData(ticketId: number): Record<string, any> | null {
     const raw = offlineStore.getString(SIGNING_CACHE_PREFIX + ticketId);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+
+  // ─── Field definitions cache (persists across tickets) ───
+
+  cacheFieldDefinitions(fd: Record<string, any>): void {
+    offlineStore.set(FIELD_DEFS_CACHE_KEY, JSON.stringify(fd));
+  },
+
+  getCachedFieldDefinitions(): Record<string, any> | null {
+    const raw = offlineStore.getString(FIELD_DEFS_CACHE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw);

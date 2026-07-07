@@ -28,7 +28,9 @@ function isRetryableError(err: any): boolean {
   if (err?.message?.includes('Network request failed')) return true;
   // Server errors (5xx) are retryable
   if (err?.status >= 500) return true;
-  // Client errors (4xx) are NOT retryable (validation, auth, not found)
+  // 401 is retryable (token may refresh on next attempt)
+  if (err?.status === 401) return true;
+  // Other client errors (4xx) are NOT retryable (validation, not found)
   if (err?.status >= 400 && err?.status < 500) return false;
   // Default: treat as retryable
   return true;
@@ -91,7 +93,8 @@ async function processQueue(): Promise<void> {
 
   const {healthy} = await checkApiHealth();
   if (!healthy) {
-    console.log('[SyncManager] API unhealthy, deferring sync');
+    console.log('[SyncManager] API unhealthy, retrying in 10s');
+    setTimeout(() => processQueue(), 10000);
     return;
   }
 
@@ -142,6 +145,13 @@ async function processQueue(): Promise<void> {
   addBreadcrumb('Sync complete', 'sync', {synced, failed, remaining});
   emit({type: 'sync_complete', synced, failed});
   emit({type: 'queue_changed', count: remaining});
+
+  // If items remain (retryable failures), schedule another attempt
+  if (remaining > 0 && getIsOnline()) {
+    const nextDelay = RETRY_DELAYS[Math.min(failed - 1, RETRY_DELAYS.length - 1)] || 10000;
+    console.log(`[SyncManager] ${remaining} items remaining, retrying in ${nextDelay}ms`);
+    setTimeout(() => processQueue(), nextDelay);
+  }
 }
 
 let unsubConnectivity: (() => void) | null = null;

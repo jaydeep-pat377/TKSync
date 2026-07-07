@@ -117,7 +117,8 @@
     "logoutDriver": "Cerrar sesión conductor",
     "logoutTenant": "Cerrar sesión empresa",
     "language": "Idioma",
-    "about": "Acerca de"
+    "about": "Acerca de",
+    "forceOffline": "Force Offline"
   },
   "logout": {
     "driverTitle": "Cerrar sesión conductor",

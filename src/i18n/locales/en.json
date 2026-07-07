@@ -2,7 +2,7 @@
   "app": {
     "name": "TKSync",
     "tagline": "Ticket Tracking System",
-    "poweredBy": "\u00a9 2026 Truckast"
+    "poweredBy": "© 2026 Truckast"
   },
   "companyLogin": {
     "badge": "Company Login",
@@ -117,7 +117,8 @@
     "logoutDriver": "Logout Driver",
     "logoutTenant": "Logout Tenant",
     "language": "Language",
-    "about": "About"
+    "about": "About",
+    "forceOffline": "Force Offline"
   },
   "logout": {
     "driverTitle": "Logout Driver",
