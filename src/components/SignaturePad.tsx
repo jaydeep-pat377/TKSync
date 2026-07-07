@@ -80,18 +80,18 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
     .m-signature-pad { box-shadow: none; border: none; margin: 0; }
     .m-signature-pad--body { border: none; }
     .m-signature-pad--footer { display: none; }
-    body, html { background-color: ${isDark ? '#F0F0F0' : '#F1F5F9'}; margin: 0; padding: 0; }
+    body, html { background-color: #FFFFFF; margin: 0; padding: 0; }
     canvas { width: 100% !important; height: 100% !important; touch-action: none; }
   `;
 
   if (readOnly && initialImage) {
     return (
-      <View style={[st.wrapper, {fontFamily: MONO}]}>
-        <View style={[st.labelRow, {fontFamily: MONO}]}>
+      <View style={[st.wrapper]}>
+        <View style={[st.labelRow]}>
           <Icon name="draw" size={ms(16)} color={c.textMuted} />
           <Text style={[st.label, {color: c.textMuted, fontFamily: MONO}]}>Signature</Text>
         </View>
-        <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: c.primary}]}>
+        <View style={[st.padOuter, {height, backgroundColor: '#FFFFFF', borderColor: c.primary}]}>
           <Image source={{uri: initialImage}} style={st.readOnlyImage} resizeMode="contain" />
           <View style={[st.signLine, {borderBottomColor: c.textMuted}]}>
             <Icon name="play-arrow" size={ms(14)} color={c.textMuted} />
@@ -116,13 +116,13 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
   return (
     <View style={[st.wrapper, minimal && {marginTop: wp(4)}]}>
       {!minimal && (
-        <View style={[st.labelRow, {fontFamily: MONO}]}>
+        <View style={[st.labelRow]}>
           <Icon name="draw" size={ms(16)} color={c.textMuted} />
           <Text style={[st.label, {color: c.textMuted, fontFamily: MONO}]}>Draw your signature below</Text>
         </View>
       )}
 
-      <View style={[st.padOuter, {height, backgroundColor: '#F0F0F0', borderColor: hasSignature ? c.primary : c.border}, minimal && {borderRadius: wp(6), borderWidth: 1}]}>
+      <View style={[st.padOuter, {height, backgroundColor: '#FFFFFF', borderColor: hasSignature ? c.primary : c.border}, minimal && {borderRadius: wp(6), borderWidth: 1}]}>
         <SignatureScreen
           ref={sigRef}
           onBegin={handleBegin}

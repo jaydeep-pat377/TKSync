@@ -166,7 +166,7 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
         <View style={[styles.bottomBar, {paddingBottom: Math.max(insets.bottom, 12)}]}>
           <TouchableOpacity style={[styles.directionsBtn, {backgroundColor: '#2E7D32'}]} onPress={openGoogleMaps} activeOpacity={0.8}>
             <Icon name="directions" size={20} color="#fff" />
-            <Text style={[styles.directionsBtnText, {fontFamily: MONO}]}>DIRECTIONS</Text>
+            <Text style={[styles.directionsBtnText]}>DIRECTIONS</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.recenterBtn} onPress={recenter} activeOpacity={0.8}>
             <Icon name="my-location" size={20} color="#333" />

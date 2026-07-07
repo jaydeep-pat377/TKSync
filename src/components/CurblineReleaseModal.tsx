@@ -115,7 +115,7 @@ export default function CurblineReleaseModal({
   }
 
   function applyPendingOfflineData(tid: number) {
-    const pending = offlineStorage.getPendingForTicket(tid, 'curbline-release');
+    const pending = offlineStorage.getPendingForTicket(tid, 'curbline-release', 'curbline-release');
     if (pending.length > 0) {
       const latest = pending[pending.length - 1];
       if (latest.body.name) setTypeName(latest.body.name);
@@ -133,7 +133,7 @@ export default function CurblineReleaseModal({
     setSubmitting(true);
     try {
       if (!isOnline) {
-        enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release' as any);
+        enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release');
         offlineStorage.cacheCurblineRelease(ticketId, {id: existingRelease?.id || -1, signed_name: body.name, signature_image: body.sign});
         setAlert({type: 'success', title: 'Saved Offline', message: 'Curbline release will be submitted automatically when connection is restored.'});
       } else if (existingRelease && existingRelease.id > 0) {
@@ -147,7 +147,7 @@ export default function CurblineReleaseModal({
       }
     } catch (err: any) {
       if (err?.message?.includes('Network request failed') || err?.name === 'AbortError') {
-        enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release' as any);
+        enqueueOffline(ticketId, 'curbline-release', body, 'curbline-release');
         offlineStorage.cacheCurblineRelease(ticketId, {id: existingRelease?.id || -1, signed_name: body.name, signature_image: body.sign});
         setAlert({type: 'success', title: 'Saved Offline', message: 'Curbline release will be submitted automatically when connection is restored.'});
       } else {
@@ -184,7 +184,7 @@ export default function CurblineReleaseModal({
     }
 
     return (
-      <ScrollView style={{maxHeight: scrollMaxH}} contentContainerStyle={{paddingBottom: fs(8)}} showsVerticalScrollIndicator persistentScrollbar keyboardShouldPersistTaps="handled" scrollEnabled={scrollEnabled} nestedScrollEnabled>
+      <ScrollView  contentContainerStyle={{paddingBottom: fs(24)}} showsVerticalScrollIndicator={true} persistentScrollbar={true} fadingEdgeLength={0} indicatorStyle={isDark ? 'white' : 'black'} keyboardShouldPersistTaps="handled" scrollEnabled={scrollEnabled} nestedScrollEnabled>
         {loadedFromOffline && (
           <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: fs(4), paddingVertical: fs(4), borderBottomWidth: 1, backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}}>
             <Icon name="cloud-off" size={fst(11)} color={c.warningDark} />
@@ -212,7 +212,7 @@ export default function CurblineReleaseModal({
         <View style={{paddingHorizontal: pad, paddingVertical: fs(16)}}>
           <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary, fontFamily: MONO}}>TYPE NAME</Text>
           <TextInput
-            style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff', fontFamily: MONO}}
+            style={{borderWidth: 1, borderColor: isDark ? '#4A4E55' : '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: isDark ? '#3A3E44' : '#fff', fontFamily: MONO}}
             value={typeName}
             onChangeText={setTypeName}
             placeholder="Enter name"
@@ -247,13 +247,13 @@ export default function CurblineReleaseModal({
 
   return (
     <>
-      <ResponsiveModal visible={visible} onClose={onClose} maxWidth={modalMaxW} widthPercent={76} maxHeightPercent={92} avoidKeyboard>
+      <ResponsiveModal visible={visible} onClose={onClose} maxWidth={modalMaxW} widthPercent={76} maxHeightPercent={85} avoidKeyboard>
         <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: fs(16), paddingHorizontal: pad, borderBottomWidth: 1, borderBottomColor: c.border}}>
           <Text style={{fontSize: fst(16), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center', color: c.textPrimary, fontFamily: MONO}}>CURBLINE RELEASE</Text>
           <TouchableOpacity
-            style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: '#1a2230', backgroundColor: '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
+            style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#1a2230', backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
             onPress={onClose} activeOpacity={0.7} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Text style={{fontSize: fst(13), fontWeight: '400', color: '#1a2230', fontFamily: MONO}}>✕</Text>
+            <Text style={{fontSize: fst(13), fontWeight: '400', color: isDark ? '#fff' : '#1a2230', fontFamily: MONO}}>✕</Text>
           </TouchableOpacity>
         </View>
         {renderContent()}

@@ -272,15 +272,15 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
             contentContainerStyle={isLandscape ? ps.landscapeContent : ps.portraitContent}>
 
             {isLandscape ? (
-              <View style={[ps.landscapeRow, {fontFamily: MONO}]}>
+              <View style={[ps.landscapeRow]}>
                 {mode !== 'time' && (
                   <>
-                    <View style={[ps.landscapeCol, {fontFamily: MONO}]}>
-                      <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
+                    <View style={[ps.landscapeCol]}>
+                      <View style={[ps.sectionLabel]}>
                         <Icon name="calendar-today" size={ms(10)} color={c.primary} />
                         <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>DATE</Text>
                       </View>
-                      <View style={[ps.wheels, {fontFamily: MONO}]}>
+                      <View style={[ps.wheels]}>
                         <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
                         <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
                         <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
@@ -289,12 +289,12 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
                     <View style={[ps.dividerV, {backgroundColor: c.borderLight}]} />
                   </>
                 )}
-                <View style={[ps.landscapeCol, {fontFamily: MONO}]}>
-                  <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
+                <View style={[ps.landscapeCol]}>
+                  <View style={[ps.sectionLabel]}>
                     <Icon name="access-time" size={ms(10)} color={c.primary} />
                     <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>TIME</Text>
                   </View>
-                  <View style={[ps.wheels, {fontFamily: MONO}]}>
+                  <View style={[ps.wheels]}>
                     <Wheel data={hourData} selected={hour} onSelect={setHour} width={wHour} itemH={itemH} />
                     <Text style={[ps.colon, {color: c.textPrimary, fontFamily: MONO}]}>:</Text>
                     <Wheel data={minData} selected={minute} onSelect={setMinute} width={wMin} itemH={itemH} />
@@ -305,22 +305,22 @@ export default function DateTimePicker({visible, value, onConfirm, onCancel, mod
               <>
                 {mode !== 'time' && (
                   <>
-                    <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
+                    <View style={[ps.sectionLabel]}>
                       <Icon name="calendar-today" size={ms(10)} color={c.primary} />
                       <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>DATE</Text>
                     </View>
-                    <View style={[ps.wheels, {fontFamily: MONO}]}>
+                    <View style={[ps.wheels]}>
                       <Wheel data={MONTHS} selected={month} onSelect={setMonth} width={wMonth} itemH={itemH} />
                       <Wheel data={dayData} selected={day - 1} onSelect={i => setDay(i + 1)} width={wDay} itemH={itemH} />
                       <Wheel data={yearData} selected={year - 2024} onSelect={i => setYear(2024 + i)} width={wYear} itemH={itemH} />
                     </View>
                   </>
                 )}
-                <View style={[ps.sectionLabel, {fontFamily: MONO}]}>
+                <View style={[ps.sectionLabel]}>
                   <Icon name="access-time" size={ms(10)} color={c.primary} />
                   <Text style={[ps.labelText, {color: c.primary, fontFamily: MONO}]}>TIME</Text>
                 </View>
-                <View style={[ps.wheels, {fontFamily: MONO}]}>
+                <View style={[ps.wheels]}>
                   <Wheel data={hourData} selected={hour} onSelect={setHour} width={wHour} itemH={itemH} />
                   <Text style={[ps.colon, {color: c.textPrimary, fontFamily: MONO}]}>:</Text>
                   <Wheel data={minData} selected={minute} onSelect={setMinute} width={wMin} itemH={itemH} />

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
+import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp} from '../utils/responsive';
 import {ticketsApi, type MobileTicketPrint} from '../services/api';
@@ -27,23 +28,32 @@ type Props = {
 // ── Palettes ──
 const P_DARK = {
   overlay: 'rgba(0,0,0,0.75)',
-  bg: '#27292C',
-  header: '#35383C',
+  bg: '#33363B',
+  header: '#3E4248',
   sectionBar: 'rgba(157,237,62,0.06)',
+  sectionHeadBg: '#3A3E44',
+  sectionHeadText: '#9DED3E',
+  sectionHeadBorder: '#4e8a2f',
   accent: '#9DED3E',
   text: '#FFFFFF',
   textBold: '#FFFFFF',
-  label: '#7A7D83',
-  border: '#3E4147',
-  borderLight: '#353840',
+  textMuted: '#8A8D93',
+  label: '#8A8D93',
+  border: '#4A4E55',
+  borderLight: '#424650',
   instrBorder: '#9DED3E',
   signBtn: '#3D7A1A',
   disputeBtn: '#8B1A1A',
   totalAccent: '#9DED3E',
-  dotOn: '#5e9c2a',
+  dotOn: '#2bb24c',
   dotOff: '#6E7178',
-  sigBorder: '#D4A800',
-  sigBg: 'rgba(212,168,0,0.04)',
+  cellBg: '#3A3E44',
+  gridGap: '#4A4E55',
+  sigBg: '#424650',
+  closeBtnBg: 'rgba(255,255,255,0.1)',
+  closeBtnBorder: 'rgba(255,255,255,0.3)',
+  closeBtnText: '#FFFFFF',
+  qrBg: '#FFFFFF',
 };
 
 const P_LIGHT = {
@@ -51,9 +61,13 @@ const P_LIGHT = {
   bg: '#FFFFFF',
   header: '#2D3035',
   sectionBar: 'rgba(94,156,42,0.07)',
+  sectionHeadBg: '#f3f7f2',
+  sectionHeadText: '#3f7d2f',
+  sectionHeadBorder: '#4e8a2f',
   accent: '#4A7A1E',
   text: '#1B2532',
   textBold: '#1B2532',
+  textMuted: '#9aa3ad',
   label: '#76828F',
   border: '#DDE1E8',
   borderLight: '#EEF1F5',
@@ -61,10 +75,15 @@ const P_LIGHT = {
   signBtn: '#5e9c2a',
   disputeBtn: '#B5291A',
   totalAccent: '#4A7A1E',
-  dotOn: '#5e9c2a',
-  dotOff: '#B0B4BA',
-  sigBorder: '#D4A800',
-  sigBg: 'rgba(212,168,0,0.06)',
+  dotOn: '#2bb24c',
+  dotOff: '#c4ccd6',
+  cellBg: '#FFFFFF',
+  gridGap: '#e3e7ec',
+  sigBg: '#ededed',
+  closeBtnBg: '#FFFFFF',
+  closeBtnBorder: '#1a2230',
+  closeBtnText: '#1a2230',
+  qrBg: '#FFFFFF',
 };
 
 // ── Fonts (matching web reference) ──
@@ -223,14 +242,14 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
           {data && !loading && (
             <>
               {/* ════ HEADER BANNER ════ */}
-              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: p.header, paddingHorizontal: fs(24), paddingVertical: fs(18), borderBottomWidth: 3, borderBottomColor: '#4e8a2f'}}>
+              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: p.header, paddingHorizontal: fs(24), paddingVertical: fs(18), borderBottomWidth: 3, borderBottomColor: p.sectionHeadBorder}}>
                 <Text style={{fontSize: fst(28), fontWeight: '800', color: '#fff', letterSpacing: 3, lineHeight: fst(34), fontFamily: TITLE_FONT}}>
                   MOBILE{'\n'}TICKET
                 </Text>
                 <View style={{flex: 1}} />
-                {/* QR code — white card with icon */}
-                <View style={{backgroundColor: '#fff', padding: fs(6), borderRadius: fs(6)}}>
-                  <Icon name="qr-code-2" size={fs(80)} color="#000" />
+                {/* QR code */}
+                <View style={{backgroundColor: p.qrBg, padding: fs(6), borderRadius: fs(6)}}>
+                  <QRCode value={hdr?.qr_value || hdr?.ticket_code || 'N/A'} size={fs(80)} backgroundColor="#fff" color="#000" />
                 </View>
               </View>
 
@@ -248,9 +267,9 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
                 ))}
                 {/* Close button — white square with dark border */}
                 <TouchableOpacity
-                  style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: '#1a2230', backgroundColor: '#fff', borderRadius: fs(5), alignItems: 'center', justifyContent: 'center', marginRight: fs(14)}}
+                  style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: p.closeBtnBorder, backgroundColor: p.closeBtnBg, borderRadius: fs(5), alignItems: 'center', justifyContent: 'center', marginRight: fs(14)}}
                   onPress={onClose} activeOpacity={0.7}>
-                  <Text style={{fontSize: fst(13), fontWeight: '400', color: '#1a2230', fontFamily: MONO}}>✕</Text>
+                  <Text style={{fontSize: fst(13), fontWeight: '400', color: p.closeBtnText, fontFamily: MONO}}>✕</Text>
                 </TouchableOpacity>
               </View>
 
@@ -332,11 +351,11 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
                 </View>
 
                 {/* ── STATUS TIMES ── */}
-                <View style={{borderLeftWidth: 4, borderLeftColor: '#4e8a2f', backgroundColor: '#f3f7f2', paddingHorizontal: fs(20), paddingVertical: fs(9), borderBottomWidth: 1, borderBottomColor: '#e3e7ec'}}>
-                  <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 1.2, color: '#3f7d2f', fontFamily: MONO}}>STATUS TIMES</Text>
+                <View style={{borderLeftWidth: 4, borderLeftColor: p.sectionHeadBorder, backgroundColor: p.sectionHeadBg, paddingHorizontal: fs(20), paddingVertical: fs(9), borderBottomWidth: 1, borderBottomColor: p.border}}>
+                  <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 1.2, color: p.sectionHeadText, fontFamily: MONO}}>STATUS TIMES</Text>
                 </View>
                 {/* Grid: 4 columns, 1px gray gap between cells */}
-                <View style={{backgroundColor: '#e3e7ec'}}>
+                <View style={{backgroundColor: p.gridGap}}>
                   {[0, 1].map(rowIdx => {
                     const rowSteps = steps.slice(rowIdx * 4, rowIdx * 4 + 4);
                     if (rowSteps.length === 0) return null;
@@ -345,12 +364,12 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
                         {[0, 1, 2, 3].map(colIdx => {
                           const step = rowSteps[colIdx];
                           return (
-                            <View key={colIdx} style={{flex: 1, backgroundColor: '#fff', padding: fs(12), paddingHorizontal: fs(14), flexDirection: 'row', alignItems: 'center', gap: fs(9), marginLeft: colIdx > 0 ? 1 : 0}}>
+                            <View key={colIdx} style={{flex: 1, backgroundColor: p.cellBg, padding: fs(12), paddingHorizontal: fs(14), flexDirection: 'row', alignItems: 'center', gap: fs(9), marginLeft: colIdx > 0 ? 1 : 0}}>
                               {step ? (
                                 <>
-                                  <View style={{width: fs(9), height: fs(9), borderRadius: fs(5), backgroundColor: step.on ? '#2bb24c' : '#c4ccd6'}} />
-                                  <Text style={{flex: 1, fontSize: fst(11), fontWeight: '800', letterSpacing: 0.3, color: step.on ? '#1a2230' : '#5a6573', fontFamily: MONO}}>{step.label}</Text>
-                                  <Text style={{fontSize: fst(13), fontWeight: '700', color: step.on ? '#1a2230' : '#9aa3ad', fontFamily: MONO}}>{step.time}</Text>
+                                  <View style={{width: fs(9), height: fs(9), borderRadius: fs(5), backgroundColor: step.on ? p.dotOn : p.dotOff}} />
+                                  <Text style={{flex: 1, fontSize: fst(11), fontWeight: '800', letterSpacing: 0.3, color: step.on ? p.text : p.label, fontFamily: MONO}}>{step.label}</Text>
+                                  <Text style={{fontSize: fst(13), fontWeight: '700', color: step.on ? p.text : p.textMuted, fontFamily: MONO}}>{step.time}</Text>
                                 </>
                               ) : null}
                             </View>
@@ -363,7 +382,7 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
 
                 {/* signature box — .tkSignBox */}
                 <View style={{paddingHorizontal: fs(24)}}>
-                  <View style={{height: fs(120), backgroundColor: '#ededed', borderRadius: fs(5), marginBottom: fs(16)}} />
+                  <View style={{height: fs(120), backgroundColor: p.sigBg, borderRadius: fs(5), marginBottom: fs(16)}} />
                 </View>
 
                 {/* ── ACTION BUTTONS — .tkBtns ── */}

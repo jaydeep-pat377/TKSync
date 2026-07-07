@@ -148,7 +148,7 @@ export default function DisputeTicketModal({
   }, [visible, ticketId]);
 
   function applyPendingOfflineData(tid: number) {
-    const pending = offlineStorage.getPendingForTicket(tid, 'dispute');
+    const pending = offlineStorage.getPendingForTicket(tid, 'dispute', 'dispute');
     if (pending.length > 0) {
       const latest = pending[pending.length - 1];
       if (latest.body.quantity != null) setQuantity(String(latest.body.quantity));
@@ -258,10 +258,12 @@ export default function DisputeTicketModal({
 
     return (
       <ScrollView
-        style={{maxHeight: scrollMaxH}}
-        contentContainerStyle={{paddingBottom: fs(8)}}
+        
+        contentContainerStyle={{paddingBottom: fs(24)}}
         showsVerticalScrollIndicator={true}
-        persistentScrollbar
+        persistentScrollbar={true}
+        fadingEdgeLength={0}
+        indicatorStyle={isDark ? 'white' : 'black'}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
         nestedScrollEnabled>
@@ -326,7 +328,7 @@ export default function DisputeTicketModal({
         <View style={{paddingHorizontal: pad, paddingVertical: fs(16)}}>
           <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary, fontFamily: MONO}}>TYPE NAME</Text>
           <TextInput
-            style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff', fontFamily: MONO}}
+            style={{borderWidth: 1, borderColor: isDark ? '#4A4E55' : '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: isDark ? '#3A3E44' : '#fff', fontFamily: MONO}}
             value={typeName}
             onChangeText={setTypeName}
             placeholder="Enter name"
@@ -386,17 +388,17 @@ export default function DisputeTicketModal({
         onClose={onClose}
         maxWidth={modalMaxW}
         widthPercent={76}
-        maxHeightPercent={92}
+        maxHeightPercent={85}
         avoidKeyboard>
         {/* Header */}
         <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: fs(16), paddingHorizontal: pad, borderBottomWidth: 1, borderBottomColor: c.border}}>
           <Text style={{fontSize: fst(16), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center', color: c.textPrimary, fontFamily: MONO}}>DISPUTE LOAD</Text>
           <TouchableOpacity
-            style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: '#1a2230', backgroundColor: '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
+            style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#1a2230', backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
             onPress={onClose}
             activeOpacity={0.7}
             hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Text style={{fontSize: fst(13), fontWeight: '400', color: '#1a2230', fontFamily: MONO}}>✕</Text>
+            <Text style={{fontSize: fst(13), fontWeight: '400', color: isDark ? '#fff' : '#1a2230', fontFamily: MONO}}>✕</Text>
           </TouchableOpacity>
         </View>
 

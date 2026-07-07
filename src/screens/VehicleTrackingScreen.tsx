@@ -255,19 +255,19 @@ export default function VehicleTrackingScreen({navigation}: Props) {
         </View>
       </View>
       <View style={[st.heroStatsRow, L && {marginTop: wp(10)}]}>
-        <View style={[st.heroStat, {fontFamily: MONO}]}>
+        <View style={[st.heroStat]}>
           <Icon name="explore" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
           <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(heading)}° {compassDir}</Text>
           <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Heading</Text>
         </View>
         <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-        <View style={[st.heroStat, {fontFamily: MONO}]}>
+        <View style={[st.heroStat]}>
           <Icon name="terrain" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
           <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(altitude)}m</Text>
           <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Altitude</Text>
         </View>
         <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-        <View style={[st.heroStat, {fontFamily: MONO}]}>
+        <View style={[st.heroStat]}>
           <Icon name="gps-fixed" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
           <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(accuracy)}m</Text>
           <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Accuracy</Text>
@@ -309,7 +309,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
           ].map((item, i) => (
             <View key={i} style={[st.statItem, {borderColor: c.borderLight}, L && {paddingVertical: ls(12), borderRadius: ls(7)}]}>
               <Icon name={item.icon as any} size={L ? fs(16) : ms(15)} color={item.color} />
-              <Text style={[st.statValue, {color: c.textPrimary}, L && {fontSize: fs(16)}, {fontFamily: MONO}]}>{item.value}<Text style={[st.statUnit, {color: c.textMuted, fontFamily: MONO}]}> {item.unit}</Text></Text>
+              <Text style={[st.statValue, {color: c.textPrimary}, L && {fontSize: fs(16)}]}>{item.value}<Text style={[st.statUnit, {color: c.textMuted, fontFamily: MONO}]}> {item.unit}</Text></Text>
               <Text style={[st.statLabel, {color: c.textMuted}, L && {fontSize: fs(11), fontFamily: MONO}]}>{item.label}</Text>
             </View>
           ))}
@@ -488,36 +488,36 @@ export default function VehicleTrackingScreen({navigation}: Props) {
           <View style={{backgroundColor: c.primaryDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Math.max(wp(14), insets.left), paddingVertical: wp(10), gap: wp(10)}}>
             {/* Left: speedometer circle */}
             <View style={{alignItems: 'center'}}>
-              <View style={[st.speedRing, {fontFamily: MONO}]}>
+              <View style={[st.speedRing]}>
                 <View style={[st.speedRingInner, {borderColor: 'rgba(255,255,255,0.08)'}]}>
-                  <Text style={[st.speedValue, {fontFamily: MONO}]}>{speedKmh}</Text>
-                  <Text style={[st.speedUnit, {fontFamily: MONO}]}>km/h</Text>
+                  <Text style={[st.speedValue]}>{speedKmh}</Text>
+                  <Text style={[st.speedUnit]}>km/h</Text>
                 </View>
               </View>
             </View>
             {/* Right: stats + button */}
             <View style={{flex: 1, alignItems: 'center', gap: wp(8)}}>
-              <View style={[st.heroStatsRow, {fontFamily: MONO}]}>
-                <View style={[st.heroStat, {fontFamily: MONO}]}>
+              <View style={[st.heroStatsRow]}>
+                <View style={[st.heroStat]}>
                   <Icon name="explore" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={[st.heroStatValue, {fontFamily: MONO}]}>{Math.round(heading)}° {compassDir}</Text>
-                  <Text style={[st.heroStatLabel, {fontFamily: MONO}]}>Heading</Text>
+                  <Text style={[st.heroStatValue]}>{Math.round(heading)}° {compassDir}</Text>
+                  <Text style={[st.heroStatLabel]}>Heading</Text>
                 </View>
                 <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-                <View style={[st.heroStat, {fontFamily: MONO}]}>
+                <View style={[st.heroStat]}>
                   <Icon name="terrain" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={[st.heroStatValue, {fontFamily: MONO}]}>{Math.round(altitude)}m</Text>
-                  <Text style={[st.heroStatLabel, {fontFamily: MONO}]}>Altitude</Text>
+                  <Text style={[st.heroStatValue]}>{Math.round(altitude)}m</Text>
+                  <Text style={[st.heroStatLabel]}>Altitude</Text>
                 </View>
                 <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-                <View style={[st.heroStat, {fontFamily: MONO}]}>
+                <View style={[st.heroStat]}>
                   <Icon name="gps-fixed" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={[st.heroStatValue, {fontFamily: MONO}]}>{Math.round(accuracy)}m</Text>
-                  <Text style={[st.heroStatLabel, {fontFamily: MONO}]}>Accuracy</Text>
+                  <Text style={[st.heroStatValue]}>{Math.round(accuracy)}m</Text>
+                  <Text style={[st.heroStatLabel]}>Accuracy</Text>
                 </View>
               </View>
               {isIdle && isTracking && (
-                <View style={[st.idleBadge, {fontFamily: MONO}]}>
+                <View style={[st.idleBadge]}>
                   <Icon name="pause-circle-filled" size={ms(11)} color="#EF4444" />
                   <Text style={[st.idleBadgeText, {color: '#EF4444', fontFamily: MONO}]}>IDLE {formatDuration(idleTime)}</Text>
                 </View>
@@ -527,7 +527,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
                 activeOpacity={0.8}
                 onPress={isTracking ? stopTracking : startTracking}>
                 <Icon name={isTracking ? 'stop' : 'play-arrow'} size={ms(14)} color="#fff" />
-                <Text style={[st.trackBtnText, {fontSize: ms(11)}, {fontFamily: MONO}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
+                <Text style={[st.trackBtnText, {fontSize: ms(11)}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
               </TouchableOpacity>
             </View>
           </View>

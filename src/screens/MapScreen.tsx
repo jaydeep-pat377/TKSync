@@ -187,9 +187,9 @@ export default function MapScreen({navigation, route}: Props) {
   ) : null;
 
   const mapView = (
-    <View style={[styles.mapContainer, {fontFamily: MONO}]}>
+    <View style={[styles.mapContainer]}>
       {!mapLoaded && (
-        <View style={[styles.loader, {fontFamily: MONO}]}>
+        <View style={[styles.loader]}>
           <ActivityIndicator size="large" color={c.primary} />
         </View>
       )}
@@ -228,7 +228,7 @@ export default function MapScreen({navigation, route}: Props) {
               onSelected={() => setSelectedMarker(idx)}
               onDeselected={() => { if (selectedMarker === idx) setSelectedMarker(null); }}>
               {item.type === 'My Truck' ? (
-                <View style={[styles.truckMarker, {fontFamily: MONO}]}>
+                <View style={[styles.truckMarker]}>
                   <TruckSvg width={40} height={22} primaryColor={colors.marker} secondaryColor={colors.icon} />
                 </View>
               ) : (
@@ -237,21 +237,21 @@ export default function MapScreen({navigation, route}: Props) {
                 </View>
               )}
               <MapboxGL.Callout title="">
-                <View style={[styles.callout, {fontFamily: MONO}]}>
-                  <View style={[styles.calloutHeader, {fontFamily: MONO}]}>
+                <View style={[styles.callout]}>
+                  <View style={[styles.calloutHeader]}>
                     <View style={[styles.calloutIcon, {backgroundColor: colors.bg}]}>
                       <Icon name={iconName} size={16} color={colors.icon} />
                     </View>
-                    <Text style={[styles.calloutTitle, {fontFamily: MONO}]}>{item.type}</Text>
+                    <Text style={[styles.calloutTitle]}>{item.type}</Text>
                   </View>
-                  {displayValue ? <Text style={[styles.calloutValue, {fontFamily: MONO}]}>{displayValue}</Text> : null}
+                  {displayValue ? <Text style={[styles.calloutValue]}>{displayValue}</Text> : null}
                   {item.type === 'My Truck' && (
-                    <View style={[styles.calloutDetails, {fontFamily: MONO}]}>
-                      {item.driverCode ? <Text style={[styles.calloutDetail, {fontFamily: MONO}]}>Driver: {item.driverCode}</Text> : null}
-                      {item.deliveredTo ? <Text style={[styles.calloutDetail, {fontFamily: MONO}]}>To: {item.deliveredTo}</Text> : null}
-                      {item.distanceMiles != null ? <Text style={[styles.calloutDetail, {fontFamily: MONO}]}>Distance: {item.distanceMiles.toFixed(1)} mi</Text> : null}
-                      {item.durationSeconds != null ? <Text style={[styles.calloutDetail, {fontFamily: MONO}]}>ETA: {item.durationSeconds >= 3600 ? `${Math.floor(item.durationSeconds / 3600)}h ${Math.round((item.durationSeconds % 3600) / 60)}m` : `${Math.round(item.durationSeconds / 60)} min`}</Text> : null}
-                      {item.gpsUpdatedAt ? <Text style={[styles.calloutDetail, {fontFamily: MONO}]}>GPS: {new Date(item.gpsUpdatedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</Text> : null}
+                    <View style={[styles.calloutDetails]}>
+                      {item.driverCode ? <Text style={[styles.calloutDetail]}>Driver: {item.driverCode}</Text> : null}
+                      {item.deliveredTo ? <Text style={[styles.calloutDetail]}>To: {item.deliveredTo}</Text> : null}
+                      {item.distanceMiles != null ? <Text style={[styles.calloutDetail]}>Distance: {item.distanceMiles.toFixed(1)} mi</Text> : null}
+                      {item.durationSeconds != null ? <Text style={[styles.calloutDetail]}>ETA: {item.durationSeconds >= 3600 ? `${Math.floor(item.durationSeconds / 3600)}h ${Math.round((item.durationSeconds % 3600) / 60)}m` : `${Math.round(item.durationSeconds / 60)} min`}</Text> : null}
+                      {item.gpsUpdatedAt ? <Text style={[styles.calloutDetail]}>GPS: {new Date(item.gpsUpdatedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</Text> : null}
                     </View>
                   )}
                 </View>
@@ -286,12 +286,12 @@ export default function MapScreen({navigation, route}: Props) {
 
       {/* Traffic legend */}
       {!isSatellite && (
-        <View style={[styles.trafficLegend, {fontFamily: MONO}]}>
-          <Text style={[styles.legendTitle, {fontFamily: MONO}]}>Traffic</Text>
-          <View style={[styles.legendRow, {fontFamily: MONO}]}><View style={[styles.legendLine, {backgroundColor: '#4CAF50'}]} /><Text style={[styles.legendLabel, {fontFamily: MONO}]}>Low</Text></View>
-          <View style={[styles.legendRow, {fontFamily: MONO}]}><View style={[styles.legendLine, {backgroundColor: '#FFEB3B'}]} /><Text style={[styles.legendLabel, {fontFamily: MONO}]}>Moderate</Text></View>
-          <View style={[styles.legendRow, {fontFamily: MONO}]}><View style={[styles.legendLine, {backgroundColor: '#FF9800'}]} /><Text style={[styles.legendLabel, {fontFamily: MONO}]}>Heavy</Text></View>
-          <View style={[styles.legendRow, {fontFamily: MONO}]}><View style={[styles.legendLine, {backgroundColor: '#F44336'}]} /><Text style={[styles.legendLabel, {fontFamily: MONO}]}>Severe</Text></View>
+        <View style={[styles.trafficLegend]}>
+          <Text style={[styles.legendTitle]}>Traffic</Text>
+          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#4CAF50'}]} /><Text style={[styles.legendLabel]}>Low</Text></View>
+          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#FFEB3B'}]} /><Text style={[styles.legendLabel]}>Moderate</Text></View>
+          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#FF9800'}]} /><Text style={[styles.legendLabel]}>Heavy</Text></View>
+          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#F44336'}]} /><Text style={[styles.legendLabel]}>Severe</Text></View>
         </View>
       )}
 
@@ -308,7 +308,7 @@ export default function MapScreen({navigation, route}: Props) {
         style={[styles.mapBtn, {top: 12, right: 12}]}
         onPress={() => navigation.goBack()}
         activeOpacity={0.7}>
-        <Text style={[styles.closeBtnText, {fontFamily: MONO}]}>X</Text>
+        <Text style={[styles.closeBtnText]}>X</Text>
       </TouchableOpacity>
 
       {/* Zoom controls */}
@@ -332,7 +332,7 @@ export default function MapScreen({navigation, route}: Props) {
         style={[styles.recenterBtn, {bottom: hasMapItems && !isLandscape ? height * 0.44 + 20 : Math.max(16, insets.bottom + 8)}]}
         onPress={recenter}
         activeOpacity={0.8}>
-        <Text style={[styles.recenterText, {fontFamily: MONO}]}>RECENTER</Text>
+        <Text style={[styles.recenterText]}>RECENTER</Text>
       </TouchableOpacity>
     </View>
   );
@@ -353,7 +353,7 @@ export default function MapScreen({navigation, route}: Props) {
       <View style={[styles.container, {backgroundColor: c.background}]}>
         {mapView}
         <View style={[styles.bottomPanel, {backgroundColor: c.white, paddingBottom: Math.max(insets.bottom, 12), maxHeight: isTablet ? '45%' : '42%'}]}>
-          <View style={[styles.bottomPanelHandle, {fontFamily: MONO}]}>
+          <View style={[styles.bottomPanelHandle]}>
             <View style={[styles.handleBar, {backgroundColor: c.border}]} />
           </View>
           {panelContent}
@@ -377,7 +377,7 @@ export default function MapScreen({navigation, route}: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Icon name="arrow-back" size={22} color={c.textOnPrimary} />
         </TouchableOpacity>
-        <View style={[styles.headerCenter, {fontFamily: MONO}]}>
+        <View style={[styles.headerCenter]}>
           <Text style={[styles.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]}>
             {address || 'Delivery Location'}
           </Text>

@@ -99,7 +99,7 @@ export default function ResponsiveModal({
   const availH = height - safeV;
   const availW = width - safeH;
   const isPhone = Math.min(width, height) < 600;
-  const effectivePercent = isLandscape ? Math.min(Math.max(maxHeightPercent, 85), 95) : maxHeightPercent;
+  const effectivePercent = isLandscape ? Math.min(maxHeightPercent, 95) : maxHeightPercent;
   const modalMaxH = availH * (effectivePercent / 100);
   // On phones, ensure modal uses at least 90% width for usability
   const effectiveWidthPercent = isPhone ? Math.max(widthPercent, 90) : widthPercent;
@@ -118,10 +118,13 @@ export default function ResponsiveModal({
           maxHeight: modalMaxH,
           backgroundColor: c.white,
           shadowColor: c.shadowColor,
+          flex: 0,
         },
         animatedStyle,
       ]}>
-      {children}
+      <View style={{maxHeight: modalMaxH, overflow: 'hidden', borderRadius: 18}}>
+        {children}
+      </View>
     </Animated.View>
   );
 

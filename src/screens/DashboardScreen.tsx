@@ -24,7 +24,7 @@ import i18n from '../i18n';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useNetworkStatus, setForceOffline, getForceOffline } from '../hooks/useNetworkStatus';
 import { ticketsApi, plantsApi, checkApiHealth, type Ticket, type TicketDetail, type DeliveryRecord, type Plant, type TicketQr } from '../services/api';
 import { Colors } from '../constants/colors';
 import { common } from '../constants/commonStyles';
@@ -234,6 +234,7 @@ const MENU_ITEMS_BASE = [
   { icon: 'domain-disabled', labelKey: 'menu.logoutTenant', actionKey: 'Logout Tenant', color: 'warn' },
   { icon: 'translate', labelKey: 'menu.language', actionKey: 'Language', color: '' },
   { icon: 'info-outline', labelKey: 'menu.about', actionKey: 'About', color: '' },
+  { icon: 'wifi-off', labelKey: 'menu.forceOffline', actionKey: 'ForceOffline', color: '' },
 ];
 
 
@@ -417,6 +418,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [timePickerHour, setTimePickerHour] = useState(0);
   const [timePickerMinute, setTimePickerMinute] = useState(0);
   const [appVersion, setAppVersion] = useState('');
+  const [aboutVisible, setAboutVisible] = useState(false);
 
   useEffect(() => {
     checkApiHealth().then(r => { if (r.version) setAppVersion(r.version); }).catch(() => { });
@@ -572,7 +574,7 @@ export default function DashboardScreen({ navigation }: Props) {
           // Fall back to locally cached delivery record
           const cached = offlineStorage.getCachedDeliveryRecord(ticket.id);
           if (cached) {
-            const pending = offlineStorage.getPendingForTicket(ticket.id);
+            const pending = offlineStorage.getPendingForTicket(ticket.id, undefined, 'delivery');
             let merged = { ...cached };
             for (const item of pending) {
               merged[item.tab] = { ...(merged[item.tab] || {}), ...item.body };
@@ -675,6 +677,58 @@ export default function DashboardScreen({ navigation }: Props) {
       setLogoutType('tenant');
     } else if (label === 'Language') {
       setLanguageVisible(true);
+    } else if (label === 'About') {
+      setAboutVisible(true);
+    } else if (label === 'ForceOffline') {
+      setForceOffline(!getForceOffline());
+    }
+  };
+
+  // Dynamic handler for mandatory field taps — routes based on fieldType from API
+  type MandatoryItem = { key?: string; name: string; filled: boolean; value?: string; fieldType?: string; tab?: string };
+  const handleMandatoryTap = (mi: MandatoryItem) => {
+    const key = mi.key;
+    console.log('[MandatoryTap]', JSON.stringify({ key, fieldType: mi.fieldType, tab: mi.tab, name: mi.name }));
+    if (!key) return;
+
+    if (mi.fieldType === 'returned_group') {
+      const r = deliveryRecord?.returned;
+      setReturnedQtyInput(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
+      setReturnedDisposal(r?.disposal_method || '');
+      setReturnedReason(r?.reason_for_return || '');
+      setReturnedModalVisible(true);
+      return;
+    }
+
+    if (mi.fieldType === 'water') {
+      const j = deliveryRecord?.jobsite;
+      const litresKey = key === 'customer_water' ? 'full_load_litres' : 'maintenance_water_litres';
+      const mmKey = key === 'customer_water' ? 'full_load_mm' : 'maintenance_water_mm';
+      setWaterLitresInput((j as any)?.[litresKey] != null ? String((j as any)[litresKey]) : '');
+      setWaterMmInput((j as any)?.[mmKey] != null ? String((j as any)[mmKey]) : '');
+      setWaterModalField(key as any);
+      return;
+    }
+
+    if (mi.fieldType === 'datetime' && mi.tab === 'time') {
+      const now = new Date();
+      const existing = mi.value;
+      setTimePickerHour(existing ? parseInt(existing.split(':')[0], 10) : now.getHours());
+      setTimePickerMinute(existing ? parseInt(existing.split(':')[1], 10) : now.getMinutes());
+      setTimePickerStep({ key, label: mi.name });
+      return;
+    }
+
+    if (mi.fieldType === 'input' && mi.tab === 'plant') {
+      setSlumpPickerField(key as any);
+      return;
+    }
+
+    if (mi.fieldType === 'select' || mi.fieldType === 'input') {
+      // Generic: open additional entries modal for the tab
+      setAdditionalEntriesTab((mi.tab || 'plant') as any);
+      setAdditionalEntriesVisible(true);
+      return;
     }
   };
 
@@ -951,8 +1005,9 @@ export default function DashboardScreen({ navigation }: Props) {
                   const labelColor = isWarn ? c.error : c.textPrimary;
                   const bgColor = isWarn ? c.errorSurface : c.surface;
                   const isDarkMode = item.actionKey === 'DarkMode';
-                  const itemIcon = isDarkMode ? (isDark ? 'light-mode' : 'dark-mode') : item.icon;
-                  const label = isDarkMode ? (isDark ? t('menu.lightMode', 'Light Mode') : t('menu.darkMode', 'Dark Mode')) : t(item.labelKey);
+                  const isForceOffline = item.actionKey === 'ForceOffline';
+                  const itemIcon = isDarkMode ? (isDark ? 'light-mode' : 'dark-mode') : isForceOffline ? (getForceOffline() ? 'wifi' : 'wifi-off') : item.icon;
+                  const label = isDarkMode ? (isDark ? t('menu.lightMode', 'Light Mode') : t('menu.darkMode', 'Dark Mode')) : isForceOffline ? (getForceOffline() ? 'Go Online (Debug)' : 'Force Offline (Debug)') : t(item.labelKey);
                   const suffix = item.actionKey === 'Language' ? ` (${i18n.language.toUpperCase()})` : '';
                   return (
                     <TouchableOpacity
@@ -1041,69 +1096,128 @@ export default function DashboardScreen({ navigation }: Props) {
     );
   };
 
-  // Mandatory fields completion data for right panel
+  // Mandatory fields completion data for right panel — fully dynamic from API
   const mandatoryFields = detail?.mandatory_fields || deliveryRecord?.mandatory_fields;
-  const getMandatoryStatus = (tab: string, fields: string[]) => {
-    if (!deliveryRecord || !fields.length) return { filled: 0, total: 0, items: [] as { name: string; filled: boolean; value?: string }[] };
-    const tabData = (deliveryRecord as any)[tab];
-    const items = fields.map(f => {
+  const fieldDefs = (deliveryRecord as any)?.field_definitions;
+
+  // Helper: get display title from field_definitions or derive from field_key
+  const getFieldTitle = (tab: string, fieldKey: string): string => {
+    const def = fieldDefs?.[tab]?.[fieldKey];
+    if (def?.title) return def.title;
+    return fieldKey.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+  };
+
+  // Helper: get display value with unit suffix from field_definitions
+  const getDisplayValue = (tab: string, fieldKey: string, rawVal: any): string => {
+    if (rawVal == null || rawVal === '') return '';
+    const def = fieldDefs?.[tab]?.[fieldKey];
+    const vt = def?.value_type;
+    if (vt === 'number' && (fieldKey.includes('slump') || fieldKey.includes('_mm'))) return `${rawVal} mm`;
+    if (vt === 'number' && fieldKey.includes('litres')) return `${rawVal} L`;
+    return String(rawVal);
+  };
+
+
+  // Generic tab mandatory builder — works for plant, jobsite, returned, cod
+  const buildTabMandatory = (tab: string) => {
+    const tabData = (deliveryRecord as any)?.[tab];
+    const mFields: string[] = (mandatoryFields as any)?.[tab] || [];
+    if (!deliveryRecord || !mFields.length) return { filled: 0, total: 0, items: [] as MandatoryItem[] };
+
+    // Group water litres+mm pairs for better display
+    const waterPairs: Record<string, { litresKey: string; mmKey: string; label: string }> = {
+      customer_water_litres: { litresKey: 'customer_water_litres', mmKey: 'customer_water_mm', label: 'Customer Requested Water' },
+      full_load_litres: { litresKey: 'full_load_litres', mmKey: 'full_load_mm', label: 'Customer Requested Water' },
+      maintenance_water_litres: { litresKey: 'maintenance_water_litres', mmKey: 'maintenance_water_mm', label: 'Maintenance Water' },
+    };
+    const processedWaterKeys = new Set<string>();
+    const items: MandatoryItem[] = [];
+
+    for (const f of mFields) {
+      if (processedWaterKeys.has(f)) continue;
+      const def = fieldDefs?.[tab]?.[f];
+      const ft = def?.field_type || 'input';
+
+      // Check if this is a water litres field — group with mm
+      const wPair = waterPairs[f];
+      if (wPair && tab === 'jobsite') {
+        processedWaterKeys.add(f);
+        processedWaterKeys.add(wPair.mmKey);
+        const litresVal = tabData?.[wPair.litresKey];
+        const mmVal = tabData?.[wPair.mmKey];
+        const filled = litresVal != null;
+        items.push({
+          key: wPair.litresKey === 'full_load_litres' ? 'customer_water' : f.replace('_litres', ''),
+          name: wPair.label,
+          filled,
+          value: filled ? `${litresVal} L${mmVal != null ? ` / ${mmVal} mm` : ''}` : undefined,
+          fieldType: 'water',
+          tab,
+        });
+        continue;
+      }
+
+      // Skip mm fields if their litres counterpart was already grouped
+      if (f.endsWith('_mm') && processedWaterKeys.has(f)) continue;
+
+      // Standard field
       const val = tabData?.[f];
       const filled = val !== null && val !== undefined && val !== '';
-      return { name: f.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()), filled, value: filled ? String(val) : undefined };
-    });
+      items.push({
+        key: f,
+        name: getFieldTitle(tab, f),
+        filled,
+        value: filled ? getDisplayValue(tab, f, val) : undefined,
+        fieldType: ft,
+        tab,
+      });
+    }
+
     return { filled: items.filter(i => i.filled).length, total: items.length, items };
   };
-  const plantMandatory = (() => {
-    const p = deliveryRecord?.plant;
-    const mFields = mandatoryFields?.plant || [];
-    const items = mFields.map(f => {
-      const val = (p as any)?.[f];
-      const filled = val !== null && val !== undefined && val !== '';
-      let display = filled ? String(val) : undefined;
-      if (filled && (f === 'slump_from_plant' || f === 'slump_to_job')) display = `${val} mm`;
-      return { key: f, name: f.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase()), filled, value: display };
-    });
-    return { filled: items.filter(i => i.filled).length, total: items.length, items };
-  })();
-  const jobsiteMandatory = (() => {
-    const j = deliveryRecord?.jobsite;
-    const mFields = mandatoryFields?.jobsite || [];
-    const items: { key?: string; name: string; filled: boolean; value?: string }[] = [];
-    // Group water fields: show "Customer Requested Water" with combined L / mm
-    if (mFields.includes('full_load_litres') || mFields.includes('customer_water_litres')) {
-      const cwL = j?.customer_water_litres;
-      const cwMm = j?.customer_water_mm;
-      items.push({ key: 'customer_water', name: 'Customer Requested Water', filled: cwL != null, value: cwL != null ? `${cwL} L${cwMm != null ? ` / ${cwMm} mm` : ''}` : undefined });
-    }
-    // Always show Maintenance Water
-    const mwL = j?.maintenance_water_litres;
-    const mwMm = j?.maintenance_water_mm;
-    items.push({ key: 'maintenance_water', name: 'Maintenance Water', filled: mwL != null, value: mwL != null ? `${mwL} L${mwMm != null ? ` / ${mwMm} mm` : ''}` : undefined });
-    // Remaining jobsite mandatory fields
-    mFields.filter(f => f !== 'full_load_litres' && f !== 'customer_water_litres' && f !== 'maintenance_water_litres' && f !== 'maintenance_water_mm').forEach(f => {
-      const val = (j as any)?.[f];
-      const filled = val !== null && val !== undefined && val !== '';
-      items.push({ name: f.replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase()), filled, value: filled ? String(val) : undefined });
-    });
-    return { filled: items.filter(i => i.filled).length, total: items.length, items };
-  })();
+
+  const plantMandatory = buildTabMandatory('plant');
+  const jobsiteMandatory = buildTabMandatory('jobsite');
   const returnedMandatory = (() => {
     const r = deliveryRecord?.returned;
-    const items = [
-      { name: 'Qty · Reason · Disposal', filled: r?.returned_concrete_m3 != null && !!r?.disposal_method && !!r?.reason_for_return, value: r ? [r.returned_concrete_m3 != null ? `${r.returned_concrete_m3} m3` : '-', REASON_OPTIONS.find(o => o.key === r.reason_for_return)?.label || r.reason_for_return || '-', DISPOSAL_OPTIONS.find(o => o.key === r.disposal_method)?.label || r.disposal_method || '-'].join(' | ') : undefined },
-    ];
-    // Add washout from jobsite if available
-    const ws = deliveryRecord?.jobsite?.washout_area;
-    if (ws) items[0].value = (items[0].value || '') + ' · ' + ws;
-    return { filled: items.filter(i => i.filled).length, total: items.length, items };
+    const mFields: string[] = mandatoryFields?.returned || [];
+    if (!deliveryRecord || !mFields.length) return { filled: 0, total: 0, items: [] as { key?: string; name: string; filled: boolean; value?: string }[] };
+    // Group returned fields: Qty · Reason · Disposal as single row
+    const hasQty = mFields.includes('returned_concrete_m3');
+    const hasReason = mFields.includes('reason_for_return');
+    const hasDisposal = mFields.includes('disposal_method');
+    if (hasQty || hasReason || hasDisposal) {
+      const parts: string[] = [];
+      if (hasQty) parts.push('Qty');
+      if (hasReason) parts.push('Reason');
+      if (hasDisposal) parts.push('Disposal');
+      const filled = (hasQty ? r?.returned_concrete_m3 != null : true) && (hasReason ? !!r?.reason_for_return : true) && (hasDisposal ? !!r?.disposal_method : true);
+      const valueParts: string[] = [];
+      if (hasQty) valueParts.push(r?.returned_concrete_m3 != null ? `${r.returned_concrete_m3} m3` : '-');
+      if (hasReason) valueParts.push(r?.reason_for_return ? (REASON_OPTIONS.find(o => o.key === r.reason_for_return)?.label || r.reason_for_return) : '-');
+      if (hasDisposal) valueParts.push(r?.disposal_method ? (DISPOSAL_OPTIONS.find(o => o.key === r.disposal_method)?.label || r.disposal_method) : '-');
+      const ws = deliveryRecord?.jobsite?.washout_area;
+      let display = valueParts.join(' | ');
+      if (ws) display += ` · ${ws}`;
+      return { filled: filled ? 1 : 0, total: 1, items: [{ key: 'returned_group', name: parts.join(' · '), filled, value: filled ? display : `${valueParts.join(' · ')}${ws ? ` · ${ws}` : ''}`, fieldType: 'returned_group', tab: 'returned' }] };
+    }
+    return buildTabMandatory('returned');
   })();
+
   const timeMandatory = (() => {
     const steps = deliveryRecord?.time?.steps || [];
-    const mFields = mandatoryFields?.time || [];
+    const mFields: string[] = mandatoryFields?.time || [];
     // If mandatory_fields.time has entries, show only those steps; otherwise show all steps
-    const filtered = mFields.length > 0 ? steps.filter(s => mFields.includes(s.key)) : steps;
-    const items = filtered.map(s => ({ key: s.key, name: s.label, filled: s.done, value: s.done && s.time ? s.time.substring(11, 16) : undefined }));
-    return { filled: items.filter(i => i.filled).length, total: items.length, items };
+    const filtered = mFields.length > 0 ? steps.filter((s: any) => mFields.includes(s.key)) : steps;
+    const items = filtered.map((s: any) => ({
+      key: s.key,
+      name: s.label,
+      filled: s.done,
+      value: s.done ? (s.time_local || (s.time ? (() => { const d = new Date(s.time); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })() : undefined)) : undefined,
+      fieldType: 'datetime',
+      tab: 'time',
+    }));
+    return { filled: items.filter((i: any) => i.filled).length, total: items.length, items };
   })();
   const totalMandatoryFilled = plantMandatory.filled + jobsiteMandatory.filled + returnedMandatory.filled + timeMandatory.filled;
   const totalMandatoryCount = plantMandatory.total + jobsiteMandatory.total + returnedMandatory.total + timeMandatory.total;
@@ -1303,12 +1417,12 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={{ alignItems: 'flex-end', gap: fs(3) }}>
                       {(() => {
                         const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
-                          <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: fs(5) }}>
+                          <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: fs(5), minWidth: fs(130) }}>
                             <View style={{ width: fs(6), height: fs(6), borderRadius: fs(3), backgroundColor: '#fff' }} />
                             <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 , fontFamily: MONO}}>{isActive ? 'IN TRANSIT' : status.label}</Text>
                           </View>);
                       })()}
-                      <View style={{ backgroundColor: '#E53935', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4 }}>
+                      <View style={{ backgroundColor: '#E53935', paddingVertical: fs(3), paddingHorizontal: fs(12), borderRadius: 4, alignItems: 'center', justifyContent: 'center', minWidth: fs(130) }}>
                         <Text style={{ fontSize: fst(10), fontWeight: '900', color: '#fff', letterSpacing: 0.5 , fontFamily: MONO}}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
                       </View>
                     </View>
@@ -1477,11 +1591,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             <Text style={{ fontSize: fst(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error , fontFamily: MONO}}>{section.data.filled}/{section.data.total}</Text>
                           </View>
                           {section.data.items.map((item, ii) => {
-                            const itemKey = (item as any).key;
-                            const isSlump = itemKey === 'slump_from_plant' || itemKey === 'slump_to_job';
-                            const isWater = itemKey === 'customer_water' || itemKey === 'maintenance_water';
-                            const isReturned = item.name === 'Qty · Reason · Disposal';
-                            const isTappable = isSlump || isWater || isReturned;
+                            const mi = item as MandatoryItem;
                             const Row = (
                               <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(4), gap: fs(6) }}>
                                 <View style={{ width: fs(12), height: fs(12), borderRadius: fs(6), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
@@ -1491,31 +1601,9 @@ export default function DashboardScreen({ navigation }: Props) {
                                 {item.value ? <Text style={{ fontSize: fst(12), fontWeight: '700', color: c.primary }} numberOfLines={1}>{item.value}</Text> : <Text style={{ fontSize: fst(10), color: c.textMuted , fontFamily: MONO}}>--</Text>}
                               </View>
                             );
-                            if (isReturned) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
-                              const r = deliveryRecord?.returned;
-                              setReturnedQtyInput(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
-                              setReturnedDisposal(r?.disposal_method || '');
-                              setReturnedReason(r?.reason_for_return || '');
-                              setReturnedModalVisible(true);
-                            }}>{Row}</TouchableOpacity>;
-                            if (isSlump) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => setSlumpPickerField(itemKey)}>{Row}</TouchableOpacity>;
-                            if (isWater) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
-                              const j = deliveryRecord?.jobsite;
-                              const litresKey = itemKey === 'customer_water' ? 'customer_water_litres' : 'maintenance_water_litres';
-                              const mmKey = itemKey === 'customer_water' ? 'customer_water_mm' : 'maintenance_water_mm';
-                              setWaterLitresInput((j as any)?.[litresKey] != null ? String((j as any)[litresKey]) : '');
-                              setWaterMmInput((j as any)?.[mmKey] != null ? String((j as any)[mmKey]) : '');
-
-                              setWaterModalField(itemKey);
-                            }}>{Row}</TouchableOpacity>;
-                            if (section.label === 'STATUS TIMES') return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
-                              const now = new Date();
-                              const existing = item.value;
-                              setTimePickerHour(existing ? parseInt(existing.split(':')[0], 10) : now.getHours());
-                              setTimePickerMinute(existing ? parseInt(existing.split(':')[1], 10) : now.getMinutes());
-                              setTimePickerStep({ key: itemKey, label: item.name });
-                            }}>{Row}</TouchableOpacity>;
-                            return Row;
+                            const onTap = () => handleMandatoryTap(mi);
+                            const isTappable = mi.fieldType === 'input' || mi.fieldType === 'water' || mi.fieldType === 'datetime' || mi.fieldType === 'returned_group' || mi.fieldType === 'select';
+                            return isTappable ? <TouchableOpacity key={ii} activeOpacity={0.6} onPress={onTap}>{Row}</TouchableOpacity> : Row;
                           })}
                         </View>
                       ))}
@@ -1596,12 +1684,12 @@ export default function DashboardScreen({ navigation }: Props) {
                   {currentTicket != null && (<>
                     {(() => {
                       const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
-                        <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: wp(100) }}>
                           <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' }} />
                           <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' , fontFamily: MONO}}>{isActive ? 'IN TRANSIT' : status.label}</Text>
                         </View>);
                     })()}
-                    <View style={{ backgroundColor: '#E53935', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4 }}>
+                    <View style={{ backgroundColor: '#E53935', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, alignItems: 'center', justifyContent: 'center', minWidth: wp(100) }}>
                       <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' , fontFamily: MONO}}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
                     </View>
                   </>)}
@@ -1738,10 +1826,7 @@ export default function DashboardScreen({ navigation }: Props) {
                           <Text style={{ fontSize: ms(8), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error , fontFamily: MONO}}>{section.data.filled}/{section.data.total}</Text>
                         </View>
                         {section.data.items.map((item, ii) => {
-                          const itemKey = (item as any).key;
-                          const isSlump = itemKey === 'slump_from_plant' || itemKey === 'slump_to_job';
-                          const isWater = itemKey === 'customer_water' || itemKey === 'maintenance_water';
-                          const isReturned = item.name === 'Qty · Reason · Disposal';
+                          const mi = item as MandatoryItem;
                           const Row = (
                             <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
                               <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><Icon name={item.filled ? 'check' : 'close'} size={8} color={item.filled ? '#fff' : c.error} /></View>
@@ -1749,30 +1834,9 @@ export default function DashboardScreen({ navigation }: Props) {
                               {item.value ? <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.primary , fontFamily: MONO}}>{item.value}</Text> : <Text style={{ fontSize: ms(8), color: c.textMuted , fontFamily: MONO}}>--</Text>}
                             </View>
                           );
-                          if (isReturned) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
-                            const r = deliveryRecord?.returned;
-                            setReturnedQtyInput(r?.returned_concrete_m3 != null ? String(r.returned_concrete_m3) : '');
-                            setReturnedDisposal(r?.disposal_method || '');
-                            setReturnedReason(r?.reason_for_return || '');
-                            setReturnedModalVisible(true);
-                          }}>{Row}</TouchableOpacity>;
-                          if (isSlump) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => setSlumpPickerField(itemKey)}>{Row}</TouchableOpacity>;
-                          if (isWater) return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
-                            const j = deliveryRecord?.jobsite;
-                            const litresKey = itemKey === 'customer_water' ? 'customer_water_litres' : 'maintenance_water_litres';
-                            const mmKey = itemKey === 'customer_water' ? 'customer_water_mm' : 'maintenance_water_mm';
-                            setWaterLitresInput((j as any)?.[litresKey] != null ? String((j as any)[litresKey]) : '');
-                            setWaterMmInput((j as any)?.[mmKey] != null ? String((j as any)[mmKey]) : '');
-                            setWaterModalField(itemKey);
-                          }}>{Row}</TouchableOpacity>;
-                          if (section.label === 'STATUS TIMES') return <TouchableOpacity key={ii} activeOpacity={0.6} onPress={() => {
-                            const now = new Date();
-                            const existing = item.value;
-                            setTimePickerHour(existing ? parseInt(existing.split(':')[0], 10) : now.getHours());
-                            setTimePickerMinute(existing ? parseInt(existing.split(':')[1], 10) : now.getMinutes());
-                            setTimePickerStep({ key: itemKey, label: item.name });
-                          }}>{Row}</TouchableOpacity>;
-                          return Row;
+                          const onTap = () => handleMandatoryTap(mi);
+                          const isTappable = mi.fieldType === 'input' || mi.fieldType === 'water' || mi.fieldType === 'datetime' || mi.fieldType === 'returned_group' || mi.fieldType === 'select';
+                          return isTappable ? <TouchableOpacity key={ii} activeOpacity={0.6} onPress={onTap}>{Row}</TouchableOpacity> : Row;
                         })}
                       </View>))}
                   </View>
@@ -1968,8 +2032,8 @@ export default function DashboardScreen({ navigation }: Props) {
         maxWidth={L ? 280 : isTablet ? 280 : 240}
         widthPercent={L ? 22 : 55}>
         <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(10) }}>
-          <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
-          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 2, marginBottom: wp(12) , fontFamily: MONO}}>SELECT TIME</Text>
+          <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 , fontFamily: MONO}}>{timePickerStep?.label || 'SELECT TIME'}</Text>
+          <Text style={{ fontSize: ms(14), fontWeight: '900', color: c.primary, marginTop: 4, marginBottom: wp(8), textAlign: 'center' , fontFamily: MONO}}>{String(timePickerHour).padStart(2, '0')}:{String(timePickerMinute).padStart(2, '0')}</Text>
           <View style={{ flexDirection: 'row', marginBottom: wp(4) }}>
             <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>Hours</Text>
             <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>Minutes</Text>
@@ -1980,6 +2044,8 @@ export default function DashboardScreen({ navigation }: Props) {
               <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate="fast"
                 contentContainerStyle={{ paddingVertical: 40 }}
                 contentOffset={{ x: 0, y: timePickerHour * 40 }}
+                onScroll={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); const h = Math.max(0, Math.min(23, idx)); if (h !== timePickerHour) setTimePickerHour(h); }}
+                scrollEventThrottle={16}
                 onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerHour(Math.max(0, Math.min(23, idx))); }}>
                 {Array.from({ length: 24 }, (_, i) => (
                   <TouchableOpacity key={i} onPress={() => setTimePickerHour(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
@@ -1993,6 +2059,8 @@ export default function DashboardScreen({ navigation }: Props) {
               <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate="fast"
                 contentContainerStyle={{ paddingVertical: 40 }}
                 contentOffset={{ x: 0, y: timePickerMinute * 40 }}
+                onScroll={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); const m = Math.max(0, Math.min(59, idx)); if (m !== timePickerMinute) setTimePickerMinute(m); }}
+                scrollEventThrottle={16}
                 onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerMinute(Math.max(0, Math.min(59, idx))); }}>
                 {Array.from({ length: 60 }, (_, i) => (
                   <TouchableOpacity key={i} onPress={() => setTimePickerMinute(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
@@ -2012,14 +2080,17 @@ export default function DashboardScreen({ navigation }: Props) {
                 if (!currentTicket?.id || !timePickerStep) return;
                 const apiKey = timePickerStep.key;
                 const now = new Date();
-                const timeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), timePickerHour, timePickerMinute, 0);
-                const body = { [apiKey]: timeDate.toISOString() };
+                // Build wall-clock ISO string with +00:00 offset (matching backend's storage format)
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const wallClock = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(timePickerHour)}:${pad(timePickerMinute)}:00+00:00`;
+                const localDisplay = `${pad(timePickerHour)}:${pad(timePickerMinute)}`;
+                const body = { [apiKey]: wallClock };
                 setTimePickerStep(null);
                 try {
                   const result = await saveDeliveryTab(currentTicket.id, 'time', body);
                   setDeliveryRecord(prev => {
                     if (!prev) return prev;
-                    const steps = (prev.time?.steps || []).map(s => s.key === timePickerStep.key ? { ...s, done: true, time: timeDate.toISOString() } : s);
+                    const steps = (prev.time?.steps || []).map(s => s.key === timePickerStep.key ? { ...s, done: true, time: wallClock, time_local: localDisplay } : s);
                     return { ...prev, time: { ...prev.time, steps } as any };
                   });
                   if (!result.offline) await fetchDetail(currentTicket.id, false);
@@ -2076,8 +2147,8 @@ export default function DashboardScreen({ navigation }: Props) {
                 activeOpacity={0.7}
                 onPress={async () => {
                   if (!currentTicket?.id || !waterModalField) return;
-                  const litresKey = waterModalField === 'customer_water' ? 'customer_water_litres' : 'maintenance_water_litres';
-                  const mmKey = waterModalField === 'customer_water' ? 'customer_water_mm' : 'maintenance_water_mm';
+                  const litresKey = waterModalField === 'customer_water' ? 'full_load_litres' : 'maintenance_water_litres';
+                  const mmKey = waterModalField === 'customer_water' ? 'full_load_mm' : 'maintenance_water_mm';
                   const body: Record<string, any> = {
                     [litresKey]: waterLitresInput ? Number(waterLitresInput) : null,
                     [mmKey]: waterMmInput ? Number(waterMmInput) : null,
@@ -2877,6 +2948,29 @@ export default function DashboardScreen({ navigation }: Props) {
             style={{ paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8), backgroundColor: Math.round(fontScale * 100) === 100 ? c.surface : c.primary }}>
             <Text style={{ fontSize: ms(12), fontWeight: '700', color: Math.round(fontScale * 100) === 100 ? c.textMuted : c.textOnPrimary , fontFamily: MONO}}>Reset to 100%</Text>
           </TouchableOpacity>
+        </View>
+      </ResponsiveModal>
+
+      {/* ─── ABOUT MODAL ─── */}
+      <ResponsiveModal
+        visible={aboutVisible}
+        onClose={() => setAboutVisible(false)}
+        maxWidth={340}
+        widthPercent={isLandscape ? 28 : 70}
+        maxHeightPercent={50}>
+        <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: 20 }}>
+          <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 0.5, marginBottom: 12, fontFamily: MONO }}>TRUCKAST SYNC</Text>
+          <Text style={{ fontSize: ms(8), fontWeight: '400', color: c.textSecondary, lineHeight: ms(8) * 1.6, fontFamily: MONO }}>
+            {`Truckast Sync, Version ${appVersion || '...'}\nCopyright (c) 2022–2026, All Rights\nReserved.`}
+          </Text>
+          <View style={{ alignItems: 'flex-end', marginTop: 16 }}>
+            <TouchableOpacity
+              onPress={() => setAboutVisible(false)}
+              activeOpacity={0.8}
+              style={{ backgroundColor: '#157a15', paddingVertical: 8, paddingHorizontal: 24, borderRadius: 6 }}>
+              <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#fff', fontFamily: MONO }}>OK</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ResponsiveModal>
 

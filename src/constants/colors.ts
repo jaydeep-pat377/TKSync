@@ -118,13 +118,13 @@ export const DarkColors = {
   accentBg: '#1A2D50',
 
   // Neutrals (Dark mode)
-  white: '#0e141d',       // --panel
+  white: '#2C2F33',       // --panel (dark gray)
   black: '#e8edf3',
-  background: '#0a0e15',  // --bg
-  surface: '#0b1119',     // --inset
-  border: '#1b2533',      // --line
-  borderLight: '#131c26', // --hair
-  divider: '#223044',     // --line2
+  background: '#1E2126',  // --bg
+  surface: '#252830',     // --inset
+  border: '#3A3E45',      // --line
+  borderLight: '#323640', // --hair
+  divider: '#3E4350',     // --line2
 
   // Text (Dark mode)
   textPrimary: '#e8edf3',  // --text

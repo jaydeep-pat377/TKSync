@@ -70,9 +70,9 @@ export default function NetworkBanner() {
         },
       ]}
       pointerEvents="none">
-      <View style={[styles.content, {fontFamily: MONO}]}>
+      <View style={[styles.content]}>
         <Icon name={icon} size={16} color="#fff" />
-        <Text style={[styles.text, {fontFamily: MONO}]}>{message}</Text>
+        <Text style={[styles.text]}>{message}</Text>
       </View>
     </Animated.View>
   );

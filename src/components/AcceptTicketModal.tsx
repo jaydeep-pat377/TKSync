@@ -57,6 +57,7 @@ export default function AcceptTicketModal({
   const fs = (base: number) => Math.round(base * sc);
   const fst = (base: number) => Math.round((base - 1) * sc);
 
+  const scrollRef = useRef<ScrollView>(null);
   const [data, setData] = useState<SigningData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -147,8 +148,14 @@ export default function AcceptTicketModal({
     return () => { cancelled = true; };
   }, [visible, ticketId]);
 
+  useEffect(() => {
+    if (data && scrollRef.current) {
+      setTimeout(() => scrollRef.current?.flashScrollIndicators(), 300);
+    }
+  }, [data]);
+
   function applyPendingOfflineData(tid: number) {
-    const pending = offlineStorage.getPendingForTicket(tid, 'sign');
+    const pending = offlineStorage.getPendingForTicket(tid, 'sign', 'sign');
     if (pending.length > 0) {
       const latest = pending[pending.length - 1];
       if (latest.body.email) setEmail(latest.body.email);
@@ -262,10 +269,12 @@ export default function AcceptTicketModal({
 
     return (
       <ScrollView
-        style={{maxHeight: scrollMaxH}}
-        contentContainerStyle={{paddingBottom: fs(8)}}
+        ref={scrollRef}
+        contentContainerStyle={{paddingBottom: fs(24)}}
         showsVerticalScrollIndicator={true}
-        persistentScrollbar
+        persistentScrollbar={true}
+        fadingEdgeLength={0}
+        indicatorStyle={isDark ? 'white' : 'black'}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
         nestedScrollEnabled>
@@ -301,16 +310,16 @@ export default function AcceptTicketModal({
           <Text style={{fontSize: fst(13), fontWeight: '800', textAlign: 'center', letterSpacing: 0.5, marginBottom: fs(6), color: c.textPrimary, fontFamily: MONO}}>PRODUCTS</Text>
 
           {/* Table header */}
-          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), borderTopWidth: 1, borderTopColor: c.border, borderBottomWidth: 2, borderBottomColor: '#4e8a2f', backgroundColor: '#f4f6f8'}}>
-            <Text style={{width: '15%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', fontFamily: MONO}}>CODE</Text>
-            <Text style={{flex: 1, fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', fontFamily: MONO}}>DESCRIPTION</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), borderTopWidth: 1, borderTopColor: c.border, borderBottomWidth: 2, borderBottomColor: '#4e8a2f', backgroundColor: isDark ? '#3A3E44' : '#f4f6f8'}}>
+            <Text style={{width: '15%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: isDark ? '#C8CACD' : '#3a4350', fontFamily: MONO}}>CODE</Text>
+            <Text style={{flex: 1, fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: isDark ? '#C8CACD' : '#3a4350', fontFamily: MONO}}>DESCRIPTION</Text>
             <Text style={{width: '12%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', textAlign: 'right', fontFamily: MONO}}>QTY</Text>
             <Text style={{width: '10%', fontSize: fst(12), fontWeight: '800', letterSpacing: 0.4, color: '#3a4350', textAlign: 'right', fontFamily: MONO}}>UNIT</Text>
           </View>
 
           {/* Table rows */}
           {products.map((row, i) => (
-            <View key={`${row.code}-${i}`} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(9), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: i % 2 === 1 ? '#fafbfc' : 'transparent'}}>
+            <View key={`${row.code}-${i}`} style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(9), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: i % 2 === 1 ? (isDark ? '#353840' : '#fafbfc') : 'transparent'}}>
               <Text style={{width: '15%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary, fontFamily: MONO}}>{row.code}</Text>
               <Text style={{flex: 1, fontSize: fst(13), fontWeight: '600', color: c.textPrimary, fontFamily: MONO}}>{row.description}</Text>
               <Text style={{width: '12%', fontSize: fst(13), fontWeight: '500', color: c.textPrimary, textAlign: 'right', fontFamily: MONO}}>{row.quantity != null ? row.quantity : '-'}</Text>
@@ -325,7 +334,7 @@ export default function AcceptTicketModal({
 
           <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary, fontFamily: MONO}}>EMAIL ADDRESS</Text>
           <TextInput
-            style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff'}}
+            style={{borderWidth: 1, borderColor: isDark ? '#4A4E55' : '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: isDark ? '#3A3E44' : '#fff'}}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -337,7 +346,7 @@ export default function AcceptTicketModal({
 
           <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), marginTop: fs(14), color: c.textPrimary, fontFamily: MONO}}>CUSTOMER NOTES</Text>
           <TextInput
-            style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff'}}
+            style={{borderWidth: 1, borderColor: isDark ? '#4A4E55' : '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: isDark ? '#3A3E44' : '#fff'}}
             value={customerNotes}
             onChangeText={setCustomerNotes}
             placeholder="Enter notes"
@@ -348,7 +357,7 @@ export default function AcceptTicketModal({
 
         {/* Terms — .tkTerms */}
         <View style={{paddingHorizontal: pad, paddingVertical: fs(14), borderBottomWidth: 1, borderBottomColor: c.border}}>
-          <Text style={{fontSize: fst(11), fontWeight: '400', lineHeight: fst(11) * 1.5, color: '#5a6573', fontFamily: MONO}}>{legal.terms_en}</Text>
+          <Text style={{fontSize: fst(11), fontWeight: '400', lineHeight: fst(11) * 1.5, color: isDark ? '#8A8D93' : '#5a6573', fontFamily: MONO}}>{legal.terms_en}</Text>
           {legal.terms_fr ? (
             <Text style={{fontSize: fst(11), fontWeight: '400', lineHeight: fst(11) * 1.5, color: '#5a6573', marginTop: fs(6), fontFamily: MONO}}>{legal.terms_fr}</Text>
           ) : null}
@@ -358,7 +367,7 @@ export default function AcceptTicketModal({
         <View style={{paddingHorizontal: pad, paddingVertical: fs(16)}}>
           <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), color: c.textPrimary, fontFamily: MONO}}>TYPE NAME</Text>
           <TextInput
-            style={{borderWidth: 1, borderColor: '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: '#fff'}}
+            style={{borderWidth: 1, borderColor: isDark ? '#4A4E55' : '#cfd6de', borderRadius: fs(6), paddingVertical: fs(9), paddingHorizontal: fs(10), fontSize: fst(14), color: c.textPrimary, backgroundColor: isDark ? '#3A3E44' : '#fff'}}
             value={typeName}
             onChangeText={setTypeName}
             placeholder="Enter name"
@@ -423,17 +432,17 @@ export default function AcceptTicketModal({
         onClose={onClose}
         maxWidth={modalMaxW}
         widthPercent={76}
-        maxHeightPercent={92}
+        maxHeightPercent={85}
         avoidKeyboard>
         {/* Header — .tkAcceptHead */}
         <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: fs(16), paddingHorizontal: pad, borderBottomWidth: 1, borderBottomColor: c.border}}>
           <Text style={{fontSize: fst(16), fontWeight: '800', letterSpacing: 0.5, flex: 1, textAlign: 'center', color: c.textPrimary, fontFamily: MONO}}>SIGN & ACCEPT TICKET</Text>
           <TouchableOpacity
-            style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: '#1a2230', backgroundColor: '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
+            style={{width: fs(30), height: fs(30), borderWidth: 1.5, borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#1a2230', backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#fff', borderRadius: fs(5), justifyContent: 'center', alignItems: 'center', position: 'absolute', right: fs(16)}}
             onPress={onClose}
             activeOpacity={0.7}
             hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Text style={{fontSize: fst(13), fontWeight: '400', color: '#1a2230', fontFamily: MONO}}>✕</Text>
+            <Text style={{fontSize: fst(13), fontWeight: '400', color: isDark ? '#fff' : '#1a2230', fontFamily: MONO}}>✕</Text>
           </TouchableOpacity>
         </View>
 

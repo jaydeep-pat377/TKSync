@@ -21,7 +21,20 @@ function emit(event: SyncEvent) {
   syncListeners.forEach(cb => cb(event));
 }
 
-async function syncOne(item: PendingSave): Promise<boolean> {
+function isRetryableError(err: any): boolean {
+  // Network errors are retryable
+  if (err instanceof TypeError && err.message?.includes('Network request failed')) return true;
+  if (err?.name === 'AbortError') return true;
+  if (err?.message?.includes('Network request failed')) return true;
+  // Server errors (5xx) are retryable
+  if (err?.status >= 500) return true;
+  // Client errors (4xx) are NOT retryable (validation, auth, not found)
+  if (err?.status >= 400 && err?.status < 500) return false;
+  // Default: treat as retryable
+  return true;
+}
+
+async function syncOne(item: PendingSave): Promise<'synced' | 'retry' | 'permanent_fail'> {
   try {
     const action = item.action || 'delivery';
     if (action === 'sign') {
@@ -37,7 +50,7 @@ async function syncOne(item: PendingSave): Promise<boolean> {
       `[SyncManager] Synced: ticket ${item.ticketId}/${action}`,
     );
     offlineStorage.dequeue(item.id);
-    return true;
+    return 'synced';
   } catch (err: any) {
     const message = err?.message || 'Unknown error';
     console.warn(
@@ -49,8 +62,16 @@ async function syncOne(item: PendingSave): Promise<boolean> {
       action: item.action,
       retryCount: item.retryCount,
     });
+
+    if (!isRetryableError(err)) {
+      // Permanent failure (validation, auth) — remove from queue
+      console.warn(`[SyncManager] Permanent failure, removing from queue: ${message}`);
+      offlineStorage.dequeue(item.id);
+      return 'permanent_fail';
+    }
+
     offlineStorage.updateRetry(item.id, message);
-    return false;
+    return 'retry';
   }
 }
 
@@ -89,25 +110,27 @@ async function processQueue(): Promise<void> {
 
     if (item.retryCount >= MAX_RETRIES) {
       console.warn(
-        `[SyncManager] Skipping ticket ${item.ticketId}/${item.tab} — exceeded max retries`,
+        `[SyncManager] Removing ticket ${item.ticketId}/${item.tab} — exceeded max retries`,
       );
+      offlineStorage.dequeue(item.id);
       failed++;
       emit({type: 'item_failed', item, error: 'Max retries exceeded'});
       continue;
     }
 
-    const success = await syncOne(item);
-    if (success) {
+    const result = await syncOne(item);
+    if (result === 'synced') {
       synced++;
       const remaining = offlineStorage.getPendingCount();
       emit({type: 'item_synced', item, remaining});
+    } else if (result === 'permanent_fail') {
+      failed++;
+      emit({type: 'item_failed', item, error: item.lastError || 'Permanent failure'});
     } else {
       failed++;
       emit({type: 'item_failed', item, error: item.lastError || 'Unknown'});
-
-      // Wait before next retry (backoff)
-      const delay = RETRY_DELAYS[Math.min(item.retryCount, RETRY_DELAYS.length - 1)];
-      await new Promise<void>(resolve => setTimeout(resolve, delay));
+      // Brief pause before next item (don't block entire loop)
+      await new Promise<void>(resolve => setTimeout(resolve, 500));
     }
   }
 

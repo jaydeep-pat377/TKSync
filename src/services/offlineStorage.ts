@@ -46,9 +46,10 @@ export const offlineStorage = {
   enqueue(ticketId: number, tab: string, body: Record<string, any>, action?: PendingSave['action']): PendingSave {
     const queue = getQueue();
 
-    // Deduplicate: if there's already a pending save for same ticket+tab, replace it
+    // Deduplicate: if there's already a pending save for same ticket+tab+action, replace it
+    const effectiveAction = action || 'delivery';
     const existingIdx = queue.findIndex(
-      item => item.ticketId === ticketId && item.tab === tab,
+      item => item.ticketId === ticketId && item.tab === tab && (item.action || 'delivery') === effectiveAction,
     );
 
     const entry: PendingSave = {
@@ -168,10 +169,10 @@ export const offlineStorage = {
     this.cacheDeliveryRecord(ticketId, cached);
   },
 
-  /** Get pending saves for a specific ticket, optionally filtered by tab */
-  getPendingForTicket(ticketId: number, tab?: string): PendingSave[] {
+  /** Get pending saves for a specific ticket, optionally filtered by tab and action */
+  getPendingForTicket(ticketId: number, tab?: string, action?: PendingSave['action']): PendingSave[] {
     return getQueue().filter(
-      item => item.ticketId === ticketId && (!tab || item.tab === tab),
+      item => item.ticketId === ticketId && (!tab || item.tab === tab) && (!action || (item.action || 'delivery') === action),
     );
   },
 

@@ -511,7 +511,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
       <Animated.View style={[styles.container, {backgroundColor: c.white, opacity: fadeAnim}]}>
         {/* Header with real-time title + subtitle */}
         <View style={[styles.header, {borderBottomColor: c.border}]}>
-          <View style={[styles.headerLeft, {fontFamily: MONO}]}>
+          <View style={[styles.headerLeft]}>
             <Icon name="mic" size={ms(18)} color={c.primary} />
             <View>
               <Text style={[styles.headerTitle, {color: c.textPrimary, fontFamily: MONO}]}>{getDynamicTitle()}</Text>
@@ -549,8 +549,8 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
         {/* ═══ CONFIRM ═══ */}
         {phase === 'confirm' && (
-          <View style={[styles.confirmContainer, {fontFamily: MONO}]}>
-            <View style={[styles.confirmHeader, {fontFamily: MONO}]}>
+          <View style={[styles.confirmContainer]}>
+            <View style={[styles.confirmHeader]}>
               <Icon name="assignment-turned-in" size={ms(26)} color={c.primary} />
               <Text style={[styles.confirmQuestion, {color: c.textPrimary, fontFamily: MONO}]}>
                 Voice capture complete
@@ -558,7 +558,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
             </View>
 
             {/* Summary badges */}
-            <View style={[styles.confirmStats, {fontFamily: MONO}]}>
+            <View style={[styles.confirmStats]}>
               <View style={[styles.statBadge, {backgroundColor: c.successSurface}]}>
                 <Icon name="check-circle" size={ms(10)} color={c.success} />
                 <Text style={[styles.statText, {color: c.success, fontFamily: MONO}]}>{validCount} Filled</Text>
@@ -601,7 +601,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
               })}
             </ScrollView>
 
-            <View style={[styles.confirmButtons, {fontFamily: MONO}]}>
+            <View style={[styles.confirmButtons]}>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]} onPress={() => setPhase('review')} activeOpacity={0.7}>
                 <Icon name="edit" size={ms(16)} color={c.textSecondary} />
                 <Text style={[styles.actionBtnText, {color: c.textSecondary, fontFamily: MONO}]}>Edit</Text>
@@ -616,8 +616,8 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
         {/* ═══ REVIEW ═══ */}
         {phase === 'review' && (
-          <View style={[styles.reviewContainer, {fontFamily: MONO}]}>
-            <View style={[styles.reviewStats, {fontFamily: MONO}]}>
+          <View style={[styles.reviewContainer]}>
+            <View style={[styles.reviewStats]}>
               <View style={[styles.statBadge, {backgroundColor: c.successSurface}]}>
                 <Icon name="check-circle" size={ms(12)} color={c.success} />
                 <Text style={[styles.statText, {color: c.success, fontFamily: MONO}]}>{validCount} Valid</Text>
@@ -636,12 +636,12 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                   const isEditing = editingKey === field.key;
                   return (
                     <View key={field.key} style={[styles.reviewRow, {borderBottomColor: c.borderLight}]}>
-                      <View style={[styles.reviewRowHeader, {fontFamily: MONO}]}>
+                      <View style={[styles.reviewRowHeader]}>
                         <VI status={v.status} />
                         <Text style={[styles.reviewLabel, {color: c.textSecondary, fontFamily: MONO}]}>{field.label}</Text>
                       </View>
                       {isEditing ? (
-                        <View style={[styles.editRow, {fontFamily: MONO}]}>
+                        <View style={[styles.editRow]}>
                           <TextInput
                             style={[styles.editInput, {color: c.textPrimary, borderColor: c.primary, backgroundColor: c.surface}]}
                             value={editValue}
@@ -661,9 +661,9 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <View style={[styles.reviewValueRow, {fontFamily: MONO}]}>
+                        <View style={[styles.reviewValueRow]}>
                           <Text style={[styles.reviewValue, {color: val ? (v.status === 'invalid' ? c.error : c.textPrimary) : c.textMuted, fontFamily: MONO}]} numberOfLines={2}>{val || 'Skipped'}</Text>
-                          <View style={[styles.reviewActions, {fontFamily: MONO}]}>
+                          <View style={[styles.reviewActions]}>
                             <TouchableOpacity onPress={() => handleStartEdit(field.key, val || '')} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
                               <Icon name="edit" size={ms(15)} color={c.textMuted} />
                             </TouchableOpacity>
@@ -680,7 +680,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                   );
                 })}
             </ScrollView>
-            <View style={[styles.reviewButtons, {fontFamily: MONO}]}>
+            <View style={[styles.reviewButtons]}>
               <TouchableOpacity style={[styles.actionBtn, {backgroundColor: c.surface, borderColor: c.border, borderWidth: 1}]} onPress={handleCancel} activeOpacity={0.7}>
                 <Text style={[styles.actionBtnText, {color: c.textSecondary, fontFamily: MONO}]}>Cancel</Text>
               </TouchableOpacity>
@@ -718,7 +718,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
                   </Text>
                 </View>
                 {phase === 'processing' && results[currentField?.key] && (
-                  <View style={[styles.inlineValidation, {fontFamily: MONO}]}>
+                  <View style={[styles.inlineValidation]}>
                     <VI status={validations[currentField?.key]?.status || 'skipped'} />
                     <Text style={[styles.inlineValidationText, {color: validations[currentField?.key]?.status === 'valid' ? c.success : c.error, fontFamily: MONO}]}>
                       {validations[currentField?.key]?.status === 'valid' ? 'Valid' : validations[currentField?.key]?.message}

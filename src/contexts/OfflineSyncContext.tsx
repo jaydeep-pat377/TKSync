@@ -25,7 +25,7 @@ type OfflineSyncContextType = {
     body: Record<string, any>,
   ) => Promise<{success: boolean; message: string; offline: boolean}>;
   /** Queue any action for offline sync */
-  enqueueOffline: (ticketId: number, tab: string, body: Record<string, any>, action: 'sign' | 'dispute') => void;
+  enqueueOffline: (ticketId: number, tab: string, body: Record<string, any>, action: 'sign' | 'dispute' | 'curbline-release') => void;
   /** Manually trigger sync */
   triggerSync: () => void;
 };
@@ -113,7 +113,7 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     [isOnline],
   );
 
-  const enqueueOffline = useCallback((ticketId: number, tab: string, body: Record<string, any>, action: 'sign' | 'dispute') => {
+  const enqueueOffline = useCallback((ticketId: number, tab: string, body: Record<string, any>, action: 'sign' | 'dispute' | 'curbline-release') => {
     offlineStorage.enqueue(ticketId, tab, body, action);
     setPendingCount(offlineStorage.getPendingCount());
   }, []);
@@ -152,9 +152,14 @@ function capitalize(s: string): string {
 }
 
 function isNetworkError(err: any): boolean {
-  if (err instanceof TypeError && err.message?.includes('Network request failed')) {
-    return true;
-  }
   if (err?.name === 'AbortError') return true;
-  return err?.message?.includes('Network request failed') ?? false;
+  const msg = err?.message?.toLowerCase() || '';
+  if (msg.includes('network request failed')) return true;
+  if (msg.includes('network error')) return true;
+  if (msg.includes('failed to fetch')) return true;
+  if (msg.includes('timeout')) return true;
+  if (msg.includes('econnrefused') || msg.includes('enotfound')) return true;
+  // Server errors (5xx) — treat as network-like (retryable)
+  if (err?.status >= 500) return true;
+  return false;
 }
