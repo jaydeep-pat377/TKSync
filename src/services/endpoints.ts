@@ -19,6 +19,7 @@ export const ENDPOINTS = {
   TICKET_SIGN: (id: number) => `/tickets/${id}/sign`,
   TICKET_DISPUTE: (id: number) => `/tickets/${id}/dispute`,
   TICKET_QR: (id: number) => `/tickets/${id}/qr`,
+  TICKET_GPS: (id: number) => `/tickets/${id}/gps`,
 
   // Plants
   PLANTS: '/plants',

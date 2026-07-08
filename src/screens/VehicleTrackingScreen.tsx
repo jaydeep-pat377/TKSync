@@ -22,6 +22,7 @@ import {wp, ms} from '../utils/responsive';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {showToast} from '../utils/toast';
+import {ticketsApi, trackingApi} from '../services/api';
 import {gpsStorage} from '../services/gpsStorage';
 import {gpsSyncManager} from '../services/gpsSyncManager';
 import {getIsOnline} from '../hooks/useNetworkStatus';
@@ -36,6 +37,7 @@ type Props = {
 const HARD_BRAKE_THRESHOLD = 6;
 const HARD_CORNER_THRESHOLD = 5;
 const IDLE_SPEED_THRESHOLD = 1;
+const SPEED_LIMIT_KMH = 80;
 
 const toKmh = (v: number) => Math.round(v * 3.6);
 const toCompass = (deg: number): string => {
@@ -96,6 +98,21 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const [hardCorners, setHardCorners] = useState(0);
   const [accelX, setAccelX] = useState(0);
   const [accelY, setAccelY] = useState(0);
+
+  // Speeding
+  const [isSpeeding, setIsSpeeding] = useState(false);
+  const isSpeedingRef = useRef(false);
+
+  // Geofence
+  const [geofenceZones, setGeofenceZones] = useState<{name: string; lat: number; lng: number; radius: number}[]>([]);
+  const [currentZone, setCurrentZone] = useState<string | null>(null);
+  const lastZone = useRef<string | null>(null);
+  const geofenceZonesRef = useRef(geofenceZones);
+  geofenceZonesRef.current = geofenceZones;
+
+  // ETA
+  const [eta, setEta] = useState<{distance_miles: number | null; duration: number | null} | null>(null);
+  const etaTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Broadcasting
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -196,6 +213,25 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       setTripDuration(Math.floor((Date.now() - tripStartTime.current) / 1000));
     }, 1000);
 
+    // Fetch geofence zones from ticket
+    if (passedTicketId) {
+      ticketsApi.getById(passedTicketId).then(res => {
+        const zones: {name: string; lat: number; lng: number; radius: number}[] = [];
+        if (res.data?.location?.plant) zones.push({name: 'Plant', lat: res.data.location.plant.lat, lng: res.data.location.plant.lng, radius: 200});
+        if (res.data?.location?.delivery) zones.push({name: 'Jobsite', lat: res.data.location.delivery.lat, lng: res.data.location.delivery.lng, radius: res.data.location.delivery.radius_m || 200});
+        setGeofenceZones(zones);
+      }).catch(() => {});
+    }
+
+    // Fetch ETA
+    trackingApi.getMe().then(res => {
+      if (res.data?.eta) setEta(res.data.eta);
+    }).catch(() => {});
+
+    etaTimer.current = setInterval(() => {
+      trackingApi.getMe().then(res => { if (res.data?.eta) setEta(res.data.eta); }).catch(() => {});
+    }, 60000);
+
     watchId.current = Geolocation.watchPosition(
       (position) => {
         const {latitude: lat, longitude: lng, speed: spd, heading: hdg, altitude: alt, accuracy: acc} = position.coords;
@@ -203,6 +239,15 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
         setLatitude(lat);
         setLongitude(lng);
         setSpeed(currentSpeed);
+        const kmh = Math.round(currentSpeed * 3.6);
+        if (kmh > SPEED_LIMIT_KMH && !isSpeedingRef.current) {
+          isSpeedingRef.current = true;
+          setIsSpeeding(true);
+          showToast('error', 'Speeding Alert', `Speed ${kmh} km/h exceeds limit of ${SPEED_LIMIT_KMH} km/h`);
+        } else if (kmh <= SPEED_LIMIT_KMH) {
+          isSpeedingRef.current = false;
+          setIsSpeeding(false);
+        }
         setHeading(hdg || 0);
         setAltitude(alt || 0);
         setAccuracy(acc || 0);
@@ -217,6 +262,22 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
           }
         } else {
           lastPos.current = {lat, lng};
+        }
+        // Geofence check
+        for (const zone of geofenceZonesRef.current) {
+          const dist = haversine(lat, lng, zone.lat, zone.lng);
+          if (dist <= zone.radius) {
+            if (lastZone.current !== zone.name) {
+              lastZone.current = zone.name;
+              setCurrentZone(zone.name);
+              showToast('success', 'Arrived', `Entered ${zone.name} zone`);
+            }
+            break;
+          } else if (lastZone.current === zone.name) {
+            lastZone.current = null;
+            setCurrentZone(null);
+            showToast('info', 'Left Zone', `Exited ${zone.name} zone`);
+          }
         }
         if (currentSpeed < IDLE_SPEED_THRESHOLD) {
           if (!idleStart.current) idleStart.current = Date.now();
@@ -256,6 +317,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const stopTracking = useCallback(() => {
     if (watchId.current !== null) { Geolocation.clearWatch(watchId.current); watchId.current = null; }
     if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
+    if (etaTimer.current) { clearInterval(etaTimer.current); etaTimer.current = null; }
     if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
     gpsSyncManager.stop();
     stopTrackingService();
@@ -275,8 +337,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   // ── Shared UI blocks ──
   const heroBlock = (
     <View style={[st.heroSection, L && st.heroSectionLandscape]}>
-      <View style={[st.speedRing, L && st.speedRingLandscape]}>
-        <View style={[st.speedRingInner, L && st.speedRingInnerLandscape]}>
+      <View style={[st.speedRing, L && st.speedRingLandscape, isSpeeding && {borderColor: '#EF4444'}]}>
+        <View style={[st.speedRingInner, L && st.speedRingInnerLandscape, isSpeeding && {borderColor: '#EF4444'}]}>
           <Text style={[st.speedValue, L && st.speedValueLandscape]}>{speedKmh}</Text>
           <Text style={[st.speedUnit, L && st.speedUnitLandscape]}>km/h</Text>
         </View>
@@ -304,6 +366,12 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
         <View style={[st.idleBadge, L && st.idleBadgeLandscape]}>
           <Icon name="pause-circle-filled" size={ms(11)} color="#EF4444" />
           <Text style={st.idleBadgeText}>IDLE {formatDuration(idleTime)}</Text>
+        </View>
+      )}
+      {isSpeeding && isTracking && (
+        <View style={[st.idleBadge, L && st.idleBadgeLandscape, {backgroundColor: 'rgba(239,68,68,0.25)'}]}>
+          <Icon name="speed" size={ms(11)} color="#EF4444" />
+          <Text style={st.idleBadgeText}>SPEEDING {toKmh(speed)} km/h</Text>
         </View>
       )}
       <TouchableOpacity
@@ -416,6 +484,48 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
         </View>
       )}
 
+      {/* ── ALERTS (Speeding + Geofence) ── */}
+      {isTracking && (isSpeeding || currentZone) && (
+        <View style={[st.card, L && st.cardLandscape]}>
+          <View style={[st.cardHeader, L && st.cardHeaderLandscape]}>
+            <View style={[st.cardIconBg, {backgroundColor: isSpeeding ? '#EF4444' + '15' : '#22C55E' + '15'}, L && st.cardIconBgLandscape]}>
+              <Icon name={isSpeeding ? 'speed' : 'location-on'} size={L ? fs(13) : ms(14)} color={isSpeeding ? '#EF4444' : '#22C55E'} />
+            </View>
+            <Text style={[st.cardTitle, L && st.cardTitleLandscape]}>Alerts</Text>
+          </View>
+          <View style={{gap: wp(6)}}>
+            {isSpeeding && (
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(6), backgroundColor: '#FEF2F2', padding: wp(8), borderRadius: wp(8)}}>
+                <Icon name="warning" size={ms(14)} color="#EF4444" />
+                <Text style={{fontSize: ms(10), fontWeight: '700', color: '#EF4444', flex: 1, fontFamily: MONO}}>SPEEDING: {toKmh(speed)} km/h (limit: {SPEED_LIMIT_KMH} km/h)</Text>
+              </View>
+            )}
+            {currentZone && (
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(6), backgroundColor: '#F0FDF4', padding: wp(8), borderRadius: wp(8)}}>
+                <Icon name="location-on" size={ms(14)} color="#22C55E" />
+                <Text style={{fontSize: ms(10), fontWeight: '700', color: '#22C55E', flex: 1, fontFamily: MONO}}>IN ZONE: {currentZone}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* ── ETA ── */}
+      {isTracking && eta && (eta.distance_miles != null || eta.duration != null) && (
+        <View style={[st.card, st.coordCard, L && st.coordCardLandscape]}>
+          <View style={[st.cardIconBg, {backgroundColor: '#3B82F6' + '15'}, L && st.cardIconBgLandscape]}>
+            <Icon name="schedule" size={L ? fs(13) : ms(14)} color="#3B82F6" />
+          </View>
+          <View style={{flex: 1}}>
+            <Text style={[st.coordLabel, L && st.coordLabelLandscape]}>ETA to Jobsite</Text>
+            <Text style={[st.coordValue, L && st.coordValueLandscape]}>
+              {eta.duration != null ? (eta.duration >= 3600 ? `${Math.floor(eta.duration / 3600)}h ${Math.round((eta.duration % 3600) / 60)}m` : `${Math.round(eta.duration / 60)} min`) : '--'}
+              {eta.distance_miles != null ? ` · ${eta.distance_miles.toFixed(1)} mi` : ''}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* ── BROADCASTING ── */}
       <View style={[st.card, L && st.broadcastCardLandscape]}>
         <View style={st.broadcastRow}>
@@ -437,6 +547,23 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* ── TRIP HISTORY ── */}
+      {passedTicketId && (
+        <TouchableOpacity
+          style={[st.card, L && st.cardLandscape, {flexDirection: 'row', alignItems: 'center', gap: L ? ls(8) : wp(10)}]}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('TripHistory', {ticketId: passedTicketId, ticketCode: ''})}>
+          <View style={[st.cardIconBg, {backgroundColor: '#3B82F6' + '15'}, L && st.cardIconBgLandscape]}>
+            <Icon name="history" size={L ? fs(13) : ms(14)} color="#3B82F6" />
+          </View>
+          <View style={{flex: 1}}>
+            <Text style={[st.coordLabel, L && st.coordLabelLandscape]}>Trip History</Text>
+            <Text style={[st.coordValue, L && st.coordValueLandscape]}>View GPS route on map</Text>
+          </View>
+          <Icon name="chevron-right" size={ms(18)} color={c.textMuted} />
+        </TouchableOpacity>
+      )}
     </>
   );
 
@@ -515,8 +642,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
           <View style={[st.portraitHeroRow, {paddingHorizontal: Math.max(wp(14), insets.left)}]}>
             {/* Left: speedometer circle */}
             <View style={st.portraitSpeedoWrapper}>
-              <View style={st.speedRing}>
-                <View style={st.speedRingInner}>
+              <View style={[st.speedRing, isSpeeding && {borderColor: '#EF4444'}]}>
+                <View style={[st.speedRingInner, isSpeeding && {borderColor: '#EF4444'}]}>
                   <Text style={st.speedValue}>{speedKmh}</Text>
                   <Text style={st.speedUnit}>km/h</Text>
                 </View>
@@ -547,6 +674,12 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
                 <View style={st.idleBadge}>
                   <Icon name="pause-circle-filled" size={ms(11)} color="#EF4444" />
                   <Text style={st.idleBadgeText}>IDLE {formatDuration(idleTime)}</Text>
+                </View>
+              )}
+              {isSpeeding && isTracking && (
+                <View style={[st.idleBadge, {backgroundColor: 'rgba(239,68,68,0.25)'}]}>
+                  <Icon name="speed" size={ms(11)} color="#EF4444" />
+                  <Text style={st.idleBadgeText}>SPEEDING {toKmh(speed)} km/h</Text>
                 </View>
               )}
               <TouchableOpacity

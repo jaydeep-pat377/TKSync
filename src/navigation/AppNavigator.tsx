@@ -11,6 +11,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import MapScreen from '../screens/MapScreen';
 import DeliveredToMapScreen from '../screens/DeliveredToMapScreen';
 import VehicleTrackingScreen from '../screens/VehicleTrackingScreen';
+import TripHistoryScreen from '../screens/TripHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -69,6 +70,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="VehicleTracking"
           component={VehicleTrackingScreen}
+          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.background}}}
+        />
+        <Stack.Screen
+          name="TripHistory"
+          component={TripHistoryScreen}
           options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.background}}}
         />
       </Stack.Navigator>

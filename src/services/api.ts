@@ -712,6 +712,8 @@ export const ticketsApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  getGpsRecords: (id: number) =>
+    request<{count: number; points: {latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string}[]}>(ENDPOINTS.TICKET_GPS(id)),
   getCurblineRelease: (id: number) =>
     request<{curbline_release: {id: number; signed_name: string; signature_image: string; signed_at: string} | null; ticket_id: number; ticket_code: string}>(ENDPOINTS.TICKET_CURBLINE_RELEASE(id)),
   updateCurblineRelease: (id: number, body: {name: string; sign: string}) =>
