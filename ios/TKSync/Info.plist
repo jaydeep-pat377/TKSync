@@ -34,7 +34,15 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string/>
+	<string>TKSync needs your location to track vehicle position during deliveries.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>TKSync needs your location in the background to continue tracking vehicle position during deliveries.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>TKSync needs your location in the background to continue tracking vehicle position during deliveries.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>TKSync needs microphone access for voice input.</string>
 	<key>RCTNewArchEnabled</key>

@@ -33,14 +33,23 @@ function setRecords(records: GpsRecord[]): void {
 }
 
 export const gpsStorage = {
-  /** Append a GPS fix. Keeps only the last 50 records. */
+  /** Append a GPS fix. Keeps only the last 500 unsynced + trims synced. */
   addRecord(record: Omit<GpsRecord, 'id' | 'synced'>): void {
-    const records = getRecords();
+    let records = getRecords();
+    const id = `gps_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     records.push({
       ...record,
-      id: `gps_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id,
       synced: false,
     });
+    if (__DEV__) {
+      console.log(`[GPS] #${records.length} | lat: ${record.latitude.toFixed(6)}, lng: ${record.longitude.toFixed(6)} | speed: ${record.speed?.toFixed(1) ?? '-'} m/s | accuracy: ${record.accuracy ?? '-'}m | ticket: ${record.ticket_id}`);
+    }
+    // Remove synced records to prevent unbounded growth
+    const unsynced = records.filter(r => !r.synced);
+    if (records.length > 600) {
+      records = unsynced;
+    }
     setRecords(records);
   },
 

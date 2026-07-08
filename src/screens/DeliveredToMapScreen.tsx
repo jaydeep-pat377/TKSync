@@ -128,7 +128,7 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
       <View style={{flex: 1}}>
         <MapboxGL.MapView
           style={{flex: 1}}
-          styleURL={isSatellite ? MapboxGL.StyleURL.SatelliteStreet : MapboxGL.StyleURL.Street}
+          styleURL={isSatellite ? MapboxGL.StyleURL.SatelliteStreet : 'mapbox://styles/mapbox/traffic-day-v2'}
           logoEnabled={false}
           attributionEnabled={false}
           scaleBarEnabled={false}>
@@ -145,6 +145,17 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
             </View>
           </MapboxGL.PointAnnotation>
         </MapboxGL.MapView>
+
+        {/* Traffic legend */}
+        {!isSatellite && (
+          <View style={styles.trafficLegend}>
+            <Text style={styles.legendTitle}>Traffic</Text>
+            <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#4CAF50'}]} /><Text style={styles.legendLabel}>Low</Text></View>
+            <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#FFEB3B'}]} /><Text style={styles.legendLabel}>Moderate</Text></View>
+            <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#FF9800'}]} /><Text style={styles.legendLabel}>Heavy</Text></View>
+            <View style={styles.legendRow}><View style={[styles.legendLine, {backgroundColor: '#F44336'}]} /><Text style={styles.legendLabel}>Severe</Text></View>
+          </View>
+        )}
 
         {/* Zoom controls */}
         <View style={[styles.zoomControls, {right: 12, bottom: 80}]}>
@@ -191,4 +202,9 @@ const createStyles = () => StyleSheet.create({
   directionsBtn: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 8, elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4},
   directionsBtnText: {fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.5},
   recenterBtn: {width: 48, height: 48, borderRadius: 8, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, borderWidth: 1, borderColor: '#ddd'},
+  trafficLegend: {position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 8, padding: 10, paddingHorizontal: 12, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, gap: 5},
+  legendTitle: {fontSize: 14, fontWeight: '800', color: '#333', marginBottom: 2},
+  legendRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
+  legendLine: {width: 20, height: 5, borderRadius: 2},
+  legendLabel: {fontSize: 13, fontWeight: '600', color: '#555'},
 });

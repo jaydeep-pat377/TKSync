@@ -24,10 +24,13 @@ const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {showToast} from '../utils/toast';
 import {gpsStorage} from '../services/gpsStorage';
 import {gpsSyncManager} from '../services/gpsSyncManager';
+import {getIsOnline} from '../hooks/useNetworkStatus';
+import {startTrackingService, stopTrackingService} from '../services/trackingForegroundService';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
+  route: {params?: {ticketId?: number}};
 };
 
 const HARD_BRAKE_THRESHOLD = 6;
@@ -48,7 +51,8 @@ const formatDuration = (seconds: number): string => {
   return `${s}s`;
 };
 
-export default function VehicleTrackingScreen({navigation}: Props) {
+export default function VehicleTrackingScreen({navigation, route}: Props) {
+  const passedTicketId = route.params?.ticketId ?? null;
   useFontScaleRefresh();
   const st = createSt();
   const {c} = useTheme();
@@ -95,6 +99,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
   // Broadcasting
   const [isBroadcasting, setIsBroadcasting] = useState(false);
 
+
   // Tracking
   const [isTracking, setIsTracking] = useState(false);
   const watchId = useRef<number | null>(null);
@@ -128,12 +133,27 @@ export default function VehicleTrackingScreen({navigation}: Props) {
   }, []);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (Platform.OS === 'ios') return true;
-    const granted = await PermissionsAndroid.request(
+    if (Platform.OS === 'ios') {
+      const status = await Geolocation.requestAuthorization('always');
+      return status === 'granted' || status === 'restricted';
+    }
+    // Android: request fine location first
+    const fineGranted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
       {title: 'Location Permission', message: 'Vehicle tracking needs access to your location.', buttonPositive: 'OK'},
     );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
+    if (fineGranted !== PermissionsAndroid.RESULTS.GRANTED) return false;
+    // Android 10+: request background location for tracking when app is minimized
+    if (Platform.Version >= 29) {
+      const bgGranted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+        {title: 'Background Location', message: 'Allow background location so tracking continues when the screen is off.', buttonPositive: 'OK'},
+      );
+      if (bgGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+        showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
+      }
+    }
+    return true;
   }, []);
 
   const startTracking = useCallback(async () => {
@@ -141,10 +161,14 @@ export default function VehicleTrackingScreen({navigation}: Props) {
     if (!hasPermission) return;
 
     // Resolve ticket_id — block tracking if no in-process ticket
-    const hasTicket = await gpsSyncManager.start();
+    const hasTicket = await gpsSyncManager.start(passedTicketId);
     if (!hasTicket) {
       showToast('error', 'No Active Ticket', 'GPS tracking requires an in-process delivery.');
       return;
+    }
+
+    if (!getIsOnline()) {
+      showToast('info', 'Offline Mode', 'GPS data will be uploaded when connection is restored.');
     }
 
     // Auto-stop when ticket becomes inactive
@@ -153,6 +177,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
       showToast('info', 'Tracking Stopped', 'Ticket is no longer in process.');
     });
 
+    await startTrackingService();
     setIsTracking(true);
     setGpsActive(true);
     tripStartTime.current = Date.now();
@@ -232,6 +257,7 @@ export default function VehicleTrackingScreen({navigation}: Props) {
     if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
     if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
     gpsSyncManager.stop();
+    stopTrackingService();
     setIsTracking(false);
     setGpsActive(false);
   }, []);

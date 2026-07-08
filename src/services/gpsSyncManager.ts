@@ -1,8 +1,11 @@
 import {gpsStorage} from './gpsStorage';
 import {gpsApi, trackingApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
+import {createMMKV} from 'react-native-mmkv';
 
 const SYNC_INTERVAL_MS = 30_000; // 30 seconds
+const gpsCache = createMMKV({id: 'tksync-gps'});
+const CACHED_TICKET_KEY = 'last_ticket_id';
 
 let syncInterval: ReturnType<typeof setInterval> | null = null;
 let unsubConnectivity: (() => void) | null = null;
@@ -10,13 +13,39 @@ let isSyncing = false;
 let currentTicketId: number | null = null;
 let onTicketInactive: (() => void) | null = null;
 
-/** Fetch the current in-process ticket ID from tracking/me. */
+function getCachedTicketId(): number | null {
+  const val = gpsCache.getNumber(CACHED_TICKET_KEY);
+  return val !== undefined ? val : null;
+}
+
+function setCachedTicketId(id: number | null): void {
+  if (id !== null) {
+    gpsCache.set(CACHED_TICKET_KEY, id);
+  } else {
+    gpsCache.delete(CACHED_TICKET_KEY);
+  }
+}
+
+/** Fetch the current in-process ticket ID from tracking/me. Falls back to cached ID when offline. */
 async function resolveTicketId(): Promise<number | null> {
+  if (!getIsOnline()) {
+    const cached = getCachedTicketId();
+    if (cached !== null) {
+      console.log(`[GpsSyncManager] Offline — using cached ticket_id: ${cached}`);
+    }
+    return cached;
+  }
   try {
     const res = await trackingApi.getMe();
-    return res.data?.current_load?.id ?? null;
+    const id = res.data?.current_load?.id ?? null;
+    setCachedTicketId(id);
+    return id;
   } catch {
-    return null;
+    const cached = getCachedTicketId();
+    if (cached !== null) {
+      console.log(`[GpsSyncManager] API failed — using cached ticket_id: ${cached}`);
+    }
+    return cached;
   }
 }
 
@@ -27,6 +56,7 @@ async function syncAndRefreshTicket(): Promise<void> {
   const newTicketId = await resolveTicketId();
   if (newTicketId === null && currentTicketId !== null) {
     console.log(`[GpsSyncManager] Ticket ${currentTicketId} is no longer active — auto-stopping`);
+    setCachedTicketId(null);
     onTicketInactive?.();
     return;
   }
@@ -62,6 +92,9 @@ async function syncGpsRecords(): Promise<void> {
         recorded_at: r.recorded_at,
       }));
 
+      if (__DEV__) {
+        console.log(`[GpsSyncManager] Sending ${records.length} records to API:`, JSON.stringify(records, null, 2));
+      }
       await gpsApi.saveRecords(records);
       gpsStorage.markSynced(batch.map(r => r.id));
       totalSynced += batch.length;
@@ -77,11 +110,17 @@ async function syncGpsRecords(): Promise<void> {
 export const gpsSyncManager = {
   /**
    * Start periodic GPS sync (call when tracking begins).
+   * @param fallbackTicketId - ticket ID passed from Dashboard (used when /tracking/me has no current_load)
    * Returns false if no in-process ticket found — tracking should be blocked.
    */
-  async start(): Promise<boolean> {
+  async start(fallbackTicketId?: number | null): Promise<boolean> {
     if (syncInterval) return true;
     currentTicketId = await resolveTicketId();
+    if (currentTicketId === null && fallbackTicketId) {
+      console.log(`[GpsSyncManager] API returned no current_load — using fallback ticket_id: ${fallbackTicketId}`);
+      currentTicketId = fallbackTicketId;
+      setCachedTicketId(fallbackTicketId);
+    }
     if (currentTicketId === null) {
       console.warn('[GpsSyncManager] No in-process ticket — blocking tracking');
       return false;
