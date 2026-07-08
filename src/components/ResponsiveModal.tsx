@@ -100,7 +100,7 @@ export default function ResponsiveModal({
   const availW = width - safeH;
   const isPhone = Math.min(width, height) < 600;
   const effectivePercent = isLandscape ? Math.min(maxHeightPercent, 95) : maxHeightPercent;
-  const modalMaxH = availH * (effectivePercent / 100);
+  const modalMaxH = maxHeightPercent > 100 ? height * (effectivePercent / 100) : availH * (effectivePercent / 100);
   // On phones, ensure modal uses at least 90% width for usability
   const effectiveWidthPercent = isPhone ? Math.max(widthPercent, 90) : widthPercent;
   const modalW = Math.min(availW * (effectiveWidthPercent / 100), maxWidth);

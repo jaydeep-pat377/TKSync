@@ -678,7 +678,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
 
   return (
     <>
-    <ResponsiveModal visible={visible} onClose={onClose} maxWidth={isLandscape ? 480 : 440} widthPercent={isLandscape ? 40 : 90} maxHeightPercent={isLandscape ? 85 : 88} avoidKeyboard>
+    <ResponsiveModal visible={visible} onClose={onClose} maxWidth={isLandscape ? 480 : 480} widthPercent={isLandscape ? 40 : 82} maxHeightPercent={isLandscape ? 85 : 110} avoidKeyboard>
       <View style={[s.container, {backgroundColor: c.white}]}>
         {/* Header */}
         <View style={s.header}>
@@ -700,7 +700,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         </View>
 
         {/* Content */}
-        <View style={{flexDirection: 'row', maxHeight: keyboardHeight > 0 ? (isLandscape ? 120 : 200) : (isLandscape ? 250 : 350)}}>
+        <View style={{flexDirection: 'row', maxHeight: keyboardHeight > 0 ? (isLandscape ? 150 : 200) : (isLandscape ? 320 : 650)}}>
           <ScrollView
             ref={scrollRef}
             bounces={false}

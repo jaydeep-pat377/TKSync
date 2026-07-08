@@ -297,7 +297,7 @@ type Props = {
 export default function DashboardScreen({ navigation }: Props) {
   useFontScaleRefresh();
   const { saveDeliveryTab } = useOfflineSync();
-  const styles = createStyles();
+  // styles moved below useTheme() call
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeTicket, setActiveTicket] = useState(0);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
@@ -329,6 +329,9 @@ export default function DashboardScreen({ navigation }: Props) {
   const loadedTicketIdRef = useRef<number | null>(null);
   const plantsLayoutH = useRef(0);
   const plantsContentH = useRef(0);
+  const plantsScrollY = useRef(new Animated.Value(0)).current;
+  const [plantsViewH, setPlantsViewH] = useState(0);
+  const [plantsContH, setPlantsContH] = useState(0);
 
   const loadMorePlants = useCallback(() => {
     if (!plantsHasNextRef.current || plantsLoadingMoreRef.current) return;
@@ -384,6 +387,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [productsContentH, setProductsContentH] = useState(0);
   const [productsViewH, setProductsViewH] = useState(0);
   const [vehicleVisible, setVehicleVisible] = useState(false);
+  const [weatherVisible, setWeatherVisible] = useState(false);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [directionsAlert, setDirectionsAlert] = useState(false);
   const [languageVisible, setLanguageVisible] = useState(false);
@@ -432,6 +436,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const { t } = useTranslation();
   const { isDark, toggle, c } = useTheme();
+  const styles = createStyles(c, isDark);
   const { driverLogout, companyLogout, driver, company, isCompanyLoggedIn } = useAuth();
   const { isOnline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
@@ -1037,14 +1042,14 @@ export default function DashboardScreen({ navigation }: Props) {
                       <View style={[styles.ddIcon, { backgroundColor: bgColor }]}>
                         <Icon name={itemIcon as any} size={ms(18)} color={iconColor} />
                       </View>
-                      <Text style={[styles.ddLabel, {color: labelColor, fontFamily: MONO}]}>{label}{suffix}</Text>
+                      <Text style={[styles.ddLabel, {color: labelColor}]}>{label}{suffix}</Text>
                       <Icon name="chevron-right" size={ms(18)} color={c.textMuted} />
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
               <View style={[styles.ddFooter, { borderTopColor: c.borderLight }]}>
-                <Text style={[styles.ddVersion, {color: c.textMuted, fontFamily: MONO}]}>{appVersion ? `v${appVersion}` : '...'}</Text>
+                <Text style={styles.ddVersion}>{appVersion ? `v${appVersion}` : '...'}</Text>
               </View>
             </Animated.View>
           </View>
@@ -1057,7 +1062,7 @@ export default function DashboardScreen({ navigation }: Props) {
           maxWidth={450}
           maxHeightPercent={70}>
           <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
-            <Text style={[styles.mHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.plants')}</Text>
+            <Text style={styles.mHeaderTitle}>{t('modals.plants')}</Text>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Icon name="close" size={ms(20)} color={c.textSecondary} />
             </TouchableOpacity>
@@ -1081,7 +1086,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
                   activeOpacity={0.6}
                   onPress={() => setPlantsVisible(false)}>
-                  <Text style={[styles.plantText, {color: c.textPrimary, fontFamily: MONO}]}>{plant.code}-{plant.name}</Text>
+                  <Text style={styles.plantText}>{plant.code}-{plant.name}</Text>
                 </TouchableOpacity>
               ))}
               {plantsLoadingMore && (
@@ -1258,7 +1263,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
                     style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
                     <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
-                    <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700', fontFamily: MONO}]}>{ticket.ticket_code}</Text>
+                    <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700'}]}>{ticket.ticket_code}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -1292,29 +1297,29 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                   <Image source={require('../assets/images/logo.png')} style={{ width: 26, height: 26, borderRadius: 13 }} />
-                  <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary , fontFamily: MONO}}>{company?.company_name || t('app.name')}</Text>
+                  <Text style={styles.stripCompanyName}>{company?.company_name || t('app.name')}</Text>
                 </View>
                 {/* Weather inline */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 }}>
                   <Icon name={getWeatherIcon(detail?.weather?.icon)} size={14} color={c.textOnPrimary} />
                   <View>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                    <Text style={{ fontSize: 8, fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                    <Text style={styles.stripPlant9} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                    <Text style={styles.stripWeather8} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                   </View>
                 </View>
                 {/* Vehicle & Employee stacked */}
                 <View style={{ backgroundColor: c.overlay10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10, gap: 2 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
-                  <Text style={{ fontSize: 8, fontWeight: '500', color: c.textOnDark60 , fontFamily: MONO}}>{driver?.driver_code || '-'}</Text>
+                  <Text style={styles.stripTruck9}>{driver?.truck_code || '-'}</Text>
+                  <Text style={styles.stripDriver8}>{driver?.driver_code || '-'}</Text>
                 </View>
                 {/* Sync pill */}
                 <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.overlay10, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }}>
                   <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><Icon name="sync" size={13} color={c.textOnPrimary} /></Animated.View>
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: refreshing ? c.warning : c.success }} />
-                  <Text style={{ fontSize: 9, fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>{syncAgo}</Text>
+                  <Text style={styles.stripSync9}>{syncAgo}</Text>
                 </TouchableOpacity>
                 <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 8, fontWeight: '700', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                  <Text style={styles.stripOnlineLabel}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                 </View>
                 <TouchableOpacity style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay10 }} onPress={openMenu} activeOpacity={0.7}>
                   <Icon name="menu" size={15} color={c.textOnPrimary} />
@@ -1327,7 +1332,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   return (
                     <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
                       <View style={{ width: ms(5), height: ms(5), borderRadius: ms(3), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
-                      <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700', fontFamily: MONO}]}>{ticket.ticket_code}</Text>
+                      <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700'}]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1340,7 +1345,6 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={styles.headerLeft}>
                   <Image source={require('../assets/images/logo.png')} style={[styles.logo, L && { width: ls(30), height: ls(30), borderRadius: ls(15) }]} />
                   <Text numberOfLines={1} style={[styles.logoTitle,
-                    {fontFamily: MONO},
                   { color: c.textOnPrimary, marginLeft: L ? ls(8) : wp(10), flexShrink: 1 }, L && { fontSize: ls(20) }]}>{company?.company_name || t('app.name')}</Text>
                 </View>
                 <View style={[styles.headerActions, L && { gap: ls(5) }]}>
@@ -1350,13 +1354,13 @@ export default function DashboardScreen({ navigation }: Props) {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: ls(6), backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12) }}>
                         <Icon name={getWeatherIcon(detail?.weather?.icon)} size={ls(16)} color={c.textOnPrimary} />
                         <View>
-                          <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                          <Text style={styles.lsPlant10} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
+                          <Text style={styles.lsWeather8} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                         </View>
                       </View>
                       <View style={{ backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), gap: ls(2) }}>
-                        <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '500', color: c.textOnDark60 , fontFamily: MONO}}>{driver?.driver_code || '-'}</Text>
+                        <Text style={styles.lsTruck10}>{driver?.truck_code || '-'}</Text>
+                        <Text style={styles.lsDriver8}>{driver?.driver_code || '-'}</Text>
                       </View>
                     </>
                   )}
@@ -1369,10 +1373,10 @@ export default function DashboardScreen({ navigation }: Props) {
                       <Icon name="sync" size={L ? ls(15) : ms(16)} color={c.textOnPrimary} />
                     </Animated.View>
                     <View style={{ width: ls(5), height: ls(5), borderRadius: 3, backgroundColor: refreshing ? c.warning : c.success }} />
-                    <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>{syncAgo}</Text>
+                    <Text style={styles.lsSync8}>{syncAgo}</Text>
                   </TouchableOpacity>
                   <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', borderRadius: L ? ls(10) : wp(10), paddingVertical: L ? ls(4) : wp(4), paddingHorizontal: L ? ls(8) : wp(8), justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: L ? ms(8) : ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
+                    <Text style={{ fontSize: L ? ms(8) : ms(9), fontWeight: '700', color: '#fff', fontFamily: MONO }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
                   </View>
                   <TouchableOpacity style={[styles.hdrBtn, { backgroundColor: c.overlay10 }, L && { width: ls(34), height: ls(34), borderRadius: ls(10) }]} onPress={openMenu} activeOpacity={0.7}>
                     <Icon name="menu" size={L ? ls(21) : ms(19)} color={c.textOnPrimary} />
@@ -1386,7 +1390,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   return (
                     <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) { setPendingDetails(true); } switchTicket(i); }} activeOpacity={0.7} style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
                       <View style={{ width: ms(5), height: ms(5), borderRadius: ms(3), backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
-                      <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700', fontFamily: MONO}]}>{ticket.ticket_code}</Text>
+                      <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700'}]}>{ticket.ticket_code}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1691,25 +1695,30 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                   <Image source={require('../assets/images/logo.png')} style={{ width: ms(34), height: ms(34), borderRadius: ms(17) }} />
                   <View>
-                    <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
-                    <Text style={{ fontSize: ms(9), fontWeight: '500', color: c.textOnDark35 , fontFamily: MONO}}>{driver?.driver_code || '-'}</Text>
+                    <Text style={styles.infoBarTruck}>{driver?.truck_code || '-'}</Text>
+                    <Text style={styles.infoBarDriver}>{driver?.driver_code || '-'}</Text>
                   </View>
                 </View>
                 <View style={{ alignItems: 'center', flex: 2 }}>
-                  <Text style={{ fontSize: ms(13), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1 , fontFamily: MONO}}>TICKET {currentTicket?.ticket_code || '-'}</Text>
-                  <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}}>ORDER {currentTicket?.order_code || '-'}</Text>
+                  <Text style={styles.infoBarCompany}>TICKET {currentTicket?.ticket_code || '-'}</Text>
+                  <Text style={styles.infoBarOrder}>ORDER {currentTicket?.order_code || '-'}</Text>
                 </View>
-                <View style={{ alignItems: 'flex-end', flex: 1, gap: 3 }}>
+                {detail?.weather && (
+                  <TouchableOpacity onPress={() => setWeatherVisible(true)} activeOpacity={0.7} style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 6, paddingHorizontal: 8, borderRadius: 6, marginRight: 6 }}>
+                    <Icon name={getWeatherIcon(detail.weather.icon)} size={ms(16)} color="#fff" />
+                  </TouchableOpacity>
+                )}
+                <View style={{ alignItems: 'stretch', gap: 3 }}>
                   {currentTicket != null && (<>
                     {(() => {
                       const status = getTicketStatus(currentTicket, detail); const isActive = status.type === 'active'; const isCompleted = status.type === 'completed'; return (
-                        <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: wp(100) }}>
-                          <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' }} />
-                          <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' , fontFamily: MONO}}>{isActive ? 'IN TRANSIT' : status.label}</Text>
+                        <View style={{ backgroundColor: isActive ? c.accent : isCompleted ? '#2E7D32' : '#F59E0B', paddingVertical: 2, paddingHorizontal: 8, borderRadius: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#fff' }} />
+                          <Text style={styles.statusBadgeText}>{isActive ? 'IN TRANSIT' : status.label}</Text>
                         </View>);
                     })()}
-                    <View style={{ backgroundColor: '#E53935', paddingVertical: 3, paddingHorizontal: 10, borderRadius: 4, alignItems: 'center', justifyContent: 'center', minWidth: wp(100) }}>
-                      <Text style={{ fontSize: ms(7), fontWeight: '900', color: '#fff' , fontFamily: MONO}}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
+                    <View style={{ backgroundColor: '#E53935', paddingVertical: 2, paddingHorizontal: 8, borderRadius: 4, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={styles.statusBadgeText}>{detail?.ticket?.payment_terms || PAYMENT_MAP[currentTicket.payment_form] || 'ON ACCOUNT'}</Text>
                     </View>
                   </>)}
                 </View>
@@ -1725,7 +1734,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       const lineDone = item.done && !isLast && timeline[i + 1]?.done;
                       return (
                         <View key={item.labelKey} style={{ alignItems: 'center', flex: 1 }}>
-                          <Text style={{ fontSize: ms(8), fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 , fontFamily: MONO}} numberOfLines={1}>{item.label}</Text>
+                          <Text style={[styles.timelineLabel, { fontWeight: isActive ? '900' : '700', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted }]} numberOfLines={1}>{item.label}</Text>
                           <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(14), width: '100%' }}>
                             {isFirst ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: item.done ? c.primary : c.border }} />}
                             <View style={{ width: dotSz, height: dotSz, borderRadius: dotSz / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: isActive ? '#1E88E5' : item.done ? c.primary : c.surface, borderWidth: isActive ? 3 : item.done ? 0 : 1.5, borderColor: isActive ? '#90CAF9' : c.border }}>
@@ -1734,7 +1743,7 @@ export default function DashboardScreen({ navigation }: Props) {
                             </View>
                             {isLast ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: lineDone ? c.primary : c.border }} />}
                           </View>
-                          <Text style={{ fontSize: ms(9), fontWeight: '900', color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted, textAlign: 'center', marginTop: 4 , fontFamily: MONO}}>{item.time}</Text>
+                          <Text style={[styles.timelineTime, { color: isActive ? c.textPrimary : item.done ? c.primary : c.textMuted }]}>{item.time}</Text>
                         </View>);
                     })}
                   </View>
@@ -1746,18 +1755,18 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ gap: wp(6) }}>
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>Customer</Text>
+                      <Text style={[styles.cardSectionHeader, { color: isDark ? '#B0BEC5' : c.textMuted }]}>Customer</Text>
                     </View>
                     {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
                       <View key={i} style={{ flexDirection: 'row', paddingVertical: 7, borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>{row.label}</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>{row.value}</Text>
+                        <Text style={styles.cardFieldLabel}>{row.label}</Text>
+                        <Text style={styles.cardFieldValue}>{row.value}</Text>
                       </View>))}
                   </View>
                   {/* Product */}
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>PRODUCTS</Text>
+                      <Text style={[styles.cardSectionHeader, { color: isDark ? '#B0BEC5' : c.textMuted, flex: 1 }]}>PRODUCTS</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Icon name="visibility" size={ms(16)} color={c.accent} />
                       </TouchableOpacity>
@@ -1765,50 +1774,50 @@ export default function DashboardScreen({ navigation }: Props) {
                     {/* Data row with titles */}
                     <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
                       <View style={{ flex: 0.7, paddingRight: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>CODE</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
+                        <Text style={styles.cardProductLabel}>CODE</Text>
+                        <Text style={styles.cardProductValue700} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.mix_code || '-'}</Text>
                       </View>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
+                      <Text style={styles.pipeDivider}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => setProductsVisible(true)} style={{ flex: 2.5, paddingHorizontal: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>DESCRIPTION</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
+                        <Text style={styles.cardProductLabel}>DESCRIPTION</Text>
+                        <Text style={styles.cardProductValue700} numberOfLines={1}>{currentTicket?.mix?.description || '-'}</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
+                      <Text style={styles.pipeDivider}>|</Text>
                       <View style={{ flex: 1.2, paddingHorizontal: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>SLUMP</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
+                        <Text style={styles.cardProductLabel}>SLUMP</Text>
+                        <Text style={styles.cardProductValue800} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.slump || '-'}</Text>
                       </View>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
+                      <Text style={styles.pipeDivider}>|</Text>
                       <View style={{ flex: 1.6, paddingHorizontal: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>QTY/UOM</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                        <Text style={styles.cardProductLabel}>QTY/UOM</Text>
+                        <Text style={styles.cardProductValue900} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
                       </View>
-                      <Text style={{ fontSize: ms(7), color: c.border, marginBottom: 1 , fontFamily: MONO}}>|</Text>
+                      <Text style={styles.pipeDivider}>|</Text>
                       <View style={{ flex: 1.2, paddingLeft: wp(2) }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2 , fontFamily: MONO}}>USAGE</Text>
-                        <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.textPrimary, textTransform: 'uppercase' , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
+                        <Text style={styles.cardProductLabel}>USAGE</Text>
+                        <Text style={[styles.cardProductValue700, { textTransform: 'uppercase' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{detail?.mix?.usage || '-'}</Text>
                       </View>
                     </View>
                   </View>
                   {/* Delivery Location */}
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: isDark ? '#B0BEC5' : c.textMuted, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>Delivery Location</Text>
+                      <Text style={[styles.cardSectionHeader, { color: isDark ? '#B0BEC5' : c.textMuted }]}>Delivery Location</Text>
                     </View>
                     {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.quantity || '-' }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }].map((row, i) => (
                       <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>{row.label}</Text>
-                        {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={{ fontSize: ms(8), fontWeight: '700', color: c.accent, textDecorationLine: 'underline' , fontFamily: MONO}}>{row.value}</Text></TouchableOpacity>
-                        ) : (<Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>{row.value}</Text>)}
+                        <Text style={styles.cardFieldLabel}>{row.label}</Text>
+                        {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={[styles.cardProductValue700, { color: c.accent, textDecorationLine: 'underline' }]}>{row.value}</Text></TouchableOpacity>
+                        ) : (<Text style={styles.cardFieldValue}>{row.value}</Text>)}
                       </View>))}
                     {/* Trucks row */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>TRUCKS</Text>
+                      <Text style={styles.cardFieldLabel}>TRUCKS</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>
-                          {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary , fontFamily: MONO}}>{detail.mix.truck_ahead.status}</Text></> : null}
+                        <Text style={styles.cardFieldValue}>
+                          {detail?.mix?.truck_ahead ? <><Text>AHEAD · {detail.mix.truck_ahead.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary, fontFamily: MONO }}>{detail.mix.truck_ahead.status}</Text></> : null}
                           {detail?.mix?.truck_ahead && detail?.mix?.truck_behind ? '  |  ' : ''}
-                          {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary , fontFamily: MONO}}>{detail.mix.truck_behind.status}</Text></> : null}
+                          {detail?.mix?.truck_behind ? <><Text>BEHIND · {detail.mix.truck_behind.truck_code} </Text><Text style={{ fontSize: ms(7), fontWeight: '500', color: c.textSecondary, fontFamily: MONO }}>{detail.mix.truck_behind.status}</Text></> : null}
                           {!detail?.mix?.truck_ahead && !detail?.mix?.truck_behind ? '—' : null}
                         </Text>
                         {(detail?.mix?.truck_ahead || detail?.mix?.truck_behind) && <Icon name="map" size={ms(12)} color={c.accent} style={{ marginLeft: wp(3) }} />}
@@ -1816,41 +1825,70 @@ export default function DashboardScreen({ navigation }: Props) {
                     </View>
                     {/* Instructions row */}
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5 , fontFamily: MONO}}>INSTRUCTIONS</Text>
+                      <Text style={styles.cardFieldLabel}>INSTRUCTIONS</Text>
                       {detail?.job?.instructions ? (
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
                           <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: 4, paddingHorizontal: 6 }}>
-                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#000', lineHeight: ms(16) , fontFamily: MONO}} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
+                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#000', lineHeight: ms(16), fontFamily: MONO }} numberOfLines={instructionsExpanded ? undefined : 1}>{detail.job.instructions}</Text>
                           </View>
                           <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsModalVisible(true)} style={{ marginLeft: 6, paddingVertical: 3, paddingHorizontal: 6 }}>
-                            <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.accent , fontFamily: MONO}}>VIEW ALL</Text>
+                            <Text style={[styles.linkText8, { color: c.accent }]}>VIEW ALL</Text>
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.textMuted, flex: 1 , fontFamily: MONO}}>—</Text>
+                        <Text style={[styles.cardFieldValue, { color: c.textMuted }]}>—</Text>
                       )}
                     </View>
                   </View>
+                  {/* Quick Links */}
+                  <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8) }}>
+                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
+                      <Text style={[styles.cardSectionHeader, { color: isDark ? '#B0BEC5' : c.textMuted }]}>QUICK LINKS</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: wp(8) }}>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => setAcceptTicketVisible(true)}>
+                        <Text style={styles.linkText8}>{t('modals.signAccept')}</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.mutedText8}>|</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => setDisputeTicketVisible(true)}>
+                        <Text style={styles.linkText8}>{t('modals.disputeLoad')}</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.mutedText8}>|</Text>
+                      <TouchableOpacity activeOpacity={0.6} onPress={() => setCurblineReleaseVisible(true)}>
+                        <Text style={styles.linkText8}>{t('modals.signCurbline')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  {/* Required Entries */}
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: wp(8), paddingHorizontal: wp(8), paddingBottom: wp(4) }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
+                      <Text style={styles.sectionLabelPurple}>REQUIRED ENTRIES</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error , fontFamily: MONO}}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
+                        <Text style={{ fontSize: ms(8), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error, fontFamily: MONO }}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                       </View>
                     </View>
                     {[{ label: 'PLANT', data: plantMandatory, icon: 'factory' as const }, { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const }, { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const }, { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const }].map((section, si, arr) => (
                       <View key={si} style={{ marginBottom: si < arr.length - 1 ? 4 : 0, paddingBottom: si < arr.length - 1 ? 8 : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                          <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 , fontFamily: MONO}}>{section.label}</Text>
-                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error , fontFamily: MONO}}>{section.data.filled}/{section.data.total}</Text>
+                          <Text style={styles.entryNameText}>{section.label}</Text>
+                          <Text style={{ fontSize: ms(8), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error, fontFamily: MONO }}>{section.data.filled}/{section.data.total}</Text>
                         </View>
                         {section.data.items.map((item, ii) => {
                           const mi = item as MandatoryItem;
-                          const Row = (
+                          const isReturned = (mi as any).fieldType === 'returned_group';
+                          const Row = isReturned ? (
+                            <View key={ii} style={{ paddingVertical: 6, gap: 4 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><Icon name={item.filled ? 'check' : 'close'} size={8} color={item.filled ? '#fff' : c.error} /></View>
+                                <Text style={{ fontSize: ms(8), fontWeight: item.filled ? '700' : '600', color: c.textPrimary, fontFamily: MONO }}>{item.name}</Text>
+                              </View>
+                              {item.value ? <Text style={[styles.linkText8, { fontWeight: '700', marginLeft: 21 }]} numberOfLines={2}>{item.value}</Text> : <Text style={[styles.mutedText8, { marginLeft: 21 }]}>--</Text>}
+                            </View>
+                          ) : (
                             <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 7 }}>
                               <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}><Icon name={item.filled ? 'check' : 'close'} size={8} color={item.filled ? '#fff' : c.error} /></View>
-                              <Text style={{ fontSize: ms(8), fontWeight: item.filled ? '500' : '600', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>{item.name}</Text>
-                              {item.value ? <Text style={{ fontSize: ms(8), fontWeight: '700', color: c.primary , fontFamily: MONO}}>{item.value}</Text> : <Text style={{ fontSize: ms(8), color: c.textMuted , fontFamily: MONO}}>--</Text>}
+                              <Text style={[styles.cardFieldValue, { fontWeight: item.filled ? '500' : '600' }]} numberOfLines={1}>{item.name}</Text>
+                              {item.value ? <Text style={[styles.linkText8, { fontWeight: '700' }]} numberOfLines={2}>{item.value}</Text> : <Text style={styles.mutedText8}>--</Text>}
                             </View>
                           );
                           const onTap = () => handleMandatoryTap(mi);
@@ -1862,19 +1900,19 @@ export default function DashboardScreen({ navigation }: Props) {
                   {/* Additional Entries */}
                   <View style={{ backgroundColor: c.white, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: wp(8), marginTop: 10 }}>
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
-                      <Text style={{ fontSize: ms(8), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>ADDITIONAL ENTRIES</Text>
+                      <Text style={styles.sectionLabelPurple2}>ADDITIONAL ENTRIES</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('plant'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary , fontFamily: MONO}}>PLANT</Text>
+                        <Text style={styles.linkText8}>PLANT</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: ms(8), color: c.textMuted , fontFamily: MONO}}>|</Text>
+                      <Text style={styles.mutedText8}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('jobsite'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary , fontFamily: MONO}}>JOB SITE</Text>
+                        <Text style={styles.linkText8}>JOB SITE</Text>
                       </TouchableOpacity>
-                      <Text style={{ fontSize: ms(8), color: c.textMuted , fontFamily: MONO}}>|</Text>
+                      <Text style={styles.mutedText8}>|</Text>
                       <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('cod'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: ms(8), fontWeight: '800', color: c.primary , fontFamily: MONO}}>COD</Text>
+                        <Text style={styles.linkText8}>COD</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1902,7 +1940,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TouchableOpacity onPress={handleSync} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.primarySurface, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8 }}>
             <Animated.View style={{ transform: [{ rotate: syncRotate }] }}><Icon name="sync" size={12} color={c.primary} /></Animated.View>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: c.primary , fontFamily: MONO}}>REFRESHED at {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            <Text style={styles.refreshedText}>REFRESHED at {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </TouchableOpacity>
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isOnline ? c.success : c.error }} />
         </View>
@@ -1957,7 +1995,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={[styles.ddIcon, isLandscape && { width: lp ? 28 : ls(24), height: lp ? 28 : ls(24), borderRadius: lp ? 8 : ls(7) }, { backgroundColor: bgColor }]}>
                       <Icon name={itemIcon as any} size={isLandscape ? (lp ? 18 : ls(14)) : ms(18)} color={iconColor} />
                     </View>
-                    <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, {color: labelColor, fontFamily: MONO}]}>{label}{suffix}</Text>
+                    <Text style={[styles.ddLabel, isLandscape && { fontSize: ms(13) }, {color: labelColor}]}>{label}{suffix}</Text>
                     <Icon name="chevron-right" size={isLandscape ? (lp ? 18 : ls(16)) : ms(18)} color={c.textMuted} />
                   </TouchableOpacity>
                 );
@@ -1966,7 +2004,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
             {/* Version footer */}
             <View style={[styles.ddFooter, isLandscape && { paddingVertical: lp ? 6 : ls(4) }, { borderTopColor: c.borderLight }]}>
-              <Text style={[styles.ddVersion, {color: c.textMuted, fontFamily: MONO}]}>{appVersion ? `v${appVersion}` : '...'}</Text>
+              <Text style={styles.ddVersion}>{appVersion ? `v${appVersion}` : '...'}</Text>
             </View>
           </Animated.View>
         </View>
@@ -1988,8 +2026,8 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={L ? 20 : 50}
         maxHeightPercent={50}>
         <View style={{ paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), alignItems: 'center' }}>
-          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
-          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' , fontFamily: MONO}}>SELECT SLUMP <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>mm</Text></Text>
+          <Text style={styles.pickerSectionLabel}>REQUIRED ENTRIES</Text>
+          <Text style={styles.modalTitle9}>SELECT SLUMP <Text style={styles.mutedText8}>mm</Text></Text>
         </View>
         <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
             {((() => {
@@ -2025,7 +2063,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     } catch { }
                   }}
                   style={{ paddingVertical: ms(5), paddingHorizontal: ms(10), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: isSelected ? c.primarySurface : 'transparent', alignItems: 'center' }}>
-                  <Text style={{ fontSize: ms(8), fontWeight: isSelected ? '900' : '600', color: isSelected ? c.primary : c.textPrimary, textAlign: 'center' , fontFamily: MONO}}>{val}</Text>
+                  <Text style={{ fontSize: ms(8), fontWeight: isSelected ? '900' : '600', color: isSelected ? c.primary : c.textPrimary, textAlign: 'center', fontFamily: MONO }}>{val}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -2043,7 +2081,7 @@ export default function DashboardScreen({ navigation }: Props) {
             }}
             activeOpacity={0.7}
             style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
-            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
+            <Text style={styles.modalBtnWhite}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2055,47 +2093,51 @@ export default function DashboardScreen({ navigation }: Props) {
         maxWidth={L ? 280 : isTablet ? 280 : 240}
         widthPercent={L ? 22 : 55}>
         <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: wp(10) }}>
-          <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1 , fontFamily: MONO}}>{timePickerStep?.label || 'SELECT TIME'}</Text>
-          <Text style={{ fontSize: ms(14), fontWeight: '900', color: c.primary, marginTop: 4, marginBottom: wp(8), textAlign: 'center' , fontFamily: MONO}}>{String(timePickerHour).padStart(2, '0')}:{String(timePickerMinute).padStart(2, '0')}</Text>
+          <Text style={styles.modalSectionLabel}>{timePickerStep?.label || 'SELECT TIME'}</Text>
+          <Text style={[styles.timePickerDisplay, { marginBottom: wp(8) }]}>{String(timePickerHour).padStart(2, '0')}:{String(timePickerMinute).padStart(2, '0')}</Text>
           <View style={{ flexDirection: 'row', marginBottom: wp(4) }}>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>Hours</Text>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>Minutes</Text>
+            <Text style={styles.timePickerColumnLabel}>Hours</Text>
+            <Text style={styles.timePickerColumnLabel}>Minutes</Text>
           </View>
           <View style={{ flexDirection: 'row', height: 120, overflow: 'hidden' }}>
             <View style={{ flex: 1, position: 'relative' }}>
               <View pointerEvents="none" style={{ position: 'absolute', top: 40, left: 0, right: 0, height: 40, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderColor: c.border, backgroundColor: c.primarySurface, zIndex: 0 }} />
-              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate="fast"
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.98}
                 contentContainerStyle={{ paddingVertical: 40 }}
                 contentOffset={{ x: 0, y: timePickerHour * 40 }}
-                onScroll={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); const h = Math.max(0, Math.min(23, idx)); if (h !== timePickerHour) setTimePickerHour(h); }}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerHour(Math.max(0, Math.min(23, idx))); }}>
+                scrollEventThrottle={200}
+                overScrollMode="never"
+                bounces={false}
+                onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerHour(Math.max(0, Math.min(23, idx))); }}
+                nestedScrollEnabled>
                 {Array.from({ length: 24 }, (_, i) => (
-                  <TouchableOpacity key={i} onPress={() => setTimePickerHour(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: ms(12), fontWeight: timePickerHour === i ? '900' : '400', color: timePickerHour === i ? c.textPrimary : c.textMuted , fontFamily: MONO}}>{String(i).padStart(2, '0')}</Text>
-                  </TouchableOpacity>
+                  <Pressable key={i} onPress={() => setTimePickerHour(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: ms(12), fontWeight: timePickerHour === i ? '900' : '400', color: timePickerHour === i ? c.textPrimary : c.textMuted, fontFamily: MONO }}>{String(i).padStart(2, '0')}</Text>
+                  </Pressable>
                 ))}
               </ScrollView>
             </View>
             <View style={{ flex: 1, position: 'relative' }}>
               <View pointerEvents="none" style={{ position: 'absolute', top: 40, left: 0, right: 0, height: 40, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderColor: c.border, backgroundColor: c.primarySurface, zIndex: 0 }} />
-              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate="fast"
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} snapToInterval={40} decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.98}
                 contentContainerStyle={{ paddingVertical: 40 }}
                 contentOffset={{ x: 0, y: timePickerMinute * 40 }}
-                onScroll={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); const m = Math.max(0, Math.min(59, idx)); if (m !== timePickerMinute) setTimePickerMinute(m); }}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerMinute(Math.max(0, Math.min(59, idx))); }}>
+                scrollEventThrottle={200}
+                overScrollMode="never"
+                bounces={false}
+                onMomentumScrollEnd={(e) => { const idx = Math.round(e.nativeEvent.contentOffset.y / 40); setTimePickerMinute(Math.max(0, Math.min(59, idx))); }}
+                nestedScrollEnabled>
                 {Array.from({ length: 60 }, (_, i) => (
-                  <TouchableOpacity key={i} onPress={() => setTimePickerMinute(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: ms(12), fontWeight: timePickerMinute === i ? '900' : '400', color: timePickerMinute === i ? c.textPrimary : c.textMuted , fontFamily: MONO}}>{String(i).padStart(2, '0')}</Text>
-                  </TouchableOpacity>
+                  <Pressable key={i} onPress={() => setTimePickerMinute(i)} style={{ height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: ms(12), fontWeight: timePickerMinute === i ? '900' : '400', color: timePickerMinute === i ? c.textPrimary : c.textMuted, fontFamily: MONO }}>{String(i).padStart(2, '0')}</Text>
+                  </Pressable>
                 ))}
               </ScrollView>
             </View>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(8), marginTop: wp(12) }}>
             <TouchableOpacity onPress={() => setTimePickerStep(null)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, borderWidth: 1, borderColor: c.border }}>
-              <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary , fontFamily: MONO}}>Cancel</Text>
+              <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -2120,7 +2162,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 } catch { }
               }}
               style={{ paddingVertical: wp(3), paddingHorizontal: wp(16), borderRadius: 8, backgroundColor: c.primary }}>
-              <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>OK</Text>
+              <Text style={styles.modalSaveText}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2135,9 +2177,9 @@ export default function DashboardScreen({ navigation }: Props) {
         avoidKeyboard>
         <ScrollView bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={{ backgroundColor: c.white, borderRadius: 10, overflow: 'hidden', padding: wp(10) }}>
-            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
-            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' , fontFamily: MONO}}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Liters</Text>
+            <Text style={styles.modalSectionLabelCenter}>REQUIRED ENTRIES</Text>
+            <Text style={[styles.modalTitle9, { marginBottom: wp(4) }]}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
+            <Text style={[styles.modalFieldLabel8, { marginBottom: wp(2) }]}>Liters</Text>
             <TextInput
               style={{ borderWidth: 1.5, borderColor: c.accent, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), fontSize: ms(10), fontWeight: '600', color: c.textPrimary, marginBottom: wp(4) }}
               value={waterLitresInput}
@@ -2146,7 +2188,7 @@ export default function DashboardScreen({ navigation }: Props) {
               placeholderTextColor={c.textMuted}
               keyboardType="numeric"
             />
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Slump (mm)</Text>
+            <Text style={[styles.modalFieldLabel8, { marginTop: wp(3), marginBottom: wp(2) }]}>Slump (mm)</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -2160,11 +2202,11 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(5) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: waterMmInput ? c.textPrimary : c.textMuted , fontFamily: MONO}}>{waterMmInput ? `${waterMmInput} mm` : 'Select slump'}</Text>
+              <Text style={[styles.modalFieldValue, { color: waterMmInput ? c.textPrimary : c.textMuted }]}>{waterMmInput ? `${waterMmInput} mm` : 'Select slump'}</Text>
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(6) }}>
               <TouchableOpacity onPress={() => setWaterModalField(null)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), borderWidth: 1.5, borderColor: c.border }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary , fontFamily: MONO}}>Cancel</Text>
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -2184,7 +2226,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   } catch { }
                 }}
                 style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), backgroundColor: c.primary }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Save</Text>
+                <Text style={styles.modalSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2200,9 +2242,9 @@ export default function DashboardScreen({ navigation }: Props) {
         avoidKeyboard>
         <ScrollView bounces={false} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={{ backgroundColor: c.white, borderRadius: 10, overflow: 'hidden', padding: wp(10) }}>
-            <Text style={{ fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
-            <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, marginBottom: wp(4), textAlign: 'center' , fontFamily: MONO}}>Returned</Text>
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Qty (m3)</Text>
+            <Text style={styles.modalSectionLabelCenter}>REQUIRED ENTRIES</Text>
+            <Text style={[styles.modalTitle9, { marginBottom: wp(4) }]}>Returned</Text>
+            <Text style={[styles.modalFieldLabel8, { marginBottom: wp(2) }]}>Qty (m3)</Text>
             <TextInput
               style={{ borderWidth: 1.5, borderColor: c.accent, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), fontSize: ms(10), fontWeight: '600', color: c.textPrimary, marginBottom: wp(4) }}
               value={returnedQtyInput}
@@ -2211,7 +2253,7 @@ export default function DashboardScreen({ navigation }: Props) {
               placeholderTextColor={c.textMuted}
               keyboardType="numeric"
             />
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(3), marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Reason</Text>
+            <Text style={[styles.modalFieldLabel8, { marginTop: wp(3), marginBottom: wp(2) }]}>Reason</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -2224,9 +2266,9 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(4) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedReason ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{(() => { const opts = (deliveryRecord as any)?.field_definitions?.returned?.reason_for_return?.config?.options || []; return opts.find((o: any) => (o.key || o.value) === returnedReason)?.label || returnedReason || 'Select reason'; })()}</Text>
+              <Text style={[styles.modalFieldValue, { color: returnedReason ? c.textPrimary : c.textMuted }]} numberOfLines={1}>{(() => { const opts = (deliveryRecord as any)?.field_definitions?.returned?.reason_for_return?.config?.options || []; return opts.find((o: any) => (o.key || o.value) === returnedReason)?.label || returnedReason || 'Select reason'; })()}</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, marginTop: wp(1), marginBottom: wp(2), letterSpacing: 0.3 , fontFamily: MONO}}>Disposal</Text>
+            <Text style={[styles.modalFieldLabel8, { marginTop: wp(1), marginBottom: wp(2) }]}>Disposal</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -2239,11 +2281,11 @@ export default function DashboardScreen({ navigation }: Props) {
                 }
               }}
               style={{ borderWidth: 1.5, borderColor: c.border, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), marginBottom: wp(5) }}>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: returnedDisposal ? c.textPrimary : c.textMuted , fontFamily: MONO}} numberOfLines={1}>{(() => { const opts = (deliveryRecord as any)?.field_definitions?.returned?.disposal_method?.config?.options || []; return opts.find((d: any) => (d.key || d.value) === returnedDisposal)?.label || returnedDisposal || 'Select method'; })()}</Text>
+              <Text style={[styles.modalFieldValue, { color: returnedDisposal ? c.textPrimary : c.textMuted }]} numberOfLines={1}>{(() => { const opts = (deliveryRecord as any)?.field_definitions?.returned?.disposal_method?.config?.options || []; return opts.find((d: any) => (d.key || d.value) === returnedDisposal)?.label || returnedDisposal || 'Select method'; })()}</Text>
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: wp(6), marginTop: wp(3) }}>
               <TouchableOpacity onPress={() => setReturnedModalVisible(false)} activeOpacity={0.7} style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), borderWidth: 1.5, borderColor: c.border }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textPrimary , fontFamily: MONO}}>Cancel</Text>
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -2262,7 +2304,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   } catch { }
                 }}
                 style={{ paddingVertical: wp(3), paddingHorizontal: wp(12), borderRadius: wp(6), backgroundColor: c.primary }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Save</Text>
+                <Text style={styles.modalSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2282,8 +2324,8 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={L ? 22 : 55}
         maxHeightPercent={55}>
         <View style={{ paddingHorizontal: ms(10), paddingTop: ms(8), paddingBottom: ms(4), alignItems: 'center' }}>
-          <Text style={{ fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
-          <Text style={{ fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center' , fontFamily: MONO}}>{returnedPickerType === 'reason' ? 'SELECT REASON' : 'SELECT DISPOSAL'}</Text>
+          <Text style={styles.pickerSectionLabel}>REQUIRED ENTRIES</Text>
+          <Text style={styles.modalTitle9}>{returnedPickerType === 'reason' ? 'SELECT REASON' : 'SELECT DISPOSAL'}</Text>
         </View>
         <ScrollView showsVerticalScrollIndicator persistentScrollbar indicatorStyle={isDark ? 'white' : 'black'} bounces={false} style={{ maxHeight: L ? winHeight * 0.35 : winHeight * 0.4 }}>
           {(() => {
@@ -2304,7 +2346,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   }
                 }}
                 style={{ paddingVertical: ms(6), paddingHorizontal: ms(10), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: selected ? c.primarySurface : 'transparent', alignItems: 'center' }}>
-                <Text style={{ fontSize: ms(9), fontWeight: selected ? '900' : '600', color: selected ? c.primary : c.textPrimary, textAlign: 'center' , fontFamily: MONO}}>{opt.label}</Text>
+                <Text style={{ fontSize: ms(9), fontWeight: selected ? '900' : '600', color: selected ? c.primary : c.textPrimary, textAlign: 'center', fontFamily: MONO }}>{opt.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -2319,7 +2361,7 @@ export default function DashboardScreen({ navigation }: Props) {
             }}
             activeOpacity={0.7}
             style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
-            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
+            <Text style={styles.modalBtnWhite}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2406,13 +2448,13 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={L ? 40 : 80}>
         <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden' }}>
           <View style={{ paddingHorizontal: wp(16), paddingTop: wp(16), paddingBottom: wp(10) }}>
-            <Text style={{ fontSize: ms(12), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>DELIVERY INSTRUCTIONS</Text>
+            <Text style={styles.instrTitle}>DELIVERY INSTRUCTIONS</Text>
           </View>
           <View style={{ paddingHorizontal: wp(16), paddingBottom: wp(16) }}>
             {(detail?.job?.instructions || '').split(/[*•\n]+/).filter((s: string) => s.trim()).map((line: string, i: number) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: wp(8) }}>
-                <Text style={{ fontSize: ms(11), color: c.textPrimary, marginRight: wp(8) , fontFamily: MONO}}>•</Text>
-                <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textPrimary, flex: 1, lineHeight: ms(18) , fontFamily: MONO}}>{line.trim()}</Text>
+                <Text style={styles.instrBullet}>•</Text>
+                <Text style={styles.instrLine}>{line.trim()}</Text>
               </View>
             ))}
           </View>
@@ -2420,7 +2462,7 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => setInstructionsModalVisible(false)}
             activeOpacity={0.7}
             style={{ alignSelf: 'flex-end', backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: 8, margin: wp(16), marginTop: 0 }}>
-            <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
+            <Text style={styles.instrCloseBtn}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2440,7 +2482,7 @@ export default function DashboardScreen({ navigation }: Props) {
           ) : qrError ? (
             <View style={{ paddingVertical: 20, alignItems: 'center' }}>
               <Icon name="error-outline" size={ms(32)} color={c.qrFg + '60'} />
-              <Text style={{ fontSize: ms(10), fontWeight: '700', color: c.qrFg, marginTop: 8, textAlign: 'center', fontFamily: MONO }}>Unable to load QR code</Text>
+              <Text style={styles.qrErrorText}>Unable to load QR code</Text>
               <TouchableOpacity
                 onPress={() => {
                   if (!currentTicket) return;
@@ -2452,12 +2494,12 @@ export default function DashboardScreen({ navigation }: Props) {
                 }}
                 activeOpacity={0.7}
                 style={{ marginTop: 12, backgroundColor: '#157a15', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 6 }}>
-                <Text style={{ fontSize: ms(9), fontWeight: '700', color: '#fff', fontFamily: MONO }}>Retry</Text>
+                <Text style={styles.qrRetryBtnText}>Retry</Text>
               </TouchableOpacity>
             </View>
           ) : qrData ? (
             <>
-              <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: ms(9), fontWeight: '800', color: c.qrFg, letterSpacing: 0.3, marginBottom: 16, fontFamily: MONO }}>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={styles.qrTicketCode}>
                 ORDER: {qrData.order_code || '-'}  TICKET: {qrData.ticket_code || '-'}
               </Text>
               <QRCode
@@ -2471,7 +2513,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   onPress={() => setQrVisible(false)}
                   activeOpacity={0.8}
                   style={{ backgroundColor: '#157a15', paddingVertical: 8, paddingHorizontal: 24, borderRadius: 6 }}>
-                  <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#fff', fontFamily: MONO }}>Close</Text>
+                  <Text style={styles.qrCloseBtnText}>Close</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -2484,9 +2526,10 @@ export default function DashboardScreen({ navigation }: Props) {
         visible={plantsVisible}
         onClose={() => setPlantsVisible(false)}
         maxWidth={450}
-        maxHeightPercent={70}>
+        widthPercent={L ? 40 : 85}
+        maxHeightPercent={L ? 70 : 80}>
         <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
-          <Text style={[styles.mHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.plants')}</Text>
+          <Text style={styles.mHeaderTitle}>{t('modals.plants')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setPlantsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
@@ -2498,8 +2541,8 @@ export default function DashboardScreen({ navigation }: Props) {
         ) : plantsError ? (
           <View style={{ paddingVertical: wp(30), alignItems: 'center', paddingHorizontal: wp(20) }}>
             <Icon name="error-outline" size={ms(36)} color={c.textSecondary} />
-            <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(10), textAlign: 'center' , fontFamily: MONO}}>Server Error</Text>
-            <Text style={{ fontSize: ms(11), color: c.textSecondary, marginTop: wp(4), textAlign: 'center' , fontFamily: MONO}}>Unable to load plants. Please try again later.</Text>
+            <Text style={styles.plantErrorTitle}>Server Error</Text>
+            <Text style={styles.plantErrorMsg}>Unable to load plants. Please try again later.</Text>
             <TouchableOpacity
               onPress={() => {
                 setPlantsLoading(true);
@@ -2515,26 +2558,29 @@ export default function DashboardScreen({ navigation }: Props) {
               activeOpacity={0.7}
               style={{ flexDirection: 'row', alignItems: 'center', gap: wp(5), marginTop: wp(16), backgroundColor: c.primary, paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8) }}>
               <Icon name="refresh" size={ms(14)} color="#fff" />
-              <Text style={{ fontSize: ms(11), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Retry</Text>
+              <Text style={styles.plantRetryText}>Retry</Text>
             </TouchableOpacity>
           </View>
         ) : (
+          <View style={{minHeight: L ? undefined : 400, position: 'relative'}}>
           <ScrollView
             style={styles.plantsList}
             showsVerticalScrollIndicator={true}
+            persistentScrollbar={true}
             bounces={false}
             onMomentumScrollEnd={handlePlantsScrollEnd}
             onScrollEndDrag={handlePlantsScrollEnd}
-            scrollEventThrottle={400}
-            onLayout={({ nativeEvent }) => { plantsLayoutH.current = nativeEvent.layout.height; checkPlantsAutoLoad(); }}
-            onContentSizeChange={(_w, h) => { plantsContentH.current = h; checkPlantsAutoLoad(); }}>
+            scrollEventThrottle={16}
+            onScroll={Animated.event([{nativeEvent: {contentOffset: {y: plantsScrollY}}}], {useNativeDriver: false})}
+            onLayout={({ nativeEvent }) => { plantsLayoutH.current = nativeEvent.layout.height; setPlantsViewH(nativeEvent.layout.height); checkPlantsAutoLoad(); }}
+            onContentSizeChange={(_w, h) => { plantsContentH.current = h; setPlantsContH(h); checkPlantsAutoLoad(); }}>
             {plantsList.map(plant => (
               <TouchableOpacity
                 key={plant.id}
                 style={[styles.plantItem, { borderBottomColor: c.borderLight }]}
                 activeOpacity={0.6}
                 onPress={() => setPlantsVisible(false)}>
-                <Text style={[styles.plantText, {color: c.textPrimary, fontFamily: MONO}]}>{plant.code}-{plant.name}</Text>
+                <Text style={styles.plantText}>{plant.code}-{plant.name}</Text>
               </TouchableOpacity>
             ))}
             {plantsLoadingMore && (
@@ -2543,7 +2589,52 @@ export default function DashboardScreen({ navigation }: Props) {
               </View>
             )}
           </ScrollView>
+          {plantsContH > plantsViewH && (
+            <Animated.View style={{
+              position: 'absolute', right: 1, top: 0, width: 3, borderRadius: 2,
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              height: plantsViewH > 0 ? Math.max(20, (plantsViewH / plantsContH) * plantsViewH) : 20,
+              transform: [{translateY: plantsScrollY.interpolate({
+                inputRange: [0, Math.max(1, plantsContH - plantsViewH)],
+                outputRange: [0, plantsViewH - Math.max(20, (plantsViewH / plantsContH) * plantsViewH)],
+                extrapolate: 'clamp',
+              })}],
+            }} />
+          )}
+          </View>
         )}
+      </ResponsiveModal>
+
+      {/* ─── WEATHER MODAL ─── */}
+      <ResponsiveModal
+        visible={weatherVisible}
+        onClose={() => setWeatherVisible(false)}
+        maxWidth={320}
+        widthPercent={L ? 25 : 70}
+        maxHeightPercent={40}>
+        <View style={{ padding: wp(16), alignItems: 'center', gap: wp(10) }}>
+          <Icon name={getWeatherIcon(detail?.weather?.icon)} size={ms(40)} color={c.primary} />
+          <Text style={{ fontSize: ms(20), fontWeight: '900', color: c.textPrimary, fontFamily: MONO }}>
+            {detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C` : '--'}
+          </Text>
+          <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary, textAlign: 'center', textTransform: 'uppercase', fontFamily: MONO }}>
+            {detail?.weather?.description || '--'}
+          </Text>
+          <View style={{ width: '100%', height: StyleSheet.hairlineWidth, backgroundColor: c.border }} />
+          <View style={{ width: '100%', gap: wp(6) }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, fontFamily: MONO }}>PLANT</Text>
+              <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary, fontFamily: MONO }}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: ms(9), fontWeight: '600', color: c.textMuted, fontFamily: MONO }}>LOCATION</Text>
+              <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.textPrimary, fontFamily: MONO }}>{currentTicket?.location_name || '-'}</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => setWeatherVisible(false)} activeOpacity={0.7} style={{ backgroundColor: c.primary, paddingVertical: wp(6), paddingHorizontal: wp(20), borderRadius: 6, marginTop: wp(4) }}>
+            <Text style={{ fontSize: ms(10), fontWeight: '800', color: '#fff', fontFamily: MONO }}>Close</Text>
+          </TouchableOpacity>
+        </View>
       </ResponsiveModal>
 
       {/* ─── VEHICLE MODAL ─── */}
@@ -2554,18 +2645,18 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={isTablet ? 60 : 85}
         maxHeightPercent={60}>
         <View style={[styles.mHeader, { borderBottomColor: c.border }]}>
-          <Text style={[styles.mHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.vehicle', 'Vehicle')}</Text>
+          <Text style={styles.mHeaderTitle}>{t('modals.vehicle', 'Vehicle')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setVehicleVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
         </View>
         <View style={{ alignItems: 'center', paddingVertical: wp(30), paddingHorizontal: wp(20) }}>
-          <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>CURRENT VEHICLE ID</Text>
-          <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: 8 , fontFamily: MONO}}>{driver?.truck_code || '-'}</Text>
+          <Text style={styles.vehicleLabel}>CURRENT VEHICLE ID</Text>
+          <Text style={styles.vehicleValue}>{driver?.truck_code || '-'}</Text>
 
           <View style={{ marginTop: wp(30), alignItems: 'center' }}>
-            <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase' , fontFamily: MONO}}>BROADCASTING STATUS</Text>
-            <Text style={{ fontSize: ms(10), fontWeight: '500', color: c.textSecondary, marginTop: 8 , fontFamily: MONO}}>
+            <Text style={styles.vehicleLabel}>BROADCASTING STATUS</Text>
+            <Text style={styles.vehicleStatusText}>
               {isBroadcasting ? 'BROADCASTING' : 'NOT BROADCASTING'}
             </Text>
             <TouchableOpacity
@@ -2580,7 +2671,7 @@ export default function DashboardScreen({ navigation }: Props) {
               }}
               activeOpacity={0.8}
               onPress={() => setIsBroadcasting(b => !b)}>
-              <Text style={{ fontSize: ms(10), fontWeight: '700', color: '#fff', letterSpacing: 0.5 , fontFamily: MONO}}>
+              <Text style={styles.vehicleBtnText}>
                 {isBroadcasting ? 'TURN OFF' : 'TURN ON'}
               </Text>
             </TouchableOpacity>
@@ -2601,7 +2692,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={[styles.etHeaderIcon, { backgroundColor: c.primarySurface }]}>
             <Icon name="edit" size={ms(18)} color={c.primary} />
           </View>
-          <Text style={[styles.etHeaderTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('modals.editTicket')}</Text>
+          <Text style={styles.etHeaderTitle}>{t('modals.editTicket')}</Text>
           <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setEditVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Icon name="close" size={ms(20)} color={c.textSecondary} />
           </TouchableOpacity>
@@ -2611,7 +2702,7 @@ export default function DashboardScreen({ navigation }: Props) {
           {/* Actions Section */}
           <View style={styles.etSectionHdr}>
             <Icon name="touch-app" size={ms(16)} color={c.accent} />
-            <Text style={[styles.etSectionTitle, {color: c.accent, fontFamily: MONO}]}>{t('modals.actions')}</Text>
+            <Text style={styles.etSectionTitle}>{t('modals.actions')}</Text>
           </View>
 
           {([
@@ -2632,7 +2723,7 @@ export default function DashboardScreen({ navigation }: Props) {
               <View style={[styles.etActionIcon, { backgroundColor: item.bg }]}>
                 <Icon name={item.icon as any} size={ms(18)} color={item.iconColor} />
               </View>
-              <Text style={[styles.etActionLabel, {color: c.textPrimary, fontFamily: MONO}]}>{item.label}</Text>
+              <Text style={styles.etActionLabel}>{item.label}</Text>
               <Icon name="chevron-right" size={ms(18)} color={c.textMuted} />
             </TouchableOpacity>
           ))}
@@ -2647,14 +2738,14 @@ export default function DashboardScreen({ navigation }: Props) {
         onClose={() => setProductsVisible(false)}
         widthPercent={L ? 40 : 50}
         maxWidth={560}
-        maxHeightPercent={L ? 75 : 55}>
+        maxHeightPercent={L ? 75 : 70}>
         <View style={[styles.pmHeader, { backgroundColor: c.primarySurface, borderBottomColor: c.primaryBorder }]}>
           <View style={[styles.pmHeaderIcon, { backgroundColor: c.primary }]}>
             <Icon name="inventory-2" size={ms(16)} color={c.textOnPrimary} />
           </View>
           <View style={common.flex1}>
-            <Text style={[styles.pmTitle, {color: c.textPrimary, fontFamily: MONO}]}>PRODUCTS, CHARGES & FEES</Text>
-            <Text style={[styles.pmSubtitle, {color: c.textMuted, fontFamily: MONO}]} numberOfLines={1}>Ticket {currentTicket?.ticket_code || '-'}</Text>
+            <Text style={styles.pmTitle}>PRODUCTS, CHARGES & FEES</Text>
+            <Text style={styles.pmSubtitle} numberOfLines={1}>Ticket {currentTicket?.ticket_code || '-'}</Text>
           </View>
         </View>
         <View style={{position: 'relative'}}>
@@ -2666,11 +2757,11 @@ export default function DashboardScreen({ navigation }: Props) {
           onLayout={e => setProductsViewH(e.nativeEvent.layout.height)}>
           {/* Table Header */}
           <View style={[styles.pmRow, styles.pmRowHeader, { borderBottomColor: c.textPrimary }]}>
-            <Text style={[styles.pmColCode, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>CODE</Text>
-            <Text style={[styles.pmColDesc, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>DESCRIPTION</Text>
-            <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>SLUMP</Text>
-            <Text style={[styles.pmColQty, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>QTY</Text>
-            <Text style={[styles.pmColUnit, styles.pmTh, {color: c.textPrimary, fontFamily: MONO}]}>UNIT</Text>
+            <Text style={[styles.pmColCode, styles.pmTh]}>CODE</Text>
+            <Text style={[styles.pmColDesc, styles.pmTh]}>DESCRIPTION</Text>
+            <Text style={[styles.pmColSlump, styles.pmTh]}>SLUMP</Text>
+            <Text style={[styles.pmColQty, styles.pmTh]}>QTY</Text>
+            <Text style={[styles.pmColUnit, styles.pmTh]}>UNIT</Text>
           </View>
           {/* Table Rows */}
           {(() => {
@@ -2685,15 +2776,15 @@ export default function DashboardScreen({ navigation }: Props) {
             } as any] : []);
             return rows.length > 0 ? rows.map((product: any, i: number) => (
               <View key={`${product.code}-${i}`} style={[styles.pmRow, { borderBottomColor: c.borderLight }]}>
-                <Text style={[styles.pmColCode, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]} numberOfLines={1}>{product.code || '-'}</Text>
-                <Text style={[styles.pmColDesc, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]} numberOfLines={2}>{product.description || '-'}</Text>
-                <Text style={[{ flex: 1, textAlign: 'right' }, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]}>{product.is_mix ? (product.slump_text || detail?.mix?.slump || '-') : '-'}</Text>
-                <Text style={[styles.pmColQty, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
-                <Text style={[styles.pmColUnit, styles.pmTd, {color: c.textPrimary, fontFamily: MONO}]}>{product.delivered_unit || '-'}</Text>
+                <Text style={[styles.pmColCode, styles.pmTd]} numberOfLines={1}>{product.code || '-'}</Text>
+                <Text style={[styles.pmColDesc, styles.pmTd]} numberOfLines={2}>{product.description || '-'}</Text>
+                <Text style={[styles.pmColSlump, styles.pmTd]}>{product.is_mix ? (product.slump_text || detail?.mix?.slump || '-') : '-'}</Text>
+                <Text style={[styles.pmColQty, styles.pmTd]}>{product.delivered_qty != null ? String(product.delivered_qty) : '-'}</Text>
+                <Text style={[styles.pmColUnit, styles.pmTd]}>{product.delivered_unit || '-'}</Text>
               </View>
             )) : (
               <View style={{ padding: wp(16), alignItems: 'center' }}>
-                <Text style={{ color: c.textMuted, fontSize: ms(10) , fontFamily: MONO}}>No product data available</Text>
+                <Text style={styles.noProductText}>No product data available</Text>
               </View>
             );
           })()}
@@ -2716,7 +2807,7 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => setProductsVisible(false)}
             activeOpacity={0.7}
             style={{ backgroundColor: c.primary, paddingVertical: ms(5), paddingHorizontal: ms(14), borderRadius: ms(5) }}>
-            <Text style={{ fontSize: ms(8), fontWeight: '700', color: '#fff' , fontFamily: MONO}}>Close</Text>
+            <Text style={styles.modalBtnWhite}>Close</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2735,10 +2826,10 @@ export default function DashboardScreen({ navigation }: Props) {
               color={logoutType === 'tenant' ? c.error : c.warningDark}
             />
           </View>
-          <Text style={[styles.logoutTitle, { color: c.textPrimary, fontFamily: MONO }]}>
+          <Text style={styles.logoutTitle}>
             {logoutType === 'tenant' ? t('logout.tenantTitle') : t('logout.driverTitle')}
           </Text>
-          <Text style={[styles.logoutMessage, { color: c.textSecondary, fontFamily: MONO }]}>
+          <Text style={styles.logoutMessage}>
             {logoutType === 'tenant' ? t('logout.tenantMessage') : t('logout.driverMessage')}
           </Text>
           <View style={styles.logoutButtons}>
@@ -2747,7 +2838,7 @@ export default function DashboardScreen({ navigation }: Props) {
               onPress={() => setLogoutType(null)}
               activeOpacity={0.7}
               disabled={loggingOut}>
-              <Text style={[styles.logoutBtnText, {color: c.textPrimary, fontFamily: MONO}]}>{t('logout.cancel')}</Text>
+              <Text style={[styles.logoutBtnText, {color: c.textPrimary}]}>{t('logout.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.logoutBtn, { backgroundColor: logoutType === 'tenant' ? c.error : c.warningDark }, loggingOut && { opacity: 0.7 }]}
@@ -2757,7 +2848,7 @@ export default function DashboardScreen({ navigation }: Props) {
               {loggingOut ? (
                 <ActivityIndicator size="small" color={c.textOnPrimary} />
               ) : (
-                <Text style={[styles.logoutBtnText, {color: c.textOnPrimary, fontFamily: MONO}]}>{t('logout.confirm')}</Text>
+                <Text style={[styles.logoutBtnText, {color: c.textOnPrimary}]}>{t('logout.confirm')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -2777,7 +2868,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={[styles.logoutIconWrap, { backgroundColor: c.primarySurface }]}>
             <Icon name="translate" size={ms(28)} color={c.primary} />
           </View>
-          <Text style={[styles.logoutTitle, {color: c.textPrimary, fontFamily: MONO}]}>{t('menu.language')}</Text>
+          <Text style={styles.logoutTitle}>{t('menu.language')}</Text>
           <View style={{ width: '100%', gap: wp(8), marginTop: wp(4) }}>
             {[
               { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -2792,8 +2883,8 @@ export default function DashboardScreen({ navigation }: Props) {
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(8), paddingVertical: wp(10), borderRadius: wp(10), backgroundColor: isSelected ? c.primary : c.surface, borderWidth: 1, borderColor: isSelected ? c.primary : c.border }}
                   activeOpacity={0.7}
                   onPress={() => { i18n.changeLanguage(lang.code); setLanguageVisible(false); }}>
-                  <Text style={{ fontSize: ms(16) , fontFamily: MONO}}>{lang.flag}</Text>
-                  <Text style={{ fontSize: ms(12), fontWeight: '700', color: isSelected ? c.textOnPrimary : c.textPrimary , fontFamily: MONO}}>{lang.label}</Text>
+                  <Text style={styles.langFlag}>{lang.flag}</Text>
+                  <Text style={{ fontSize: ms(12), fontWeight: '700', color: isSelected ? c.textOnPrimary : c.textPrimary, fontFamily: MONO }}>{lang.label}</Text>
                   {isSelected && <Icon name="check-circle" size={ms(18)} color={c.textOnPrimary} />}
                 </TouchableOpacity>
               );
@@ -2816,8 +2907,8 @@ export default function DashboardScreen({ navigation }: Props) {
               <Icon name="warning" size={ms(16)} color={c.warningDark} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: ms(13), fontWeight: '800', color: c.textPrimary , fontFamily: MONO}}>Missing Fields</Text>
-              <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textMuted , fontFamily: MONO}}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
+              <Text style={styles.missingTitle}>Missing Fields</Text>
+              <Text style={styles.missingSubtitle}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
             </View>
             <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Icon name="close" size={ms(18)} color={c.textSecondary} />
@@ -2904,7 +2995,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 return (
                   <View style={{ alignItems: 'center', paddingVertical: wp(20) }}>
                     <Icon name="check-circle" size={ms(40)} color={c.primary} />
-                    <Text style={{ fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(8) , fontFamily: MONO}}>All fields are filled</Text>
+                    <Text style={styles.allFilledText}>All fields are filled</Text>
                   </View>
                 );
               }
@@ -2913,15 +3004,15 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View key={group.section}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), marginBottom: wp(6) }}>
                     <Icon name={group.icon as any} size={ms(14)} color={c.warningDark} />
-                    <Text style={{ fontSize: ms(11), fontWeight: '800', color: c.textPrimary , fontFamily: MONO}}>{group.section}</Text>
+                    <Text style={styles.missingSectionLabel}>{group.section}</Text>
                     <View style={{ backgroundColor: c.warningSurface, paddingHorizontal: wp(6), paddingVertical: wp(1), borderRadius: wp(8) }}>
-                      <Text style={{ fontSize: ms(9), fontWeight: '700', color: c.warningDark , fontFamily: MONO}}>{group.fields.length}</Text>
+                      <Text style={styles.missingCountBadge}>{group.fields.length}</Text>
                     </View>
                   </View>
                   {group.fields.map((field, idx) => (
                     <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingVertical: wp(4), borderBottomWidth: idx < group.fields.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                       <Icon name="radio-button-unchecked" size={ms(10)} color={c.error} />
-                      <Text style={{ fontSize: ms(10), fontWeight: '600', color: c.textSecondary , fontFamily: MONO}}>{field}</Text>
+                      <Text style={styles.missingFieldText}>{field}</Text>
                     </View>
                   ))}
                 </View>
@@ -2941,13 +3032,13 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={[styles.logoutIconWrap, { backgroundColor: c.warningSurface }]}>
             <Icon name="directions-off" size={ms(28)} color={c.warningDark} />
           </View>
-          <Text style={[styles.logoutTitle, {color: c.textPrimary, fontFamily: MONO}]}>Directions Unavailable</Text>
-          <Text style={[styles.logoutMessage, {color: c.textSecondary, fontFamily: MONO}]}>Directions are not available because this ticket has been completed.</Text>
+          <Text style={styles.logoutTitle}>Directions Unavailable</Text>
+          <Text style={styles.logoutMessage}>Directions are not available because this ticket has been completed.</Text>
           <TouchableOpacity
             style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: wp(10), borderRadius: wp(10), backgroundColor: c.primary, width: '100%' }}
             onPress={() => setDirectionsAlert(false)}
             activeOpacity={0.7}>
-            <Text style={{ fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}}>OK</Text>
+            <Text style={styles.okBtnText12}>OK</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -2963,17 +3054,17 @@ export default function DashboardScreen({ navigation }: Props) {
             <Icon name="close" size={ms(18)} color={c.textSecondary} />
           </TouchableOpacity>
           <View style={{ width: wp(44), height: wp(44), borderRadius: wp(22), backgroundColor: c.primarySurface, justifyContent: 'center', alignItems: 'center', marginBottom: wp(8) }}>
-            <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary , fontFamily: MONO}}>A</Text>
+            <Text style={styles.fontScalePercent}>A</Text>
           </View>
-          <Text style={{ fontSize: ms(14), fontWeight: '800', color: c.textPrimary, marginBottom: wp(4) , fontFamily: MONO}}>Font Size</Text>
-          <Text style={{ fontSize: ms(24), fontWeight: '900', color: c.primary, marginBottom: wp(12) , fontFamily: MONO}}>{Math.round(fontScale * 100)}%</Text>
+          <Text style={[styles.fontScaleLabel, { marginBottom: wp(4) }]}>Font Size</Text>
+          <Text style={[styles.fontScalePercent, { marginBottom: wp(12) }]}>{Math.round(fontScale * 100)}%</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(12), marginBottom: wp(12) }}>
             <TouchableOpacity
               onPress={fontDecrease}
               disabled={fontScale <= 0.85}
               activeOpacity={0.7}
               style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale <= 0.85 ? c.surface : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
-              <Text style={{ fontSize: ms(14), fontWeight: '800', color: fontScale <= 0.85 ? c.textMuted : c.textPrimary , fontFamily: MONO}}>A-</Text>
+              <Text style={{ fontSize: ms(14), fontWeight: '800', color: fontScale <= 0.85 ? c.textMuted : c.textPrimary, fontFamily: MONO }}>A-</Text>
             </TouchableOpacity>
             <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: c.surface, overflow: 'hidden' }}>
               <View style={{ width: `${((fontScale - 0.85) / (1.30 - 0.85)) * 100}%`, height: '100%', borderRadius: 3, backgroundColor: c.primary }} />
@@ -2983,7 +3074,7 @@ export default function DashboardScreen({ navigation }: Props) {
               disabled={fontScale >= 1.30}
               activeOpacity={0.7}
               style={{ width: wp(44), height: wp(44), borderRadius: wp(12), backgroundColor: fontScale >= 1.30 ? c.surface : c.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
-              <Text style={{ fontSize: ms(18), fontWeight: '800', color: fontScale >= 1.30 ? c.textMuted : c.textPrimary , fontFamily: MONO}}>A+</Text>
+              <Text style={{ fontSize: ms(18), fontWeight: '800', color: fontScale >= 1.30 ? c.textMuted : c.textPrimary, fontFamily: MONO }}>A+</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
@@ -2991,7 +3082,7 @@ export default function DashboardScreen({ navigation }: Props) {
             disabled={Math.round(fontScale * 100) === 100}
             activeOpacity={0.7}
             style={{ paddingVertical: wp(8), paddingHorizontal: wp(20), borderRadius: wp(8), backgroundColor: Math.round(fontScale * 100) === 100 ? c.surface : c.primary }}>
-            <Text style={{ fontSize: ms(12), fontWeight: '700', color: Math.round(fontScale * 100) === 100 ? c.textMuted : c.textOnPrimary , fontFamily: MONO}}>Reset to 100%</Text>
+            <Text style={{ fontSize: ms(12), fontWeight: '700', color: Math.round(fontScale * 100) === 100 ? c.textMuted : c.textOnPrimary, fontFamily: MONO }}>Reset to 100%</Text>
           </TouchableOpacity>
         </View>
       </ResponsiveModal>
@@ -3004,8 +3095,8 @@ export default function DashboardScreen({ navigation }: Props) {
         widthPercent={isLandscape ? 28 : 70}
         maxHeightPercent={50}>
         <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: 20 }}>
-          <Text style={{ fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 0.5, marginBottom: 12, fontFamily: MONO }}>TRUCKAST SYNC</Text>
-          <Text style={{ fontSize: ms(8), fontWeight: '400', color: c.textSecondary, lineHeight: ms(8) * 1.6, fontFamily: MONO }}>
+          <Text style={styles.aboutTitle}>TRUCKAST SYNC</Text>
+          <Text style={styles.aboutBody}>
             {`Truckast Sync, Version ${appVersion || '...'}\nCopyright (c) 2022–2026, All Rights\nReserved.`}
           </Text>
           <View style={{ alignItems: 'flex-end', marginTop: 16 }}>
@@ -3013,7 +3104,7 @@ export default function DashboardScreen({ navigation }: Props) {
               onPress={() => setAboutVisible(false)}
               activeOpacity={0.8}
               style={{ backgroundColor: '#157a15', paddingVertical: 8, paddingHorizontal: 24, borderRadius: 6 }}>
-              <Text style={{ fontSize: ms(9), fontWeight: '800', color: '#fff', fontFamily: MONO }}>OK</Text>
+              <Text style={styles.aboutOkText}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -3023,7 +3114,7 @@ export default function DashboardScreen({ navigation }: Props) {
   );
 }
 
-const createStyles = () => StyleSheet.create({
+const createStyles = (c: any, isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
 
   // Header
@@ -3031,8 +3122,8 @@ const createStyles = () => StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(3) },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, flexShrink: 1, minWidth: 0 },
   logo: { width: wp(34), height: wp(34), borderRadius: wp(17) },
-  logoTitle: { fontSize: ms(14), fontWeight: '800', letterSpacing: 0.3 },
-  logoSub: { fontSize: ms(9), fontWeight: '500', marginTop: 1 },
+  logoTitle: { fontSize: ms(14), fontWeight: '800', letterSpacing: 0.3, fontFamily: MONO },
+  logoSub: { fontSize: ms(9), fontWeight: '500', marginTop: 1, fontFamily: MONO },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: wp(6), flexShrink: 0 },
   hdrBtn: { width: wp(34), height: wp(34), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center' },
 
@@ -3040,7 +3131,7 @@ const createStyles = () => StyleSheet.create({
   tabsRow: { flexDirection: 'row', gap: ms(4), paddingBottom: ms(2) },
   tab: { flexDirection: 'row', alignItems: 'center', gap: ms(5), paddingVertical: ms(3), paddingHorizontal: ms(6), borderRadius: ms(20), borderWidth: 0.5 },
   tabDot: { width: ms(5), height: ms(5), borderRadius: ms(3) },
-  tabText: { fontWeight: '800', fontSize: ms(8), letterSpacing: 0.2 },
+  tabText: { fontWeight: '800', fontSize: ms(8), letterSpacing: 0.2, fontFamily: MONO },
 
   // Scroll
   scroll: { flex: 1 },
@@ -3050,28 +3141,28 @@ const createStyles = () => StyleSheet.create({
   kpiRow: { flexDirection: 'row', alignItems: 'center' },
   kpiItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingVertical: wp(4), paddingHorizontal: wp(6) },
   kpiIconWrap: { width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
-  kpiVal: { fontSize: ms(11), fontWeight: '800', letterSpacing: 0.1 },
-  kpiLabel: { fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3, color: '#9E9E9E', marginTop: 1 },
+  kpiVal: { fontSize: ms(11), fontWeight: '800', letterSpacing: 0.1, fontFamily: MONO },
+  kpiLabel: { fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3, color: '#9E9E9E', marginTop: 1, fontFamily: MONO },
   kpiDivider: { width: StyleSheet.hairlineWidth, height: wp(26), marginHorizontal: wp(2) },
 
   // Chips
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: wp(6), alignItems: 'center' },
   statusChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: wp(10), paddingVertical: wp(4), borderRadius: wp(16), gap: wp(5) },
   chipDot: { width: wp(6), height: wp(6), borderRadius: wp(3) },
-  chipLabel: { fontWeight: '600', fontSize: ms(10) },
+  chipLabel: { fontWeight: '600', fontSize: ms(10), fontFamily: MONO },
   infoChip: { flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingHorizontal: wp(8), paddingVertical: wp(4), borderRadius: wp(16), borderWidth: 1 },
 
   // Section header
   secHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: wp(4), paddingBottom: wp(3), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E0E0E0', gap: wp(6) },
   secIcon: { width: wp(24), height: wp(24), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
-  secTitle: { fontSize: ms(10), fontWeight: '700', letterSpacing: 0.1, flex: 1 },
+  secTitle: { fontSize: ms(10), fontWeight: '700', letterSpacing: 0.1, flex: 1, fontFamily: MONO },
   countBadge: { paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(8), borderWidth: 1 },
-  countText: { fontSize: ms(9), fontWeight: '800' },
+  countText: { fontSize: ms(9), fontWeight: '800', fontFamily: MONO },
 
   // Detail cards
   detailRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: wp(5), gap: wp(4) },
-  detailLabel: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.1, width: '28%', flexShrink: 0 },
-  detailValue: { fontSize: ms(10), fontWeight: '700', flexShrink: 1 },
+  detailLabel: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.1, width: '28%', flexShrink: 0, fontFamily: MONO },
+  detailValue: { fontSize: ms(10), fontWeight: '700', flexShrink: 1, fontFamily: MONO },
   slumpPillInline: { paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6), borderWidth: 1 },
 
 
@@ -3080,68 +3171,178 @@ const createStyles = () => StyleSheet.create({
   dropdown: { position: 'absolute', minWidth: wp(200), maxWidth: wp(260), borderRadius: wp(14), borderWidth: StyleSheet.hairlineWidth, elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, overflow: 'hidden' },
   ddHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth },
   ddAvatar: { width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center' },
-  ddName: { fontSize: ms(13), fontWeight: '700' },
-  ddSub: { fontSize: ms(11), fontWeight: '500', marginTop: 1 },
+  ddName: { fontSize: ms(13), fontWeight: '700', fontFamily: MONO },
+  ddSub: { fontSize: ms(11), fontWeight: '500', marginTop: 1, fontFamily: MONO },
   ddItem: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(8), minHeight: wp(35) },
   ddIcon: { width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center' },
-  ddLabel: { flex: 1, fontSize: ms(13), fontWeight: '600' },
+  ddLabel: { flex: 1, fontSize: ms(13), fontWeight: '600', fontFamily: MONO },
   ddFooter: { alignItems: 'center', paddingVertical: wp(8), borderTopWidth: StyleSheet.hairlineWidth },
-  ddVersion: { fontSize: ms(10), fontWeight: '500' },
+  ddVersion: { fontSize: ms(10), fontWeight: '500', fontFamily: MONO, color: c.textMuted },
 
   // QR Modal
   qrHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(8), borderBottomWidth: 1 },
   qrHeaderIcon: { width: wp(28), height: wp(28), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' },
-  qrHeaderTitle: { fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3 },
-  qrHeaderSub: { fontSize: ms(10), fontWeight: '500', marginTop: 1 },
+  qrHeaderTitle: { fontSize: ms(13), fontWeight: '800', letterSpacing: 0.3, fontFamily: MONO },
+  qrHeaderSub: { fontSize: ms(10), fontWeight: '500', marginTop: 1, fontFamily: MONO },
   qrChipRow: { flexDirection: 'row', gap: wp(6), paddingHorizontal: wp(12), alignSelf: 'stretch' },
   qrChip: { flex: 1, alignItems: 'center', paddingVertical: wp(6), borderRadius: wp(8) },
-  qrChipLabel: { fontSize: ms(10), fontWeight: '700', letterSpacing: 0.8 },
-  qrChipValue: { fontSize: ms(13), fontWeight: '900', marginTop: 1 },
+  qrChipLabel: { fontSize: ms(10), fontWeight: '700', letterSpacing: 0.8, fontFamily: MONO },
+  qrChipValue: { fontSize: ms(13), fontWeight: '900', marginTop: 1, fontFamily: MONO },
   qrCodeSection: { alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(10) },
   qrCodeCard: { padding: wp(12), borderRadius: wp(12), alignItems: 'center', justifyContent: 'center', elevation: 4, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
   qrFooter: { paddingHorizontal: wp(12), gap: wp(4), alignSelf: 'stretch' },
   qrFooterRow: { flexDirection: 'row', alignItems: 'center', gap: wp(5), justifyContent: 'center', paddingTop: wp(2) },
-  qrFooterText: { fontSize: ms(12), fontWeight: '600' },
+  qrFooterText: { fontSize: ms(12), fontWeight: '600', fontFamily: MONO },
 
   // Plants Modal
   plantsList: { paddingHorizontal: wp(16) },
   plantItem: { paddingVertical: wp(6), borderBottomWidth: 0.5, alignItems: 'center', minHeight: wp(30) },
-  plantText: { fontSize: ms(11), fontWeight: '600', textAlign: 'center' },
+  plantText: { fontSize: ms(11), fontWeight: '600', textAlign: 'center', fontFamily: MONO, color: c.textPrimary },
   etHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(10), borderBottomWidth: 1 },
   etHeaderIcon: { width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center' },
-  etHeaderTitle: { flex: 1, fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5 },
+  etHeaderTitle: { flex: 1, fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5, fontFamily: MONO, color: c.textPrimary },
   etSectionHdr: { flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(16), paddingTop: wp(10), paddingBottom: wp(6) },
-  etSectionTitle: { fontSize: ms(9), fontWeight: '800', letterSpacing: 1 },
+  etSectionTitle: { fontSize: ms(9), fontWeight: '800', letterSpacing: 1, fontFamily: MONO, color: c.accent },
   etActionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), paddingHorizontal: wp(16), gap: wp(10), minHeight: wp(44) },
   etActionIcon: { width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center' },
-  etActionLabel: { flex: 1, fontSize: ms(10), fontWeight: '700' },
+  etActionLabel: { flex: 1, fontSize: ms(10), fontWeight: '700', fontFamily: MONO, color: c.textPrimary },
 
   // Unified modal close button
   mCloseBtn: { width: wp(32), height: wp(32), borderRadius: wp(16), justifyContent: 'center', alignItems: 'center' },
   mCloseBtnAbsolute: { position: 'absolute', top: wp(8), right: wp(8), zIndex: 10 },
   mHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(14), paddingVertical: wp(10), borderBottomWidth: 1 },
-  mHeaderTitle: { fontSize: ms(13), fontWeight: '900', letterSpacing: 0.5 },
+  mHeaderTitle: { fontSize: ms(13), fontWeight: '900', letterSpacing: 0.5, fontFamily: MONO, color: c.textPrimary },
 
   // Products Modal
   pmHeader: { flexDirection: 'row', alignItems: 'center', gap: ms(6), paddingHorizontal: ms(10), paddingVertical: ms(8), borderBottomWidth: 1 },
   pmHeaderIcon: { width: ms(24), height: ms(24), borderRadius: ms(7), justifyContent: 'center', alignItems: 'center' },
-  pmTitle: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.3 },
-  pmSubtitle: { fontSize: ms(8), fontWeight: '500', marginTop: 1 },
+  pmTitle: { fontSize: ms(9), fontWeight: '800', letterSpacing: 0.3, fontFamily: MONO, color: c.textPrimary },
+  pmSubtitle: { fontSize: ms(8), fontWeight: '500', marginTop: 1, fontFamily: MONO, color: c.textMuted },
   pmBody: { paddingHorizontal: ms(10), paddingTop: ms(3), paddingBottom: ms(10) },
   pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: ms(5), paddingHorizontal: ms(3), borderBottomWidth: 0.5, borderRadius: ms(3) },
   pmRowHeader: { borderBottomWidth: 1.5, paddingBottom: ms(4), marginBottom: ms(2) },
   pmColCode: { width: ms(45) },
   pmColDesc: { flex: 2, paddingRight: ms(6) },
   pmColQty: { width: ms(30), textAlign: 'right' },
+  pmColSlump: { flex: 1, textAlign: 'right' },
   pmColUnit: { width: ms(25), textAlign: 'center' },
-  pmTh: { fontSize: ms(8), fontWeight: '900', letterSpacing: 0.5 },
-  pmTd: { fontSize: ms(8), fontWeight: '500' },
+  pmTh: { fontSize: ms(8), fontWeight: '900', letterSpacing: 0.5, fontFamily: MONO, color: c.textPrimary },
+  pmTd: { fontSize: ms(8), fontWeight: '500', fontFamily: MONO, color: c.textPrimary },
 
   // Logout confirmation modal
   logoutIconWrap: { width: wp(48), height: wp(48), borderRadius: wp(24), justifyContent: 'center', alignItems: 'center', marginBottom: wp(10) },
-  logoutTitle: { fontSize: ms(13), fontWeight: '700', marginBottom: wp(4) },
-  logoutMessage: { fontSize: ms(10), fontWeight: '400', textAlign: 'center', lineHeight: ms(15), marginBottom: wp(14) },
+  logoutTitle: { fontSize: ms(13), fontWeight: '700', marginBottom: wp(4), fontFamily: MONO, color: c.textPrimary },
+  logoutMessage: { fontSize: ms(10), fontWeight: '400', textAlign: 'center', lineHeight: ms(15), marginBottom: wp(14), fontFamily: MONO, color: c.textSecondary },
   logoutButtons: { flexDirection: 'row', gap: wp(8), width: '100%' },
   logoutBtn: { flex: 1, paddingVertical: wp(10), borderRadius: wp(10), alignItems: 'center', justifyContent: 'center' },
-  logoutBtnText: { fontSize: ms(10), fontWeight: '600' },
+  logoutBtnText: { fontSize: ms(10), fontWeight: '600', fontFamily: MONO },
+
+  // Portrait card common text styles
+  cardSectionHeader: { fontSize: ms(8), fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', fontFamily: MONO },
+  cardFieldLabel: { fontSize: ms(8), fontWeight: '600', color: c.textMuted, width: '30%', letterSpacing: 0.5, fontFamily: MONO },
+  cardFieldValue: { fontSize: ms(8), fontWeight: '800', color: c.textPrimary, flex: 1, fontFamily: MONO },
+  cardProductLabel: { fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: 2, fontFamily: MONO },
+  cardProductValue700: { fontSize: ms(8), fontWeight: '700', color: c.textPrimary, fontFamily: MONO },
+  cardProductValue800: { fontSize: ms(8), fontWeight: '800', color: c.textPrimary, fontFamily: MONO },
+  cardProductValue900: { fontSize: ms(8), fontWeight: '900', color: c.textPrimary, fontFamily: MONO },
+  pipeDivider: { fontSize: ms(7), color: c.border, marginBottom: 1, fontFamily: MONO },
+
+  // Info bar text
+  infoBarCompany: { fontSize: ms(13), fontWeight: '900', color: c.textOnPrimary, letterSpacing: 1, fontFamily: MONO },
+  infoBarOrder: { fontSize: ms(10), fontWeight: '600', color: c.textOnDark60, fontFamily: MONO },
+  infoBarTruck: { fontSize: ms(11), fontWeight: '600', color: c.textOnDark60, fontFamily: MONO },
+  infoBarDriver: { fontSize: ms(9), fontWeight: '500', color: c.textOnDark35, fontFamily: MONO },
+  statusBadgeText: { fontSize: ms(7), fontWeight: '900', color: '#fff', fontFamily: MONO },
+
+  // Timeline text
+  timelineLabel: { fontSize: ms(8), textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: MONO },
+  timelineTime: { fontSize: ms(9), fontWeight: '900', textAlign: 'center', marginTop: 4, fontFamily: MONO },
+
+  // Required entries / quick links / additional entries
+  sectionLabelPurple: { fontSize: ms(8), fontWeight: '900', color: '#9C27B0', letterSpacing: 0.5, textTransform: 'uppercase', flex: 1, fontFamily: MONO },
+  sectionLabelPurple2: { fontSize: ms(8), fontWeight: '800', color: '#9C27B0', letterSpacing: 1, textTransform: 'uppercase', fontFamily: MONO },
+  entryNameText: { fontSize: ms(8), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1, fontFamily: MONO },
+  linkText8: { fontSize: ms(8), fontWeight: '800', color: c.primary, fontFamily: MONO },
+  mutedText8: { fontSize: ms(8), color: c.textMuted, fontFamily: MONO },
+  // Modal common text
+  modalSectionLabel: { fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, fontFamily: MONO },
+  modalSectionLabelCenter: { fontSize: ms(7), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', fontFamily: MONO },
+  modalFieldLabel8: { fontSize: ms(8), fontWeight: '600', color: c.textMuted, letterSpacing: 0.3, fontFamily: MONO },
+  modalTitle9: { fontSize: ms(9), fontWeight: '800', color: c.textPrimary, marginTop: 1, textAlign: 'center', fontFamily: MONO },
+  modalBtnWhite: { fontSize: ms(8), fontWeight: '700', color: '#fff', fontFamily: MONO },
+  modalCancelText: { fontSize: ms(9), fontWeight: '600', color: c.textPrimary, fontFamily: MONO },
+  modalSaveText: { fontSize: ms(9), fontWeight: '700', color: '#fff', fontFamily: MONO },
+  modalFieldValue: { fontSize: ms(10), fontWeight: '600', fontFamily: MONO },
+
+  // Slump/Returned picker
+  pickerSectionLabel: { fontSize: ms(8), fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', fontFamily: MONO },
+
+  // Time picker
+  timePickerDisplay: { fontSize: ms(14), fontWeight: '900', color: c.primary, marginTop: 4, textAlign: 'center', fontFamily: MONO },
+  timePickerColumnLabel: { flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO },
+
+  // Misc
+  refreshedText: { fontSize: 10, fontWeight: '600', color: c.primary, fontFamily: MONO },
+  noProductText: { color: c.textMuted, fontSize: ms(10), fontFamily: MONO },
+  // Font scale modal
+  fontScaleLabel: { fontSize: ms(14), fontWeight: '800', color: c.textPrimary, fontFamily: MONO },
+  fontScalePercent: { fontSize: ms(24), fontWeight: '900', color: c.primary, fontFamily: MONO },
+
+  // Header strip small screen
+  stripCompanyName: { fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary, fontFamily: MONO },
+  stripPlant9: { fontSize: 9, fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  stripWeather8: { fontSize: 8, fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  stripTruck9: { fontSize: 9, fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  stripDriver8: { fontSize: 8, fontWeight: '500', color: c.textOnDark60, fontFamily: MONO },
+  stripSync9: { fontSize: 9, fontWeight: '600', color: c.textOnDark60, fontFamily: MONO },
+  stripOnlineLabel: { fontSize: 8, fontWeight: '700', color: '#fff', fontFamily: MONO },
+
+  // Landscape header strip
+  lsPlant10: { fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  lsWeather8: { fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  lsTruck10: { fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  lsDriver8: { fontSize: ms(8), fontWeight: '500', color: c.textOnDark60, fontFamily: MONO },
+  lsSync8: { fontSize: ms(8), fontWeight: '600', color: c.textOnDark60, fontFamily: MONO },
+
+  // Instructions modal
+  instrTitle: { fontSize: ms(12), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase', fontFamily: MONO },
+  instrBullet: { fontSize: ms(11), color: c.textPrimary, marginRight: wp(8), fontFamily: MONO },
+  instrLine: { fontSize: ms(11), fontWeight: '600', color: c.textPrimary, flex: 1, lineHeight: ms(18), fontFamily: MONO },
+  instrCloseBtn: { fontSize: ms(11), fontWeight: '700', color: '#fff', fontFamily: MONO },
+
+  // Missing fields modal
+  missingTitle: { fontSize: ms(13), fontWeight: '800', color: c.textPrimary, fontFamily: MONO },
+  missingSubtitle: { fontSize: ms(10), fontWeight: '600', color: c.textMuted, fontFamily: MONO },
+  missingSectionLabel: { fontSize: ms(11), fontWeight: '800', color: c.textPrimary, fontFamily: MONO },
+  missingCountBadge: { fontSize: ms(9), fontWeight: '700', color: c.warningDark, fontFamily: MONO },
+  missingFieldText: { fontSize: ms(10), fontWeight: '600', color: c.textSecondary, fontFamily: MONO },
+  allFilledText: { fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(8), fontFamily: MONO },
+
+  // QR modal error/info
+  qrErrorText: { fontSize: ms(10), fontWeight: '700', color: c.qrFg, marginTop: 8, textAlign: 'center', fontFamily: MONO },
+  qrRetryBtnText: { fontSize: ms(9), fontWeight: '700', color: '#fff', fontFamily: MONO },
+  qrTicketCode: { fontSize: ms(9), fontWeight: '800', color: c.qrFg, letterSpacing: 0.3, marginBottom: 16, fontFamily: MONO },
+  qrCloseBtnText: { fontSize: ms(9), fontWeight: '800', color: '#fff', fontFamily: MONO },
+
+  // Vehicle modal
+  vehicleLabel: { fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 1, textTransform: 'uppercase', fontFamily: MONO },
+  vehicleValue: { fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: 8, fontFamily: MONO },
+  vehicleStatusText: { fontSize: ms(10), fontWeight: '500', color: c.textSecondary, marginTop: 8, fontFamily: MONO },
+  vehicleBtnText: { fontSize: ms(10), fontWeight: '700', color: '#fff', letterSpacing: 0.5, fontFamily: MONO },
+
+  // Language modal
+  langFlag: { fontSize: ms(16), fontFamily: MONO },
+
+  // Plants error modal
+  plantErrorTitle: { fontSize: ms(13), fontWeight: '700', color: c.textPrimary, marginTop: wp(10), textAlign: 'center', fontFamily: MONO },
+  plantErrorMsg: { fontSize: ms(11), color: c.textSecondary, marginTop: wp(4), textAlign: 'center', fontFamily: MONO },
+  plantRetryText: { fontSize: ms(11), fontWeight: '700', color: '#fff', fontFamily: MONO },
+
+  // About modal
+  aboutTitle: { fontSize: ms(10), fontWeight: '800', color: c.textPrimary, letterSpacing: 0.5, marginBottom: 12, fontFamily: MONO },
+  aboutBody: { fontSize: ms(8), fontWeight: '400', color: c.textSecondary, lineHeight: ms(8) * 1.6, fontFamily: MONO },
+  aboutOkText: { fontSize: ms(9), fontWeight: '800', color: '#fff', fontFamily: MONO },
+
+  // Directions / OK button
+  okBtnText12: { fontSize: ms(12), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
 });

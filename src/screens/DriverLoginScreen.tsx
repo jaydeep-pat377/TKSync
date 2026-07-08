@@ -38,7 +38,6 @@ const SAVED_COMPANY_CODE_KEY = 'saved_company_code';
 
 export default function DriverLoginScreen({navigation}: Props) {
   useFontScaleRefresh();
-  const styles = createStyles();
   const savedRemember = storage.getBoolean(REMEMBER_KEY) ?? false;
   const [truckNumber, setTruckNumber] = useState(savedRemember ? (storage.getString(SAVED_TRUCK_KEY) ?? '') : '');
   const [driverPin, setDriverPin] = useState(savedRemember ? (storage.getString(SAVED_PIN_KEY) ?? '') : '');
@@ -56,6 +55,8 @@ export default function DriverLoginScreen({navigation}: Props) {
   const isLandscape = width > height;
   const landscapePhone = isLandscape && !isTablet;
   const landscapeTablet = isLandscape && isTablet;
+
+  const styles = createStyles(c, isTablet, landscapePhone, landscapeTablet);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -153,11 +154,11 @@ export default function DriverLoginScreen({navigation}: Props) {
     : Math.min(formMaxW, contentW);
 
   return (
-    <View style={[styles.container, {backgroundColor: c.primaryDark}]}>
+    <View style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      <View style={[styles.bgTop, {backgroundColor: c.primary}]} />
-      <View style={[styles.bgBottom, {backgroundColor: c.primaryDark}]} />
+      <View style={styles.bgTop} />
+      <View style={styles.bgBottom} />
 
       <KeyboardAvoidingView
         style={styles.content}
@@ -181,47 +182,57 @@ export default function DriverLoginScreen({navigation}: Props) {
             styles.innerRow,
             {width: contentW},
             isLandscape && styles.innerRowLandscape,
-            landscapeTablet && {gap: 50},
+            landscapeTablet && styles.innerRowLandscapeTablet,
           ]}>
             {/* Branding */}
             <Animated.View
               style={[
                 styles.brandingSection,
-                isLandscape && {marginBottom: 0, width: brandingW},
+                isLandscape && styles.brandingSectionLandscape,
+                isLandscape && {width: brandingW},
                 {opacity: fadeAnim},
               ]}>
-              <View style={{marginBottom: landscapePhone ? 4 : 16}}>
+              <View style={landscapePhone ? styles.logoWrapLandscapePhone : styles.logoWrapDefault}>
                 <View style={[
                   styles.logoOuter,
-                  landscapePhone && {width: 50, height: 50, borderRadius: 16},
-                  isTablet && {width: 100, height: 100, borderRadius: 30},
-                  {backgroundColor: c.overlay15, borderColor: c.overlay25},
+                  landscapePhone && styles.logoOuterLandscapePhone,
+                  isTablet && styles.logoOuterTablet,
                 ]}>
                   <View style={[
                     styles.logoInner,
-                    landscapePhone && {width: 36, height: 36, borderRadius: 12},
-                    isTablet && {width: 72, height: 72, borderRadius: 22},
-                    {backgroundColor: c.primaryLight, shadowColor: c.shadowColor},
+                    landscapePhone && styles.logoInnerLandscapePhone,
+                    isTablet && styles.logoInnerTablet,
                   ]}>
                     <Image
                       source={require('../assets/images/logo.png')}
-                      style={{width: landscapePhone ? 32 : isTablet ? 65 : 52, height: landscapePhone ? 32 : isTablet ? 65 : 52, borderRadius: landscapePhone ? 10 : isTablet ? 18 : 14}}
+                      style={
+                        landscapePhone
+                          ? styles.logoImageLandscapePhone
+                          : isTablet
+                          ? styles.logoImageTablet
+                          : styles.logoImageDefault
+                      }
                     />
                   </View>
                 </View>
               </View>
               <Text style={[
                 styles.appName,
-                {fontSize: ms(landscapePhone ? 16 : isTablet ? 20 : 18), color: c.textOnPrimary},
+                landscapePhone && styles.appNameLandscapePhone,
+                isTablet && styles.appNameTablet,
               ]}>
                 {t('app.name')}
               </Text>
-              <Text style={[styles.appTagline, {fontSize: ms(landscapePhone ? 9 : isTablet ? 11 : 10), color: c.textOnDark70}]}>
+              <Text style={[
+                styles.appTagline,
+                landscapePhone && styles.appTaglineLandscapePhone,
+                isTablet && styles.appTaglineTablet,
+              ]}>
                 {t('app.tagline')}
               </Text>
-              <View style={[styles.companyBadge, {backgroundColor: c.textOnDark12}]}>
+              <View style={styles.companyBadge}>
                 <Icon name="check-circle" size={ms(12)} color={c.success} />
-                <Text style={[styles.companyBadgeText, {color: c.textOnDark70}]}>{company?.company_name ?? ''}</Text>
+                <Text style={styles.companyBadgeText}>{company?.company_name ?? ''}</Text>
               </View>
             </Animated.View>
 
@@ -233,15 +244,14 @@ export default function DriverLoginScreen({navigation}: Props) {
               ]}>
             <View style={[
               styles.formCard,
-              landscapePhone && {paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14},
-              isTablet && {paddingVertical: 24, paddingHorizontal: 28, borderRadius: 22},
-              {backgroundColor: c.white, shadowColor: c.shadowColor},
+              landscapePhone && styles.formCardLandscapePhone,
+              isTablet && styles.formCardTablet,
             ]}>
               {/* Login type indicator — hide in landscape phone to save space */}
               {!landscapePhone && (
-                <View style={[styles.loginTypeBadge, {backgroundColor: c.primaryDark}]}>
+                <View style={styles.loginTypeBadge}>
                   <Icon name="local-shipping" size={ms(14)} color={c.textOnPrimary} />
-                  <Text style={[styles.loginTypeText, {color: c.textOnPrimary}]}>
+                  <Text style={styles.loginTypeText}>
                     {t('driverLogin.badge')}
                   </Text>
                 </View>
@@ -249,43 +259,44 @@ export default function DriverLoginScreen({navigation}: Props) {
 
               <Text style={[
                 styles.welcomeText,
-                {fontSize: ms(landscapePhone ? 13 : isTablet ? 16 : 15), color: c.textPrimary},
-                landscapePhone && {marginBottom: 1},
+                landscapePhone && styles.welcomeTextLandscapePhone,
+                isTablet && styles.welcomeTextTablet,
               ]}>
                 {t('driverLogin.title')}
               </Text>
               <Text style={[
                 styles.welcomeSub,
-                {fontSize: ms(landscapePhone ? 9 : isTablet ? 11 : 10), color: c.textTertiary},
-                landscapePhone && {marginBottom: 6},
-                isTablet && {marginBottom: 18},
+                landscapePhone && styles.welcomeSubLandscapePhone,
+                isTablet && styles.welcomeSubTablet,
               ]}>
                 {t('driverLogin.subtitle')}
               </Text>
 
               {/* Truck Number */}
-              <View style={{marginBottom: landscapePhone ? 6 : isTablet ? 14 : wp(18)}}>
-                <Text style={[styles.fieldLabel, landscapePhone && {marginBottom: 3}, {color: c.textSecondary}]}>
+              <View style={[
+                styles.fieldWrapper,
+                landscapePhone && styles.fieldWrapperLandscapePhone,
+                isTablet && styles.fieldWrapperTablet,
+              ]}>
+                <Text style={[styles.fieldLabel, landscapePhone && styles.fieldLabelLandscapePhone]}>
                   {t('driverLogin.truckNumber')}
                 </Text>
                 <View style={[
                   styles.inputRow,
-                  isTablet && {borderRadius: 14},
-                  {backgroundColor: c.surface, borderColor: c.border},
+                  isTablet && styles.inputRowTablet,
                 ]}>
                   <View style={[
                     styles.inputIconBox,
-                    landscapePhone && {width: 30, height: 30},
-                    isTablet && {width: 42, height: 42},
+                    landscapePhone && styles.inputIconBoxLandscapePhone,
+                    isTablet && styles.inputIconBoxTablet,
                   ]}>
                     <Icon name="local-shipping" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
                   </View>
                   <TextInput
                     style={[
                       styles.input,
-                      {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textPrimary},
-                      landscapePhone && {paddingVertical: 6},
-                      isTablet && {paddingVertical: 10},
+                      landscapePhone && styles.inputLandscapePhone,
+                      isTablet && styles.inputTablet,
                     ]}
                     placeholder={t('driverLogin.truckNumberPlaceholder')}
                     placeholderTextColor={c.textPlaceholder}
@@ -301,28 +312,30 @@ export default function DriverLoginScreen({navigation}: Props) {
               </View>
 
               {/* Driver PIN */}
-              <View style={{marginBottom: landscapePhone ? 6 : isTablet ? 14 : wp(18)}}>
-                <Text style={[styles.fieldLabel, landscapePhone && {marginBottom: 3}, {color: c.textSecondary}]}>
+              <View style={[
+                styles.fieldWrapper,
+                landscapePhone && styles.fieldWrapperLandscapePhone,
+                isTablet && styles.fieldWrapperTablet,
+              ]}>
+                <Text style={[styles.fieldLabel, landscapePhone && styles.fieldLabelLandscapePhone]}>
                   {t('driverLogin.driverPin')}
                 </Text>
                 <View style={[
                   styles.inputRow,
-                  isTablet && {borderRadius: 14},
-                  {backgroundColor: c.surface, borderColor: c.border},
+                  isTablet && styles.inputRowTablet,
                 ]}>
                   <View style={[
                     styles.inputIconBox,
-                    landscapePhone && {width: 30, height: 30},
-                    isTablet && {width: 42, height: 42},
+                    landscapePhone && styles.inputIconBoxLandscapePhone,
+                    isTablet && styles.inputIconBoxTablet,
                   ]}>
                     <Icon name="badge" size={isTablet ? 22 : landscapePhone ? 16 : 20} color={c.primaryLight} />
                   </View>
                   <TextInput
                     style={[
                       styles.input,
-                      {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textPrimary},
-                      landscapePhone && {paddingVertical: 6},
-                      isTablet && {paddingVertical: 10},
+                      landscapePhone && styles.inputLandscapePhone,
+                      isTablet && styles.inputTablet,
                     ]}
                     placeholder={t('driverLogin.driverPinPlaceholder')}
                     placeholderTextColor={c.textPlaceholder}
@@ -340,15 +353,15 @@ export default function DriverLoginScreen({navigation}: Props) {
 
               {/* Error Message */}
               {error ? (
-                <View style={[styles.errorBox, {backgroundColor: c.errorSurface, borderColor: c.error}]}>
+                <View style={styles.errorBox}>
                   <Icon name="error-outline" size={ms(14)} color={c.error} />
-                  <Text style={[styles.errorText, {color: c.error || '#EF4444'}]}>{error}</Text>
+                  <Text style={styles.errorText}>{error}</Text>
                 </View>
               ) : null}
 
               {/* Remember Me */}
               <TouchableOpacity
-                style={[styles.rememberRow, landscapePhone && {marginBottom: 4}]}
+                style={[styles.rememberRow, landscapePhone && styles.rememberRowLandscapePhone]}
                 onPress={() => setRememberMe(!rememberMe)}
                 activeOpacity={0.7}>
                 <View style={[
@@ -358,7 +371,7 @@ export default function DriverLoginScreen({navigation}: Props) {
                 ]}>
                   {rememberMe && <Icon name="check" size={ms(12)} color={c.textOnPrimary} />}
                 </View>
-                <Text style={[styles.rememberText, {color: c.textSecondary}]}>
+                <Text style={styles.rememberText}>
                   {t('driverLogin.rememberMe', 'Remember Me')}
                 </Text>
               </TouchableOpacity>
@@ -367,15 +380,18 @@ export default function DriverLoginScreen({navigation}: Props) {
               <TouchableOpacity
                 style={[
                   styles.loginButton,
-                  landscapePhone && {paddingVertical: 8, borderRadius: 10, marginTop: 2},
-                  isTablet && {paddingVertical: 14, borderRadius: 12, marginTop: 6},
-                  {backgroundColor: c.primary, shadowColor: c.primary},
-                  loading && {opacity: 0.7},
+                  landscapePhone && styles.loginButtonLandscapePhone,
+                  isTablet && styles.loginButtonTablet,
+                  loading && styles.loginButtonLoading,
                 ]}
                 onPress={handleLogin}
                 activeOpacity={0.85}
                 disabled={loading}>
-                <Text style={[styles.loginButtonText, {fontSize: ms(landscapePhone ? 10 : isTablet ? 12 : 11), color: c.textOnPrimary}]}>
+                <Text style={[
+                  styles.loginButtonText,
+                  landscapePhone && styles.loginButtonTextLandscapePhone,
+                  isTablet && styles.loginButtonTextTablet,
+                ]}>
                   {loading ? t('driverLogin.signingIn', 'Signing In...') : t('driverLogin.signIn')}
                 </Text>
                 {!loading && <Icon name="arrow-forward" size={isTablet ? 22 : landscapePhone ? 18 : 20} color={c.textOnPrimary} />}
@@ -383,10 +399,10 @@ export default function DriverLoginScreen({navigation}: Props) {
 
               {/* Footer — hide in landscape phone to save space */}
               {!landscapePhone && (
-                <View style={[styles.footer, isTablet && {marginTop: 16}]}>
-                  <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
-                  <Text style={[styles.footerText, {color: c.textPlaceholder}]}>{t('app.poweredBy')}</Text>
-                  <View style={[styles.footerDivider, {backgroundColor: c.border}]} />
+                <View style={[styles.footer, isTablet && styles.footerTablet]}>
+                  <View style={styles.footerDivider} />
+                  <Text style={styles.footerText}>{t('app.poweredBy')}</Text>
+                  <View style={styles.footerDivider} />
                 </View>
               )}
             </View>
@@ -398,38 +414,75 @@ export default function DriverLoginScreen({navigation}: Props) {
   );
 }
 
-const createStyles = () => StyleSheet.create({
-  container: {flex: 1, overflow: 'hidden'},
-  bgTop: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40},
-  bgBottom: {position: 'absolute', bottom: 0, left: -5, right: -5, height: '50%'},
+const createStyles = (c: any, isTablet: boolean, landscapePhone: boolean, landscapeTablet: boolean) => StyleSheet.create({
+  container: {flex: 1, overflow: 'hidden', backgroundColor: c.primaryDark},
+  bgTop: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: c.primary},
+  bgBottom: {position: 'absolute', bottom: 0, left: -5, right: -5, height: '50%', backgroundColor: c.primaryDark},
   content: {flex: 1},
   innerContent: {flexGrow: 1, alignItems: 'center', justifyContent: 'center'},
   innerRow: {alignItems: 'center', justifyContent: 'center'},
   innerRowLandscape: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(20)},
+  innerRowLandscapeTablet: {gap: 50},
   brandingSection: {alignItems: 'center', marginBottom: wp(24)},
-  logoOuter: {width: wp(82), height: wp(82), borderRadius: wp(26), justifyContent: 'center', alignItems: 'center', borderWidth: 2},
-  logoInner: {width: wp(60), height: wp(60), borderRadius: wp(18), justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
-  appName: {fontWeight: '800', letterSpacing: 2},
-  appTagline: {marginTop: 4, letterSpacing: 0.5},
-  companyBadge: {flexDirection: 'row', alignItems: 'center', gap: wp(6), marginTop: wp(10), paddingHorizontal: wp(14), paddingVertical: wp(5), borderRadius: wp(14)},
-  companyBadgeText: {fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3},
-  formCard: {borderRadius: wp(22), paddingHorizontal: wp(20), paddingVertical: wp(22), elevation: 20, shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.15, shadowRadius: 30},
-  loginTypeBadge: {flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(20), gap: wp(6), marginBottom: wp(12)},
-  loginTypeText: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.3},
-  welcomeText: {fontWeight: '700', marginBottom: 4},
-  welcomeSub: {marginBottom: wp(16)},
-  fieldLabel: {fontSize: ms(10), fontWeight: '600', marginBottom: wp(6), letterSpacing: 0.3},
-  inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(12), borderWidth: 1.5},
+  brandingSectionLandscape: {marginBottom: 0},
+  logoWrapDefault: {marginBottom: 16},
+  logoWrapLandscapePhone: {marginBottom: 4},
+  logoOuter: {width: wp(82), height: wp(82), borderRadius: wp(26), justifyContent: 'center', alignItems: 'center', borderWidth: 2, backgroundColor: c.overlay15, borderColor: c.overlay25},
+  logoOuterLandscapePhone: {width: 50, height: 50, borderRadius: 16},
+  logoOuterTablet: {width: 100, height: 100, borderRadius: 30},
+  logoInner: {width: wp(60), height: wp(60), borderRadius: wp(18), justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, backgroundColor: c.primaryLight, shadowColor: c.shadowColor},
+  logoInnerLandscapePhone: {width: 36, height: 36, borderRadius: 12},
+  logoInnerTablet: {width: 72, height: 72, borderRadius: 22},
+  logoImageDefault: {width: 52, height: 52, borderRadius: 14},
+  logoImageLandscapePhone: {width: 32, height: 32, borderRadius: 10},
+  logoImageTablet: {width: 65, height: 65, borderRadius: 18},
+  appName: {fontWeight: '800', letterSpacing: 2, fontSize: ms(18), color: c.textOnPrimary},
+  appNameLandscapePhone: {fontSize: ms(16)},
+  appNameTablet: {fontSize: ms(20)},
+  appTagline: {marginTop: 4, letterSpacing: 0.5, fontSize: ms(10), color: c.textOnDark70},
+  appTaglineLandscapePhone: {fontSize: ms(9)},
+  appTaglineTablet: {fontSize: ms(11)},
+  companyBadge: {flexDirection: 'row', alignItems: 'center', gap: wp(6), marginTop: wp(10), paddingHorizontal: wp(14), paddingVertical: wp(5), borderRadius: wp(14), backgroundColor: c.textOnDark12},
+  companyBadgeText: {fontSize: ms(9), fontWeight: '600', letterSpacing: 0.3, color: c.textOnDark70},
+  formCard: {borderRadius: wp(22), paddingHorizontal: wp(20), paddingVertical: wp(22), elevation: 20, shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.15, shadowRadius: 30, backgroundColor: c.white, shadowColor: c.shadowColor},
+  formCardLandscapePhone: {paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14},
+  formCardTablet: {paddingVertical: 24, paddingHorizontal: 28, borderRadius: 22},
+  loginTypeBadge: {flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(20), gap: wp(6), marginBottom: wp(12), backgroundColor: c.primaryDark},
+  loginTypeText: {fontSize: ms(9), fontWeight: '700', letterSpacing: 0.3, color: c.textOnPrimary},
+  welcomeText: {fontWeight: '700', marginBottom: 4, fontSize: ms(15), color: c.textPrimary},
+  welcomeTextLandscapePhone: {fontSize: ms(13), marginBottom: 1},
+  welcomeTextTablet: {fontSize: ms(16)},
+  welcomeSub: {marginBottom: wp(16), fontSize: ms(10), color: c.textTertiary},
+  welcomeSubLandscapePhone: {fontSize: ms(9), marginBottom: 6},
+  welcomeSubTablet: {fontSize: ms(11), marginBottom: 18},
+  fieldWrapper: {marginBottom: wp(18)},
+  fieldWrapperLandscapePhone: {marginBottom: 6},
+  fieldWrapperTablet: {marginBottom: 14},
+  fieldLabel: {fontSize: ms(10), fontWeight: '600', marginBottom: wp(6), letterSpacing: 0.3, color: c.textSecondary},
+  fieldLabelLandscapePhone: {marginBottom: 3},
+  inputRow: {flexDirection: 'row', alignItems: 'center', borderRadius: wp(12), borderWidth: 1.5, backgroundColor: c.surface, borderColor: c.border},
+  inputRowTablet: {borderRadius: 14},
   inputIconBox: {width: wp(40), height: wp(40), justifyContent: 'center', alignItems: 'center', marginLeft: wp(4)},
-  input: {flex: 1, paddingVertical: wp(12), paddingRight: wp(14)},
-  errorBox: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(8), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(10)},
-  errorText: {fontSize: ms(9), fontWeight: '500', flex: 1},
+  inputIconBoxLandscapePhone: {width: 30, height: 30},
+  inputIconBoxTablet: {width: 42, height: 42},
+  input: {flex: 1, paddingVertical: wp(12), paddingRight: wp(14), fontSize: ms(11), color: c.textPrimary},
+  inputLandscapePhone: {fontSize: ms(10), paddingVertical: 6},
+  inputTablet: {fontSize: ms(12), paddingVertical: 10},
+  errorBox: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingHorizontal: wp(12), paddingVertical: wp(8), borderRadius: wp(8), borderWidth: 1, marginBottom: wp(10), backgroundColor: c.errorSurface, borderColor: c.error},
+  errorText: {fontSize: ms(9), fontWeight: '500', flex: 1, color: c.error || '#EF4444'},
   rememberRow: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(10)},
+  rememberRowLandscapePhone: {marginBottom: 4},
   checkbox: {width: wp(20), height: wp(20), borderRadius: wp(5), borderWidth: 1.5, justifyContent: 'center', alignItems: 'center'},
-  rememberText: {fontSize: ms(10), fontWeight: '500'},
-  loginButton: {flexDirection: 'row', borderRadius: wp(12), paddingVertical: wp(14), alignItems: 'center', justifyContent: 'center', gap: wp(8), marginTop: wp(6), elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8},
-  loginButtonText: {fontWeight: '700', letterSpacing: 0.5},
+  rememberText: {fontSize: ms(10), fontWeight: '500', color: c.textSecondary},
+  loginButton: {flexDirection: 'row', borderRadius: wp(12), paddingVertical: wp(14), alignItems: 'center', justifyContent: 'center', gap: wp(8), marginTop: wp(6), elevation: 6, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, backgroundColor: c.primary, shadowColor: c.primary},
+  loginButtonLandscapePhone: {paddingVertical: 8, borderRadius: 10, marginTop: 2},
+  loginButtonTablet: {paddingVertical: 14, borderRadius: 12, marginTop: 6},
+  loginButtonLoading: {opacity: 0.7},
+  loginButtonText: {fontWeight: '700', letterSpacing: 0.5, fontSize: ms(11), color: c.textOnPrimary},
+  loginButtonTextLandscapePhone: {fontSize: ms(10)},
+  loginButtonTextTablet: {fontSize: ms(12)},
   footer: {flexDirection: 'row', alignItems: 'center', marginTop: wp(14), gap: wp(12)},
-  footerDivider: {flex: 1, height: 1},
-  footerText: {fontSize: ms(9), fontWeight: '500'},
+  footerTablet: {marginTop: 16},
+  footerDivider: {flex: 1, height: 1, backgroundColor: c.border},
+  footerText: {fontSize: ms(9), fontWeight: '500', color: c.textPlaceholder},
 });

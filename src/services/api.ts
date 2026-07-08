@@ -3,6 +3,7 @@ import {storage} from './storage';
 import {ENDPOINTS} from './endpoints';
 import {showToast} from '../utils/toast';
 import {captureError, addBreadcrumb} from './sentry';
+import {getIsOnline} from '../hooks/useNetworkStatus';
 
 const BASE_URL = Config.API_BASE_URL || '';
 
@@ -71,6 +72,14 @@ async function request<T = any>(
   const method = options.method || 'GET';
   const body = options.body ? JSON.parse(options.body as string) : undefined;
   const isSilent = SILENT_ENDPOINTS.some(e => endpoint.startsWith(e));
+
+  // Pre-check internet connection — fail fast instead of waiting for timeout
+  if (!getIsOnline()) {
+    const offlineMsg = 'You are offline. Please check your internet connection.';
+    console.warn(`[API] ${method} ${endpoint} — offline, skipping request`);
+    if (!isSilent) showToast('error', 'No Internet', offlineMsg);
+    throw new ApiError(offlineMsg, 'OFFLINE');
+  }
 
   console.log(`[API Request] ${method} ${url}`, {
     ...(body ? {params: body} : {}),

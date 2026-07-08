@@ -259,7 +259,7 @@ export default function DisputeTicketModal({
     return (
       <ScrollView
         
-        contentContainerStyle={{paddingBottom: fs(24)}}
+        contentContainerStyle={{paddingBottom: fs(48)}}
         showsVerticalScrollIndicator={true}
         persistentScrollbar={true}
         fadingEdgeLength={0}

@@ -54,7 +54,6 @@ const formatDuration = (seconds: number): string => {
 export default function VehicleTrackingScreen({navigation, route}: Props) {
   const passedTicketId = route.params?.ticketId ?? null;
   useFontScaleRefresh();
-  const st = createSt();
   const {c} = useTheme();
   const {driver} = useAuth();
   const insets = useSafeAreaInsets();
@@ -68,6 +67,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const ls = (size: number) => Math.round(size * Math.min(width, height) / LREF);
   const fsScale = Math.max(0.8, Math.min(1.2, lh / 500));
   const fs = (base: number) => Math.round(base * fsScale);
+
+  const st = createSt(c, L, isTablet, ls, fs);
 
   // GPS state
   const [speed, setSpeed] = useState(0);
@@ -273,44 +274,44 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
 
   // ── Shared UI blocks ──
   const heroBlock = (
-    <View style={[st.heroSection, {backgroundColor: c.primaryDark}, L && {flex: 1, paddingVertical: wp(8), justifyContent: 'center'}]}>
-      <View style={[st.speedRing, L && {width: wp(100), height: wp(100), borderRadius: wp(50), borderWidth: wp(3)}]}>
-        <View style={[st.speedRingInner, {borderColor: 'rgba(255,255,255,0.08)'}, L && {width: wp(84), height: wp(84), borderRadius: wp(42)}]}>
-          <Text style={[st.speedValue, L && {fontSize: ms(32), fontFamily: MONO}]}>{speedKmh}</Text>
-          <Text style={[st.speedUnit, L && {fontSize: ms(9), fontFamily: MONO}]}>km/h</Text>
+    <View style={[st.heroSection, L && st.heroSectionLandscape]}>
+      <View style={[st.speedRing, L && st.speedRingLandscape]}>
+        <View style={[st.speedRingInner, L && st.speedRingInnerLandscape]}>
+          <Text style={[st.speedValue, L && st.speedValueLandscape]}>{speedKmh}</Text>
+          <Text style={[st.speedUnit, L && st.speedUnitLandscape]}>km/h</Text>
         </View>
       </View>
-      <View style={[st.heroStatsRow, L && {marginTop: wp(10)}]}>
-        <View style={[st.heroStat]}>
+      <View style={[st.heroStatsRow, L && st.heroStatsRowLandscape]}>
+        <View style={st.heroStat}>
           <Icon name="explore" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
-          <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(heading)}° {compassDir}</Text>
-          <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Heading</Text>
+          <Text style={[st.heroStatValue, L && st.heroStatValueLandscape]}>{Math.round(heading)}° {compassDir}</Text>
+          <Text style={[st.heroStatLabel, L && st.heroStatLabelLandscape]}>Heading</Text>
         </View>
-        <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-        <View style={[st.heroStat]}>
+        <View style={st.heroStatDivider} />
+        <View style={st.heroStat}>
           <Icon name="terrain" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
-          <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(altitude)}m</Text>
-          <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Altitude</Text>
+          <Text style={[st.heroStatValue, L && st.heroStatValueLandscape]}>{Math.round(altitude)}m</Text>
+          <Text style={[st.heroStatLabel, L && st.heroStatLabelLandscape]}>Altitude</Text>
         </View>
-        <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-        <View style={[st.heroStat]}>
+        <View style={st.heroStatDivider} />
+        <View style={st.heroStat}>
           <Icon name="gps-fixed" size={ms(L ? 11 : 14)} color="rgba(255,255,255,0.5)" />
-          <Text style={[st.heroStatValue, L && {fontSize: ms(9), fontFamily: MONO}]}>{Math.round(accuracy)}m</Text>
-          <Text style={[st.heroStatLabel, L && {fontSize: ms(7), fontFamily: MONO}]}>Accuracy</Text>
+          <Text style={[st.heroStatValue, L && st.heroStatValueLandscape]}>{Math.round(accuracy)}m</Text>
+          <Text style={[st.heroStatLabel, L && st.heroStatLabelLandscape]}>Accuracy</Text>
         </View>
       </View>
       {isIdle && isTracking && (
-        <View style={[st.idleBadge, L && {marginTop: wp(6)}]}>
+        <View style={[st.idleBadge, L && st.idleBadgeLandscape]}>
           <Icon name="pause-circle-filled" size={ms(11)} color="#EF4444" />
-          <Text style={[st.idleBadgeText, {color: '#EF4444', fontFamily: MONO}]}>IDLE {formatDuration(idleTime)}</Text>
+          <Text style={st.idleBadgeText}>IDLE {formatDuration(idleTime)}</Text>
         </View>
       )}
       <TouchableOpacity
-        style={[st.trackBtn, {backgroundColor: isTracking ? '#EF4444' : '#22C55E'}, L && {marginTop: wp(8), paddingVertical: wp(7), paddingHorizontal: wp(18)}]}
+        style={[st.trackBtn, isTracking ? st.trackBtnStop : st.trackBtnStart, L && st.trackBtnLandscape]}
         activeOpacity={0.8}
         onPress={isTracking ? stopTracking : startTracking}>
         <Icon name={isTracking ? 'stop' : 'play-arrow'} size={ms(L ? 14 : 16)} color="#fff" />
-        <Text style={[st.trackBtnText, L && {fontSize: ms(10), fontFamily: MONO}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
+        <Text style={[st.trackBtnText, L && st.trackBtnTextLandscape]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -318,68 +319,68 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const cardsInner = (
     <>
       {/* ── TRIP STATS ── */}
-      <View style={[st.card, {backgroundColor: c.white, borderColor: c.borderLight}, L && {padding: ls(10), borderRadius: ls(10)}]}>
-        <View style={[st.cardHeader, L && {marginBottom: ls(6), gap: ls(6)}]}>
-          <View style={[st.cardIconBg, {backgroundColor: c.primary + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
+      <View style={[st.card, L && st.cardLandscape]}>
+        <View style={[st.cardHeader, L && st.cardHeaderLandscape]}>
+          <View style={[st.cardIconBg, st.cardIconBgPrimary, L && st.cardIconBgLandscape]}>
             <Icon name="route" size={L ? fs(13) : ms(14)} color={c.primary} />
           </View>
-          <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), marginBottom: ls(4), fontFamily: MONO}]}>Trip Statistics</Text>
-          {isTracking && <View style={[st.liveDot, {backgroundColor: '#22C55E'}]} />}
+          <Text style={[st.cardTitle, L && st.cardTitleLandscape]}>Trip Statistics</Text>
+          {isTracking && <View style={st.liveDotGreen} />}
         </View>
-        <View style={[st.statsGrid, L && {gap: ls(6)}]}>
+        <View style={[st.statsGrid, L && st.statsGridLandscape]}>
           {[
             {icon: 'straighten', label: 'Distance', value: distanceKm, unit: 'km', color: c.primary},
             {icon: 'timer', label: 'Duration', value: formatDuration(tripDuration), unit: '', color: c.accent},
             {icon: 'speed', label: 'Max Speed', value: `${maxSpeedKmh}`, unit: 'km/h', color: '#EF4444'},
             {icon: 'analytics', label: 'Avg Speed', value: `${avgSpeedKmh}`, unit: 'km/h', color: '#F59E0B'},
           ].map((item, i) => (
-            <View key={i} style={[st.statItem, {borderColor: c.borderLight}, L && {paddingVertical: ls(12), borderRadius: ls(7)}]}>
+            <View key={i} style={[st.statItem, L && st.statItemLandscape]}>
               <Icon name={item.icon as any} size={L ? fs(16) : ms(15)} color={item.color} />
-              <Text style={[st.statValue, {color: c.textPrimary}, L && {fontSize: fs(16)}]}>{item.value}<Text style={[st.statUnit, {color: c.textMuted, fontFamily: MONO}]}> {item.unit}</Text></Text>
-              <Text style={[st.statLabel, {color: c.textMuted}, L && {fontSize: fs(11), fontFamily: MONO}]}>{item.label}</Text>
+              <Text style={[st.statValue, L && st.statValueLandscape]}>{item.value}<Text style={st.statUnit}> {item.unit}</Text></Text>
+              <Text style={[st.statLabel, L && st.statLabelLandscape]}>{item.label}</Text>
             </View>
           ))}
         </View>
       </View>
 
       {/* ── DRIVING BEHAVIOUR ── */}
-      <View style={[st.card, {backgroundColor: c.white, borderColor: c.borderLight}, L && {padding: ls(10), borderRadius: ls(10)}]}>
-        <View style={[st.cardHeader, L && {marginBottom: ls(6), gap: ls(6)}]}>
-          <View style={[st.cardIconBg, {backgroundColor: '#8B5CF6' + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
+      <View style={[st.card, L && st.cardLandscape]}>
+        <View style={[st.cardHeader, L && st.cardHeaderLandscape]}>
+          <View style={[st.cardIconBg, st.cardIconBgPurple, L && st.cardIconBgLandscape]}>
             <Icon name="shield" size={L ? fs(13) : ms(14)} color="#8B5CF6" />
           </View>
-          <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), marginBottom: ls(4), fontFamily: MONO}]}>Driving Behaviour</Text>
+          <Text style={[st.cardTitle, L && st.cardTitleLandscape]}>Driving Behaviour</Text>
         </View>
-        <View style={[st.behaviourRow, L && {gap: ls(6)}]}>
-          <View style={[st.behaviourItem, {backgroundColor: '#FEF2F2', borderColor: '#FECACA'}, L && {paddingVertical: ls(20), borderRadius: ls(7)}]}>
+        <View style={[st.behaviourRow, L && st.behaviourRowLandscape]}>
+          <View style={[st.behaviourItem, st.behaviourItemRed, L && st.behaviourItemLandscape]}>
             <Icon name="warning" size={L ? fs(18) : ms(18)} color="#EF4444" />
-            <Text style={[st.behaviourValue, {color: '#EF4444'}, L && {fontSize: fs(16), fontFamily: MONO}]}>{hardBrakes}</Text>
-            <Text style={[st.behaviourLabel, L && {fontSize: fs(10), fontFamily: MONO}]}>Hard Brakes</Text>
+            <Text style={[st.behaviourValue, st.behaviourValueRed, L && st.behaviourValueLandscape]}>{hardBrakes}</Text>
+            <Text style={[st.behaviourLabel, L && st.behaviourLabelLandscape]}>Hard Brakes</Text>
           </View>
-          <View style={[st.behaviourItem, {backgroundColor: '#FFFBEB', borderColor: '#FDE68A'}, L && {paddingVertical: ls(20), borderRadius: ls(7)}]}>
+          <View style={[st.behaviourItem, st.behaviourItemAmber, L && st.behaviourItemLandscape]}>
             <Icon name="turn-sharp-right" size={L ? fs(18) : ms(18)} color="#F59E0B" />
-            <Text style={[st.behaviourValue, {color: '#F59E0B'}, L && {fontSize: fs(16), fontFamily: MONO}]}>{hardCorners}</Text>
-            <Text style={[st.behaviourLabel, L && {fontSize: fs(10), fontFamily: MONO}]}>Hard Corners</Text>
+            <Text style={[st.behaviourValue, st.behaviourValueAmber, L && st.behaviourValueLandscape]}>{hardCorners}</Text>
+            <Text style={[st.behaviourLabel, L && st.behaviourLabelLandscape]}>Hard Corners</Text>
           </View>
-          <View style={[st.behaviourItem, {backgroundColor: isIdle ? '#FEF2F2' : '#F0FDF4', borderColor: isIdle ? '#FECACA' : '#BBF7D0'}, L && {paddingVertical: ls(20), borderRadius: ls(7)}]}>
+          <View style={[st.behaviourItem, isIdle ? st.behaviourItemRed : st.behaviourItemGreen, L && st.behaviourItemLandscape]}>
             <Icon name={isIdle ? 'pause-circle-filled' : 'directions-car'} size={L ? fs(18) : ms(18)} color={isIdle ? '#EF4444' : '#22C55E'} />
-            <Text style={[st.behaviourValue, {color: isIdle ? '#EF4444' : '#22C55E'}, L && {fontSize: fs(16), fontFamily: MONO}]}>{isIdle ? formatDuration(idleTime) : 'Moving'}</Text>
-            <Text style={[st.behaviourLabel, L && {fontSize: fs(10), fontFamily: MONO}]}>Status</Text>
+            <Text style={[st.behaviourValue, isIdle ? st.behaviourValueRed : st.behaviourValueGreen, L && st.behaviourValueLandscape]}>{isIdle ? formatDuration(idleTime) : 'Moving'}</Text>
+            <Text style={[st.behaviourLabel, L && st.behaviourLabelLandscape]}>Status</Text>
           </View>
         </View>
       </View>
 
       {/* ── ACCELEROMETER ── */}
       {isTracking && (
-        <View style={[st.card, {backgroundColor: c.white, borderColor: c.borderLight}, L && {padding: ls(10), borderRadius: ls(10)}]}>
-          <View style={[st.cardHeader, L && {marginBottom: ls(6), gap: ls(6)}]}>
-            <View style={[st.cardIconBg, {backgroundColor: '#F59E0B' + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
+        <View style={[st.card, L && st.cardLandscape]}>
+          <View style={[st.cardHeader, L && st.cardHeaderLandscape]}>
+            <View style={[st.cardIconBg, st.cardIconBgAmber, L && st.cardIconBgLandscape]}>
               <Icon name="vibration" size={L ? fs(13) : ms(14)} color="#F59E0B" />
             </View>
-            <Text style={[st.cardTitle, {color: c.textPrimary}, L && {fontSize: fs(13), fontFamily: MONO}]}>Accelerometer</Text>
-            <View style={[st.liveDot, {backgroundColor: '#F59E0B'}]} />
+            <Text style={[st.cardTitle, L && st.cardTitleLandscape]}>Accelerometer</Text>
+            <View style={st.liveDotAmber} />
           </View>
-          <View style={{gap: L ? ls(8) : wp(10)}}>
+          <View style={L ? st.accelRowsLandscape : st.accelRows}>
             {[
               {label: 'Lateral (X)', value: accelX, threshold: HARD_CORNER_THRESHOLD, color: c.primary, warnColor: '#EF4444'},
               {label: 'Longitudinal (Y)', value: accelY, threshold: HARD_BRAKE_THRESHOLD, color: c.accent, warnColor: '#EF4444'},
@@ -388,11 +389,11 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
               const isWarn = Math.abs(axis.value) > axis.threshold;
               return (
                 <View key={i}>
-                  <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: L ? ls(3) : wp(3)}}>
-                    <Text style={[st.accelLabel, {color: c.textMuted}, L && {fontSize: fs(12), fontFamily: MONO}]}>{axis.label}</Text>
-                    <Text style={[st.accelVal, {color: isWarn ? axis.warnColor : c.textPrimary}, L && {fontSize: fs(12), fontFamily: MONO}]}>{axis.value.toFixed(1)} m/s²</Text>
+                  <View style={L ? st.accelRowHeaderLandscape : st.accelRowHeader}>
+                    <Text style={[st.accelLabel, L && st.accelLabelLandscape]}>{axis.label}</Text>
+                    <Text style={[st.accelVal, isWarn ? st.accelValWarn : st.accelValNormal, L && st.accelValLandscape]}>{axis.value.toFixed(1)} m/s²</Text>
                   </View>
-                  <View style={[st.progressTrack, {backgroundColor: c.borderLight}]}>
+                  <View style={st.progressTrack}>
                     <View style={[st.progressFill, {backgroundColor: isWarn ? axis.warnColor : axis.color, width: `${pct}%`}]} />
                   </View>
                 </View>
@@ -404,35 +405,35 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
 
       {/* ── COORDINATES ── */}
       {isTracking && (
-        <View style={[st.card, {backgroundColor: c.white, borderColor: c.borderLight, flexDirection: 'row', alignItems: 'center', gap: L ? ls(8) : wp(10)}, L && {padding: ls(10), borderRadius: ls(10)}]}>
-          <View style={[st.cardIconBg, {backgroundColor: c.primary + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
+        <View style={[st.card, st.coordCard, L && st.coordCardLandscape]}>
+          <View style={[st.cardIconBg, st.cardIconBgPrimary, L && st.cardIconBgLandscape]}>
             <Icon name="my-location" size={L ? fs(13) : ms(14)} color={c.primary} />
           </View>
-          <View style={{flex: 1}}>
-            <Text style={[st.coordLabel, {color: c.textMuted}, L && {fontSize: fs(12), fontFamily: MONO}]}>Current Position</Text>
-            <Text style={[st.coordValue, {color: c.textPrimary}, L && {fontSize: fs(13), fontFamily: MONO}]}>{latitude.toFixed(6)}, {longitude.toFixed(6)}</Text>
+          <View style={st.coordContent}>
+            <Text style={[st.coordLabel, L && st.coordLabelLandscape]}>Current Position</Text>
+            <Text style={[st.coordValue, L && st.coordValueLandscape]}>{latitude.toFixed(6)}, {longitude.toFixed(6)}</Text>
           </View>
         </View>
       )}
 
       {/* ── BROADCASTING ── */}
-      <View style={[st.card, {backgroundColor: c.white, borderColor: c.borderLight}, L && {padding: ls(22), borderRadius: ls(10)}]}>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-          <View style={[st.cardIconBg, {backgroundColor: (isBroadcasting ? '#22C55E' : c.textMuted) + '15'}, L && {width: ls(26), height: ls(26), borderRadius: ls(7)}]}>
+      <View style={[st.card, L && st.broadcastCardLandscape]}>
+        <View style={st.broadcastRow}>
+          <View style={[st.cardIconBg, isBroadcasting ? st.cardIconBgBroadcastOn : st.cardIconBgBroadcastOff, L && st.cardIconBgLandscape]}>
             <Icon name="cell-tower" size={L ? fs(13) : ms(14)} color={isBroadcasting ? '#22C55E' : c.textMuted} />
           </View>
-          <View style={{flex: 1, marginLeft: L ? ls(8) : wp(10)}}>
-            <Text style={[st.broadcastTitle, {color: c.textPrimary}, L && {fontSize: fs(13), fontFamily: MONO}]}>Broadcasting</Text>
-            <Text style={[st.broadcastSub, {color: isBroadcasting ? '#22C55E' : c.textMuted}, L && {fontSize: fs(11), fontFamily: MONO}]}>
+          <View style={L ? st.broadcastTextLandscape : st.broadcastText}>
+            <Text style={[st.broadcastTitle, L && st.broadcastTitleLandscape]}>Broadcasting</Text>
+            <Text style={[st.broadcastSub, isBroadcasting ? st.broadcastSubOn : st.broadcastSubOff, L && st.broadcastSubLandscape]}>
               {isBroadcasting ? 'Sharing live location' : 'Location sharing off'}
             </Text>
           </View>
           <TouchableOpacity
-            style={[st.broadcastToggle, {backgroundColor: isBroadcasting ? '#EF4444' : '#22C55E'}, L && {paddingVertical: ls(7), paddingHorizontal: ls(12), borderRadius: ls(8)}]}
+            style={[st.broadcastToggle, isBroadcasting ? st.broadcastToggleStop : st.broadcastToggleStart, L && st.broadcastToggleLandscape]}
             activeOpacity={0.8}
             onPress={() => setIsBroadcasting(b => !b)}>
             <Icon name={isBroadcasting ? 'stop' : 'play-arrow'} size={L ? fs(14) : ms(14)} color="#fff" />
-            <Text style={[st.broadcastToggleText, L && {fontSize: fs(11), fontFamily: MONO}]}>{isBroadcasting ? 'STOP' : 'START'}</Text>
+            <Text style={[st.broadcastToggleText, L && st.broadcastToggleTextLandscape]}>{isBroadcasting ? 'STOP' : 'START'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -442,54 +443,54 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const cardsContent = L ? (
     isTracking ? (
       <ScrollView
-        style={{flex: 1}}
-        contentContainerStyle={{paddingHorizontal: ls(10), paddingTop: ls(4), paddingBottom: insets.bottom + ls(4), gap: ls(6)}}
+        style={st.flex1}
+        contentContainerStyle={[st.cardsContentLandscape, {paddingBottom: insets.bottom + ls(4)}]}
         showsVerticalScrollIndicator={false}>
         {cardsInner}
       </ScrollView>
     ) : (
-      <View style={{flex: 1, paddingHorizontal: ls(10), paddingTop: ls(4), paddingBottom: insets.bottom + ls(4), gap: ls(6)}}>
+      <View style={[st.cardsContentLandscapeStatic, {paddingBottom: insets.bottom + ls(4)}]}>
         {cardsInner}
       </View>
     )
   ) : (
     <ScrollView
-      style={{flex: 1}}
-      contentContainerStyle={[st.scrollContent, {paddingBottom: insets.bottom + wp(24), paddingHorizontal: wp(14)}]}
+      style={st.flex1}
+      contentContainerStyle={[st.scrollContent, {paddingBottom: insets.bottom + wp(24)}]}
       showsVerticalScrollIndicator={false}>
       {cardsInner}
     </ScrollView>
   );
 
   return (
-    <View style={[st.container, {backgroundColor: c.background}]}>
+    <View style={st.container}>
       <StatusBar barStyle="light-content" backgroundColor={c.primaryDark} />
 
       {L ? (
         /* ── LANDSCAPE: header embedded in left column, right panel extends from top ── */
-        <View style={{flex: 1, flexDirection: 'row'}}>
+        <View style={st.landscapeRoot}>
           {/* Left column: header + speedometer */}
-          <View style={{width: isTablet ? '35%' : '32%', backgroundColor: c.primaryDark}}>
+          <View style={[st.landscapeLeft, isTablet ? st.landscapeLeftTablet : st.landscapeLeftPhone]}>
             <View style={[st.header, {paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(14), insets.left), paddingRight: wp(8)}]}>
-              <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={[st.headerBtn, {backgroundColor: 'rgba(255,255,255,0.1)'}]} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+              <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={st.headerBtn} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
                 <Icon name="arrow-back" size={ms(18)} color={c.textOnPrimary} />
               </TouchableOpacity>
-              <View style={{flex: 1, marginLeft: wp(10)}}>
-                <Text style={[st.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]}>Vehicle Tracking</Text>
-                <Text style={[st.headerSub, {color: c.textOnDark60, fontFamily: MONO}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
+              <View style={st.headerTextBlock}>
+                <Text style={st.headerTitle}>Vehicle Tracking</Text>
+                <Text style={st.headerSub}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
               </View>
             </View>
-            <View style={{flex: 1, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(255,255,255,0.08)'}}>
+            <View style={st.landscapeSpeedoWrapper}>
               {heroBlock}
             </View>
           </View>
           {/* Right column: GPS badge + cards — extends from very top */}
-          <View style={{flex: 1, backgroundColor: c.surface}}>
-            <View style={{flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingTop: insets.top + wp(6), paddingRight: Math.max(wp(14), insets.right), paddingBottom: wp(4), gap: wp(4)}}>
-              <Animated.View style={[st.gpsBadge, {backgroundColor: gpsActive ? '#22C55E' : c.textMuted, transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
+          <View style={st.landscapeRight}>
+            <View style={[st.landscapeGpsBadgeRow, {paddingTop: insets.top + wp(6), paddingRight: Math.max(wp(14), insets.right)}]}>
+              <Animated.View style={[st.gpsBadge, gpsActive ? st.gpsBadgeActive : st.gpsBadgeInactive, {transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
                 <Icon name="gps-fixed" size={ms(10)} color="#fff" />
               </Animated.View>
-              <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60, fontFamily: MONO}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+              <Text style={[st.gpsLabel, gpsActive ? st.gpsLabelActive : st.gpsLabelInactive]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
             </View>
             {cardsContent}
           </View>
@@ -497,63 +498,63 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       ) : (
         /* ── PORTRAIT: standard stacked layout ── */
         <>
-          <View style={[st.header, {backgroundColor: c.primaryDark, paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(14), insets.left), paddingRight: Math.max(wp(14), insets.right)}]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={[st.headerBtn, {backgroundColor: 'rgba(255,255,255,0.1)'}]} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <View style={[st.header, st.headerPortrait, {paddingTop: insets.top + wp(6), paddingLeft: Math.max(wp(14), insets.left), paddingRight: Math.max(wp(14), insets.right)}]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={st.headerBtn} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
               <Icon name="arrow-back" size={ms(18)} color={c.textOnPrimary} />
             </TouchableOpacity>
-            <View style={{flex: 1, marginLeft: wp(10)}}>
-              <Text style={[st.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]}>Vehicle Tracking</Text>
-              <Text style={[st.headerSub, {color: c.textOnDark60, fontFamily: MONO}]}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
+            <View style={st.headerTextBlock}>
+              <Text style={st.headerTitle}>Vehicle Tracking</Text>
+              <Text style={st.headerSub}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
             </View>
-            <Animated.View style={[st.gpsBadge, {backgroundColor: gpsActive ? '#22C55E' : c.textMuted, transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
+            <Animated.View style={[st.gpsBadge, gpsActive ? st.gpsBadgeActive : st.gpsBadgeInactive, {transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
               <Icon name="gps-fixed" size={ms(10)} color="#fff" />
             </Animated.View>
-            <Text style={[st.gpsLabel, {color: gpsActive ? '#22C55E' : c.textOnDark60, fontFamily: MONO}]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+            <Text style={[st.gpsLabel, gpsActive ? st.gpsLabelActive : st.gpsLabelInactive]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
           </View>
           {/* Hero section — row layout: circle left, stats right */}
-          <View style={{backgroundColor: c.primaryDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Math.max(wp(14), insets.left), paddingVertical: wp(10), gap: wp(10)}}>
+          <View style={[st.portraitHeroRow, {paddingHorizontal: Math.max(wp(14), insets.left)}]}>
             {/* Left: speedometer circle */}
-            <View style={{alignItems: 'center'}}>
-              <View style={[st.speedRing]}>
-                <View style={[st.speedRingInner, {borderColor: 'rgba(255,255,255,0.08)'}]}>
-                  <Text style={[st.speedValue]}>{speedKmh}</Text>
-                  <Text style={[st.speedUnit]}>km/h</Text>
+            <View style={st.portraitSpeedoWrapper}>
+              <View style={st.speedRing}>
+                <View style={st.speedRingInner}>
+                  <Text style={st.speedValue}>{speedKmh}</Text>
+                  <Text style={st.speedUnit}>km/h</Text>
                 </View>
               </View>
             </View>
             {/* Right: stats + button */}
-            <View style={{flex: 1, alignItems: 'center', gap: wp(8)}}>
-              <View style={[st.heroStatsRow]}>
-                <View style={[st.heroStat]}>
+            <View style={st.portraitStatsWrapper}>
+              <View style={st.heroStatsRow}>
+                <View style={st.heroStat}>
                   <Icon name="explore" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={[st.heroStatValue]}>{Math.round(heading)}° {compassDir}</Text>
-                  <Text style={[st.heroStatLabel]}>Heading</Text>
+                  <Text style={st.heroStatValue}>{Math.round(heading)}° {compassDir}</Text>
+                  <Text style={st.heroStatLabel}>Heading</Text>
                 </View>
-                <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-                <View style={[st.heroStat]}>
+                <View style={st.heroStatDivider} />
+                <View style={st.heroStat}>
                   <Icon name="terrain" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={[st.heroStatValue]}>{Math.round(altitude)}m</Text>
-                  <Text style={[st.heroStatLabel]}>Altitude</Text>
+                  <Text style={st.heroStatValue}>{Math.round(altitude)}m</Text>
+                  <Text style={st.heroStatLabel}>Altitude</Text>
                 </View>
-                <View style={[st.heroStatDivider, {backgroundColor: 'rgba(255,255,255,0.1)'}]} />
-                <View style={[st.heroStat]}>
+                <View style={st.heroStatDivider} />
+                <View style={st.heroStat}>
                   <Icon name="gps-fixed" size={ms(14)} color="rgba(255,255,255,0.5)" />
-                  <Text style={[st.heroStatValue]}>{Math.round(accuracy)}m</Text>
-                  <Text style={[st.heroStatLabel]}>Accuracy</Text>
+                  <Text style={st.heroStatValue}>{Math.round(accuracy)}m</Text>
+                  <Text style={st.heroStatLabel}>Accuracy</Text>
                 </View>
               </View>
               {isIdle && isTracking && (
-                <View style={[st.idleBadge]}>
+                <View style={st.idleBadge}>
                   <Icon name="pause-circle-filled" size={ms(11)} color="#EF4444" />
-                  <Text style={[st.idleBadgeText, {color: '#EF4444', fontFamily: MONO}]}>IDLE {formatDuration(idleTime)}</Text>
+                  <Text style={st.idleBadgeText}>IDLE {formatDuration(idleTime)}</Text>
                 </View>
               )}
               <TouchableOpacity
-                style={[st.trackBtn, {backgroundColor: isTracking ? '#EF4444' : '#22C55E', alignSelf: 'center', paddingVertical: wp(8), paddingHorizontal: wp(20)}]}
+                style={[st.trackBtn, isTracking ? st.trackBtnStop : st.trackBtnStart, st.trackBtnPortrait]}
                 activeOpacity={0.8}
                 onPress={isTracking ? stopTracking : startTracking}>
                 <Icon name={isTracking ? 'stop' : 'play-arrow'} size={ms(14)} color="#fff" />
-                <Text style={[st.trackBtnText, {fontSize: ms(11)}]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
+                <Text style={st.trackBtnTextPortrait}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -564,69 +565,158 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   );
 }
 
-const createSt = () => StyleSheet.create({
-  container: {flex: 1},
+const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => number, fs: (n: number) => number) => StyleSheet.create({
+  flex1: {flex: 1},
+  container: {flex: 1, backgroundColor: c.background},
 
-  // Header
+  // ── Header ──
   header: {flexDirection: 'row', alignItems: 'center', paddingBottom: wp(8), gap: wp(6)},
-  headerBtn: {width: wp(34), height: wp(34), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
-  headerTitle: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.3},
-  headerSub: {fontSize: ms(12), fontWeight: '500', marginTop: 1},
-  gpsBadge: {width: wp(22), height: wp(22), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center'},
-  gpsLabel: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.8, marginLeft: wp(2)},
+  headerPortrait: {backgroundColor: c.primaryDark},
+  headerBtn: {width: wp(34), height: wp(34), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)'},
+  headerTextBlock: {flex: 1, marginLeft: wp(10)},
+  headerTitle: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.3, color: c.textOnPrimary, fontFamily: MONO},
+  headerSub: {fontSize: ms(12), fontWeight: '500', marginTop: 1, color: c.textOnDark60, fontFamily: MONO},
 
-  // Hero
-  heroSection: {alignItems: 'center', paddingTop: wp(8), paddingBottom: wp(16)},
+  // ── GPS badge ──
+  gpsBadge: {width: wp(22), height: wp(22), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center'},
+  gpsBadgeActive: {backgroundColor: '#22C55E'},
+  gpsBadgeInactive: {backgroundColor: c.textMuted},
+  gpsLabel: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.8, marginLeft: wp(2), fontFamily: MONO},
+  gpsLabelActive: {color: '#22C55E'},
+  gpsLabelInactive: {color: c.textOnDark60},
+
+  // ── Landscape layout ──
+  landscapeRoot: {flex: 1, flexDirection: 'row'},
+  landscapeLeft: {backgroundColor: c.primaryDark},
+  landscapeLeftTablet: {width: '35%'},
+  landscapeLeftPhone: {width: '32%'},
+  landscapeSpeedoWrapper: {flex: 1, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(255,255,255,0.08)'},
+  landscapeRight: {flex: 1, backgroundColor: c.surface},
+  landscapeGpsBadgeRow: {flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: wp(4), gap: wp(4)},
+
+  // ── Hero ──
+  heroSection: {alignItems: 'center', paddingTop: wp(8), paddingBottom: wp(16), backgroundColor: c.primaryDark},
+  heroSectionLandscape: {flex: 1, paddingVertical: wp(8), justifyContent: 'center'},
   speedRing: {width: wp(140), height: wp(140), borderRadius: wp(70), borderWidth: wp(4), borderColor: 'rgba(255,255,255,0.08)', justifyContent: 'center', alignItems: 'center'},
-  speedRingInner: {width: wp(120), height: wp(120), borderRadius: wp(60), borderWidth: wp(2), justifyContent: 'center', alignItems: 'center'},
+  speedRingLandscape: {width: wp(100), height: wp(100), borderRadius: wp(50), borderWidth: wp(3)},
+  speedRingInner: {width: wp(120), height: wp(120), borderRadius: wp(60), borderWidth: wp(2), borderColor: 'rgba(255,255,255,0.08)', justifyContent: 'center', alignItems: 'center'},
+  speedRingInnerLandscape: {width: wp(84), height: wp(84), borderRadius: wp(42)},
   speedValue: {fontSize: ms(44), fontWeight: '900', color: '#fff', letterSpacing: -1},
+  speedValueLandscape: {fontSize: ms(32), fontFamily: MONO},
   speedUnit: {fontSize: ms(13), fontWeight: '700', color: 'rgba(255,255,255,0.5)', marginTop: -2},
+  speedUnitLandscape: {fontSize: ms(9), fontFamily: MONO},
   heroStatsRow: {flexDirection: 'row', alignItems: 'center', marginTop: wp(14), gap: wp(6)},
+  heroStatsRowLandscape: {marginTop: wp(10)},
   heroStat: {alignItems: 'center', paddingHorizontal: wp(14)},
   heroStatValue: {fontSize: ms(13), fontWeight: '800', color: '#fff', marginTop: wp(3)},
+  heroStatValueLandscape: {fontSize: ms(9), fontFamily: MONO},
   heroStatLabel: {fontSize: ms(10), fontWeight: '600', color: 'rgba(255,255,255,0.4)', marginTop: 1},
-  heroStatDivider: {width: 1, height: wp(24)},
+  heroStatLabelLandscape: {fontSize: ms(7), fontFamily: MONO},
+  heroStatDivider: {width: 1, height: wp(24), backgroundColor: 'rgba(255,255,255,0.1)'},
   idleBadge: {flexDirection: 'row', alignItems: 'center', gap: wp(4), backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: wp(12), paddingVertical: wp(5), borderRadius: wp(14), marginTop: wp(10)},
-  idleBadgeText: {fontSize: ms(11), fontWeight: '800', letterSpacing: 0.5},
+  idleBadgeLandscape: {marginTop: wp(6)},
+  idleBadgeText: {fontSize: ms(11), fontWeight: '800', letterSpacing: 0.5, color: '#EF4444', fontFamily: MONO},
   trackBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingVertical: wp(10), paddingHorizontal: wp(28), borderRadius: wp(14), marginTop: wp(12), elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
+  trackBtnStart: {backgroundColor: '#22C55E'},
+  trackBtnStop: {backgroundColor: '#EF4444'},
+  trackBtnLandscape: {marginTop: wp(8), paddingVertical: wp(7), paddingHorizontal: wp(18)},
+  trackBtnPortrait: {alignSelf: 'center', paddingVertical: wp(8), paddingHorizontal: wp(20)},
   trackBtnText: {fontSize: ms(14), fontWeight: '800', color: '#fff', letterSpacing: 0.3},
-  liveDot: {width: wp(8), height: wp(8), borderRadius: wp(4)},
+  trackBtnTextLandscape: {fontSize: ms(10), fontFamily: MONO},
+  trackBtnTextPortrait: {fontSize: ms(11), fontWeight: '800', color: '#fff', letterSpacing: 0.3},
+  liveDotGreen: {width: wp(8), height: wp(8), borderRadius: wp(4), backgroundColor: '#22C55E'},
+  liveDotAmber: {width: wp(8), height: wp(8), borderRadius: wp(4), backgroundColor: '#F59E0B'},
 
-  // Scroll
-  scrollContent: {paddingTop: wp(14), gap: wp(10)},
+  // ── Portrait hero row ──
+  portraitHeroRow: {backgroundColor: c.primaryDark, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(10), gap: wp(10)},
+  portraitSpeedoWrapper: {alignItems: 'center'},
+  portraitStatsWrapper: {flex: 1, alignItems: 'center', gap: wp(8)},
 
-  // Cards
-  card: {borderRadius: wp(14), borderWidth: 1, padding: wp(14)},
+  // ── Scroll / cards container ──
+  scrollContent: {paddingTop: wp(14), gap: wp(10), paddingHorizontal: wp(14)},
+  cardsContentLandscape: {paddingHorizontal: ls(10), paddingTop: ls(4), gap: ls(6)},
+  cardsContentLandscapeStatic: {flex: 1, paddingHorizontal: ls(10), paddingTop: ls(4), gap: ls(6)},
+
+  // ── Cards ──
+  card: {borderRadius: wp(14), borderWidth: 1, padding: wp(14), backgroundColor: c.white, borderColor: c.borderLight},
+  cardLandscape: {padding: ls(10), borderRadius: ls(10)},
   cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(12)},
+  cardHeaderLandscape: {marginBottom: ls(6), gap: ls(6)},
   cardIconBg: {width: wp(28), height: wp(28), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center'},
-  cardTitle: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.2, flex: 1},
+  cardIconBgLandscape: {width: ls(26), height: ls(26), borderRadius: ls(7)},
+  cardIconBgPrimary: {backgroundColor: c.primary + '15'},
+  cardIconBgPurple: {backgroundColor: '#8B5CF6' + '15'},
+  cardIconBgAmber: {backgroundColor: '#F59E0B' + '15'},
+  cardIconBgBroadcastOn: {backgroundColor: '#22C55E' + '15'},
+  cardIconBgBroadcastOff: {backgroundColor: c.textMuted + '15'},
+  cardTitle: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.2, flex: 1, color: c.textPrimary},
+  cardTitleLandscape: {fontSize: fs(13), marginBottom: ls(4), fontFamily: MONO},
 
-  // Stats grid
+  // ── Stats grid ──
   statsGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(8)},
-  statItem: {flexGrow: 1, flexBasis: '45%', alignItems: 'center', paddingVertical: wp(10), borderRadius: wp(10), borderWidth: 1},
-  statValue: {fontSize: ms(18), fontWeight: '900', marginTop: wp(4)},
-  statUnit: {fontSize: ms(11), fontWeight: '600'},
-  statLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.3, marginTop: wp(2)},
+  statsGridLandscape: {gap: ls(6)},
+  statItem: {flexGrow: 1, flexBasis: '45%', alignItems: 'center', paddingVertical: wp(10), borderRadius: wp(10), borderWidth: 1, borderColor: c.borderLight},
+  statItemLandscape: {paddingVertical: ls(12), borderRadius: ls(7)},
+  statValue: {fontSize: ms(18), fontWeight: '900', marginTop: wp(4), color: c.textPrimary},
+  statValueLandscape: {fontSize: fs(16)},
+  statUnit: {fontSize: ms(11), fontWeight: '600', color: c.textMuted, fontFamily: MONO},
+  statLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.3, marginTop: wp(2), color: c.textMuted},
+  statLabelLandscape: {fontSize: fs(11), fontFamily: MONO},
 
-  // Behaviour
+  // ── Behaviour ──
   behaviourRow: {flexDirection: 'row', gap: wp(8)},
+  behaviourRowLandscape: {gap: ls(6)},
   behaviourItem: {flex: 1, alignItems: 'center', paddingVertical: wp(12), borderRadius: wp(10), borderWidth: 1},
+  behaviourItemLandscape: {paddingVertical: ls(20), borderRadius: ls(7)},
+  behaviourItemRed: {backgroundColor: '#FEF2F2', borderColor: '#FECACA'},
+  behaviourItemAmber: {backgroundColor: '#FFFBEB', borderColor: '#FDE68A'},
+  behaviourItemGreen: {backgroundColor: '#F0FDF4', borderColor: '#BBF7D0'},
   behaviourValue: {fontSize: ms(16), fontWeight: '900', marginTop: wp(4)},
+  behaviourValueLandscape: {fontSize: fs(16), fontFamily: MONO},
+  behaviourValueRed: {color: '#EF4444'},
+  behaviourValueAmber: {color: '#F59E0B'},
+  behaviourValueGreen: {color: '#22C55E'},
   behaviourLabel: {fontSize: ms(9), fontWeight: '700', color: '#6B7280', letterSpacing: 0.3, marginTop: wp(2)},
+  behaviourLabelLandscape: {fontSize: fs(10), fontFamily: MONO},
 
-  // Accelerometer
-  accelLabel: {fontSize: ms(11), fontWeight: '700'},
+  // ── Accelerometer ──
+  accelRows: {gap: wp(10)},
+  accelRowsLandscape: {gap: ls(8)},
+  accelRowHeader: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: wp(3)},
+  accelRowHeaderLandscape: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: ls(3)},
+  accelLabel: {fontSize: ms(11), fontWeight: '700', color: c.textMuted},
+  accelLabelLandscape: {fontSize: fs(12), fontFamily: MONO},
   accelVal: {fontSize: ms(11), fontWeight: '800'},
-  progressTrack: {height: wp(6), borderRadius: wp(3), overflow: 'hidden'},
+  accelValNormal: {color: c.textPrimary},
+  accelValWarn: {color: '#EF4444'},
+  accelValLandscape: {fontSize: fs(12), fontFamily: MONO},
+  progressTrack: {height: wp(6), borderRadius: wp(3), overflow: 'hidden', backgroundColor: c.borderLight},
   progressFill: {height: '100%', borderRadius: wp(3)},
 
-  // Coordinates
-  coordLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.3},
-  coordValue: {fontSize: ms(13), fontWeight: '700', marginTop: 1},
+  // ── Coordinates ──
+  coordCard: {flexDirection: 'row', alignItems: 'center', gap: wp(10)},
+  coordCardLandscape: {padding: ls(10), borderRadius: ls(10), gap: ls(8)},
+  coordContent: {flex: 1},
+  coordLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.3, color: c.textMuted},
+  coordLabelLandscape: {fontSize: fs(12), fontFamily: MONO},
+  coordValue: {fontSize: ms(13), fontWeight: '700', marginTop: 1, color: c.textPrimary},
+  coordValueLandscape: {fontSize: fs(13), fontFamily: MONO},
 
-  // Broadcasting
-  broadcastTitle: {fontSize: ms(13), fontWeight: '800'},
+  // ── Broadcasting ──
+  broadcastCardLandscape: {padding: ls(22), borderRadius: ls(10)},
+  broadcastRow: {flexDirection: 'row', alignItems: 'center'},
+  broadcastText: {flex: 1, marginLeft: wp(10)},
+  broadcastTextLandscape: {flex: 1, marginLeft: ls(8)},
+  broadcastTitle: {fontSize: ms(13), fontWeight: '800', color: c.textPrimary},
+  broadcastTitleLandscape: {fontSize: fs(13), fontFamily: MONO},
   broadcastSub: {fontSize: ms(11), fontWeight: '600', marginTop: 1},
+  broadcastSubOn: {color: '#22C55E'},
+  broadcastSubOff: {color: c.textMuted},
+  broadcastSubLandscape: {fontSize: fs(11), fontFamily: MONO},
   broadcastToggle: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(8), paddingHorizontal: wp(14), borderRadius: wp(10)},
+  broadcastToggleLandscape: {paddingVertical: ls(7), paddingHorizontal: ls(12), borderRadius: ls(8)},
+  broadcastToggleStart: {backgroundColor: '#22C55E'},
+  broadcastToggleStop: {backgroundColor: '#EF4444'},
   broadcastToggleText: {fontSize: ms(12), fontWeight: '800', color: '#fff', letterSpacing: 0.5},
+  broadcastToggleTextLandscape: {fontSize: fs(11), fontFamily: MONO},
 });

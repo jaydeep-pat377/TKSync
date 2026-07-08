@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Platform,
+  Animated,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
@@ -121,6 +122,9 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
   const fst = (base: number) => Math.round((base - 1) * s); // font size (text)
 
   const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [contentH, setContentH] = useState(0);
+  const [viewH, setViewH] = useState(0);
   const [data, setData] = useState<MobileTicketPrint | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -274,7 +278,12 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
               </View>
 
               {/* ════ SCROLLABLE BODY ════ */}
-              <ScrollView ref={scrollRef} style={{flex: 1}} showsVerticalScrollIndicator={true} persistentScrollbar={true} fadingEdgeLength={0}>
+              <View style={{flex: 1, position: 'relative'}}>
+              <ScrollView ref={scrollRef} style={{flex: 1}} showsVerticalScrollIndicator={Platform.OS === 'android'} persistentScrollbar={true} fadingEdgeLength={0}
+                onScroll={Animated.event([{nativeEvent: {contentOffset: {y: scrollY}}}], {useNativeDriver: false})}
+                scrollEventThrottle={16}
+                onContentSizeChange={(_, h) => setContentH(h)}
+                onLayout={e => setViewH(e.nativeEvent.layout.height)}>
 
                 {/* ── ORDER DETAILS ── */}
                 <View style={{borderLeftWidth: fs(4), borderLeftColor: p.accent, backgroundColor: p.sectionBar, paddingHorizontal: fs(12), paddingVertical: ct ? fs(5) : fs(6)}}>
@@ -399,6 +408,19 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
                   </TouchableOpacity>
                 </View>
               </ScrollView>
+              {contentH > viewH && (
+                <Animated.View style={{
+                  position: 'absolute', right: 1, top: 0, width: 3, borderRadius: 2,
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  height: viewH > 0 ? Math.max(20, (viewH / contentH) * viewH) : 20,
+                  transform: [{translateY: scrollY.interpolate({
+                    inputRange: [0, Math.max(1, contentH - viewH)],
+                    outputRange: [0, viewH - Math.max(20, (viewH / contentH) * viewH)],
+                    extrapolate: 'clamp',
+                  })}],
+                }} />
+              )}
+              </View>
             </>
           )}
         </View>

@@ -22,6 +22,8 @@ function emit(event: SyncEvent) {
 }
 
 function isRetryableError(err: any): boolean {
+  // Offline pre-check error is retryable
+  if (err?.error_code === 'OFFLINE') return true;
   // Network errors are retryable
   if (err instanceof TypeError && err.message?.includes('Network request failed')) return true;
   if (err?.name === 'AbortError') return true;

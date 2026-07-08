@@ -59,7 +59,8 @@ const DEFAULT_COLOR = {icon: '#616161', bg: '#F5F5F5', marker: '#616161'};
 
 export default function MapScreen({navigation, route}: Props) {
   useFontScaleRefresh();
-  const styles = createStyles();
+  const {c} = useTheme();
+  const styles = createStyles(c);
   const params = (route.params || {}) as {
     mapItems?: MapItem[];
     delivery?: {lat: number; lng: number};
@@ -69,7 +70,6 @@ export default function MapScreen({navigation, route}: Props) {
     plantName?: string;
   };
   const {mapItems, delivery, plant, truck, address, plantName} = params;
-  const {c} = useTheme();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const isLandscape = width > height;
@@ -102,8 +102,8 @@ export default function MapScreen({navigation, route}: Props) {
 
   if (!center) {
     return (
-      <View style={[styles.container, {backgroundColor: c.background}]}>
-        <Text style={{color: c.textPrimary, textAlign: 'center', marginTop: 100, fontFamily: MONO}}>No location data</Text>
+      <View style={styles.container}>
+        <Text style={styles.noLocationText}>No location data</Text>
       </View>
     );
   }
@@ -148,7 +148,7 @@ export default function MapScreen({navigation, route}: Props) {
   // Build panel from mapItems
   const panelContent = hasMapItems ? (
     <ScrollView
-      style={{flex: 1}}
+      style={styles.panelScroll}
       contentContainerStyle={{
         paddingVertical: isLandscape ? 14 : insets.top + 10,
         paddingHorizontal: isTablet ? 24 : isLandscape ? 16 : 20,
@@ -172,9 +172,9 @@ export default function MapScreen({navigation, route}: Props) {
               <View style={[styles.panelIcon, {width: iconBox, height: iconBox, borderRadius: iconBox / 2, backgroundColor: colors.bg}]}>
                 <Icon name={item.type === 'Plant' ? 'factory' : item.type === 'Job Site' ? 'place' : 'local-shipping'} size={iconSize} color={colors.icon} />
               </View>
-              <Text style={[styles.panelTitle, {fontSize: titleSize, color: c.textPrimary, fontFamily: MONO}]}>{item.type}</Text>
+              <Text style={[styles.panelTitle, {fontSize: titleSize, fontFamily: MONO}]}>{item.type}</Text>
             </View>
-            <Text style={[styles.panelValue, {fontSize: valueSize, marginLeft: indentLeft, color: c.textPrimary, fontFamily: MONO}]}>{displayValue}</Text>
+            <Text style={[styles.panelValue, {fontSize: valueSize, marginLeft: indentLeft, fontFamily: MONO}]}>{displayValue}</Text>
             {hasCoords && item.directions && (
               <TouchableOpacity onPress={() => openDirections(item.latitude!, item.longitude!)} activeOpacity={0.7}>
                 <Text style={[styles.panelDirections, {fontSize: dirSize, marginLeft: indentLeft, fontFamily: MONO}]}>DIRECTIONS</Text>
@@ -187,9 +187,9 @@ export default function MapScreen({navigation, route}: Props) {
   ) : null;
 
   const mapView = (
-    <View style={[styles.mapContainer]}>
+    <View style={styles.mapContainer}>
       {!mapLoaded && (
-        <View style={[styles.loader]}>
+        <View style={styles.loader}>
           <ActivityIndicator size="large" color={c.primary} />
         </View>
       )}
@@ -228,7 +228,7 @@ export default function MapScreen({navigation, route}: Props) {
               onSelected={() => setSelectedMarker(idx)}
               onDeselected={() => { if (selectedMarker === idx) setSelectedMarker(null); }}>
               {item.type === 'My Truck' ? (
-                <View style={[styles.truckMarker]}>
+                <View style={styles.truckMarker}>
                   <TruckSvg width={40} height={22} primaryColor={colors.marker} secondaryColor={colors.icon} />
                 </View>
               ) : (
@@ -237,21 +237,21 @@ export default function MapScreen({navigation, route}: Props) {
                 </View>
               )}
               <MapboxGL.Callout title="">
-                <View style={[styles.callout]}>
-                  <View style={[styles.calloutHeader]}>
+                <View style={styles.callout}>
+                  <View style={styles.calloutHeader}>
                     <View style={[styles.calloutIcon, {backgroundColor: colors.bg}]}>
                       <Icon name={iconName} size={16} color={colors.icon} />
                     </View>
-                    <Text style={[styles.calloutTitle]}>{item.type}</Text>
+                    <Text style={styles.calloutTitle}>{item.type}</Text>
                   </View>
-                  {displayValue ? <Text style={[styles.calloutValue]}>{displayValue}</Text> : null}
+                  {displayValue ? <Text style={styles.calloutValue}>{displayValue}</Text> : null}
                   {item.type === 'My Truck' && (
-                    <View style={[styles.calloutDetails]}>
-                      {item.driverCode ? <Text style={[styles.calloutDetail]}>Driver: {item.driverCode}</Text> : null}
-                      {item.deliveredTo ? <Text style={[styles.calloutDetail]}>To: {item.deliveredTo}</Text> : null}
-                      {item.distanceMiles != null ? <Text style={[styles.calloutDetail]}>Distance: {item.distanceMiles.toFixed(1)} mi</Text> : null}
-                      {item.durationSeconds != null ? <Text style={[styles.calloutDetail]}>ETA: {item.durationSeconds >= 3600 ? `${Math.floor(item.durationSeconds / 3600)}h ${Math.round((item.durationSeconds % 3600) / 60)}m` : `${Math.round(item.durationSeconds / 60)} min`}</Text> : null}
-                      {item.gpsUpdatedAt ? <Text style={[styles.calloutDetail]}>GPS: {new Date(item.gpsUpdatedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</Text> : null}
+                    <View style={styles.calloutDetails}>
+                      {item.driverCode ? <Text style={styles.calloutDetail}>Driver: {item.driverCode}</Text> : null}
+                      {item.deliveredTo ? <Text style={styles.calloutDetail}>To: {item.deliveredTo}</Text> : null}
+                      {item.distanceMiles != null ? <Text style={styles.calloutDetail}>Distance: {item.distanceMiles.toFixed(1)} mi</Text> : null}
+                      {item.durationSeconds != null ? <Text style={styles.calloutDetail}>ETA: {item.durationSeconds >= 3600 ? `${Math.floor(item.durationSeconds / 3600)}h ${Math.round((item.durationSeconds % 3600) / 60)}m` : `${Math.round(item.durationSeconds / 60)} min`}</Text> : null}
+                      {item.gpsUpdatedAt ? <Text style={styles.calloutDetail}>GPS: {new Date(item.gpsUpdatedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</Text> : null}
                     </View>
                   )}
                 </View>
@@ -263,21 +263,21 @@ export default function MapScreen({navigation, route}: Props) {
         {/* Fallback markers if no mapItems */}
         {!hasMapItems && delivery && (
           <MapboxGL.PointAnnotation id="delivery" coordinate={[delivery.lng, delivery.lat]} title={address || 'Delivery'}>
-            <View style={[styles.marker, {backgroundColor: '#EF4444'}]}>
+            <View style={[styles.marker, styles.markerDelivery]}>
               <Icon name="place" size={18} color="#fff" />
             </View>
           </MapboxGL.PointAnnotation>
         )}
         {!hasMapItems && plant && (
           <MapboxGL.PointAnnotation id="plant" coordinate={[plant.lng, plant.lat]} title="Plant">
-            <View style={[styles.marker, {backgroundColor: '#00897B'}]}>
+            <View style={[styles.marker, styles.markerPlant]}>
               <Icon name="factory" size={18} color="#fff" />
             </View>
           </MapboxGL.PointAnnotation>
         )}
         {!hasMapItems && truck && (
           <MapboxGL.PointAnnotation id="truck" coordinate={[truck.lng, truck.lat]} title="Truck">
-            <View style={[styles.marker, {backgroundColor: '#1976D2'}]}>
+            <View style={[styles.marker, styles.markerTruck]}>
               <Icon name="local-shipping" size={18} color="#fff" />
             </View>
           </MapboxGL.PointAnnotation>
@@ -286,18 +286,18 @@ export default function MapScreen({navigation, route}: Props) {
 
       {/* Traffic legend */}
       {!isSatellite && (
-        <View style={[styles.trafficLegend]}>
-          <Text style={[styles.legendTitle]}>Traffic</Text>
-          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#4CAF50'}]} /><Text style={[styles.legendLabel]}>Low</Text></View>
-          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#FFEB3B'}]} /><Text style={[styles.legendLabel]}>Moderate</Text></View>
-          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#FF9800'}]} /><Text style={[styles.legendLabel]}>Heavy</Text></View>
-          <View style={[styles.legendRow]}><View style={[styles.legendLine, {backgroundColor: '#F44336'}]} /><Text style={[styles.legendLabel]}>Severe</Text></View>
+        <View style={styles.trafficLegend}>
+          <Text style={styles.legendTitle}>Traffic</Text>
+          <View style={styles.legendRow}><View style={[styles.legendLine, styles.legendLineGreen]} /><Text style={styles.legendLabel}>Low</Text></View>
+          <View style={styles.legendRow}><View style={[styles.legendLine, styles.legendLineYellow]} /><Text style={styles.legendLabel}>Moderate</Text></View>
+          <View style={styles.legendRow}><View style={[styles.legendLine, styles.legendLineOrange]} /><Text style={styles.legendLabel}>Heavy</Text></View>
+          <View style={styles.legendRow}><View style={[styles.legendLine, styles.legendLineRed]} /><Text style={styles.legendLabel}>Severe</Text></View>
         </View>
       )}
 
       {/* Satellite toggle */}
       <TouchableOpacity
-        style={[styles.mapBtn, {top: 12, right: 56}]}
+        style={styles.mapBtnSatellite}
         onPress={() => setIsSatellite(s => !s)}
         activeOpacity={0.7}>
         <Icon name={isSatellite ? 'map' : 'satellite'} size={20} color="#333" />
@@ -305,16 +305,16 @@ export default function MapScreen({navigation, route}: Props) {
 
       {/* Close button */}
       <TouchableOpacity
-        style={[styles.mapBtn, {top: 12, right: 12}]}
+        style={styles.mapBtnClose}
         onPress={() => navigation.goBack()}
         activeOpacity={0.7}>
-        <Text style={[styles.closeBtnText]}>X</Text>
+        <Text style={styles.closeBtnText}>X</Text>
       </TouchableOpacity>
 
       {/* Zoom controls */}
-      <View style={[styles.zoomControls, {right: 12, bottom: hasMapItems && !isLandscape ? height * 0.44 + 70 : 70}]}>
+      <View style={[styles.zoomControls, {bottom: hasMapItems && !isLandscape ? height * 0.44 + 70 : 70}]}>
         <TouchableOpacity
-          style={[styles.zoomBtn, {borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ccc'}]}
+          style={styles.zoomBtnTop}
           onPress={() => { const z = Math.min(20, zoomLevel + 1); setZoomLevel(z); cameraRef.current?.setCamera({zoomLevel: z, animationDuration: 300}); }}
           activeOpacity={0.7}>
           <Icon name="add" size={22} color="#333" />
@@ -332,7 +332,7 @@ export default function MapScreen({navigation, route}: Props) {
         style={[styles.recenterBtn, {bottom: hasMapItems && !isLandscape ? height * 0.44 + 20 : Math.max(16, insets.bottom + 8)}]}
         onPress={recenter}
         activeOpacity={0.8}>
-        <Text style={[styles.recenterText]}>RECENTER</Text>
+        <Text style={styles.recenterText}>RECENTER</Text>
       </TouchableOpacity>
     </View>
   );
@@ -341,8 +341,8 @@ export default function MapScreen({navigation, route}: Props) {
   if (hasMapItems) {
     if (isLandscape) {
       return (
-        <View style={[styles.container, {backgroundColor: c.background, flexDirection: 'row'}]}>
-          <View style={[styles.sidePanel, {backgroundColor: c.white, paddingTop: insets.top, borderRightColor: c.borderLight, width: isTablet ? 300 : 260}]}>
+        <View style={[styles.container, styles.containerRow]}>
+          <View style={[styles.sidePanel, {paddingTop: insets.top, width: isTablet ? 300 : 260}]}>
             {panelContent}
           </View>
           {mapView}
@@ -350,11 +350,11 @@ export default function MapScreen({navigation, route}: Props) {
       );
     }
     return (
-      <View style={[styles.container, {backgroundColor: c.background}]}>
+      <View style={styles.container}>
         {mapView}
-        <View style={[styles.bottomPanel, {backgroundColor: c.white, paddingBottom: Math.max(insets.bottom, 12), maxHeight: isTablet ? '45%' : '42%'}]}>
-          <View style={[styles.bottomPanelHandle]}>
-            <View style={[styles.handleBar, {backgroundColor: c.border}]} />
+        <View style={[styles.bottomPanel, {paddingBottom: Math.max(insets.bottom, 12), maxHeight: isTablet ? '45%' : '42%'}]}>
+          <View style={styles.bottomPanelHandle}>
+            <View style={styles.handleBar} />
           </View>
           {panelContent}
         </View>
@@ -364,11 +364,10 @@ export default function MapScreen({navigation, route}: Props) {
 
   // No map items: header + map (original layout)
   return (
-    <View style={[styles.container, {backgroundColor: c.background}]}>
+    <View style={styles.container}>
       <View style={[
         styles.header,
         {
-          backgroundColor: c.primary,
           paddingTop: insets.top + wp(6),
           paddingLeft: Math.max(wp(12), insets.left + wp(6)),
           paddingRight: Math.max(wp(12), insets.right + wp(6)),
@@ -377,21 +376,21 @@ export default function MapScreen({navigation, route}: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Icon name="arrow-back" size={22} color={c.textOnPrimary} />
         </TouchableOpacity>
-        <View style={[styles.headerCenter]}>
-          <Text style={[styles.headerTitle, {color: c.textOnPrimary, fontFamily: MONO}]}>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, {fontFamily: MONO}]}>
             {address || 'Delivery Location'}
           </Text>
           {delivery && (
-            <Text style={[styles.headerSub, {color: c.textOnDark70, fontFamily: MONO}]}>
+            <Text style={[styles.headerSub, {fontFamily: MONO}]}>
               {delivery.lat.toFixed(6)}, {delivery.lng.toFixed(6)}
             </Text>
           )}
         </View>
-        <TouchableOpacity onPress={() => setIsSatellite(s => !s)} style={[styles.navBtn, {backgroundColor: c.overlay15}]} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => setIsSatellite(s => !s)} style={styles.navBtn} activeOpacity={0.7}>
           <Icon name={isSatellite ? 'map' : 'satellite'} size={20} color={c.textOnPrimary} />
         </TouchableOpacity>
         {delivery && (
-          <TouchableOpacity onPress={() => openDirections(delivery.lat, delivery.lng)} style={[styles.navBtn, {backgroundColor: c.overlay15}]} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => openDirections(delivery.lat, delivery.lng)} style={styles.navBtn} activeOpacity={0.7}>
             <Icon name="navigation" size={20} color={c.textOnPrimary} />
           </TouchableOpacity>
         )}
@@ -401,33 +400,41 @@ export default function MapScreen({navigation, route}: Props) {
   );
 }
 
-const createStyles = () => StyleSheet.create({
-  container: {flex: 1},
-  header: {paddingBottom: wp(10), flexDirection: 'row', alignItems: 'center', gap: wp(10), elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, zIndex: 10},
+const createStyles = (c: any) => StyleSheet.create({
+  container: {flex: 1, backgroundColor: c.background},
+  containerRow: {flexDirection: 'row'},
+  noLocationText: {color: c.textPrimary, textAlign: 'center', marginTop: 100, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace'},
+  header: {paddingBottom: wp(10), flexDirection: 'row', alignItems: 'center', gap: wp(10), elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, zIndex: 10, backgroundColor: c.primary},
   backBtn: {width: wp(36), height: wp(36), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
   headerCenter: {flex: 1},
-  headerTitle: {fontSize: ms(14), fontWeight: '700'},
-  headerSub: {fontSize: ms(10), marginTop: 1},
-  navBtn: {width: wp(36), height: wp(36), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center'},
+  headerTitle: {fontSize: ms(14), fontWeight: '700', color: c.textOnPrimary},
+  headerSub: {fontSize: ms(10), marginTop: 1, color: c.textOnDark70},
+  navBtn: {width: wp(36), height: wp(36), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay15},
   mapContainer: {flex: 1},
   loader: {position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 10},
   map: {flex: 1},
   marker: {width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 4},
+  markerDelivery: {backgroundColor: '#EF4444'},
+  markerPlant: {backgroundColor: '#00897B'},
+  markerTruck: {backgroundColor: '#1976D2'},
   truckMarker: {alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.3, shadowRadius: 4},
 
   // Side panel (landscape)
-  sidePanel: {borderRightWidth: StyleSheet.hairlineWidth},
+  sidePanel: {borderRightWidth: StyleSheet.hairlineWidth, backgroundColor: c.white, borderRightColor: c.borderLight},
   // Bottom panel (portrait)
-  bottomPanel: {position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 18, borderTopRightRadius: 18, elevation: 12, shadowColor: '#000', shadowOffset: {width: 0, height: -4}, shadowOpacity: 0.15, shadowRadius: 12},
+  bottomPanel: {position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 18, borderTopRightRadius: 18, elevation: 12, shadowColor: '#000', shadowOffset: {width: 0, height: -4}, shadowOpacity: 0.15, shadowRadius: 12, backgroundColor: c.white},
   bottomPanelHandle: {alignItems: 'center', paddingTop: 10, paddingBottom: 4},
-  handleBar: {width: 40, height: 4, borderRadius: 2},
+  handleBar: {width: 40, height: 4, borderRadius: 2, backgroundColor: c.border},
+
+  // Panel scroll
+  panelScroll: {flex: 1},
 
   // Panel items
   panelItem: {borderBottomWidth: StyleSheet.hairlineWidth},
   panelIconRow: {flexDirection: 'row', alignItems: 'center', marginBottom: 4},
   panelIcon: {justifyContent: 'center', alignItems: 'center'},
-  panelTitle: {fontWeight: '800'},
-  panelValue: {fontWeight: '500', lineHeight: 21, marginBottom: 6},
+  panelTitle: {fontWeight: '800', color: c.textPrimary},
+  panelValue: {fontWeight: '500', lineHeight: 21, marginBottom: 6, color: c.textPrimary},
   panelDirections: {fontWeight: '700', color: '#1976D2', textDecorationLine: 'underline'},
 
   // Callout popup
@@ -444,14 +451,20 @@ const createStyles = () => StyleSheet.create({
   legendTitle: {fontSize: 14, fontWeight: '800', color: '#333', marginBottom: 2},
   legendRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
   legendLine: {width: 20, height: 5, borderRadius: 2},
+  legendLineGreen: {backgroundColor: '#4CAF50'},
+  legendLineYellow: {backgroundColor: '#FFEB3B'},
+  legendLineOrange: {backgroundColor: '#FF9800'},
+  legendLineRed: {backgroundColor: '#F44336'},
   legendLabel: {fontSize: 13, fontWeight: '600', color: '#555'},
 
   // Map overlay buttons
-  mapBtn: {position: 'absolute', width: 40, height: 40, borderRadius: 6, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc'},
+  mapBtnSatellite: {position: 'absolute', top: 12, right: 56, width: 40, height: 40, borderRadius: 6, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc'},
+  mapBtnClose: {position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: 6, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc'},
   closeBtnText: {fontSize: 18, fontWeight: '900', color: '#333'},
 
   // Zoom controls
-  zoomControls: {position: 'absolute', backgroundColor: '#fff', borderRadius: 6, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc', overflow: 'hidden'},
+  zoomControls: {position: 'absolute', right: 12, backgroundColor: '#fff', borderRadius: 6, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc', overflow: 'hidden'},
+  zoomBtnTop: {width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ccc'},
   zoomBtn: {width: 40, height: 40, justifyContent: 'center', alignItems: 'center'},
 
   // Recenter button
