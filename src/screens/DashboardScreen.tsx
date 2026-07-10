@@ -1254,8 +1254,8 @@ export default function DashboardScreen({ navigation }: Props) {
       <View style={{ flex: 1 }}>
         {/* ─── TOP BAR: TODAY + Tickets + Right Icons ─── */}
         <View style={{ backgroundColor: c.background, paddingTop: insets.top + (L ? 2 : 4), paddingBottom: L ? 3 : 6, paddingLeft: Math.max(L ? ls(12) : wp(12), insets.left + 4), paddingRight: Math.max(L ? ls(12) : wp(12), insets.right + 4), alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', paddingHorizontal: 4 }} style={{ flex: 1 }}>
+          <View style={{ width: '100%', alignItems: 'center' }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', paddingHorizontal: 4 }}>
               {tickets.map((ticket, i) => {
                 const isSelected = activeTicket === i;
                 const isCompleted = ticket.at_plant_time != null;
@@ -1268,7 +1268,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 );
               })}
             </ScrollView>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(5), marginLeft: ms(6) }}>
+            <View style={{ position: 'absolute', right: 0, flexDirection: 'row', alignItems: 'center', gap: ms(5) }}>
               <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', height: L ? 25 : ms(28), borderRadius: 8, paddingHorizontal: ms(8), flexDirection: 'row', alignItems: 'center', gap: ms(3) }}>
                 <Icon name="wifi" size={L ? 13 : ms(14)} color="#fff" />
                 <Text style={{ fontSize: L ? 10 : ms(8), fontWeight: '800', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
@@ -1325,7 +1325,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   <Icon name="menu" size={15} color={c.textOnPrimary} />
                 </TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsRow, { marginTop: 4 }]}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsRow, { marginTop: 4, flexGrow: 1, justifyContent: 'center' }]}>
                 {tickets.map((ticket, i) => {
                   const isSelected = activeTicket === i;
                   const isCompleted = ticket.at_plant_time != null;
@@ -1383,7 +1383,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   </TouchableOpacity>
                 </View>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsRow, { flexGrow: 1, justifyContent: 'center' }]}>
                 {tickets.map((ticket, i) => {
                   const isSelected = activeTicket === i;
                   const isCompleted = ticket.at_plant_time != null;
@@ -1547,7 +1547,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       </View>
                       {[
                         { label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' },
-                        ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.quantity || '-' }] : []),
+                        ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.load_size || '-' }] : []),
                         { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
                         { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
                       ].map((row, i, arr) => (
@@ -1595,7 +1595,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   </View>
                   {/* RIGHT: Mandatory Fields */}
                   <View style={{ flex: 1 }}>
-                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(6) : fs(2) }}>
+                    <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(6) : fs(2) }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(1) : fs(3), marginBottom: fs(1) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(2), paddingHorizontal: fs(6), borderRadius: 10, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
@@ -1634,7 +1634,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   </View>
                 </View>
               )}
-              {/* Quick Links + Additional Entries — same height row */}
+              {/* Quick Links + Additional Entries */}
               {!detailLoading && (
                 <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(10), marginBottom: '5%' }}>
                   <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
@@ -1804,7 +1804,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: 8, marginBottom: 8 }}>
                       <Text style={[styles.cardSectionHeader, { color: isDark ? '#B0BEC5' : c.textMuted }]}>Delivery Location</Text>
                     </View>
-                    {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.quantity || '-' }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }].map((row, i) => (
+                    {[{ label: 'TIME DUE', value: detail?.job?.time_due_local ? formatLocalTime(detail.job.time_due_local) : '-' }, ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.load_size || '-' }] : []), { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true }, { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' }].map((row, i) => (
                       <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
                         <Text style={styles.cardFieldLabel}>{row.label}</Text>
                         {row.isLink ? (<TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}><Text style={[styles.cardProductValue700, { color: c.accent, textDecorationLine: 'underline' }]}>{row.value}</Text></TouchableOpacity>
