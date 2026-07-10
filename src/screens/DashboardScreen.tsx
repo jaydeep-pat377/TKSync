@@ -477,7 +477,15 @@ export default function DashboardScreen({ navigation }: Props) {
       setRefreshing(true);
       const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
-      setTickets(data.data);
+      // --- DUMMY TICKETS (remove after testing) ---
+      const dummyTickets: Ticket[] = Array.from({ length: 9 }, (_, i) => ({
+        ...(data.data[0] || {}),
+        id: 90000 + i,
+        ticket_id: 90000 + i,
+        ticket_code: `${30000000 + i}`,
+        at_plant_time: i % 3 === 0 ? '2026-07-10T12:00:00Z' : null,
+      })) as Ticket[];
+      setTickets([...data.data, ...dummyTickets]);
       ticketsRef.current = data.data;
       loadedTicketIdRef.current = null;
       setActiveTicket(0);
@@ -1254,21 +1262,8 @@ export default function DashboardScreen({ navigation }: Props) {
       <View style={{ flex: 1 }}>
         {/* ─── TOP BAR: TODAY + Tickets + Right Icons ─── */}
         <View style={{ backgroundColor: c.background, paddingTop: insets.top + (L ? 2 : 4), paddingBottom: L ? 3 : 6, paddingLeft: Math.max(L ? ls(12) : wp(12), insets.left + 4), paddingRight: Math.max(L ? ls(12) : wp(12), insets.right + 4), alignItems: 'center' }}>
-          <View style={{ width: '100%', alignItems: 'center' }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', paddingHorizontal: 4 }}>
-              {tickets.map((ticket, i) => {
-                const isSelected = activeTicket === i;
-                const isCompleted = ticket.at_plant_time != null;
-                return (
-                  <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
-                    style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
-                    <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
-                    <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700'}]}>{ticket.ticket_code}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            <View style={{ position: 'absolute', right: 0, flexDirection: 'row', alignItems: 'center', gap: ms(5) }}>
+          <View style={{ width: '100%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: ms(5), marginBottom: 4 }}>
               <View style={{ backgroundColor: isOnline ? '#2E7D32' : '#D32F2F', height: L ? 25 : ms(28), borderRadius: 8, paddingHorizontal: ms(8), flexDirection: 'row', alignItems: 'center', gap: ms(3) }}>
                 <Icon name="wifi" size={L ? 13 : ms(14)} color="#fff" />
                 <Text style={{ fontSize: L ? 10 : ms(8), fontWeight: '800', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
@@ -1286,6 +1281,19 @@ export default function DashboardScreen({ navigation }: Props) {
                 <Icon name="settings" size={L ? 13 : ms(14)} color={c.textSecondary} />
               </TouchableOpacity>
             </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: 'center', paddingHorizontal: 4, flexGrow: 1, justifyContent: 'center' }}>
+              {tickets.map((ticket, i) => {
+                const isSelected = activeTicket === i;
+                const isCompleted = ticket.at_plant_time != null;
+                return (
+                  <TouchableOpacity key={ticket.id} onPress={() => { if (isCompleted) setPendingDetails(true); switchTicket(i); }} activeOpacity={0.7}
+                    style={[styles.tab, { borderColor: isSelected ? 'transparent' : isDark ? '#fff' : '#000', backgroundColor: isSelected ? (isCompleted ? c.primary : c.accent) : isDark ? c.surface : '#e8ecf0' }]}>
+                    <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (isCompleted ? c.primary : c.accent) }} />
+                    <Text style={[styles.tabText, {color: isSelected ? '#fff' : c.textSecondary, fontWeight: isSelected ? '900' : '700'}]}>{ticket.ticket_code}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
         </View>
 
@@ -1414,9 +1422,9 @@ export default function DashboardScreen({ navigation }: Props) {
           const fs = (base: number) => Math.round(base * s);
           const fst = (base: number) => Math.round((base - 1) * s);
           return (
-            <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(1), paddingBottom: 0 }}>
+            <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(1), paddingBottom: fs(6) }}>
               {/* Info Bar */}
-              <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(4) : fs(6), paddingHorizontal: fs(12), marginBottom: fs(3), flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ backgroundColor: '#367000', borderRadius: fs(6), paddingVertical: isSmallLandscape ? fs(3) : fs(5), paddingHorizontal: fs(10), marginBottom: fs(2), flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8), flex: 1.5 }}>
                   <Image source={require('../assets/images/logo.png')} style={{ width: fs(34), height: fs(34), borderRadius: fs(17) }} />
                   <View>
@@ -1454,7 +1462,7 @@ export default function DashboardScreen({ navigation }: Props) {
               </View>
               {/* Timeline */}
               {!detailLoading && (
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: fs(4), paddingHorizontal: fs(8) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: fs(2), paddingHorizontal: fs(8) }}>
                   {timeline.map((item, i) => {
                     const isActive = item.done && (i === timeline.length - 1 || !timeline[i + 1].done);
                     const isFirst = i === 0; const isLast = i === timeline.length - 1;
@@ -1488,17 +1496,19 @@ export default function DashboardScreen({ navigation }: Props) {
                 </View>
               )}
               {detailLoading && <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="small" color={c.primary} /></View>}
-              {/* Two-column body */}
+              {/* Two-column body + Quick Links — flex:1 fills remaining screen */}
               {!detailLoading && (
-                <View style={{ flexDirection: 'row', gap: fs(6), minHeight: 0, marginTop: fs(6) }}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', gap: fs(6), flex: 1, minHeight: 0, marginTop: fs(4) }}>
                   {/* LEFT — Customer + Product + Delivery Location + Quick Links */}
-                  <View style={{ flex: 1, gap: ct ? fs(6) : fs(8) }}>
-                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, gap: ct ? fs(3) : fs(4) }}>
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8), justifyContent: 'space-evenly' }}>
                       <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>Customer</Text>
                       </View>
-                      {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i) => (
-                        <View key={i} style={{ flexDirection: 'row', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                      {[{ label: 'CUSTOMER', value: detail?.job?.customer_name || '-' }, { label: 'PROJECT', value: detail?.job?.project_name || '-' }].map((row, i, arr) => (
+                        <View key={i} style={{ flexDirection: 'row', paddingVertical: ct ? fs(4) : fs(5), borderBottomWidth: i < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
                           <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%', letterSpacing: 0.5 , fontFamily: MONO}}>{row.label}</Text>
                           <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}} numberOfLines={1}>{row.value}</Text>
                         </View>
@@ -1541,7 +1551,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       </View>
                     </View>
                     {/* Delivery Location */}
-                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
+                    <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(5) : fs(6), justifyContent: 'space-evenly' }}>
                       <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>Delivery Location</Text>
                       </View>
@@ -1551,7 +1561,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
                         { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
                       ].map((row, i, arr) => (
-                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(3) : fs(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
                           <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' , fontFamily: MONO}}>{row.label}</Text>
                           {row.isLink ? (
                             <TouchableOpacity activeOpacity={0.6} onPress={() => { if (currentTicket?.at_plant_time != null) setDirectionsAlert(true); else navigation.navigate('DeliveredToMap', { delivery: detail?.location?.delivery || detail?.location?.plant || detail?.location?.truck, address: row.value }); }} style={{ flex: 1 }}>
@@ -1563,7 +1573,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         </View>
                       ))}
                       {/* Trucks row */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(7) : fs(8), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(3) : fs(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
                         <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' , fontFamily: MONO}}>TRUCKS</Text>
                         <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Map', { mapItems: detail?.map || [] })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                           <Text style={{ fontSize: fst(12), fontWeight: '800', color: c.textPrimary, flex: 1 , fontFamily: MONO}}>
@@ -1576,7 +1586,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         </TouchableOpacity>
                       </View>
                       {/* Instructions row */}
-                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: ct ? fs(7) : fs(8) }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: ct ? fs(3) : fs(4) }}>
                         <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' , fontFamily: MONO}}>INSTRUCTIONS</Text>
                         {detail?.job?.instructions ? (
                           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -1592,11 +1602,36 @@ export default function DashboardScreen({ navigation }: Props) {
                         )}
                       </View>
                     </View>
+                    </View>
+                    {/* Quick Links — inside left column */}
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(8) : fs(10), marginTop: ct ? fs(3) : fs(4) }}>
+                      <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>QUICK LINKS</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: fs(4) }}>
+                        {([
+                          { label: t('modals.signAccept'), screen: 'AcceptTicket' as const },
+                          { label: t('modals.disputeLoad'), screen: 'DisputeTicket' as const },
+                          { label: t('modals.signCurbline'), screen: 'CurblineRelease' as const },
+                        ] as const).map((link, i, arr) => (
+                          <View key={link.screen} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <TouchableOpacity activeOpacity={0.6} onPress={() => {
+                              if (link.screen === 'AcceptTicket') { setAcceptTicketVisible(true); return; }
+                              if (link.screen === 'DisputeTicket') { setDisputeTicketVisible(true); return; }
+                              if (link.screen === 'CurblineRelease') { setCurblineReleaseVisible(true); return; }
+                            }}>
+                              <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>{link.label}</Text>
+                            </TouchableOpacity>
+                            {i < arr.length - 1 && <Text style={{ fontSize: fst(11), color: c.textMuted, marginHorizontal: fs(6) , fontFamily: MONO}}>|</Text>}
+                          </View>
+                        ))}
+                      </View>
+                    </View>
                   </View>
-                  {/* RIGHT: Mandatory Fields */}
+                  {/* RIGHT: Mandatory Fields + Additional Entries */}
                   <View style={{ flex: 1 }}>
-                    <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(5), paddingHorizontal: ct ? fs(4) : fs(6), paddingBottom: ct ? fs(6) : fs(2) }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(1) : fs(3), marginBottom: fs(1) }}>
+                    <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(4), paddingHorizontal: ct ? fs(4) : fs(5), paddingBottom: ct ? fs(4) : fs(2), marginBottom: ct ? fs(3) : fs(4), justifyContent: 'space-evenly' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(2), paddingHorizontal: fs(6), borderRadius: 10, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
                           <Text style={{ fontSize: fst(10), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error , fontFamily: MONO}}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
@@ -1608,15 +1643,15 @@ export default function DashboardScreen({ navigation }: Props) {
                         { label: 'RETURNED', data: returnedMandatory, icon: 'undo' as const },
                         { label: 'STATUS TIMES', data: timeMandatory, icon: 'schedule' as const },
                       ].map((section, si, arr) => (
-                        <View key={si} style={{ marginBottom: si < arr.length - 1 ? fs(4) : 0, paddingBottom: si < arr.length - 1 ? fs(6) : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: fs(3) }}>
+                        <View key={si} style={{ marginBottom: si < arr.length - 1 ? fs(3) : 0, paddingBottom: si < arr.length - 1 ? fs(4) : 0, borderBottomWidth: si < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: fs(2) }}>
                             <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary, letterSpacing: 0.5, flex: 1 , fontFamily: MONO}}>{section.label}</Text>
                             <Text style={{ fontSize: fst(11), fontWeight: '700', color: section.data.filled === section.data.total ? c.primary : c.error , fontFamily: MONO}}>{section.data.filled}/{section.data.total}</Text>
                           </View>
                           {section.data.items.map((item, ii) => {
                             const mi = item as MandatoryItem;
                             const Row = (
-                              <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(4), gap: fs(6) }}>
+                              <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: fs(3), gap: fs(5) }}>
                                 <View style={{ width: fs(12), height: fs(12), borderRadius: fs(6), backgroundColor: item.filled ? c.success : isDark ? '#2A1015' : '#FFF0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: item.filled ? 0 : 1.5, borderColor: c.error }}>
                                   <Icon name={item.filled ? 'check' : 'close'} size={fs(8)} color={item.filled ? '#fff' : c.error} style={{ textAlign: 'center', textAlignVertical: 'center' }} />
                                 </View>
@@ -1631,54 +1666,28 @@ export default function DashboardScreen({ navigation }: Props) {
                         </View>
                       ))}
                     </View>
-                  </View>
-                </View>
-              )}
-              {/* Quick Links + Additional Entries */}
-              {!detailLoading && (
-                <View style={{ flexDirection: 'row', gap: fs(6), marginTop: fs(10), marginBottom: '5%' }}>
-                  <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
-                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>QUICK LINKS</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: fs(4) }}>
-                      {([
-                        { label: t('modals.signAccept'), screen: 'AcceptTicket' as const },
-                        { label: t('modals.disputeLoad'), screen: 'DisputeTicket' as const },
-                        { label: t('modals.signCurbline'), screen: 'CurblineRelease' as const },
-                      ] as const).map((link, i, arr) => (
-                        <View key={link.screen} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <TouchableOpacity activeOpacity={0.6} onPress={() => {
-                            if (link.screen === 'AcceptTicket') { setAcceptTicketVisible(true); return; }
-                            if (link.screen === 'DisputeTicket') { setDisputeTicketVisible(true); return; }
-                            if (link.screen === 'CurblineRelease') { setCurblineReleaseVisible(true); return; }
-                          }}>
-                            <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.primary , fontFamily: MONO}}>{link.label}</Text>
-                          </TouchableOpacity>
-                          {i < arr.length - 1 && <Text style={{ fontSize: fst(10), color: c.textMuted, marginHorizontal: fs(6) , fontFamily: MONO}}>|</Text>}
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                  <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8) }}>
-                    <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
-                      <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>ADDITIONAL ENTRIES</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8) }}>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('plant'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>PLANT</Text>
-                      </TouchableOpacity>
-                      <Text style={{ fontSize: fst(11), color: c.textMuted , fontFamily: MONO}}>|</Text>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('jobsite'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>JOB SITE</Text>
-                      </TouchableOpacity>
-                      <Text style={{ fontSize: fst(11), color: c.textMuted , fontFamily: MONO}}>|</Text>
-                      <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('cod'); setAdditionalEntriesVisible(true); }}>
-                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>COD</Text>
-                      </TouchableOpacity>
+                    {/* Additional Entries — inside right column */}
+                    <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(8) : fs(10) }}>
+                      <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
+                        <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>ADDITIONAL ENTRIES</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(8) }}>
+                        <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('plant'); setAdditionalEntriesVisible(true); }}>
+                          <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>PLANT</Text>
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: fst(11), color: c.textMuted , fontFamily: MONO}}>|</Text>
+                        <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('jobsite'); setAdditionalEntriesVisible(true); }}>
+                          <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>JOB SITE</Text>
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: fst(11), color: c.textMuted , fontFamily: MONO}}>|</Text>
+                        <TouchableOpacity activeOpacity={0.6} onPress={() => { setAdditionalEntriesTab('cod'); setAdditionalEntriesVisible(true); }}>
+                          <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.primary , fontFamily: MONO}}>COD</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </View>
+              </View>
               )}
             </View>
           );
