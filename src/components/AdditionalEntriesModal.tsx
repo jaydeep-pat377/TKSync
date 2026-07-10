@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Animated,
+  Alert,
   Keyboard,
   Platform,
 } from 'react-native';
@@ -84,7 +85,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
   const [truckStart, setTruckStart] = useState('');
   const [truckEnd, setTruckEnd] = useState('');
   const [plantNotes, setPlantNotes] = useState('');
-  const [loadTested, setLoadTested] = useState<'yes' | 'no' | null>(null);
+  const [loadTested, setLoadTested] = useState('');
   const [loadTemp, setLoadTemp] = useState(0);
   const [loadAir, setLoadAir] = useState(0);
   const [loadSlump, setLoadSlump] = useState(0);
@@ -106,7 +107,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
   const [washoutArea, setWashoutArea] = useState('');
   const [washoutComments, setWashoutComments] = useState('');
   const [jobsiteNotes, setJobsiteNotes] = useState('');
-  const [jobLoadTested, setJobLoadTested] = useState<'yes' | 'no' | null>(null);
+  const [jobLoadTested, setJobLoadTested] = useState('');
   const [jobLoadTemp, setJobLoadTemp] = useState(0);
   const [jobLoadAir, setJobLoadAir] = useState(0);
   const [jobLoadSlump, setJobLoadSlump] = useState(0);
@@ -125,12 +126,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     const cod = deliveryRecord?.cod;
     setWaterLitres(p?.water_added_full ?? 0);
     setWaterReason(p?.water_reason || '');
-    setNitrogenAdded(p?.nitrogen_added === true ? 'CUSTOMER' : p?.nitrogen_added === false ? 'NOT ADDED' : '');
-    setFibersAdded(p?.fibers_added === true ? 'CUSTOMER' : p?.fibers_added === false ? 'NOT ADDED' : '');
+    setNitrogenAdded(p?.nitrogen_added === true || p?.nitrogen_added === 'true' ? 'ADDED — ON TICKET' : p?.nitrogen_added === false || p?.nitrogen_added === 'false' ? 'NOT ADDED' : (typeof p?.nitrogen_added === 'string' && p.nitrogen_added !== 'true' && p.nitrogen_added !== 'false') ? p.nitrogen_added : '');
+    setFibersAdded(p?.fibers_added === true || p?.fibers_added === 'true' ? 'ADDED — ON TICKET' : p?.fibers_added === false || p?.fibers_added === 'false' ? 'NOT ADDED' : (typeof p?.fibers_added === 'string' && p.fibers_added !== 'true' && p.fibers_added !== 'false') ? p.fibers_added : '');
     setTruckStart(p?.truck_start ? (() => { try { const d = new Date(p.truck_start); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch { return ''; } })() : '');
     setTruckEnd(p?.truck_end ? (() => { try { const d = new Date(p.truck_end); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch { return ''; } })() : '');
     setPlantNotes(p?.notes || '');
-    setLoadTested(p?.load_tested === true ? 'yes' : p?.load_tested === false ? 'no' : null);
+    setLoadTested(p?.load_tested === true || p?.load_tested === 'true' ? 'YES' : p?.load_tested === false || p?.load_tested === 'false' ? 'NO' : (typeof p?.load_tested === 'string' && p.load_tested !== 'true' && p.load_tested !== 'false') ? p.load_tested : '');
     setLoadTemp(p?.load_temp ?? 0);
     setLoadAir(p?.load_air ?? 0);
     setLoadSlump(p?.load_slump ?? 0);
@@ -144,13 +145,13 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     setOtherAdded(j?.other || '');
     setConveyor(j?.conveyor || '');
     setConveyorQty(j?.conveyor_qty != null ? String(j.conveyor_qty) : '');
-    setConveyorOrdered(j?.conveyor_ordered_not_used ?? false);
-    setUnloadedConveyor(j?.unloaded_conveyor ?? false);
-    setLoadDisputed(j?.load_disputed ?? false);
+    setConveyorOrdered(j?.conveyor_ordered_not_used === true || j?.conveyor_ordered_not_used === 'true');
+    setUnloadedConveyor(j?.unloaded_conveyor === true || j?.unloaded_conveyor === 'true');
+    setLoadDisputed(j?.load_disputed === true || j?.load_disputed === 'true');
     setWashoutArea(j?.washout_area || '');
     setWashoutComments(j?.washout_comments || '');
     setJobsiteNotes(j?.notes || '');
-    setJobLoadTested(j?.load_tested === true ? 'yes' : j?.load_tested === false ? 'no' : null);
+    setJobLoadTested(j?.load_tested === true || j?.load_tested === 'true' ? 'YES' : j?.load_tested === false || j?.load_tested === 'false' ? 'NO' : (typeof j?.load_tested === 'string' && j.load_tested !== 'true' && j.load_tested !== 'false') ? j.load_tested : '');
     setJobLoadTemp(j?.load_temp ?? 0);
     setJobLoadAir(j?.load_air ?? 0);
     setJobLoadSlump(j?.load_slump ?? 0);
@@ -171,10 +172,10 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         body = {
           water_added_full: waterLitres > 0 ? waterLitres : null,
           water_reason: waterReason || null,
-          nitrogen_added: nitrogenAdded && nitrogenAdded !== 'NOT ADDED' ? true : nitrogenAdded === 'NOT ADDED' ? false : null,
-          fibers_added: fibersAdded && fibersAdded !== 'NOT ADDED' ? true : fibersAdded === 'NOT ADDED' ? false : null,
-          load_tested: loadTested === 'yes' ? true : loadTested === 'no' ? false : null,
-          ...(loadTested === 'yes' ? {
+          nitrogen_added: nitrogenAdded || null,
+          fibers_added: fibersAdded || null,
+          load_tested: loadTested || null,
+          ...(loadTested === 'YES' ? {
             load_temp: loadTemp || null,
             load_air: loadAir || null,
             load_slump: loadSlump || null,
@@ -195,14 +196,14 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           other: otherAdded || null,
           conveyor: conveyor || null,
           conveyor_qty: conveyorQty ? Number(conveyorQty) : null,
-          conveyor_ordered_not_used: conveyorOrdered || null,
-          unloaded_conveyor: unloadedConveyor || null,
-          load_disputed: loadDisputed || null,
+          conveyor_ordered_not_used: conveyorOrdered,
+          unloaded_conveyor: unloadedConveyor,
+          load_disputed: loadDisputed,
           washout_area: washoutArea || null,
           washout_comments: washoutArea === 'OTHER' ? (washoutComments || null) : null,
           notes: jobsiteNotes || null,
-          load_tested: jobLoadTested === 'yes' ? true : jobLoadTested === 'no' ? false : null,
-          ...(jobLoadTested === 'yes' ? {
+          load_tested: jobLoadTested || null,
+          ...(jobLoadTested === 'YES' ? {
             load_temp: jobLoadTemp || null,
             load_air: jobLoadAir || null,
             load_slump: jobLoadSlump || null,
@@ -217,18 +218,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           notes: codNotes || null,
         };
       }
-      // Only send fields that exist in field_definitions
-      const tabFd = getFd(activeTab);
-      const filtered: Record<string, any> = {};
-      for (const key of Object.keys(tabFd)) {
-        if (key in body) filtered[key] = body[key];
-      }
-      await onSave(activeTab, filtered);
-    } catch (err) {
-      console.log('[Modal] Save error:', err);
-    } finally {
+      await onSave(activeTab, body);
       setSaving(false);
       onClose();
+    } catch (err: any) {
+      setSaving(false);
+      Alert.alert('Save Failed', err?.message || 'Failed to save data. Please try again.');
     }
   }, [activeTab, waterLitres, waterReason, nitrogenAdded, fibersAdded, loadTested, loadTemp, loadAir, loadSlump, loadCylinders, truckStart, truckEnd, plantNotes, superPlasticizer, colorAdded, fiberJob, otherAdded, conveyor, conveyorOrdered, unloadedConveyor, loadDisputed, washoutArea, jobsiteNotes, jobLoadTested, jobLoadTemp, jobLoadAir, jobLoadSlump, jobLoadCylinders, paymentType, codAmount, waitTime, codNotes, onSave, getFd]);
 
@@ -343,17 +338,17 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       {hasField('plant', 'load_tested') && <><View style={s.row}>
         <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'load_tested')}</Text>
         <View style={{flexDirection: 'row', gap: wp(4)}}>
-          <TouchableOpacity onPress={() => setLoadTested('yes')} style={[s.toggleBtn, loadTested === 'yes' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'yes' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
+          <TouchableOpacity onPress={() => setLoadTested('YES')} style={[s.toggleBtn, loadTested === 'YES' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'YES' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setLoadTested('no')} style={[s.toggleBtn, loadTested === 'no' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'no' ? '#fff' : c.textPrimary, fontFamily: MONO}}>No</Text>
+          <TouchableOpacity onPress={() => setLoadTested('NO')} style={[s.toggleBtn, loadTested === 'NO' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: loadTested === 'NO' ? '#fff' : c.textPrimary, fontFamily: MONO}}>No</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Load Test Fields — shown when Yes */}
-      {loadTested === 'yes' && (
+      {loadTested === 'YES' && (
         <>
           <Sep />
           <View style={s.row}>
@@ -445,7 +440,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         <TouchableOpacity onPress={() => setPickerType('superPlasticizer')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: superPlasticizer ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{superPlasticizer || 'Select'}</Text>
         </TouchableOpacity>
-        {(superPlasticizer === 'CUSTOMER' || superPlasticizer === 'DRIVER') && (
+        {(superPlasticizer && superPlasticizer.toUpperCase() !== 'NOT ADDED') && (
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={superPlasticizerQty} onChangeText={t => setSuperPlasticizerQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
         )}
       </View>
@@ -455,7 +450,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         <TouchableOpacity onPress={() => setPickerType('colorAdded')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: colorAdded ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{colorAdded || 'Select'}</Text>
         </TouchableOpacity>
-        {(colorAdded === 'CUSTOMER' || colorAdded === 'DRIVER') && (
+        {(colorAdded && colorAdded.toUpperCase() !== 'NOT ADDED') && (
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={colorQty} onChangeText={t => setColorQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
         )}
       </View>
@@ -465,7 +460,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
         <TouchableOpacity onPress={() => setPickerType('fiberJob')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: fiberJob ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{fiberJob || 'Select'}</Text>
         </TouchableOpacity>
-        {(fiberJob === 'CUSTOMER' || fiberJob === 'DRIVER') && (
+        {(fiberJob && fiberJob.toUpperCase() !== 'NOT ADDED') && (
           <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={fiberQty} onChangeText={t => setFiberQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
         )}
       </View>
@@ -482,9 +477,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       <Sep /></>}
       {hasField('jobsite', 'conveyor') && <><View style={s.row}>
         <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'conveyor')}</Text>
-        <TouchableOpacity onPress={() => setPickerType('conveyor')} style={[s.selectBox, {borderColor: c.border, width: wp(60), alignItems: 'center'}]}>
+        <TouchableOpacity onPress={() => setPickerType('conveyor')} style={[s.selectBox, {borderColor: c.border}]}>
           <Text style={{fontSize: ms(7), fontWeight: '600', color: conveyor ? c.textPrimary : c.textMuted, fontFamily: MONO}}>{conveyor || 'Select'}</Text>
         </TouchableOpacity>
+        {(conveyor && conveyor.toUpperCase() !== 'NOT ADDED') && (
+          <TextInput style={{borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(1), marginLeft: wp(4), width: wp(30), textAlign: 'center'}} value={conveyorQty} onChangeText={t => setConveyorQty(t.replace(/[^0-9.]/g, ''))} placeholder="Qty" placeholderTextColor={c.textMuted} keyboardType="numeric" />
+        )}
       </View>
       <Sep /></>}
       {hasField('jobsite', 'conveyor_ordered_not_used') && <><View style={s.row}>
@@ -543,15 +541,15 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       {hasField('jobsite', 'load_tested') && <><View style={s.row}>
         <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'load_tested')}</Text>
         <View style={{flexDirection: 'row', gap: wp(4)}}>
-          <TouchableOpacity onPress={() => setJobLoadTested('yes')} style={[s.toggleBtn, jobLoadTested === 'yes' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'yes' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
+          <TouchableOpacity onPress={() => setJobLoadTested('YES')} style={[s.toggleBtn, jobLoadTested === 'YES' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'YES' ? '#fff' : c.textPrimary, fontFamily: MONO}}>Yes</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setJobLoadTested('no')} style={[s.toggleBtn, jobLoadTested === 'no' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
-            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'no' ? '#fff' : c.textPrimary, fontFamily: MONO}}>No</Text>
+          <TouchableOpacity onPress={() => setJobLoadTested('NO')} style={[s.toggleBtn, jobLoadTested === 'NO' ? {backgroundColor: c.primary, borderColor: c.primary} : {borderColor: c.border}]}>
+            <Text style={{fontSize: ms(7), fontWeight: '600', color: jobLoadTested === 'NO' ? '#fff' : c.textPrimary, fontFamily: MONO}}>No</Text>
           </TouchableOpacity>
         </View>
       </View>
-      {jobLoadTested === 'yes' && (
+      {jobLoadTested === 'YES' && (
         <>
           <Sep />
           <View style={s.row}>

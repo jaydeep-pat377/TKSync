@@ -7,11 +7,13 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
+import {Alert} from 'react-native';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {syncManager, SyncEvent} from '../services/syncManager';
 import {gpsSyncManager} from '../services/gpsSyncManager';
 import {offlineStorage} from '../services/offlineStorage';
 import {ticketsApi} from '../services/api';
+import {validateDeliveryTab} from '../utils/validateDeliveryTab';
 
 type OfflineSyncContextType = {
   isOnline: boolean;
@@ -47,16 +49,26 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     syncManager.init();
     gpsSyncManager.flushUnsynced();
 
+    const failedItems: string[] = [];
     const unsub = syncManager.addListener((event: SyncEvent) => {
       setLastSyncEvent(event);
 
       switch (event.type) {
         case 'sync_start':
           setIsSyncing(true);
+          failedItems.length = 0;
           break;
         case 'sync_complete':
           setIsSyncing(false);
           setPendingCount(offlineStorage.getPendingCount());
+          // Show alert if any items permanently failed
+          if (failedItems.length > 0) {
+            Alert.alert(
+              'Sync Failed',
+              `Some saved data could not be synced and was lost:\n\n${failedItems.join('\n')}\n\nPlease re-enter the data.`,
+              [{text: 'OK'}],
+            );
+          }
           break;
         case 'queue_changed':
           setPendingCount(event.count);
@@ -64,6 +76,13 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
         case 'item_synced':
           setPendingCount(event.remaining);
           break;
+        case 'item_failed': {
+          const tab = event.item.tab;
+          const ticketId = event.item.ticketId;
+          const reason = event.error || 'Unknown error';
+          failedItems.push(`• Ticket ${ticketId} / ${capitalize(tab)}: ${reason}`);
+          break;
+        }
       }
     });
 
@@ -79,9 +98,24 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
       tab: string,
       body: Record<string, any>,
     ): Promise<{success: boolean; message: string; offline: boolean}> => {
+      // Client-side validation (mirrors backend cleanTabPayload) — prevents
+      // invalid data from being queued offline and silently lost on sync.
+      const validation = validateDeliveryTab(tab, body);
+      if (!validation.valid) {
+        const fieldErrors = validation.errors.map(e => `${e.field}: ${e.message}`).join('; ');
+        console.warn(`[OfflineSync] Validation failed for ${tab}: ${fieldErrors}`);
+        return {
+          success: false,
+          message: `Validation error: ${fieldErrors}`,
+          offline: false,
+        };
+      }
+      // Use cleaned/coerced values (matching backend types)
+      const cleanedBody = validation.cleaned;
+
       if (isOnline) {
         try {
-          await ticketsApi.saveDeliveryTab(ticketId, tab, body);
+          await ticketsApi.saveDeliveryTab(ticketId, tab, cleanedBody);
           return {success: true, message: `${capitalize(tab)} data saved.`, offline: false};
         } catch (err: any) {
           // Network error during save — fall through to offline queue
@@ -100,9 +134,9 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
         }
       }
 
-      // Offline or network error — queue locally
-      offlineStorage.enqueue(ticketId, tab, body);
-      offlineStorage.updateCachedTab(ticketId, tab, body);
+      // Offline or network error — queue locally (already validated + cleaned)
+      offlineStorage.enqueue(ticketId, tab, cleanedBody);
+      offlineStorage.updateCachedTab(ticketId, tab, cleanedBody);
       setPendingCount(offlineStorage.getPendingCount());
       return {
         success: true,

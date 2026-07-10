@@ -3,7 +3,7 @@ import {offlineStorage, PendingSave} from './offlineStorage';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {captureError, addBreadcrumb} from './sentry';
 
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 10;
 const RETRY_DELAYS = [1000, 3000, 10000, 30000, 60000]; // progressive backoff
 
 type SyncListener = (event: SyncEvent) => void;
@@ -70,6 +70,7 @@ async function syncOne(item: PendingSave): Promise<'synced' | 'retry' | 'permane
     if (!isRetryableError(err)) {
       // Permanent failure (validation, auth) — remove from queue
       console.warn(`[SyncManager] Permanent failure, removing from queue: ${message}`);
+      item.lastError = message;
       offlineStorage.dequeue(item.id);
       return 'permanent_fail';
     }

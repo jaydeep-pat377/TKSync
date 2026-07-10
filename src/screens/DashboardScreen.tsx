@@ -36,6 +36,7 @@ import CurblineReleaseModal from '../components/CurblineReleaseModal';
 import MobileTicketModal from '../components/MobileTicketModal';
 import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
+import { syncManager } from '../services/syncManager';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
 import { useFontScaleRefresh, useFontSize } from '../contexts/FontSizeContext';
 
@@ -477,15 +478,7 @@ export default function DashboardScreen({ navigation }: Props) {
       setRefreshing(true);
       const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
-      // --- DUMMY TICKETS (remove after testing) ---
-      const dummyTickets: Ticket[] = Array.from({ length: 9 }, (_, i) => ({
-        ...(data.data[0] || {}),
-        id: 90000 + i,
-        ticket_id: 90000 + i,
-        ticket_code: `${30000000 + i}`,
-        at_plant_time: i % 3 === 0 ? '2026-07-10T12:00:00Z' : null,
-      })) as Ticket[];
-      setTickets([...data.data, ...dummyTickets]);
+      setTickets(data.data);
       ticketsRef.current = data.data;
       loadedTicketIdRef.current = null;
       setActiveTicket(0);
@@ -577,9 +570,16 @@ export default function DashboardScreen({ navigation }: Props) {
   const wasOnline = useRef(isOnline);
   useEffect(() => {
     if (isOnline && !wasOnline.current) {
-      console.log('[Dashboard] Connection restored — refreshing all data');
-      // Wait for sync to upload pending saves first, then refresh
-      setTimeout(() => silentRefreshAll(), 3000);
+      console.log('[Dashboard] Connection restored — refreshing after sync');
+      // Listen for sync_complete before refreshing so server has the latest data
+      const unsub = syncManager.addListener((event) => {
+        if (event.type === 'sync_complete') {
+          unsub();
+          setTimeout(() => silentRefreshAll(), 500);
+        }
+      });
+      // Fallback: if sync doesn't start within 5s (no pending items), refresh anyway
+      setTimeout(() => { unsub(); silentRefreshAll(); }, 5000);
     }
     wasOnline.current = isOnline;
   }, [isOnline, silentRefreshAll]);
@@ -607,6 +607,17 @@ export default function DashboardScreen({ navigation }: Props) {
             let merged = { ...cached };
             for (const item of pending) {
               merged[item.tab] = { ...(merged[item.tab] || {}), ...item.body };
+              // For time tab: also update steps array so Required Entries reflects saved values
+              if (item.tab === 'time' && merged.time?.steps) {
+                merged.time = { ...merged.time, steps: merged.time.steps.map((s: any) => {
+                  if (item.body[s.key]) {
+                    const d = new Date(item.body[s.key]);
+                    const time_local = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    return { ...s, done: true, time: item.body[s.key], time_local };
+                  }
+                  return s;
+                }) };
+              }
             }
             // Ensure field_definitions are available even from cache
             if (!merged.field_definitions) {
@@ -2384,8 +2395,9 @@ export default function DashboardScreen({ navigation }: Props) {
         deliveryRecord={deliveryRecord}
         initialTab={additionalEntriesTab}
         onSave={async (tab, body) => {
-          if (!currentTicket?.id) return;
+          if (!currentTicket?.id) throw new Error('No ticket selected');
           const result = await saveDeliveryTab(currentTicket.id, tab, body);
+          if (!result.success) throw new Error(result.message);
           setDeliveryRecord(prev => prev ? { ...prev, [tab]: { ...(prev as any)[tab], ...body } } : prev);
           if (!result.offline) await fetchDetail(currentTicket.id, false);
         }}

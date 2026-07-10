@@ -70,7 +70,6 @@ async function request<T = any>(
 
   const url = `${BASE_URL}${endpoint}`;
   const method = options.method || 'GET';
-  const body = options.body ? JSON.parse(options.body as string) : undefined;
   const isSilent = SILENT_ENDPOINTS.some(e => endpoint.startsWith(e));
 
   // Pre-check internet connection — fail fast instead of waiting for timeout
@@ -82,8 +81,7 @@ async function request<T = any>(
   }
 
   console.log(`[API Request] ${method} ${url}`, {
-    ...(body ? {params: body} : {}),
-    token: accessToken || 'none',
+    ...(options.body ? {hasBody: true} : {}),
   });
 
   let res: Response;
@@ -146,7 +144,13 @@ async function request<T = any>(
             ...options,
             headers,
           });
-          return retryRes.json();
+          const retryJson: ApiResponse<T> = await retryRes.json();
+          if (!retryRes.ok || !retryJson.success) {
+            const retryApiErr = new ApiError(retryJson.message || `HTTP ${retryRes.status}`, retryJson.error_code, retryJson.errors);
+            retryApiErr.status = retryRes.status;
+            throw retryApiErr;
+          }
+          return retryJson;
         } catch (retryErr) {
           captureError(retryErr instanceof Error ? retryErr : new Error(String(retryErr)), {endpoint, method, context: 'token_refresh_retry'});
           throw retryErr;
@@ -161,6 +165,7 @@ async function request<T = any>(
     }
 
     const apiErr = new ApiError(json.message, json.error_code, json.errors);
+    apiErr.status = res.status;
     captureError(apiErr, {endpoint, method, status: res.status, error_code: json.error_code});
     throw apiErr;
   }
@@ -199,6 +204,7 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 export class ApiError extends Error {
+  status?: number;
   error_code?: string;
   errors?: Array<{field: string; message: string}>;
 
