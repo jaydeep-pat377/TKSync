@@ -37,7 +37,8 @@
     "react-native-signature-canvas": "^5.0.2",
     "react-native-sound": "^0.13.0",
     "react-native-svg": "^15.15.5",
-    "react-native-vector-icons": "^10.3.0"
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-webview": "^14.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

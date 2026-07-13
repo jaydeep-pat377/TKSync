@@ -1,5 +1,5 @@
 import {Platform} from 'react-native';
-import notifee, {AndroidImportance, AndroidCategory} from '@notifee/react-native';
+import notifee, {AndroidImportance, AndroidCategory, AndroidForegroundServiceType} from '@notifee/react-native';
 
 const CHANNEL_ID = 'tksync-tracking';
 const NOTIFICATION_ID = 'tracking-foreground';
@@ -28,6 +28,7 @@ export async function startTrackingService(): Promise<void> {
       ongoing: true,
       pressAction: {id: 'default'},
       asForegroundService: true,
+      foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_LOCATION],
       category: AndroidCategory.SERVICE,
     },
   });

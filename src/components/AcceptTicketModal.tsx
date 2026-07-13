@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Animated,
   Platform,
   useWindowDimensions,
 } from 'react-native';
@@ -20,6 +21,7 @@ import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
+import {useScrollIndicator} from './ScrollIndicator';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -76,6 +78,7 @@ export default function AcceptTicketModal({
   } | null>(null);
   const [loadedFromOffline, setLoadedFromOffline] = useState(false);
   const [loadedSignature, setLoadedSignature] = useState<string | null>(null);
+  const scrollIndicator = useScrollIndicator();
 
   useEffect(() => {
     if (!visible) {
@@ -175,13 +178,13 @@ export default function AcceptTicketModal({
 
   const alreadySigned = data?.status?.is_signed === true;
   const alreadyDisputed = data?.status?.is_disputed === true;
-  const isFormDisabled = alreadySigned || alreadyDisputed;
+  const alreadySubmitted = alreadySigned || alreadyDisputed;
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isNotesValid = customerNotes.trim().length > 0;
   const isNameValid = typeName.trim().length > 0;
   const isSigned = signature !== null && signature.length > 0;
-  const canSubmit = isEmailValid && isNotesValid && isNameValid && isSigned && !submitting && !isFormDisabled;
+  const canSubmit = isEmailValid && isNotesValid && isNameValid && isSigned && !submitting;
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || !ticketId || !signature) return;
@@ -268,13 +271,11 @@ export default function AcceptTicketModal({
     const {products, legal} = data;
 
     return (
+      <View style={{flex: 0, maxHeight: scrollMaxH}}>
       <ScrollView
+        {...scrollIndicator.scrollViewProps}
         ref={scrollRef}
-        contentContainerStyle={{paddingBottom: fs(24)}}
-        showsVerticalScrollIndicator={true}
-        persistentScrollbar={true}
-        fadingEdgeLength={0}
-        indicatorStyle={isDark ? 'white' : 'black'}
+        contentContainerStyle={{paddingBottom: fs(60)}}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
         nestedScrollEnabled>
@@ -287,12 +288,12 @@ export default function AcceptTicketModal({
           </View>
         )}
 
-        {/* Already signed/disputed */}
-        {isFormDisabled && (
-          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), paddingHorizontal: pad, gap: fs(6), backgroundColor: alreadySigned ? c.successSurface : c.errorSurface}}>
-            <Icon name={alreadySigned ? 'check-circle' : 'report-problem'} size={fst(14)} color={alreadySigned ? c.success : c.error} />
-            <Text style={{fontSize: fst(12), fontWeight: '700', flex: 1, color: alreadySigned ? c.success : c.error, fontFamily: MONO}}>
-              {alreadySigned ? 'This ticket has already been signed.' : 'This ticket has been disputed.'}
+        {/* Already signed/disputed — info only */}
+        {alreadySubmitted && (
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), paddingHorizontal: pad, gap: fs(6), backgroundColor: c.warningSurface}}>
+            <Icon name="info" size={fst(14)} color={c.warningDark} />
+            <Text style={{fontSize: fst(12), fontWeight: '700', flex: 1, color: c.warningDark, fontFamily: MONO}}>
+              {alreadySigned ? 'This ticket has been signed. You can edit and resubmit.' : 'This ticket has been disputed. You can edit and resubmit.'}
             </Text>
           </View>
         )}
@@ -341,7 +342,7 @@ export default function AcceptTicketModal({
             autoCapitalize="none"
             placeholder="name@example.com"
             placeholderTextColor={c.textMuted}
-            editable={!isFormDisabled}
+            editable
           />
 
           <Text style={{fontSize: fst(11), fontWeight: '800', letterSpacing: 0.5, marginBottom: fs(5), marginTop: fs(14), color: c.textPrimary, fontFamily: MONO}}>CUSTOMER NOTES</Text>
@@ -351,7 +352,7 @@ export default function AcceptTicketModal({
             onChangeText={setCustomerNotes}
             placeholder="Enter notes"
             placeholderTextColor={c.textMuted}
-            editable={!isFormDisabled}
+            editable
           />
         </View>
 
@@ -372,7 +373,7 @@ export default function AcceptTicketModal({
             onChangeText={setTypeName}
             placeholder="Enter name"
             placeholderTextColor={c.textMuted}
-            editable={!isFormDisabled}
+            editable
           />
 
           {/* Signature pad */}
@@ -402,21 +403,25 @@ export default function AcceptTicketModal({
           </TouchableOpacity>
 
           {/* Submit — .tkSubmit */}
-          {!isFormDisabled && (
-            <TouchableOpacity
-              style={{marginTop: fs(16), paddingVertical: fs(16), borderRadius: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? '#157a15' : isDark ? '#4A5B6E' : '#cfd6de'}}
-              activeOpacity={canSubmit ? 0.8 : 1}
-              disabled={!canSubmit}
-              onPress={handleSubmit}>
-              {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={{fontSize: fst(14), fontWeight: '800', letterSpacing: 1, color: canSubmit ? '#fff' : '#9E9E9E', fontFamily: MONO}}>SUBMIT</Text>
-              )}
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={{marginTop: fs(16), paddingVertical: fs(16), borderRadius: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? '#157a15' : isDark ? '#4A5B6E' : '#cfd6de'}}
+            activeOpacity={canSubmit ? 0.8 : 1}
+            disabled={!canSubmit}
+            onPress={handleSubmit}>
+            {submitting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={{fontSize: fst(14), fontWeight: '800', letterSpacing: 1, color: canSubmit ? '#fff' : '#9E9E9E', fontFamily: MONO}}>{alreadySubmitted ? 'UPDATE' : 'SUBMIT'}</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
+      {scrollIndicator.canScroll && (
+        <View style={{position: 'absolute', right: 1, top: 0, bottom: 0, width: scrollIndicator.trackW, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', borderRadius: 2}} pointerEvents="none">
+          <Animated.View style={{width: scrollIndicator.trackW, height: scrollIndicator.thumbH, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', transform: [{translateY: scrollIndicator.translateY}]}} />
+        </View>
+      )}
+      </View>
     );
   };
 

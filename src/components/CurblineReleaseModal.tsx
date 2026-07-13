@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Animated,
   Platform,
   useWindowDimensions,
 } from 'react-native';
@@ -19,6 +20,7 @@ import {useTheme} from '../contexts/ThemeContext';
 import {ticketsApi} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
+import {useScrollIndicator} from './ScrollIndicator';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -66,6 +68,7 @@ export default function CurblineReleaseModal({
   const [loadedSignature, setLoadedSignature] = useState<string | null>(null);
   const sigClearRef = useRef<(() => void) | null>(null);
   const [alert, setAlert] = useState<{type: 'success' | 'error'; title: string; message: string} | null>(null);
+  const scrollIndicator = useScrollIndicator();
 
   useEffect(() => {
     if (!visible) {
@@ -184,7 +187,8 @@ export default function CurblineReleaseModal({
     }
 
     return (
-      <ScrollView  contentContainerStyle={{paddingBottom: fs(24)}} showsVerticalScrollIndicator={true} persistentScrollbar={true} fadingEdgeLength={0} indicatorStyle={isDark ? 'white' : 'black'} keyboardShouldPersistTaps="handled" scrollEnabled={scrollEnabled} nestedScrollEnabled>
+      <View style={{flex: 0, maxHeight: scrollMaxH}}>
+      <ScrollView {...scrollIndicator.scrollViewProps} contentContainerStyle={{paddingBottom: fs(60)}} keyboardShouldPersistTaps="handled" scrollEnabled={scrollEnabled} nestedScrollEnabled>
         {loadedFromOffline && (
           <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: fs(4), paddingVertical: fs(4), borderBottomWidth: 1, backgroundColor: c.warningSurface, borderBottomColor: c.warningBorder}}>
             <Icon name="cloud-off" size={fst(11)} color={c.warningDark} />
@@ -242,6 +246,12 @@ export default function CurblineReleaseModal({
           </TouchableOpacity>
         </View>
       </ScrollView>
+      {scrollIndicator.canScroll && (
+        <View style={{position: 'absolute', right: 1, top: 0, bottom: 0, width: scrollIndicator.trackW, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', borderRadius: 2}} pointerEvents="none">
+          <Animated.View style={{width: scrollIndicator.trackW, height: scrollIndicator.thumbH, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', transform: [{translateY: scrollIndicator.translateY}]}} />
+        </View>
+      )}
+      </View>
     );
   };
 

@@ -7,14 +7,12 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  PermissionsAndroid,
   Animated,
   useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Geolocation from 'react-native-geolocation-service';
 import {accelerometer, SensorTypes, setUpdateIntervalForType} from 'react-native-sensors';
 import {useTheme} from '../contexts/ThemeContext';
 import {useAuth} from '../contexts/AuthContext';
@@ -23,10 +21,7 @@ import {wp, ms} from '../utils/responsive';
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {showToast} from '../utils/toast';
 import {ticketsApi, trackingApi} from '../services/api';
-import {gpsStorage} from '../services/gpsStorage';
-import {gpsSyncManager} from '../services/gpsSyncManager';
-import {getIsOnline} from '../hooks/useNetworkStatus';
-import {startTrackingService, stopTrackingService} from '../services/trackingForegroundService';
+import {backgroundGpsTracker} from '../services/backgroundGpsTracker';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 type Props = {
@@ -119,8 +114,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
 
 
   // Tracking
-  const [isTracking, setIsTracking] = useState(false);
-  const watchId = useRef<number | null>(null);
+  const [isTracking, setIsTracking] = useState(backgroundGpsTracker.isRunning());
   const lastPos = useRef<{lat: number; lng: number} | null>(null);
   const tripStartTime = useRef<number>(0);
   const tripTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -150,52 +144,10 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }, []);
 
-  const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (Platform.OS === 'ios') {
-      const status = await Geolocation.requestAuthorization('always');
-      return status === 'granted' || status === 'restricted';
-    }
-    // Android: request fine location first
-    const fineGranted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      {title: 'Location Permission', message: 'Vehicle tracking needs access to your location.', buttonPositive: 'OK'},
-    );
-    if (fineGranted !== PermissionsAndroid.RESULTS.GRANTED) return false;
-    // Android 10+: request background location for tracking when app is minimized
-    if (Platform.Version >= 29) {
-      const bgGranted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
-        {title: 'Background Location', message: 'Allow background location so tracking continues when the screen is off.', buttonPositive: 'OK'},
-      );
-      if (bgGranted !== PermissionsAndroid.RESULTS.GRANTED) {
-        showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
-      }
-    }
-    return true;
-  }, []);
-
   const startTracking = useCallback(async () => {
-    const hasPermission = await requestPermission();
-    if (!hasPermission) return;
+    const started = await backgroundGpsTracker.start(passedTicketId);
+    if (!started) return;
 
-    // Resolve ticket_id — block tracking if no in-process ticket
-    const hasTicket = await gpsSyncManager.start(passedTicketId);
-    if (!hasTicket) {
-      showToast('error', 'No Active Ticket', 'GPS tracking requires an in-process delivery.');
-      return;
-    }
-
-    if (!getIsOnline()) {
-      showToast('info', 'Offline Mode', 'GPS data will be uploaded when connection is restored.');
-    }
-
-    // Auto-stop when ticket becomes inactive
-    gpsSyncManager.setOnTicketInactive(() => {
-      stopTracking();
-      showToast('info', 'Tracking Stopped', 'Ticket is no longer in process.');
-    });
-
-    await startTrackingService();
     setIsTracking(true);
     setGpsActive(true);
     tripStartTime.current = Date.now();
@@ -232,79 +184,6 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       trackingApi.getMe().then(res => { if (res.data?.eta) setEta(res.data.eta); }).catch(() => {});
     }, 60000);
 
-    watchId.current = Geolocation.watchPosition(
-      (position) => {
-        const {latitude: lat, longitude: lng, speed: spd, heading: hdg, altitude: alt, accuracy: acc} = position.coords;
-        const currentSpeed = Math.max(0, spd || 0);
-        setLatitude(lat);
-        setLongitude(lng);
-        setSpeed(currentSpeed);
-        const kmh = Math.round(currentSpeed * 3.6);
-        if (kmh > SPEED_LIMIT_KMH && !isSpeedingRef.current) {
-          isSpeedingRef.current = true;
-          setIsSpeeding(true);
-          showToast('error', 'Speeding Alert', `Speed ${kmh} km/h exceeds limit of ${SPEED_LIMIT_KMH} km/h`);
-        } else if (kmh <= SPEED_LIMIT_KMH) {
-          isSpeedingRef.current = false;
-          setIsSpeeding(false);
-        }
-        setHeading(hdg || 0);
-        setAltitude(alt || 0);
-        setAccuracy(acc || 0);
-        setMaxSpeed(prev => Math.max(prev, currentSpeed));
-        speedSamples.current.push(currentSpeed);
-        setAvgSpeed(speedSamples.current.reduce((a, b) => a + b, 0) / speedSamples.current.length);
-        if (lastPos.current) {
-          const dist = haversine(lastPos.current.lat, lastPos.current.lng, lat, lng);
-          if (dist > 3) {
-            setTripDistance(prev => prev + dist);
-            lastPos.current = {lat, lng};
-          }
-        } else {
-          lastPos.current = {lat, lng};
-        }
-        // Geofence check
-        for (const zone of geofenceZonesRef.current) {
-          const dist = haversine(lat, lng, zone.lat, zone.lng);
-          if (dist <= zone.radius) {
-            if (lastZone.current !== zone.name) {
-              lastZone.current = zone.name;
-              setCurrentZone(zone.name);
-              showToast('success', 'Arrived', `Entered ${zone.name} zone`);
-            }
-            break;
-          } else if (lastZone.current === zone.name) {
-            lastZone.current = null;
-            setCurrentZone(null);
-            showToast('info', 'Left Zone', `Exited ${zone.name} zone`);
-          }
-        }
-        if (currentSpeed < IDLE_SPEED_THRESHOLD) {
-          if (!idleStart.current) idleStart.current = Date.now();
-          setIsIdle(true);
-          setIdleTime(Math.floor((Date.now() - idleStart.current) / 1000));
-        } else {
-          idleStart.current = null;
-          setIsIdle(false);
-          setIdleTime(0);
-        }
-
-        // Store GPS record locally (keeps last 50)
-        gpsStorage.addRecord({
-          ticket_id: gpsSyncManager.getTicketId(),
-          latitude: lat,
-          longitude: lng,
-          speed: currentSpeed,
-          heading: hdg || 0,
-          altitude: alt || null,
-          accuracy: acc || null,
-          recorded_at: new Date(position.timestamp).toISOString(),
-        });
-      },
-      (error) => { console.warn('GPS Error:', error.message); setGpsActive(false); },
-      {enableHighAccuracy: true, distanceFilter: 5, interval: 2000, fastestInterval: 1000, showLocationDialog: true, forceRequestLocation: true},
-    );
-
     setUpdateIntervalForType(SensorTypes.accelerometer, 200);
     accelSub.current = accelerometer.subscribe(({x, y}) => {
       setAccelX(x);
@@ -312,20 +191,105 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       if (Math.abs(y) > HARD_BRAKE_THRESHOLD) setHardBrakes(prev => prev + 1);
       if (Math.abs(x) > HARD_CORNER_THRESHOLD) setHardCorners(prev => prev + 1);
     });
-  }, [requestPermission, haversine]);
+  }, [haversine]);
 
   const stopTracking = useCallback(() => {
-    if (watchId.current !== null) { Geolocation.clearWatch(watchId.current); watchId.current = null; }
+    backgroundGpsTracker.stop();
     if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
     if (etaTimer.current) { clearInterval(etaTimer.current); etaTimer.current = null; }
     if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
-    gpsSyncManager.stop();
-    stopTrackingService();
     setIsTracking(false);
     setGpsActive(false);
   }, []);
 
-  useEffect(() => { return () => { stopTracking(); }; }, [stopTracking]);
+  // Subscribe to background GPS position updates (for UI display)
+  useEffect(() => {
+    const unsub = backgroundGpsTracker.addListener((pos) => {
+      setLatitude(pos.latitude);
+      setLongitude(pos.longitude);
+      setSpeed(pos.speed);
+      setHeading(pos.heading);
+      setAltitude(pos.altitude);
+      setAccuracy(pos.accuracy);
+
+      const kmh = Math.round(pos.speed * 3.6);
+      if (kmh > SPEED_LIMIT_KMH && !isSpeedingRef.current) {
+        isSpeedingRef.current = true;
+        setIsSpeeding(true);
+        showToast('error', 'Speeding Alert', `Speed ${kmh} km/h exceeds limit of ${SPEED_LIMIT_KMH} km/h`);
+      } else if (kmh <= SPEED_LIMIT_KMH) {
+        isSpeedingRef.current = false;
+        setIsSpeeding(false);
+      }
+
+      setMaxSpeed(prev => Math.max(prev, pos.speed));
+      speedSamples.current.push(pos.speed);
+      setAvgSpeed(speedSamples.current.reduce((a, b) => a + b, 0) / speedSamples.current.length);
+
+      if (lastPos.current) {
+        const dist = haversine(lastPos.current.lat, lastPos.current.lng, pos.latitude, pos.longitude);
+        if (dist > 3) {
+          setTripDistance(prev => prev + dist);
+          lastPos.current = {lat: pos.latitude, lng: pos.longitude};
+        }
+      } else {
+        lastPos.current = {lat: pos.latitude, lng: pos.longitude};
+      }
+
+      // Geofence check
+      for (const zone of geofenceZonesRef.current) {
+        const dist = haversine(pos.latitude, pos.longitude, zone.lat, zone.lng);
+        if (dist <= zone.radius) {
+          if (lastZone.current !== zone.name) {
+            lastZone.current = zone.name;
+            setCurrentZone(zone.name);
+            showToast('success', 'Arrived', `Entered ${zone.name} zone`);
+          }
+          break;
+        } else if (lastZone.current === zone.name) {
+          lastZone.current = null;
+          setCurrentZone(null);
+          showToast('info', 'Left Zone', `Exited ${zone.name} zone`);
+        }
+      }
+
+      if (pos.speed < IDLE_SPEED_THRESHOLD) {
+        if (!idleStart.current) idleStart.current = Date.now();
+        setIsIdle(true);
+        setIdleTime(Math.floor((Date.now() - idleStart.current) / 1000));
+      } else {
+        idleStart.current = null;
+        setIsIdle(false);
+        setIdleTime(0);
+      }
+    });
+
+    // Sync initial state — tracker might already be running
+    if (backgroundGpsTracker.isRunning()) {
+      setIsTracking(true);
+      setGpsActive(true);
+      const pos = backgroundGpsTracker.getLastPosition();
+      if (pos) {
+        setLatitude(pos.latitude);
+        setLongitude(pos.longitude);
+        setSpeed(pos.speed);
+        setHeading(pos.heading);
+        setAltitude(pos.altitude);
+        setAccuracy(pos.accuracy);
+      }
+    }
+
+    return unsub;
+  }, [haversine]);
+
+  // Cleanup screen-specific timers on unmount (GPS keeps running globally)
+  useEffect(() => {
+    return () => {
+      if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
+      if (etaTimer.current) { clearInterval(etaTimer.current); etaTimer.current = null; }
+      if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
+    };
+  }, []);
 
 
   const speedKmh = toKmh(speed);

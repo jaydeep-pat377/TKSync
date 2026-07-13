@@ -1,4 +1,4 @@
-import React, {useRef, useState, useCallback} from 'react';
+import React, {useRef, useState, useCallback, useEffect} from 'react';
 import {View, Text, Image, TouchableOpacity, StyleSheet, Platform} from 'react-native';
 import SignatureScreen from 'react-native-signature-canvas';
 import Icon from './Icon';
@@ -26,8 +26,15 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
   const {c, isDark} = useTheme();
   const sigRef = useRef<any>(null);
   const [hasSignature, setHasSignature] = useState(false);
+  const [webViewReady, setWebViewReady] = useState(false);
   const hasDrawn = useRef(false);
   const scrollDisabled = useRef(false);
+
+  // Delay WebView mount to avoid crash when rendered inside a modal
+  useEffect(() => {
+    const timer = setTimeout(() => setWebViewReady(true), 300);
+    return () => { clearTimeout(timer); setWebViewReady(false); };
+  }, []);
 
   const handleBegin = useCallback(() => {
     if (!scrollDisabled.current) {
@@ -47,7 +54,9 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
       onTouchEnd?.();
     }
     setTimeout(() => {
-      sigRef.current?.readSignature();
+      try {
+        sigRef.current?.readSignature();
+      } catch {}
     }, 300);
   }, [onTouchEnd]);
 
@@ -67,7 +76,9 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
   }, [onSignatureChange]);
 
   const handleClear = useCallback(() => {
-    sigRef.current?.clearSignature();
+    try {
+      sigRef.current?.clearSignature();
+    } catch {}
     hasDrawn.current = false;
     setHasSignature(false);
     onSignatureChange(null);
@@ -123,22 +134,25 @@ export default function SignaturePad({onSignatureChange, height = 280, onTouchSt
       )}
 
       <View style={[st.padOuter, {height, backgroundColor: '#FFFFFF', borderColor: hasSignature ? c.primary : c.border}, minimal && {borderRadius: wp(6), borderWidth: 1}]}>
-        <SignatureScreen
-          ref={sigRef}
-          onBegin={handleBegin}
-          onEnd={handleEnd}
-          onOK={handleOK}
-          onEmpty={handleEmpty}
-          webStyle={webStyle}
-          backgroundColor="transparent"
-          penColor="#1A202C"
-          minWidth={1.5}
-          maxWidth={3}
-          dotSize={2}
-          autoClear={false}
-          scrollable={false}
-          {...(Platform.OS === 'android' ? {androidHardwareAccelerationDisabled: true, nestedScrollEnabled: false} : {})}
-        />
+        {webViewReady && (
+          <SignatureScreen
+            ref={sigRef}
+            onBegin={handleBegin}
+            onEnd={handleEnd}
+            onOK={handleOK}
+            onEmpty={handleEmpty}
+            webStyle={webStyle}
+            backgroundColor="transparent"
+            penColor="#1A202C"
+            minWidth={1.5}
+            maxWidth={3}
+            dotSize={2}
+            autoClear={false}
+            scrollable={false}
+            androidLayerType="software"
+            nestedScrollEnabled={false}
+          />
+        )}
 
         {/* Clear button */}
         {!minimal && (

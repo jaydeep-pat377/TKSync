@@ -11,9 +11,11 @@ import {Alert} from 'react-native';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {syncManager, SyncEvent} from '../services/syncManager';
 import {gpsSyncManager} from '../services/gpsSyncManager';
+import {backgroundGpsTracker} from '../services/backgroundGpsTracker';
 import {offlineStorage} from '../services/offlineStorage';
-import {ticketsApi} from '../services/api';
+import {ticketsApi, trackingApi} from '../services/api';
 import {validateDeliveryTab} from '../utils/validateDeliveryTab';
+import {useAuth} from './AuthContext';
 
 type OfflineSyncContextType = {
   isOnline: boolean;
@@ -36,6 +38,7 @@ const OfflineSyncContext = createContext<OfflineSyncContextType | null>(null);
 
 export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
   const {isOnline} = useNetworkStatus();
+  const {isDriverLoggedIn} = useAuth();
   const [pendingCount, setPendingCount] = useState(
     offlineStorage.getPendingCount(),
   );
@@ -48,6 +51,7 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     initialized.current = true;
     syncManager.init();
     gpsSyncManager.flushUnsynced();
+    backgroundGpsTracker.autoResume();
 
     const failedItems: string[] = [];
     const unsub = syncManager.addListener((event: SyncEvent) => {
@@ -91,6 +95,28 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
       syncManager.destroy();
     };
   }, []);
+
+  // Auto-start GPS tracking after driver login if there's an active ticket
+  // Auto-stop on logout
+  useEffect(() => {
+    if (!isDriverLoggedIn) {
+      if (backgroundGpsTracker.isRunning()) {
+        console.log('[OfflineSync] Driver logged out — stopping GPS');
+        backgroundGpsTracker.stop();
+      }
+      return;
+    }
+
+    if (backgroundGpsTracker.isRunning()) return;
+
+    trackingApi.getMe().then(res => {
+      const ticketId = res.data?.current_load?.id ?? null;
+      if (ticketId) {
+        console.log(`[OfflineSync] Active ticket ${ticketId} found — auto-starting GPS`);
+        backgroundGpsTracker.start(ticketId);
+      }
+    }).catch(() => {});
+  }, [isDriverLoggedIn]);
 
   const saveDeliveryTab = useCallback(
     async (
@@ -187,12 +213,16 @@ function capitalize(s: string): string {
 
 function isNetworkError(err: any): boolean {
   if (err?.name === 'AbortError') return true;
+  if (err instanceof TypeError) return true; // fetch throws TypeError on network failure
   const msg = err?.message?.toLowerCase() || '';
   if (msg.includes('network request failed')) return true;
   if (msg.includes('network error')) return true;
   if (msg.includes('failed to fetch')) return true;
   if (msg.includes('timeout')) return true;
   if (msg.includes('econnrefused') || msg.includes('enotfound')) return true;
+  if (msg.includes('unable to resolve host')) return true;
+  if (msg.includes('no internet')) return true;
+  if (msg.includes('socket') || msg.includes('connect')) return true;
   // Server errors (5xx) — treat as network-like (retryable)
   if (err?.status >= 500) return true;
   return false;

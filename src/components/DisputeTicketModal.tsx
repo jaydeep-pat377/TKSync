@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Animated,
   Platform,
   useWindowDimensions,
 } from 'react-native';
@@ -20,6 +21,7 @@ import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
+import {useScrollIndicator} from './ScrollIndicator';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -75,6 +77,7 @@ export default function DisputeTicketModal({
   } | null>(null);
   const [loadedFromOffline, setLoadedFromOffline] = useState(false);
   const [loadedSignature, setLoadedSignature] = useState<string | null>(null);
+  const scrollIndicator = useScrollIndicator();
 
   useEffect(() => {
     if (!visible) {
@@ -167,9 +170,8 @@ export default function DisputeTicketModal({
   }, []);
 
   const alreadyDisputed = data?.status?.is_disputed === true;
-  const isFormDisabled = alreadyDisputed;
 
-  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting && !isFormDisabled;
+  const canSubmit = typeName.trim().length > 0 && signature !== null && signature.length > 0 && !submitting;
 
   const handleDispute = useCallback(async () => {
     if (!canSubmit || !ticketId || !signature) return;
@@ -257,13 +259,10 @@ export default function DisputeTicketModal({
     const {products} = data;
 
     return (
+      <View style={{flex: 0, maxHeight: scrollMaxH}}>
       <ScrollView
-        
-        contentContainerStyle={{paddingBottom: fs(48)}}
-        showsVerticalScrollIndicator={true}
-        persistentScrollbar={true}
-        fadingEdgeLength={0}
-        indicatorStyle={isDark ? 'white' : 'black'}
+        {...scrollIndicator.scrollViewProps}
+        contentContainerStyle={{paddingBottom: fs(60)}}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
         nestedScrollEnabled>
@@ -276,11 +275,11 @@ export default function DisputeTicketModal({
           </View>
         )}
 
-        {/* Already disputed */}
+        {/* Already disputed — info only */}
         {alreadyDisputed && (
-          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), paddingHorizontal: pad, gap: fs(6), backgroundColor: c.errorSurface}}>
-            <Icon name="report-problem" size={fst(14)} color={c.error} />
-            <Text style={{fontSize: fst(12), fontWeight: '700', flex: 1, color: c.error, fontFamily: MONO}}>This ticket has already been disputed.</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: fs(6), paddingHorizontal: pad, gap: fs(6), backgroundColor: c.warningSurface}}>
+            <Icon name="info" size={fst(14)} color={c.warningDark} />
+            <Text style={{fontSize: fst(12), fontWeight: '700', flex: 1, color: c.warningDark, fontFamily: MONO}}>This ticket has been disputed. You can edit and resubmit.</Text>
           </View>
         )}
 
@@ -305,7 +304,7 @@ export default function DisputeTicketModal({
               onChangeText={handleQuantityChange}
               keyboardType="decimal-pad"
               maxLength={6}
-              editable={!isFormDisabled}
+              editable
             />
             <Text style={{fontSize: fst(13), fontWeight: '600', color: c.textPrimary, fontFamily: MONO}}>M3</Text>
           </View>
@@ -319,7 +318,7 @@ export default function DisputeTicketModal({
               onChangeText={setReason}
               placeholder="Enter reason"
               placeholderTextColor={c.textMuted}
-              editable={!isFormDisabled}
+              editable
             />
           </View>
         </View>
@@ -333,7 +332,7 @@ export default function DisputeTicketModal({
             onChangeText={setTypeName}
             placeholder="Enter name"
             placeholderTextColor={c.textMuted}
-            editable={!isFormDisabled}
+            editable
           />
 
           {/* Signature pad */}
@@ -363,21 +362,25 @@ export default function DisputeTicketModal({
           </TouchableOpacity>
 
           {/* Submit */}
-          {!isFormDisabled && (
-            <TouchableOpacity
-              style={{marginTop: fs(16), paddingVertical: fs(16), borderRadius: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? '#8a1414' : isDark ? '#4A5B6E' : '#cfd6de'}}
-              activeOpacity={canSubmit ? 0.8 : 1}
-              disabled={!canSubmit}
-              onPress={handleDispute}>
-              {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={{fontSize: fst(14), fontWeight: '800', letterSpacing: 1, color: canSubmit ? '#fff' : '#9E9E9E', fontFamily: MONO}}>DISPUTE</Text>
-              )}
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={{marginTop: fs(16), paddingVertical: fs(16), borderRadius: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? '#8a1414' : isDark ? '#4A5B6E' : '#cfd6de'}}
+            activeOpacity={canSubmit ? 0.8 : 1}
+            disabled={!canSubmit}
+            onPress={handleDispute}>
+            {submitting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={{fontSize: fst(14), fontWeight: '800', letterSpacing: 1, color: canSubmit ? '#fff' : '#9E9E9E', fontFamily: MONO}}>{alreadyDisputed ? 'UPDATE' : 'DISPUTE'}</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
+      {scrollIndicator.canScroll && (
+        <View style={{position: 'absolute', right: 1, top: 0, bottom: 0, width: scrollIndicator.trackW, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', borderRadius: 2}} pointerEvents="none">
+          <Animated.View style={{width: scrollIndicator.trackW, height: scrollIndicator.thumbH, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', transform: [{translateY: scrollIndicator.translateY}]}} />
+        </View>
+      )}
+      </View>
     );
   };
 

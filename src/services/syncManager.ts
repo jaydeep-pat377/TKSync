@@ -2,6 +2,7 @@ import {ticketsApi, checkApiHealth} from './api';
 import {offlineStorage, PendingSave} from './offlineStorage';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {captureError, addBreadcrumb} from './sentry';
+import {validateDeliveryTab} from '../utils/validateDeliveryTab';
 
 const MAX_RETRIES = 10;
 const RETRY_DELAYS = [1000, 3000, 10000, 30000, 60000]; // progressive backoff
@@ -48,7 +49,13 @@ async function syncOne(item: PendingSave): Promise<'synced' | 'retry' | 'permane
     } else if (action === 'curbline-release') {
       await ticketsApi.curblineRelease(item.ticketId, item.body as any);
     } else {
-      await ticketsApi.saveDeliveryTab(item.ticketId, item.tab, item.body);
+      // Validate and clean body before sending — removes stale/unknown fields
+      const validation = validateDeliveryTab(item.tab, item.body);
+      const cleanBody: Record<string, any> = {};
+      for (const [k, v] of Object.entries(validation.cleaned)) {
+        if (v !== null && v !== undefined) cleanBody[k] = v;
+      }
+      await ticketsApi.saveDeliveryTab(item.ticketId, item.tab, Object.keys(cleanBody).length > 0 ? cleanBody : validation.cleaned);
     }
     console.log(
       `[SyncManager] Synced: ticket ${item.ticketId}/${action}`,
@@ -167,6 +174,21 @@ export const syncManager = {
       processQueue();
     });
     console.log('[SyncManager] Initialized — listening for connectivity');
+
+    // Clean stale queue items that would fail validation
+    const pending = offlineStorage.getAll();
+    let removed = 0;
+    for (const item of pending) {
+      if ((item.action || 'delivery') === 'delivery') {
+        const v = validateDeliveryTab(item.tab, item.body);
+        if (!v.valid) {
+          console.warn(`[SyncManager] Removing invalid queued item: ticket ${item.ticketId}/${item.tab}`, v.errors);
+          offlineStorage.dequeue(item.id);
+          removed++;
+        }
+      }
+    }
+    if (removed > 0) console.log(`[SyncManager] Cleaned ${removed} invalid items from queue`);
 
     // Sync any items that were queued while the app was closed
     if (getIsOnline() && offlineStorage.hasPending()) {

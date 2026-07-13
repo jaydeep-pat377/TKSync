@@ -136,9 +136,9 @@ export function validateDeliveryTab(
     } else if (type === 'boolean') {
       if (typeof raw === 'boolean') {
         cleaned[key] = raw;
-      } else if (raw === 'true') {
+      } else if (raw === 'true' || raw === 'YES' || raw === 'yes') {
         cleaned[key] = true;
-      } else if (raw === 'false') {
+      } else if (raw === 'false' || raw === 'NO' || raw === 'no') {
         cleaned[key] = false;
       } else {
         errors.push({ field: key, message: 'Must be true or false' });

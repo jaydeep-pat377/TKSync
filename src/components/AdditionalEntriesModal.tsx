@@ -145,9 +145,9 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     setOtherAdded(j?.other || '');
     setConveyor(j?.conveyor || '');
     setConveyorQty(j?.conveyor_qty != null ? String(j.conveyor_qty) : '');
-    setConveyorOrdered(j?.conveyor_ordered_not_used === true || j?.conveyor_ordered_not_used === 'true');
-    setUnloadedConveyor(j?.unloaded_conveyor === true || j?.unloaded_conveyor === 'true');
-    setLoadDisputed(j?.load_disputed === true || j?.load_disputed === 'true');
+    setConveyorOrdered(j?.conveyor_ordered_not_used === true || j?.conveyor_ordered_not_used === 'true' || j?.conveyor_ordered_not_used === 'YES');
+    setUnloadedConveyor(j?.unloaded_conveyor === true || j?.unloaded_conveyor === 'true' || j?.unloaded_conveyor === 'YES');
+    setLoadDisputed(j?.load_disputed === true || j?.load_disputed === 'true' || j?.load_disputed === 'YES');
     setWashoutArea(j?.washout_area || '');
     setWashoutComments(j?.washout_comments || '');
     setJobsiteNotes(j?.notes || '');
@@ -218,7 +218,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
           notes: codNotes || null,
         };
       }
-      await onSave(activeTab, body);
+      // Remove null fields to avoid sending unchanged/empty values
+      const cleanBody: Record<string, any> = {};
+      for (const [k, v] of Object.entries(body)) {
+        if (v !== null && v !== undefined) cleanBody[k] = v;
+      }
+      await onSave(activeTab, Object.keys(cleanBody).length > 0 ? cleanBody : body);
       setSaving(false);
       onClose();
     } catch (err: any) {
@@ -767,9 +772,12 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
                 const sel = pickerConfig.selected === val;
                 const isLast = i === pickerConfig.options.length - 1;
                 return (
-                  <TouchableOpacity key={val} activeOpacity={0.6} onPress={() => { pickerConfig.onSelect(val); setPickerType(null); }}
-                    style={{paddingVertical: ms(8), paddingHorizontal: ms(12), borderBottomWidth: isLast ? 0 : 1, borderBottomColor: c.border, backgroundColor: sel ? c.primary : 'transparent', alignItems: 'center'}}>
-                    <Text style={{fontSize: ms(7), fontWeight: '700', color: sel ? '#fff' : c.textPrimary, textAlign: 'center', letterSpacing: 0.5, fontFamily: MONO}}>{label}</Text>
+                  <TouchableOpacity key={val} activeOpacity={0.6} onPress={() => { pickerConfig.onSelect(sel ? '' : val); setPickerType(null); }}
+                    style={{flexDirection: 'row', paddingVertical: ms(8), paddingHorizontal: ms(12), borderBottomWidth: isLast ? 0 : 1, borderBottomColor: c.border, backgroundColor: sel ? c.primarySurface : 'transparent', alignItems: 'center', gap: ms(6)}}>
+                    <View style={{width: ms(10), height: ms(10), borderRadius: ms(2), borderWidth: 1.5, borderColor: sel ? c.primary : c.textMuted, backgroundColor: sel ? c.primary : 'transparent', alignItems: 'center', justifyContent: 'center'}}>
+                      {sel && <Icon name="check" size={ms(7)} color="#fff" />}
+                    </View>
+                    <Text style={{flex: 1, fontSize: ms(7), fontWeight: '700', color: sel ? c.primary : c.textPrimary, letterSpacing: 0.5, fontFamily: MONO}}>{label}</Text>
                   </TouchableOpacity>
                 );
               })}

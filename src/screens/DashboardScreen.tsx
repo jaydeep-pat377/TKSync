@@ -666,12 +666,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const doneCount = detail ? detail.progress.completed : 0;
   const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 
-  // Only show Vehicle/VehicleTracking menu when ticket is in process
-  const hasActiveTicket = detail?.ticket?.in_process === true;
-  const menuItems = useMemo(
-    () => hasActiveTicket ? MENU_ITEMS_BASE : MENU_ITEMS_BASE.filter(i => i.actionKey !== 'VehicleTracking'),
-    [hasActiveTicket],
-  );
+  const menuItems = MENU_ITEMS_BASE;
 
   // Paired row count for the Job + Mix table layout
   const pairedRows = Math.max(jobInfo.length, mixInfo.length);
@@ -1157,6 +1152,9 @@ export default function DashboardScreen({ navigation }: Props) {
     const vt = def?.value_type;
     if (vt === 'number' && (fieldKey.includes('slump') || fieldKey.includes('_mm'))) return `${rawVal} mm`;
     if (vt === 'number' && fieldKey.includes('litres')) return `${rawVal} L`;
+    // Convert boolean values to readable text
+    if (rawVal === true || rawVal === 'true') return 'Yes';
+    if (rawVal === false || rawVal === 'false') return 'No';
     return String(rawVal);
   };
 
@@ -2719,7 +2717,7 @@ export default function DashboardScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+        <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true} bounces={false}>
           {/* Actions Section */}
           <View style={styles.etSectionHdr}>
             <Icon name="touch-app" size={ms(16)} color={c.accent} />
