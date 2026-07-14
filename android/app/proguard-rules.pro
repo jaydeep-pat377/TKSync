@@ -47,6 +47,12 @@
 }
 -keep @com.facebook.proguard.annotations.DoNotStrip class *
 
+# Native GPS tracking service
+-keep class com.tksync.location.** { *; }
+
+# Google Play Services Location
+-keep class com.google.android.gms.location.** { *; }
+
 # OkHttp (used by networking)
 -dontwarn okhttp3.**
 -dontwarn okio.**

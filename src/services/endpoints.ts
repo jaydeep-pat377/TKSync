@@ -30,6 +30,7 @@ export const ENDPOINTS = {
   // Tracking
   TRACKING_ME: '/tracking/me',
   TRACKING_GPS: '/tracking/gps',
+  TRACKING_TRIP_SUMMARY: '/tracking/trip-summary',
 
   // Notifications
   NOTIFICATION_REGISTER: '/notifications/register-device',

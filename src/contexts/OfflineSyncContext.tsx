@@ -100,10 +100,8 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
   // Auto-stop on logout
   useEffect(() => {
     if (!isDriverLoggedIn) {
-      if (backgroundGpsTracker.isRunning()) {
-        console.log('[OfflineSync] Driver logged out — stopping GPS');
-        backgroundGpsTracker.stop();
-      }
+      // Clear GPS data and fully stop native service (no silent mode on logout)
+      backgroundGpsTracker.clearAllData();
       return;
     }
 

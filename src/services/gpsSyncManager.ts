@@ -90,6 +90,11 @@ async function syncGpsRecords(): Promise<void> {
         altitude: r.altitude,
         accuracy: r.accuracy,
         recorded_at: r.recorded_at,
+        is_speeding: r.is_speeding,
+        is_idle: r.is_idle,
+        accel_x: r.accel_x,
+        accel_y: r.accel_y,
+        zone: r.zone,
       }));
 
       if (__DEV__) {
@@ -161,6 +166,34 @@ export const gpsSyncManager = {
     return syncGpsRecords();
   },
 
+  /** Sync trip summaries to API. */
+  async syncTripSummaries(): Promise<void> {
+    if (!getIsOnline()) return;
+    const unsynced = gpsStorage.getUnsyncedTripSummaries();
+    if (unsynced.length === 0) return;
+
+    for (const s of unsynced) {
+      try {
+        await gpsApi.saveTripSummary({
+          ticket_id: s.ticket_id,
+          started_at: s.started_at,
+          ended_at: s.ended_at,
+          total_distance_m: s.total_distance_m,
+          total_duration_s: s.total_duration_s,
+          max_speed_ms: s.max_speed_ms,
+          avg_speed_ms: s.avg_speed_ms,
+          hard_brakes: s.hard_brakes,
+          hard_corners: s.hard_corners,
+          total_idle_time_s: s.total_idle_time_s,
+        });
+        gpsStorage.markTripSummariesSynced([s.id]);
+        console.log(`[GpsSyncManager] Trip summary synced — ticket: ${s.ticket_id}`);
+      } catch (err: any) {
+        console.warn(`[GpsSyncManager] Trip summary sync failed: ${err.message}`);
+      }
+    }
+  },
+
   /**
    * Flush leftover unsynced GPS records on app startup.
    * Records already have ticket_id stamped from when they were recorded.
@@ -172,5 +205,6 @@ export const gpsSyncManager = {
       console.log(`[GpsSyncManager] Flushing ${count} leftover GPS records`);
       syncGpsRecords();
     }
+    gpsSyncManager.syncTripSummaries();
   },
 };

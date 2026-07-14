@@ -34,5 +34,11 @@
       <service
         android:name="app.notifee.core.ForegroundService"
         android:foregroundServiceType="location" />
+
+      <service
+        android:name=".location.LocationTrackingService"
+        android:foregroundServiceType="location"
+        android:exported="false"
+        android:stopWithTask="false" />
     </application>
 </manifest>

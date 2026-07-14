@@ -830,7 +830,7 @@ export default function DashboardScreen({ navigation }: Props) {
     const skPad = { paddingLeft: Math.max(wp(10), insets.left + wp(4)), paddingRight: Math.max(wp(10), insets.right + wp(4)) };
     return (
       <View style={[styles.container, { backgroundColor: c.background }]}>
-        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         {/* Header */}
         <View style={[styles.header, { backgroundColor: c.primaryDark, paddingTop: insets.top + wp(3), paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right) }]}>
           <View style={styles.headerRow}>
@@ -985,7 +985,7 @@ export default function DashboardScreen({ navigation }: Props) {
     };
     return (
       <View style={[styles.container, { backgroundColor: '#c8c8c8' }]}>
-        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         <View style={{ backgroundColor: c.primary, paddingTop: insets.top + (isLandscape ? 2 : wp(4)), paddingBottom: isLandscape ? 4 : wp(6), paddingHorizontal: Math.max(wp(12), insets.right + wp(4)), flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
           <TouchableOpacity style={{ width: isLandscape ? 30 : Math.max(wp(34), 34), height: isLandscape ? 30 : Math.max(wp(34), 34), borderRadius: wp(8), justifyContent: 'center', alignItems: 'center' }} onPress={openMenu} activeOpacity={0.7}>
             <Icon name="menu" size={ms(isLandscape ? 18 : 22)} color="#fff" />
@@ -1265,7 +1265,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Main content */}
       <View style={{ flex: 1 }}>

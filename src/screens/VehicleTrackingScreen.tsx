@@ -194,13 +194,29 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   }, [haversine]);
 
   const stopTracking = useCallback(() => {
+    // Save trip summary before stopping
+    if (tripStartTime.current > 0) {
+      backgroundGpsTracker.saveTripSummary({
+        ticket_id: passedTicketId,
+        started_at: new Date(tripStartTime.current).toISOString(),
+        ended_at: new Date().toISOString(),
+        total_distance_m: tripDistance,
+        total_duration_s: tripDuration,
+        max_speed_ms: maxSpeed,
+        avg_speed_ms: avgSpeed,
+        hard_brakes: hardBrakes,
+        hard_corners: hardCorners,
+        total_idle_time_s: idleTime,
+      });
+    }
+
     backgroundGpsTracker.stop();
     if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
     if (etaTimer.current) { clearInterval(etaTimer.current); etaTimer.current = null; }
     if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
     setIsTracking(false);
     setGpsActive(false);
-  }, []);
+  }, [passedTicketId, tripDistance, tripDuration, maxSpeed, avgSpeed, hardBrakes, hardCorners, idleTime]);
 
   // Subscribe to background GPS position updates (for UI display)
   useEffect(() => {
@@ -253,7 +269,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
         }
       }
 
-      if (pos.speed < IDLE_SPEED_THRESHOLD) {
+      const idle = pos.speed < IDLE_SPEED_THRESHOLD;
+      if (idle) {
         if (!idleStart.current) idleStart.current = Date.now();
         setIsIdle(true);
         setIdleTime(Math.floor((Date.now() - idleStart.current) / 1000));
@@ -262,6 +279,15 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
         setIsIdle(false);
         setIdleTime(0);
       }
+
+      // Send behavior data to tracker so it's saved with each GPS record
+      backgroundGpsTracker.setBehavior({
+        is_speeding: isSpeedingRef.current,
+        is_idle: idle,
+        accel_x: accelX,
+        accel_y: accelY,
+        zone: lastZone.current,
+      });
     });
 
     // Sync initial state — tracker might already be running

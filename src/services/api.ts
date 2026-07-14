@@ -794,10 +794,15 @@ export const trackingApi = {
 };
 
 export const gpsApi = {
-  saveRecords: (records: {ticket_id: number | null; latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string}[]) =>
+  saveRecords: (records: {ticket_id: number | null; latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string; is_speeding?: boolean; is_idle?: boolean; accel_x?: number | null; accel_y?: number | null; zone?: string | null}[]) =>
     request<{inserted: number}>(ENDPOINTS.TRACKING_GPS, {
       method: 'POST',
       body: JSON.stringify({records}),
+    }),
+  saveTripSummary: (summary: {ticket_id: number | null; started_at: string; ended_at: string; total_distance_m: number; total_duration_s: number; max_speed_ms: number; avg_speed_ms: number; hard_brakes: number; hard_corners: number; total_idle_time_s: number}) =>
+    request<{id: number}>(ENDPOINTS.TRACKING_TRIP_SUMMARY, {
+      method: 'POST',
+      body: JSON.stringify(summary),
     }),
 };
 

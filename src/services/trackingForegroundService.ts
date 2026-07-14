@@ -1,5 +1,7 @@
-import {Platform} from 'react-native';
+import {Platform, NativeModules} from 'react-native';
 import notifee, {AndroidImportance, AndroidCategory, AndroidForegroundServiceType} from '@notifee/react-native';
+
+const {LocationTrackingModule} = NativeModules;
 
 const CHANNEL_ID = 'tksync-tracking';
 const NOTIFICATION_ID = 'tracking-foreground';
@@ -13,9 +15,21 @@ async function ensureChannel(): Promise<string> {
   });
 }
 
-export async function startTrackingService(): Promise<void> {
+export async function startTrackingService(ticketId?: number | null): Promise<void> {
   if (Platform.OS !== 'android') return;
 
+  // Use native sticky service for killed-state survival
+  if (LocationTrackingModule && ticketId) {
+    try {
+      await LocationTrackingModule.startTracking(Number(ticketId));
+      console.log('[TrackingService] Native sticky service started');
+      return;
+    } catch (e: any) {
+      console.warn('[TrackingService] Native service failed, falling back to notifee:', e.message);
+    }
+  }
+
+  // Fallback to notifee foreground service
   const channelId = await ensureChannel();
   await notifee.displayNotification({
     id: NOTIFICATION_ID,
@@ -32,13 +46,27 @@ export async function startTrackingService(): Promise<void> {
       category: AndroidCategory.SERVICE,
     },
   });
-  console.log('[TrackingService] Foreground service started');
+  console.log('[TrackingService] Notifee foreground service started');
 }
 
+/** Fully stop everything — native service + notifee. Used on logout. */
 export async function stopTrackingService(): Promise<void> {
   if (Platform.OS !== 'android') return;
 
-  await notifee.stopForegroundService();
-  await notifee.cancelNotification(NOTIFICATION_ID);
+  // Stop native service completely
+  if (LocationTrackingModule) {
+    try {
+      await LocationTrackingModule.stopTracking();
+      console.log('[TrackingService] Native sticky service stopped');
+    } catch (e: any) {
+      console.warn('[TrackingService] Native stop failed:', e.message);
+    }
+  }
+
+  // Also stop notifee service
+  try {
+    await notifee.stopForegroundService();
+    await notifee.cancelNotification(NOTIFICATION_ID);
+  } catch {}
   console.log('[TrackingService] Foreground service stopped');
 }

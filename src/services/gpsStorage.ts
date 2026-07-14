@@ -3,7 +3,7 @@ import {createMMKV} from 'react-native-mmkv';
 const gpsStore = createMMKV({id: 'tksync-gps'});
 
 const RECORDS_KEY = 'gps_records';
-
+const TRIP_SUMMARIES_KEY = 'trip_summaries';
 
 export type GpsRecord = {
   id: string;
@@ -15,6 +15,27 @@ export type GpsRecord = {
   altitude: number | null;
   accuracy: number | null;
   recorded_at: string;
+  synced: boolean;
+  // Behavior fields (per-point)
+  is_speeding?: boolean;
+  is_idle?: boolean;
+  accel_x?: number | null;
+  accel_y?: number | null;
+  zone?: string | null;
+};
+
+export type TripSummary = {
+  id: string;
+  ticket_id: number | null;
+  started_at: string;
+  ended_at: string;
+  total_distance_m: number;
+  total_duration_s: number;
+  max_speed_ms: number;
+  avg_speed_ms: number;
+  hard_brakes: number;
+  hard_corners: number;
+  total_idle_time_s: number;
   synced: boolean;
 };
 
@@ -30,6 +51,20 @@ function getRecords(): GpsRecord[] {
 
 function setRecords(records: GpsRecord[]): void {
   gpsStore.set(RECORDS_KEY, JSON.stringify(records));
+}
+
+function getTripSummaries(): TripSummary[] {
+  const raw = gpsStore.getString(TRIP_SUMMARIES_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function setTripSummaries(summaries: TripSummary[]): void {
+  gpsStore.set(TRIP_SUMMARIES_KEY, JSON.stringify(summaries));
 }
 
 export const gpsStorage = {
@@ -80,5 +115,32 @@ export const gpsStorage = {
 
   clear(): void {
     gpsStore.set(RECORDS_KEY, '[]');
+    gpsStore.set(TRIP_SUMMARIES_KEY, '[]');
+  },
+
+  /** Save a trip summary when tracking stops. */
+  addTripSummary(summary: Omit<TripSummary, 'id' | 'synced'>): void {
+    const summaries = getTripSummaries();
+    const id = `trip_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    summaries.push({...summary, id, synced: false});
+    setTripSummaries(summaries);
+    console.log(`[GPS] Trip summary saved — distance: ${summary.total_distance_m.toFixed(0)}m, duration: ${summary.total_duration_s}s, brakes: ${summary.hard_brakes}, corners: ${summary.hard_corners}`);
+  },
+
+  /** Get unsynced trip summaries. */
+  getUnsyncedTripSummaries(): TripSummary[] {
+    return getTripSummaries().filter(s => !s.synced);
+  },
+
+  /** Mark trip summaries as synced. */
+  markTripSummariesSynced(ids: string[]): void {
+    const summaries = getTripSummaries();
+    const idSet = new Set(ids);
+    for (const s of summaries) {
+      if (idSet.has(s.id)) {
+        s.synced = true;
+      }
+    }
+    setTripSummaries(summaries);
   },
 };
