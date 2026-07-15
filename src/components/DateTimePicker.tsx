@@ -15,6 +15,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -45,6 +46,7 @@ type WheelProps = {
 };
 
 function Wheel({data, selected, onSelect, width, itemH}: WheelProps) {
+  useFontScaleRefresh();
   const wS = createWS();
   const {c} = useTheme();
   const scrollRef = useRef<ScrollView>(null);
@@ -163,6 +165,7 @@ type Props = {
 };
 
 export default function DateTimePicker({visible, value, onConfirm, onCancel, mode = 'datetime'}: Props) {
+  useFontScaleRefresh();
   const ps = createPs();
   const {c} = useTheme();
   const {width: screenW, height: screenH} = useWindowDimensions();

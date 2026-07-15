@@ -43,8 +43,16 @@ function getRecords(): GpsRecord[] {
   const raw = gpsStore.getString(RECORDS_KEY);
   if (!raw) return [];
   try {
-    return JSON.parse(raw);
-  } catch {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      console.error('[gpsStorage] Corrupted data: not an array, resetting');
+      gpsStore.set(RECORDS_KEY, '[]');
+      return [];
+    }
+    return parsed;
+  } catch (err) {
+    console.error('[gpsStorage] Corrupted JSON data, resetting:', err);
+    gpsStore.set(RECORDS_KEY, '[]');
     return [];
   }
 }
@@ -57,8 +65,16 @@ function getTripSummaries(): TripSummary[] {
   const raw = gpsStore.getString(TRIP_SUMMARIES_KEY);
   if (!raw) return [];
   try {
-    return JSON.parse(raw);
-  } catch {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      console.error('[gpsStorage] Corrupted trip summaries data, resetting');
+      gpsStore.set(TRIP_SUMMARIES_KEY, '[]');
+      return [];
+    }
+    return parsed;
+  } catch (err) {
+    console.error('[gpsStorage] Corrupted trip summaries JSON, resetting:', err);
+    gpsStore.set(TRIP_SUMMARIES_KEY, '[]');
     return [];
   }
 }
@@ -81,9 +97,13 @@ export const gpsStorage = {
       console.log(`[GPS] #${records.length} | lat: ${record.latitude.toFixed(6)}, lng: ${record.longitude.toFixed(6)} | speed: ${record.speed?.toFixed(1) ?? '-'} m/s | accuracy: ${record.accuracy ?? '-'}m | ticket: ${record.ticket_id}`);
     }
     // Remove synced records to prevent unbounded growth
-    const unsynced = records.filter(r => !r.synced);
+    // Keep all unsynced + most recent 100 synced (for dedup reference)
     if (records.length > 600) {
-      records = unsynced;
+      const unsynced = records.filter(r => !r.synced);
+      const synced = records.filter(r => r.synced);
+      // Keep latest 100 synced records for dedup
+      const recentSynced = synced.slice(-100);
+      records = [...recentSynced, ...unsynced];
     }
     setRecords(records);
   },

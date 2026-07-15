@@ -457,8 +457,8 @@ export default function SplashScreen({navigation}: Props) {
 }
 
 const createStyles = (c: any, isLandscape: boolean, isTablet: boolean) => {
-  const titleSize = isTablet ? 46 : isLandscape ? 32 : 38;
-  const taglineSize = isTablet ? 18 : isLandscape ? 13 : 15;
+  const titleSize = ms(isTablet ? 46 : isLandscape ? 32 : 38);
+  const taglineSize = ms(isTablet ? 18 : isLandscape ? 13 : 15);
 
   return StyleSheet.create({
     container: {flex: 1, overflow: 'hidden', backgroundColor: c.primaryDark},

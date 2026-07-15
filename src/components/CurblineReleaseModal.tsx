@@ -17,6 +17,7 @@ import SignaturePad from './SignaturePad';
 import ThemedAlert from './ThemedAlert';
 import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
+import {getFontScale, useFontScaleRefresh} from '../contexts/FontSizeContext';
 import {ticketsApi} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
 import {useOfflineSync} from '../contexts/OfflineSyncContext';
@@ -46,6 +47,7 @@ export default function CurblineReleaseModal({
   ticketInfo,
   isLandscape,
 }: Props) {
+  useFontScaleRefresh();
   const {c, isDark} = useTheme();
   const {isOnline, enqueueOffline} = useOfflineSync();
   const {width: screenW, height: screenH} = useWindowDimensions();
@@ -55,7 +57,7 @@ export default function CurblineReleaseModal({
   const LREF = 810;
   const sc = Math.max(0.65, Math.min(1.35, shortDim / LREF));
   const fs = (base: number) => Math.round(base * sc);
-  const fst = (base: number) => Math.round((base - 1) * sc);
+  const fst = (base: number) => Math.round((base - 1) * sc * getFontScale());
 
   const [loading, setLoading] = useState(true);
   const [typeName, setTypeName] = useState('');

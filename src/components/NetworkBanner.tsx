@@ -4,12 +4,15 @@ import {Animated, StyleSheet, Text, View, Platform,
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
+import {ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 const RESTORED_DISPLAY_MS = 4000;
 
 export default function NetworkBanner() {
+  useFontScaleRefresh();
   const {isOnline} = useNetworkStatus();
   const insets = useSafeAreaInsets();
   const [showRestored, setShowRestored] = useState(false);
@@ -72,7 +75,7 @@ export default function NetworkBanner() {
       pointerEvents="none">
       <View style={[styles.content]}>
         <Icon name={icon} size={16} color="#fff" />
-        <Text style={[styles.text]}>{message}</Text>
+        <Text style={[styles.text, {fontSize: ms(13)}]}>{message}</Text>
       </View>
     </Animated.View>
   );

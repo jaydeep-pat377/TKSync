@@ -3,7 +3,9 @@ import {gpsApi, trackingApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {createMMKV} from 'react-native-mmkv';
 
-const SYNC_INTERVAL_MS = 30_000; // 30 seconds
+const BASE_SYNC_INTERVAL_MS = 30_000; // 30 seconds
+let currentSyncInterval = BASE_SYNC_INTERVAL_MS;
+let consecutiveFailures = 0;
 const gpsCache = createMMKV({id: 'tksync-gps'});
 const CACHED_TICKET_KEY = 'last_ticket_id';
 
@@ -82,6 +84,7 @@ async function syncGpsRecords(): Promise<void> {
       if (!getIsOnline()) break; // Stop if we lose connection mid-sync
       const batch = unsynced.slice(i, i + BATCH_SIZE);
       const records = batch.map(r => ({
+        client_id: r.id,
         ticket_id: r.ticket_id,
         latitude: r.latitude,
         longitude: r.longitude,
@@ -100,15 +103,40 @@ async function syncGpsRecords(): Promise<void> {
       if (__DEV__) {
         console.log(`[GpsSyncManager] Sending ${records.length} records to API:`, JSON.stringify(records, null, 2));
       }
-      await gpsApi.saveRecords(records);
-      gpsStorage.markSynced(batch.map(r => r.id));
-      totalSynced += batch.length;
+      try {
+        await gpsApi.saveRecords(records);
+        gpsStorage.markSynced(batch.map(r => r.id));
+        totalSynced += batch.length;
+      } catch (batchErr: any) {
+        console.warn(`[GpsSyncManager] Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${batchErr.message}, continuing with next batch`);
+        // Continue with next batch instead of stopping entirely
+      }
     }
     console.log(`[GpsSyncManager] Synced ${totalSynced}/${unsynced.length} GPS records`);
+    // Reset backoff on success
+    if (totalSynced > 0 && consecutiveFailures > 0) {
+      consecutiveFailures = 0;
+      resetSyncInterval();
+    }
   } catch (err: any) {
     console.warn(`[GpsSyncManager] Sync failed after ${totalSynced} records: ${err.message}`);
+    // Exponential backoff: 30s → 60s → 120s → max 5min
+    consecutiveFailures++;
+    const backoff = Math.min(BASE_SYNC_INTERVAL_MS * Math.pow(2, consecutiveFailures), 300_000);
+    if (backoff !== currentSyncInterval) {
+      currentSyncInterval = backoff;
+      resetSyncInterval();
+      console.log(`[GpsSyncManager] Backoff: next sync in ${backoff / 1000}s`);
+    }
   } finally {
     isSyncing = false;
+  }
+}
+
+function resetSyncInterval(): void {
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
   }
 }
 
@@ -131,7 +159,9 @@ export const gpsSyncManager = {
       return false;
     }
     console.log(`[GpsSyncManager] Started — ticket_id: ${currentTicketId}`);
-    syncInterval = setInterval(syncAndRefreshTicket, SYNC_INTERVAL_MS);
+    consecutiveFailures = 0;
+    currentSyncInterval = BASE_SYNC_INTERVAL_MS;
+    syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
     unsubConnectivity = onConnectivityRestored(() => syncGpsRecords());
     syncGpsRecords();
     return true;
@@ -199,12 +229,12 @@ export const gpsSyncManager = {
    * Records already have ticket_id stamped from when they were recorded.
    * No interval or tracking started — just sends and done.
    */
-  flushUnsynced(): void {
+  async flushUnsynced(): Promise<void> {
     const count = gpsStorage.getUnsynced().length;
     if (count > 0) {
       console.log(`[GpsSyncManager] Flushing ${count} leftover GPS records`);
-      syncGpsRecords();
+      await syncGpsRecords();
     }
-    gpsSyncManager.syncTripSummaries();
+    await gpsSyncManager.syncTripSummaries();
   },
 };

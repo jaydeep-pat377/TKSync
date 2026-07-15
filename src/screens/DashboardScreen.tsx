@@ -38,7 +38,7 @@ import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
 import { syncManager } from '../services/syncManager';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
-import { useFontScaleRefresh, useFontSize } from '../contexts/FontSizeContext';
+import { useFontScaleRefresh, useFontSize, getFontScale } from '../contexts/FontSizeContext';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -1429,7 +1429,7 @@ export default function DashboardScreen({ navigation }: Props) {
             ? Math.max(0.65, lh / 660)
             : Math.max(0.65, Math.min(1.35, shortDim / 810));
           const fs = (base: number) => Math.round(base * s);
-          const fst = (base: number) => Math.round((base - 1) * s);
+          const fst = (base: number) => Math.round((base - 1) * s * getFontScale());
           return (
             <View style={{ flex: 1, paddingHorizontal: Math.max(fs(10), insets.left + 6), paddingTop: fs(1), paddingBottom: fs(6) }}>
               {/* Info Bar */}
@@ -1511,7 +1511,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={{ flexDirection: 'row', gap: fs(6), flex: 1, minHeight: 0, marginTop: fs(4) }}>
                   {/* LEFT — Customer + Product + Delivery Location + Quick Links */}
                   <View style={{ flex: 1 }}>
-                    <View style={{ flex: 1, gap: ct ? fs(3) : fs(4) }}>
+                    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: ct ? fs(3) : fs(4), flexGrow: 1 }} showsVerticalScrollIndicator={false} bounces={false}>
                     <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(6) : fs(8), justifyContent: 'space-evenly' }}>
                       <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: c.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' , fontFamily: MONO}}>Customer</Text>
@@ -1600,7 +1600,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         {detail?.job?.instructions ? (
                           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
                             <View style={{ flex: 1, backgroundColor: '#FFFF00', borderRadius: 4, paddingVertical: fs(3), paddingHorizontal: fs(5) }}>
-                              <Text style={{ fontSize: fst(12), fontWeight: '800', color: '#000', lineHeight: fs(18) , fontFamily: MONO}} numberOfLines={1}>{detail.job.instructions}</Text>
+                              <Text style={{ fontSize: fst(12), fontWeight: '800', color: '#000', lineHeight: fst(18) , fontFamily: MONO}} numberOfLines={1}>{detail.job.instructions}</Text>
                             </View>
                             <TouchableOpacity activeOpacity={0.6} onPress={() => setInstructionsModalVisible(true)} style={{ marginLeft: fs(6), paddingVertical: fs(2), paddingHorizontal: fs(6) }}>
                               <Text style={{ fontSize: fst(10), fontWeight: '800', color: c.accent , fontFamily: MONO}}>VIEW ALL</Text>
@@ -1611,7 +1611,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         )}
                       </View>
                     </View>
-                    </View>
+                    </ScrollView>
                     {/* Quick Links — inside left column */}
                     <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(8) : fs(10), marginTop: ct ? fs(3) : fs(4) }}>
                       <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
@@ -1639,13 +1639,14 @@ export default function DashboardScreen({ navigation }: Props) {
                   </View>
                   {/* RIGHT: Mandatory Fields + Additional Entries */}
                   <View style={{ flex: 1 }}>
-                    <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(4), paddingHorizontal: ct ? fs(4) : fs(5), paddingBottom: ct ? fs(4) : fs(2), marginBottom: ct ? fs(3) : fs(4), justifyContent: 'space-evenly' }}>
+                    <View style={{ flex: 1, backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, paddingTop: ct ? fs(3) : fs(4), paddingHorizontal: ct ? fs(4) : fs(5), paddingBottom: ct ? fs(4) : fs(2), marginBottom: ct ? fs(3) : fs(4) }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingBottom: ct ? fs(4) : fs(5), marginBottom: fs(4) }}>
                         <Text style={{ fontSize: fst(11), fontWeight: '800', color: '#9C27B0', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 , fontFamily: MONO}}>REQUIRED ENTRIES</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: fs(4), backgroundColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primarySurface : isDark ? '#2A1015' : '#FFF0F0', paddingVertical: fs(2), paddingHorizontal: fs(6), borderRadius: 10, borderWidth: 1, borderColor: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary + '40' : c.error + '40' }}>
                           <Text style={{ fontSize: fst(10), fontWeight: '900', color: totalMandatoryFilled === totalMandatoryCount && totalMandatoryCount > 0 ? c.primary : c.error , fontFamily: MONO}}>{totalMandatoryFilled}/{totalMandatoryCount}</Text>
                         </View>
                       </View>
+                      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-evenly' }} showsVerticalScrollIndicator={false} bounces={false}>
                       {[
                         { label: 'PLANT', data: plantMandatory, icon: 'factory' as const },
                         { label: 'JOBSITE', data: jobsiteMandatory, icon: 'location-on' as const },
@@ -1674,6 +1675,7 @@ export default function DashboardScreen({ navigation }: Props) {
                           })}
                         </View>
                       ))}
+                      </ScrollView>
                     </View>
                     {/* Additional Entries — inside right column */}
                     <View style={{ backgroundColor: c.white, borderRadius: fs(6), borderWidth: StyleSheet.hairlineWidth, borderColor: c.border, padding: ct ? fs(8) : fs(10) }}>
@@ -3301,20 +3303,20 @@ const createStyles = (c: any, isDark: boolean) => StyleSheet.create({
   timePickerColumnLabel: { flex: 1, textAlign: 'center', fontSize: ms(7), fontWeight: '600', color: c.textMuted, fontFamily: MONO },
 
   // Misc
-  refreshedText: { fontSize: 10, fontWeight: '600', color: c.primary, fontFamily: MONO },
+  refreshedText: { fontSize: ms(7), fontWeight: '600', color: c.primary, fontFamily: MONO },
   noProductText: { color: c.textMuted, fontSize: ms(10), fontFamily: MONO },
   // Font scale modal
   fontScaleLabel: { fontSize: ms(14), fontWeight: '800', color: c.textPrimary, fontFamily: MONO },
   fontScalePercent: { fontSize: ms(24), fontWeight: '900', color: c.primary, fontFamily: MONO },
 
   // Header strip small screen
-  stripCompanyName: { fontSize: 13, fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary, fontFamily: MONO },
-  stripPlant9: { fontSize: 9, fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
-  stripWeather8: { fontSize: 8, fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
-  stripTruck9: { fontSize: 9, fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
-  stripDriver8: { fontSize: 8, fontWeight: '500', color: c.textOnDark60, fontFamily: MONO },
-  stripSync9: { fontSize: 9, fontWeight: '600', color: c.textOnDark60, fontFamily: MONO },
-  stripOnlineLabel: { fontSize: 8, fontWeight: '700', color: '#fff', fontFamily: MONO },
+  stripCompanyName: { fontSize: ms(13), fontWeight: '800', letterSpacing: 0.5, color: c.textOnPrimary, fontFamily: MONO },
+  stripPlant9: { fontSize: ms(9), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  stripWeather8: { fontSize: ms(8), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  stripTruck9: { fontSize: ms(9), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },
+  stripDriver8: { fontSize: ms(8), fontWeight: '500', color: c.textOnDark60, fontFamily: MONO },
+  stripSync9: { fontSize: ms(9), fontWeight: '600', color: c.textOnDark60, fontFamily: MONO },
+  stripOnlineLabel: { fontSize: ms(8), fontWeight: '700', color: '#fff', fontFamily: MONO },
 
   // Landscape header strip
   lsPlant10: { fontSize: ms(10), fontWeight: '700', color: c.textOnPrimary, fontFamily: MONO },

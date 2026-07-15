@@ -495,7 +495,7 @@ const createStyles = (c: any) =>
       borderRadius: 8,
     },
     retryBtnText: {
-      fontSize: 15,
+      fontSize: ms(15),
       fontWeight: '800',
       color: '#fff',
       fontFamily: MONO,

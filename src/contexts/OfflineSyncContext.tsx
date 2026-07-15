@@ -50,8 +50,12 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     if (initialized.current) return;
     initialized.current = true;
     syncManager.init();
-    gpsSyncManager.flushUnsynced();
-    backgroundGpsTracker.autoResume();
+    gpsSyncManager.flushUnsynced().catch(err => {
+      console.error('[OfflineSync] flushUnsynced failed:', err);
+    });
+    backgroundGpsTracker.autoResume().catch(err => {
+      console.error('[OfflineSync] autoResume failed:', err);
+    });
 
     const failedItems: string[] = [];
     const unsub = syncManager.addListener((event: SyncEvent) => {

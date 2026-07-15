@@ -17,6 +17,7 @@ import ResponsiveModal from './ResponsiveModal';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -46,7 +47,9 @@ const TABS: {key: Tab; label: string}[] = [
 ];
 
 export default function AdditionalEntriesModal({visible, onClose, ticketCode, orderCode, deliveryRecord, initialTab, onSave, isLandscape}: Props) {
+  useFontScaleRefresh();
   const {c} = useTheme();
+  const s = createS();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'plant');
 
   // 100% Dynamic: all field data from API
@@ -852,7 +855,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
   );
 }
 
-const s = StyleSheet.create({
+const createS = () => StyleSheet.create({
   container: {borderRadius: 10, overflow: 'hidden'},
   header: {paddingTop: wp(6), paddingHorizontal: wp(8), paddingBottom: wp(2), alignItems: 'center'},
   subtitle: {fontSize: ms(5), fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1},

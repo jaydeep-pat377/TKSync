@@ -17,6 +17,7 @@ import SignaturePad from './SignaturePad';
 import ThemedAlert from './ThemedAlert';
 import Icon from './Icon';
 import {useTheme} from '../contexts/ThemeContext';
+import {getFontScale, useFontScaleRefresh} from '../contexts/FontSizeContext';
 import {ticketsApi} from '../services/api';
 import type {SigningData} from '../services/api';
 import {offlineStorage} from '../services/offlineStorage';
@@ -47,6 +48,7 @@ export default function AcceptTicketModal({
   ticketInfo,
   isLandscape,
 }: Props) {
+  useFontScaleRefresh();
   const {c, isDark} = useTheme();
   const {isOnline, enqueueOffline} = useOfflineSync();
   const {width: screenW, height: screenH} = useWindowDimensions();
@@ -57,7 +59,7 @@ export default function AcceptTicketModal({
   const LREF = 810;
   const sc = Math.max(0.65, Math.min(1.35, shortDim / LREF));
   const fs = (base: number) => Math.round(base * sc);
-  const fst = (base: number) => Math.round((base - 1) * sc);
+  const fst = (base: number) => Math.round((base - 1) * sc * getFontScale());
 
   const scrollRef = useRef<ScrollView>(null);
   const [data, setData] = useState<SigningData | null>(null);

@@ -18,6 +18,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms, wp} from '../utils/responsive';
+import {getFontScale} from '../contexts/FontSizeContext';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
@@ -136,22 +137,23 @@ export default function MapScreen({navigation, route}: Props) {
     }
   };
 
-  // Responsive sizes
-  const titleSize = isTablet ? 18 : isLandscape ? 15 : 16;
-  const valueSize = isTablet ? 15 : isLandscape ? 13 : 14;
-  const dirSize = isTablet ? 15 : isLandscape ? 13 : 14;
-  const iconSize = isTablet ? 24 : isLandscape ? 20 : 22;
-  const iconBox = isTablet ? 44 : isLandscape ? 36 : 40;
-  const itemPad = isTablet ? 16 : isLandscape ? 8 : 12;
-  const indentLeft = iconBox + (isTablet ? 14 : 12);
+  // Responsive sizes — scale layout with font so panel grows with text
+  const fScale = getFontScale();
+  const titleSize = ms(isTablet ? 18 : isLandscape ? 15 : 16);
+  const valueSize = ms(isTablet ? 15 : isLandscape ? 13 : 14);
+  const dirSize = ms(isTablet ? 15 : isLandscape ? 13 : 14);
+  const iconSize = Math.round((isTablet ? 24 : isLandscape ? 20 : 22) * fScale);
+  const iconBox = Math.round((isTablet ? 44 : isLandscape ? 36 : 40) * fScale);
+  const itemPad = Math.round((isTablet ? 16 : isLandscape ? 8 : 12) * fScale);
+  const indentLeft = iconBox + Math.round((isTablet ? 14 : 12) * fScale);
 
   // Build panel from mapItems
   const panelContent = hasMapItems ? (
     <ScrollView
       style={styles.panelScroll}
       contentContainerStyle={{
-        paddingVertical: isLandscape ? 14 : insets.top + 10,
-        paddingHorizontal: isTablet ? 24 : isLandscape ? 16 : 20,
+        paddingVertical: isLandscape ? Math.round(14 * fScale) : insets.top + 10,
+        paddingHorizontal: Math.round((isTablet ? 24 : isLandscape ? 16 : 20) * fScale),
       }}
       bounces={false}
       showsVerticalScrollIndicator={false}>
@@ -342,7 +344,7 @@ export default function MapScreen({navigation, route}: Props) {
     if (isLandscape) {
       return (
         <View style={[styles.container, styles.containerRow]}>
-          <View style={[styles.sidePanel, {paddingTop: insets.top, width: isTablet ? 300 : 260}]}>
+          <View style={[styles.sidePanel, {paddingTop: insets.top, width: Math.round((isTablet ? 300 : 260) * fScale)}]}>
             {panelContent}
           </View>
           {mapView}
@@ -434,33 +436,33 @@ const createStyles = (c: any) => StyleSheet.create({
   panelIconRow: {flexDirection: 'row', alignItems: 'center', marginBottom: 4},
   panelIcon: {justifyContent: 'center', alignItems: 'center'},
   panelTitle: {fontWeight: '800', color: c.textPrimary},
-  panelValue: {fontWeight: '500', lineHeight: 21, marginBottom: 6, color: c.textPrimary},
+  panelValue: {fontWeight: '500', lineHeight: ms(21), marginBottom: 6, color: c.textPrimary},
   panelDirections: {fontWeight: '700', color: '#1976D2', textDecorationLine: 'underline'},
 
   // Callout popup
   callout: {width: 220, backgroundColor: '#fff', borderRadius: 10, padding: 12, elevation: 6, shadowColor: '#000', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.2, shadowRadius: 6},
   calloutHeader: {flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6},
   calloutIcon: {width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center'},
-  calloutTitle: {fontSize: 14, fontWeight: '800', color: '#222'},
-  calloutValue: {fontSize: 12, fontWeight: '500', color: '#444', lineHeight: 18, marginBottom: 6},
+  calloutTitle: {fontSize: ms(14), fontWeight: '800', color: '#222'},
+  calloutValue: {fontSize: ms(12), fontWeight: '500', color: '#444', lineHeight: 18, marginBottom: 6},
   calloutDetails: {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e0e0e0', paddingTop: 6, gap: 3},
-  calloutDetail: {fontSize: 11, fontWeight: '500', color: '#555', lineHeight: 16},
+  calloutDetail: {fontSize: ms(11), fontWeight: '500', color: '#555', lineHeight: 16},
 
   // Traffic legend
   trafficLegend: {position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 8, padding: 8, paddingHorizontal: 10, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 4, gap: 4},
-  legendTitle: {fontSize: 14, fontWeight: '800', color: '#333', marginBottom: 2},
+  legendTitle: {fontSize: ms(14), fontWeight: '800', color: '#333', marginBottom: 2},
   legendRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
   legendLine: {width: 20, height: 5, borderRadius: 2},
   legendLineGreen: {backgroundColor: '#4CAF50'},
   legendLineYellow: {backgroundColor: '#FFEB3B'},
   legendLineOrange: {backgroundColor: '#FF9800'},
   legendLineRed: {backgroundColor: '#F44336'},
-  legendLabel: {fontSize: 13, fontWeight: '600', color: '#555'},
+  legendLabel: {fontSize: ms(13), fontWeight: '600', color: '#555'},
 
   // Map overlay buttons
   mapBtnSatellite: {position: 'absolute', top: 12, right: 56, width: 40, height: 40, borderRadius: 6, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc'},
   mapBtnClose: {position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: 6, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc'},
-  closeBtnText: {fontSize: 18, fontWeight: '900', color: '#333'},
+  closeBtnText: {fontSize: ms(18), fontWeight: '900', color: '#333'},
 
   // Zoom controls
   zoomControls: {position: 'absolute', right: 12, backgroundColor: '#fff', borderRadius: 6, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, borderWidth: 1, borderColor: '#ccc', overflow: 'hidden'},
@@ -469,5 +471,5 @@ const createStyles = (c: any) => StyleSheet.create({
 
   // Recenter button
   recenterBtn: {position: 'absolute', alignSelf: 'center', backgroundColor: '#2E7D32', paddingVertical: 12, paddingHorizontal: 40, borderRadius: 4, elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4},
-  recenterText: {fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 1},
+  recenterText: {fontSize: ms(15), fontWeight: '800', color: '#fff', letterSpacing: 1},
 });

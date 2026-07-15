@@ -4,6 +4,8 @@ import {Animated, StyleSheet, Text, TouchableOpacity, View, Platform,
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import {ToastItem, onToastChange, dismissToast} from '../utils/toast';
+import {ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -15,6 +17,7 @@ const TOAST_COLORS: Record<string, {bg: string; icon: string}> = {
 };
 
 function ToastRow({item}: {item: ToastItem}) {
+  useFontScaleRefresh();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
 
@@ -40,8 +43,8 @@ function ToastRow({item}: {item: ToastItem}) {
     <Animated.View style={[styles.toast, {backgroundColor: color.bg, opacity, transform: [{translateY}]}]}>
       <Icon name={color.icon} size={20} color="#fff" />
       <View style={[styles.textWrap]}>
-        <Text style={[styles.title]}>{item.title}</Text>
-        {item.message ? <Text style={[styles.message]}>{item.message}</Text> : null}
+        <Text style={[styles.title, {fontSize: ms(13)}]}>{item.title}</Text>
+        {item.message ? <Text style={[styles.message, {fontSize: ms(12)}]}>{item.message}</Text> : null}
       </View>
       <TouchableOpacity onPress={handleDismiss} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
         <Icon name="close" size={18} color="rgba(255,255,255,0.7)" />

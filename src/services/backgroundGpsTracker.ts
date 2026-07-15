@@ -101,7 +101,7 @@ async function importNativeRecords(): Promise<number> {
         latitude: r.latitude,
         longitude: r.longitude,
         speed: r.speed || 0,
-        heading: r.heading || 0,
+        heading: r.heading ?? 0,
         altitude: r.altitude || null,
         accuracy: r.accuracy || null,
         recorded_at: r.recorded_at,
@@ -111,13 +111,23 @@ async function importNativeRecords(): Promise<number> {
       imported++;
     }
 
-    await LocationTrackingModule.clearStoredRecords();
+    // Clear native records after successful import, with retry
+    try {
+      await LocationTrackingModule.clearStoredRecords();
+    } catch (clearErr: any) {
+      console.warn('[BackgroundGPS] clearStoredRecords failed, retrying:', clearErr.message);
+      try {
+        await LocationTrackingModule.clearStoredRecords();
+      } catch {
+        console.error('[BackgroundGPS] clearStoredRecords retry failed — duplicates may occur on next import');
+      }
+    }
     if (imported > 0) {
       console.log(`[BackgroundGPS] Imported ${imported} native GPS records from killed state`);
     }
     return imported;
   } catch (e: any) {
-    console.warn('[BackgroundGPS] Failed to import native records:', e.message);
+    console.error('[BackgroundGPS] Failed to import native records:', e.message);
     return 0;
   }
 }
@@ -134,29 +144,42 @@ function startWatch() {
         latitude,
         longitude,
         speed: currentSpeed,
-        heading: heading || 0,
+        heading: heading ?? 0,
         altitude: altitude || 0,
         accuracy: accuracy || 0,
         timestamp: position.timestamp,
       };
       lastPosition = pos;
+      notifyListeners(pos);
+
+      // Skip recording very inaccurate GPS fixes (>200m radius)
+      if (accuracy != null && accuracy > 200) {
+        if (__DEV__) {
+          console.log(`[BackgroundGPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
+        }
+        return;
+      }
 
       gpsStorage.addRecord({
         ticket_id: gpsSyncManager.getTicketId(),
         latitude,
         longitude,
         speed: currentSpeed,
-        heading: heading || 0,
+        heading: heading ?? 0,
         altitude: altitude || null,
         accuracy: accuracy || null,
         recorded_at: new Date(position.timestamp).toISOString(),
         ...currentBehavior,
       });
-
-      notifyListeners(pos);
     },
     (error) => {
-      console.warn('[BackgroundGPS] Error:', error.message);
+      console.warn('[BackgroundGPS] GPS Error:', error.code, error.message);
+      // Code 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
+      if (error.code === 1) {
+        console.error('[BackgroundGPS] Location permission denied — stopping tracking');
+        showToast('error', 'GPS Permission Lost', 'Location permission was revoked. Tracking stopped.');
+        backgroundGpsTracker.stop();
+      }
     },
     {
       enableHighAccuracy: true,
@@ -239,6 +262,10 @@ export const backgroundGpsTracker = {
   stop(): void {
     if (!running && watchId === null) return;
 
+    // Guard against double-stop
+    const wasRunning = running;
+    running = false;
+
     stopWatch();
     gpsSyncManager.stop();
 
@@ -249,12 +276,13 @@ export const backgroundGpsTracker = {
     }
 
     // Stop only the notifee foreground service (not the native one)
-    try {
-      notifee.stopForegroundService().catch(() => {});
-      notifee.cancelNotification('tracking-foreground').catch(() => {});
-    } catch {}
+    if (wasRunning) {
+      try {
+        notifee.stopForegroundService().catch(() => {});
+        notifee.cancelNotification('tracking-foreground').catch(() => {});
+      } catch {}
+    }
 
-    running = false;
     lastPosition = null;
     persistState(false, null);
     console.log('[BackgroundGPS] Visible tracking stopped — native continues silently');

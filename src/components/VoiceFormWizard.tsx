@@ -16,6 +16,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import ResponsiveModal from './ResponsiveModal';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
+import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 import {deepgramSpeech, deepgramTTS, type DeepgramEvent} from '../services/deepgramSpeech';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
@@ -139,7 +140,9 @@ function spokenToNumber(text: string): string {
 // ─── COMPONENT ───
 
 export default function VoiceFormWizard({visible, onClose, fields, onComplete, keywords, speakPrompts}: Props) {
+  useFontScaleRefresh();
   const {c} = useTheme();
+  const styles = createStyles();
   const {width: screenWidth, height: screenHeight} = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isLandscape = screenWidth > screenHeight;
@@ -765,7 +768,7 @@ export default function VoiceFormWizard({visible, onClose, fields, onComplete, k
 
 // ─── STYLES ───
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: {borderRadius: 14, overflow: 'hidden'},
   header: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: wp(12), paddingVertical: wp(8), borderBottomWidth: StyleSheet.hairlineWidth},
   headerLeft: {flexDirection: 'row', alignItems: 'center', gap: wp(6)},

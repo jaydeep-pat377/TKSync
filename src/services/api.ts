@@ -794,7 +794,7 @@ export const trackingApi = {
 };
 
 export const gpsApi = {
-  saveRecords: (records: {ticket_id: number | null; latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string; is_speeding?: boolean; is_idle?: boolean; accel_x?: number | null; accel_y?: number | null; zone?: string | null}[]) =>
+  saveRecords: (records: {client_id: string; ticket_id: number | null; latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string; is_speeding?: boolean; is_idle?: boolean; accel_x?: number | null; accel_y?: number | null; zone?: string | null}[]) =>
     request<{inserted: number}>(ENDPOINTS.TRACKING_GPS, {
       method: 'POST',
       body: JSON.stringify({records}),

@@ -15,6 +15,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../contexts/ThemeContext';
+import {getFontScale, useFontScaleRefresh} from '../contexts/FontSizeContext';
 import {wp} from '../utils/responsive';
 import {ticketsApi, type MobileTicketPrint} from '../services/api';
 
@@ -108,6 +109,7 @@ const fmtAmt = (v: number | null, oa: boolean) => (oa || v == null ? 'ON ACCOUNT
 
 // ── Main ──
 export default function MobileTicketModal({visible, onClose, ticketId, onSign, onDispute}: Props) {
+  useFontScaleRefresh();
   const {isDark} = useTheme();
   const p = isDark ? P_DARK : P_LIGHT;
   const {width, height: winHeight} = useWindowDimensions();
@@ -119,7 +121,7 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
   const LREF = 810;
   const s = Math.max(0.65, Math.min(1.35, shortDim / LREF));
   const fs = (base: number) => Math.round(base * s);   // spacing
-  const fst = (base: number) => Math.round((base - 1) * s); // font size (text)
+  const fst = (base: number) => Math.round((base - 1) * s * getFontScale()); // font size (text)
 
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;

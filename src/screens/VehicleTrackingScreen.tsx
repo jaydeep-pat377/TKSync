@@ -22,7 +22,7 @@ const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {showToast} from '../utils/toast';
 import {ticketsApi, trackingApi} from '../services/api';
 import {backgroundGpsTracker} from '../services/backgroundGpsTracker';
-import {useFontScaleRefresh} from '../contexts/FontSizeContext';
+import {useFontScaleRefresh, getFontScale} from '../contexts/FontSizeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -36,8 +36,10 @@ const SPEED_LIMIT_KMH = 80;
 
 const toKmh = (v: number) => Math.round(v * 3.6);
 const toCompass = (deg: number): string => {
+  if (!Number.isFinite(deg)) return '--';
+  const norm = ((deg % 360) + 360) % 360;
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  return dirs[Math.round(deg / 45) % 8];
+  return dirs[Math.round(norm / 45) % 8];
 };
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -64,8 +66,9 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const ls = (size: number) => Math.round(size * Math.min(width, height) / LREF);
   const fsScale = Math.max(0.8, Math.min(1.2, lh / 500));
   const fs = (base: number) => Math.round(base * fsScale);
+  const fst = (base: number) => Math.round(base * fsScale * getFontScale());
 
-  const st = createSt(c, L, isTablet, ls, fs);
+  const st = createSt(c, L, isTablet, ls, fs, fst);
 
   // GPS state
   const [speed, setSpeed] = useState(0);
@@ -557,19 +560,32 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
     </>
   );
 
+  const directionTab = (
+    <View style={[st.dirTab, L && st.dirTabL]}>
+      <View style={[st.dirArrowBg, L && st.dirArrowBgL]}>
+        <View style={{transform: [{rotate: `${heading}deg`}]}}>
+          <Icon name="navigation" size={L ? fs(16) : ms(18)} color={isTracking && !isIdle ? c.primary : c.textMuted} />
+        </View>
+      </View>
+      <Text style={[st.dirCompass, L && st.dirCompassL]}>{compassDir}</Text>
+      <Text style={[st.dirDeg, L && st.dirDegL]}>{Math.round(heading)}°</Text>
+      <View style={{flex: 1}} />
+      <View style={[st.dirStatus, isTracking && !isIdle ? st.dirStatusMoving : st.dirStatusStopped]}>
+        <View style={[st.dirDot, isTracking && !isIdle ? st.dirDotMoving : st.dirDotStopped]} />
+        <Text style={[st.dirStatusText, isTracking && !isIdle ? st.dirStatusTextMoving : st.dirStatusTextStopped]}>
+          {!isTracking ? 'OFF' : isIdle ? 'STOPPED' : 'MOVING'}
+        </Text>
+      </View>
+    </View>
+  );
+
   const cardsContent = L ? (
-    isTracking ? (
       <ScrollView
         style={st.flex1}
-        contentContainerStyle={[st.cardsContentLandscape, {paddingBottom: insets.bottom + ls(4)}]}
+        contentContainerStyle={[isTracking ? st.cardsContentLandscape : st.cardsContentLandscapeStatic, {paddingBottom: Math.max(insets.bottom, 20) + ls(16)}]}
         showsVerticalScrollIndicator={false}>
         {cardsInner}
       </ScrollView>
-    ) : (
-      <View style={[st.cardsContentLandscapeStatic, {paddingBottom: insets.bottom + ls(4)}]}>
-        {cardsInner}
-      </View>
-    )
   ) : (
     <ScrollView
       style={st.flex1}
@@ -609,6 +625,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
               </Animated.View>
               <Text style={[st.gpsLabel, gpsActive ? st.gpsLabelActive : st.gpsLabelInactive]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
             </View>
+            {directionTab}
             {cardsContent}
           </View>
         </View>
@@ -681,6 +698,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
               </TouchableOpacity>
             </View>
           </View>
+          {directionTab}
           {cardsContent}
         </>
       )}
@@ -688,20 +706,20 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   );
 }
 
-const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => number, fs: (n: number) => number) => StyleSheet.create({
+const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => number, fs: (n: number) => number, fst: (n: number) => number) => StyleSheet.create({
   flex1: {flex: 1},
   container: {flex: 1, backgroundColor: c.background},
 
   // ── Header ──
   header: {flexDirection: 'row', alignItems: 'center', paddingBottom: wp(8), gap: wp(6)},
   headerPortrait: {backgroundColor: c.primaryDark},
-  headerBtn: {width: wp(34), height: wp(34), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)'},
+  headerBtn: {width: ms(34), height: ms(34), borderRadius: ms(10), justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)'},
   headerTextBlock: {flex: 1, marginLeft: wp(10)},
   headerTitle: {fontSize: ms(16), fontWeight: '800', letterSpacing: 0.3, color: c.textOnPrimary, fontFamily: MONO},
   headerSub: {fontSize: ms(12), fontWeight: '500', marginTop: 1, color: c.textOnDark60, fontFamily: MONO},
 
   // ── GPS badge ──
-  gpsBadge: {width: wp(22), height: wp(22), borderRadius: wp(11), justifyContent: 'center', alignItems: 'center'},
+  gpsBadge: {width: ms(22), height: ms(22), borderRadius: ms(11), justifyContent: 'center', alignItems: 'center'},
   gpsBadgeActive: {backgroundColor: '#22C55E'},
   gpsBadgeInactive: {backgroundColor: c.textMuted},
   gpsLabel: {fontSize: ms(10), fontWeight: '900', letterSpacing: 0.8, marginLeft: wp(2), fontFamily: MONO},
@@ -755,17 +773,36 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   portraitSpeedoWrapper: {alignItems: 'center'},
   portraitStatsWrapper: {flex: 1, alignItems: 'center', gap: wp(8)},
 
+  // ── Direction tab ──
+  dirTab: {flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(14), paddingVertical: wp(8), backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.borderLight},
+  dirTabL: {paddingHorizontal: ls(10), paddingVertical: ls(6), gap: ls(8)},
+  dirArrowBg: {width: ms(34), height: ms(34), borderRadius: ms(17), backgroundColor: c.primary + '12', justifyContent: 'center', alignItems: 'center'},
+  dirArrowBgL: {width: ls(28), height: ls(28), borderRadius: ls(14)},
+  dirCompass: {fontSize: ms(18), fontWeight: '900', color: c.textPrimary, letterSpacing: 0.5},
+  dirCompassL: {fontSize: fst(15), fontFamily: MONO},
+  dirDeg: {fontSize: ms(13), fontWeight: '600', color: c.textMuted, fontFamily: MONO},
+  dirDegL: {fontSize: fst(11)},
+  dirStatus: {flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingHorizontal: wp(10), paddingVertical: wp(5), borderRadius: wp(12)},
+  dirStatusMoving: {backgroundColor: '#22C55E15'},
+  dirStatusStopped: {backgroundColor: c.textMuted + '15'},
+  dirDot: {width: wp(7), height: wp(7), borderRadius: wp(4)},
+  dirDotMoving: {backgroundColor: '#22C55E'},
+  dirDotStopped: {backgroundColor: c.textMuted},
+  dirStatusText: {fontSize: ms(10), fontWeight: '800', letterSpacing: 0.5, fontFamily: MONO},
+  dirStatusTextMoving: {color: '#22C55E'},
+  dirStatusTextStopped: {color: c.textMuted},
+
   // ── Scroll / cards container ──
   scrollContent: {paddingTop: wp(14), gap: wp(10), paddingHorizontal: wp(14)},
   cardsContentLandscape: {paddingHorizontal: ls(10), paddingTop: ls(4), gap: ls(6)},
-  cardsContentLandscapeStatic: {flex: 1, paddingHorizontal: ls(10), paddingTop: ls(4), gap: ls(6)},
+  cardsContentLandscapeStatic: {flexGrow: 1, paddingHorizontal: ls(10), paddingTop: ls(4), gap: ls(6)},
 
   // ── Cards ──
   card: {borderRadius: wp(14), borderWidth: 1, padding: wp(14), backgroundColor: c.white, borderColor: c.borderLight},
   cardLandscape: {padding: ls(10), borderRadius: ls(10)},
   cardHeader: {flexDirection: 'row', alignItems: 'center', gap: wp(8), marginBottom: wp(12)},
   cardHeaderLandscape: {marginBottom: ls(6), gap: ls(6)},
-  cardIconBg: {width: wp(28), height: wp(28), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center'},
+  cardIconBg: {width: ms(28), height: ms(28), borderRadius: ms(9), justifyContent: 'center', alignItems: 'center'},
   cardIconBgLandscape: {width: ls(26), height: ls(26), borderRadius: ls(7)},
   cardIconBgPrimary: {backgroundColor: c.primary + '15'},
   cardIconBgPurple: {backgroundColor: '#8B5CF6' + '15'},
@@ -773,7 +810,7 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   cardIconBgBroadcastOn: {backgroundColor: '#22C55E' + '15'},
   cardIconBgBroadcastOff: {backgroundColor: c.textMuted + '15'},
   cardTitle: {fontSize: ms(13), fontWeight: '800', letterSpacing: 0.2, flex: 1, color: c.textPrimary},
-  cardTitleLandscape: {fontSize: fs(13), marginBottom: ls(4), fontFamily: MONO},
+  cardTitleLandscape: {fontSize: fst(13), marginBottom: ls(4), fontFamily: MONO},
 
   // ── Stats grid ──
   statsGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: wp(8)},
@@ -781,10 +818,10 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   statItem: {flexGrow: 1, flexBasis: '45%', alignItems: 'center', paddingVertical: wp(10), borderRadius: wp(10), borderWidth: 1, borderColor: c.borderLight},
   statItemLandscape: {paddingVertical: ls(12), borderRadius: ls(7)},
   statValue: {fontSize: ms(18), fontWeight: '900', marginTop: wp(4), color: c.textPrimary},
-  statValueLandscape: {fontSize: fs(16)},
+  statValueLandscape: {fontSize: fst(16)},
   statUnit: {fontSize: ms(11), fontWeight: '600', color: c.textMuted, fontFamily: MONO},
   statLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.3, marginTop: wp(2), color: c.textMuted},
-  statLabelLandscape: {fontSize: fs(11), fontFamily: MONO},
+  statLabelLandscape: {fontSize: fst(11), fontFamily: MONO},
 
   // ── Behaviour ──
   behaviourRow: {flexDirection: 'row', gap: wp(8)},
@@ -795,12 +832,12 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   behaviourItemAmber: {backgroundColor: '#FFFBEB', borderColor: '#FDE68A'},
   behaviourItemGreen: {backgroundColor: '#F0FDF4', borderColor: '#BBF7D0'},
   behaviourValue: {fontSize: ms(16), fontWeight: '900', marginTop: wp(4)},
-  behaviourValueLandscape: {fontSize: fs(16), fontFamily: MONO},
+  behaviourValueLandscape: {fontSize: fst(16), fontFamily: MONO},
   behaviourValueRed: {color: '#EF4444'},
   behaviourValueAmber: {color: '#F59E0B'},
   behaviourValueGreen: {color: '#22C55E'},
   behaviourLabel: {fontSize: ms(9), fontWeight: '700', color: '#6B7280', letterSpacing: 0.3, marginTop: wp(2)},
-  behaviourLabelLandscape: {fontSize: fs(10), fontFamily: MONO},
+  behaviourLabelLandscape: {fontSize: fst(10), fontFamily: MONO},
 
   // ── Accelerometer ──
   accelRows: {gap: wp(10)},
@@ -808,11 +845,11 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   accelRowHeader: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: wp(3)},
   accelRowHeaderLandscape: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: ls(3)},
   accelLabel: {fontSize: ms(11), fontWeight: '700', color: c.textMuted},
-  accelLabelLandscape: {fontSize: fs(12), fontFamily: MONO},
+  accelLabelLandscape: {fontSize: fst(12), fontFamily: MONO},
   accelVal: {fontSize: ms(11), fontWeight: '800'},
   accelValNormal: {color: c.textPrimary},
   accelValWarn: {color: '#EF4444'},
-  accelValLandscape: {fontSize: fs(12), fontFamily: MONO},
+  accelValLandscape: {fontSize: fst(12), fontFamily: MONO},
   progressTrack: {height: wp(6), borderRadius: wp(3), overflow: 'hidden', backgroundColor: c.borderLight},
   progressFill: {height: '100%', borderRadius: wp(3)},
 
@@ -821,9 +858,9 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   coordCardLandscape: {padding: ls(10), borderRadius: ls(10), gap: ls(8)},
   coordContent: {flex: 1},
   coordLabel: {fontSize: ms(10), fontWeight: '700', letterSpacing: 0.3, color: c.textMuted},
-  coordLabelLandscape: {fontSize: fs(12), fontFamily: MONO},
+  coordLabelLandscape: {fontSize: fst(12), fontFamily: MONO},
   coordValue: {fontSize: ms(13), fontWeight: '700', marginTop: 1, color: c.textPrimary},
-  coordValueLandscape: {fontSize: fs(13), fontFamily: MONO},
+  coordValueLandscape: {fontSize: fst(13), fontFamily: MONO},
 
   // ── Broadcasting ──
   broadcastCardLandscape: {padding: ls(22), borderRadius: ls(10)},
@@ -831,15 +868,15 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   broadcastText: {flex: 1, marginLeft: wp(10)},
   broadcastTextLandscape: {flex: 1, marginLeft: ls(8)},
   broadcastTitle: {fontSize: ms(13), fontWeight: '800', color: c.textPrimary},
-  broadcastTitleLandscape: {fontSize: fs(13), fontFamily: MONO},
+  broadcastTitleLandscape: {fontSize: fst(13), fontFamily: MONO},
   broadcastSub: {fontSize: ms(11), fontWeight: '600', marginTop: 1},
   broadcastSubOn: {color: '#22C55E'},
   broadcastSubOff: {color: c.textMuted},
-  broadcastSubLandscape: {fontSize: fs(11), fontFamily: MONO},
+  broadcastSubLandscape: {fontSize: fst(11), fontFamily: MONO},
   broadcastToggle: {flexDirection: 'row', alignItems: 'center', gap: wp(4), paddingVertical: wp(8), paddingHorizontal: wp(14), borderRadius: wp(10)},
   broadcastToggleLandscape: {paddingVertical: ls(7), paddingHorizontal: ls(12), borderRadius: ls(8)},
   broadcastToggleStart: {backgroundColor: '#22C55E'},
   broadcastToggleStop: {backgroundColor: '#EF4444'},
   broadcastToggleText: {fontSize: ms(12), fontWeight: '800', color: '#fff', letterSpacing: 0.5},
-  broadcastToggleTextLandscape: {fontSize: fs(11), fontFamily: MONO},
+  broadcastToggleTextLandscape: {fontSize: fst(11), fontFamily: MONO},
 });
