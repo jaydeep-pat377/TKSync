@@ -775,6 +775,22 @@ export const plantsApi = {
     request<PlantsResponse>(`${ENDPOINTS.PLANTS}?page=${page}&limit=${limit}`),
 };
 
+export type DriverNotification = {
+  id: number;
+  employee_code: string;
+  truck_code: string | null;
+  title: string;
+  message: string;
+  sender: string | null;
+  read: boolean;
+  created_at: string;
+};
+
+export type NotificationHistoryResponse = {
+  notifications: DriverNotification[];
+  unread: number;
+};
+
 export const notificationsApi = {
   registerDevice: (fcm_token: string, platform: string) =>
     request(ENDPOINTS.NOTIFICATION_REGISTER, {
@@ -786,6 +802,14 @@ export const notificationsApi = {
       method: 'DELETE',
       body: JSON.stringify({fcm_token}),
     }),
+  getHistory: (limit = 50, offset = 0) =>
+    request<NotificationHistoryResponse>(
+      `${ENDPOINTS.NOTIFICATION_HISTORY}?limit=${limit}&offset=${offset}`,
+    ),
+  markRead: (id: number) =>
+    request(ENDPOINTS.NOTIFICATION_MARK_READ(id), {method: 'POST'}),
+  markAllRead: () =>
+    request(ENDPOINTS.NOTIFICATION_READ_ALL, {method: 'POST'}),
 };
 
 export const trackingApi = {

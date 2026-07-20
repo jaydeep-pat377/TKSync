@@ -24,6 +24,7 @@ import i18n from '../i18n';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { useNetworkStatus, setForceOffline, getForceOffline } from '../hooks/useNetworkStatus';
 import { ticketsApi, plantsApi, checkApiHealth, type Ticket, type TicketDetail, type DeliveryRecord, type Plant, type TicketQr } from '../services/api';
 import { Colors } from '../constants/colors';
@@ -439,6 +440,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const { isDark, toggle, c } = useTheme();
   const styles = createStyles(c, isDark);
   const { driverLogout, companyLogout, driver, company, isCompanyLoggedIn } = useAuth();
+  const { unreadCount: notifUnread } = useNotifications();
   const { isOnline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
   const { width, height: winHeight } = useWindowDimensions();
@@ -1277,8 +1279,13 @@ export default function DashboardScreen({ navigation }: Props) {
                 <Icon name="wifi" size={L ? 13 : ms(14)} color="#fff" />
                 <Text style={{ fontSize: L ? 10 : ms(8), fontWeight: '800', color: '#fff' , fontFamily: MONO}}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
-                <Icon name="notifications" size={L ? 13 : ms(14)} color={c.textSecondary} />
+              <TouchableOpacity onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+                <Icon name="notifications" size={L ? 13 : ms(14)} color={notifUnread > 0 ? c.accent : c.textSecondary} />
+                {notifUnread > 0 && (
+                  <View style={{ position: 'absolute', top: -4, right: -4, minWidth: L ? 14 : 16, height: L ? 14 : 16, borderRadius: L ? 7 : 8, backgroundColor: '#c0392b', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: c.surface }}>
+                    <Text style={{ fontSize: L ? 7 : 8, fontWeight: '900', color: '#fff', fontFamily: MONO }}>{notifUnread > 99 ? '99+' : notifUnread}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setFontSizeVisible(true)} activeOpacity={0.7} style={{ width: L ? 25 : ms(28), height: L ? 25 : ms(28), borderRadius: 8, borderWidth: 0.5, borderColor: isDark ? '#fff' : '#000', backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
                 <Text style={{ fontSize: L ? 13 : ms(14), fontWeight: '900', color: c.textSecondary , fontFamily: MONO}}>A</Text>

@@ -5,13 +5,16 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {ThemeProvider} from './src/contexts/ThemeContext';
 import {AuthProvider} from './src/contexts/AuthContext';
 import {OfflineSyncProvider} from './src/contexts/OfflineSyncContext';
+import {NotificationProvider} from './src/contexts/NotificationContext';
 import {FontSizeProvider, useFontSize} from './src/contexts/FontSizeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import NetworkBanner from './src/components/NetworkBanner';
 import ToastContainer from './src/components/ToastContainer';
 import {initSentry} from './src/services/sentry';
+import {setupBackgroundNotifeeHandler} from './src/services/notifications';
 
 initSentry();
+setupBackgroundNotifeeHandler();
 
 // Set Roboto Mono as the default font for all Text and TextInput
 const defaultFontFamily = 'RobotoMono-Regular';
@@ -43,11 +46,13 @@ function AppContent() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <OfflineSyncProvider>
-          <AppNavigator />
-          <NetworkBanner />
-          <ToastContainer />
-        </OfflineSyncProvider>
+        <NotificationProvider>
+          <OfflineSyncProvider>
+            <AppNavigator />
+            <NetworkBanner />
+            <ToastContainer />
+          </OfflineSyncProvider>
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );

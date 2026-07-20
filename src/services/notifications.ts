@@ -1,10 +1,46 @@
 import {Platform} from 'react-native';
 import messaging from '@react-native-firebase/messaging';
-import notifee, {AndroidImportance} from '@notifee/react-native';
+import notifee, {AndroidImportance, EventType} from '@notifee/react-native';
 import {notificationsApi} from './api';
 import {storage} from './storage';
+import type {DriverNotification} from './api';
+
+// Navigation ref — set from AppNavigator so notification taps can navigate
+let _navigationRef: any = null;
+export function setNotificationNavigationRef(ref: any) {
+  _navigationRef = ref;
+}
+
+function navigateToNotifications() {
+  if (_navigationRef?.current?.navigate) {
+    _navigationRef.current.navigate('Notifications');
+  }
+}
+
+/** Store a received notification locally for offline history. */
+function storeNotificationLocally(data: Record<string, string>) {
+  try {
+    const raw = storage.getString('notification_history') || '[]';
+    const history: DriverNotification[] = JSON.parse(raw);
+    history.unshift({
+      id: Date.now(),
+      employee_code: '',
+      truck_code: data.truck_code || null,
+      title: data.title || 'TKSync',
+      message: data.body || data.message || '',
+      sender: null,
+      read: false,
+      created_at: new Date().toISOString(),
+    });
+    // Keep last 100
+    storage.set('notification_history', JSON.stringify(history.slice(0, 100)));
+  } catch {
+    // non-fatal
+  }
+}
 
 async function showLocalNotification(data: Record<string, string> = {}) {
+  storeNotificationLocally(data);
   try {
     const channelId = await notifee.createChannel({
       id: 'tksync',
@@ -21,7 +57,7 @@ async function showLocalNotification(data: Record<string, string> = {}) {
         channelId,
         smallIcon: 'ic_launcher',
         importance: AndroidImportance.HIGH,
-        pressAction: {id: 'default'},
+        pressAction: {id: 'open-notifications'},
         sound: 'default',
       },
       ios: {
@@ -105,7 +141,7 @@ export function setupBackgroundHandler() {
 }
 
 export function setupForegroundHandler() {
-  return messaging().onMessage(async remoteMessage => {
+  const unsubMessage = messaging().onMessage(async remoteMessage => {
     console.log('Push received in foreground:', remoteMessage.data);
     const data = (remoteMessage.data || {}) as Record<string, string>;
     if (remoteMessage.notification) {
@@ -113,5 +149,24 @@ export function setupForegroundHandler() {
       data.body = data.body || remoteMessage.notification.body || '';
     }
     await showLocalNotification(data);
+  });
+
+  // Handle notification press (foreground) — navigate to Notifications screen
+  const unsubNotifee = notifee.onForegroundEvent(({type, detail}) => {
+    if (type === EventType.PRESS && detail.pressAction?.id === 'open-notifications') {
+      navigateToNotifications();
+    }
+  });
+
+  return () => { unsubMessage(); unsubNotifee(); };
+}
+
+/** Handle notification press when app was in background/killed */
+export function setupBackgroundNotifeeHandler() {
+  notifee.onBackgroundEvent(async ({type, detail}) => {
+    if (type === EventType.PRESS && detail.pressAction?.id === 'open-notifications') {
+      // Store flag — AppNavigator checks on mount and navigates
+      storage.set('pending_notification_nav', 'true');
+    }
   });
 }

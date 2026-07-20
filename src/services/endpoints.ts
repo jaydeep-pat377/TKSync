@@ -35,6 +35,9 @@ export const ENDPOINTS = {
   // Notifications
   NOTIFICATION_REGISTER: '/notifications/register-device',
   NOTIFICATION_UNREGISTER: '/notifications/unregister-device',
+  NOTIFICATION_HISTORY: '/notifications/history',
+  NOTIFICATION_MARK_READ: (id: number) => `/notifications/${id}/read`,
+  NOTIFICATION_READ_ALL: '/notifications/read-all',
 
   // Field Definitions
   FIELD_DEFINITIONS: '/field-definitions',
