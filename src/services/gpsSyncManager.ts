@@ -73,6 +73,9 @@ const BATCH_SIZE = 100;
 async function syncGpsRecords(): Promise<void> {
   if (isSyncing || !getIsOnline()) return;
 
+  // Only upload to API when there's an active ticket
+  if (!currentTicketId) return;
+
   const unsynced = gpsStorage.getUnsynced();
   if (unsynced.length === 0) return;
 
@@ -100,11 +103,10 @@ async function syncGpsRecords(): Promise<void> {
         zone: r.zone,
       }));
 
-      if (__DEV__) {
-        console.log(`[GpsSyncManager] Sending ${records.length} records to API:`, JSON.stringify(records, null, 2));
-      }
+      console.log(`[GpsSyncManager] Sending ${records.length} records to API:`, JSON.stringify(records));
       try {
-        await gpsApi.saveRecords(records);
+        const res = await gpsApi.saveRecords(records);
+        console.log(`[GpsSyncManager] API response:`, JSON.stringify(res.data));
         gpsStorage.markSynced(batch.map(r => r.id));
         totalSynced += batch.length;
       } catch (batchErr: any) {
@@ -165,6 +167,17 @@ export const gpsSyncManager = {
     unsubConnectivity = onConnectivityRestored(() => syncGpsRecords());
     syncGpsRecords();
     return true;
+  },
+
+  /** Start periodic sync without requiring a ticket (GPS records will have ticket_id = null). */
+  startWithoutTicket(): void {
+    if (syncInterval) return;
+    currentTicketId = null;
+    console.log('[GpsSyncManager] Started without ticket — GPS records will have no ticket_id');
+    consecutiveFailures = 0;
+    currentSyncInterval = BASE_SYNC_INTERVAL_MS;
+    syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
+    unsubConnectivity = onConnectivityRestored(() => syncGpsRecords());
   },
 
   /** Stop periodic sync (call when tracking ends). */
@@ -230,11 +243,44 @@ export const gpsSyncManager = {
    * No interval or tracking started — just sends and done.
    */
   async flushUnsynced(): Promise<void> {
-    const count = gpsStorage.getUnsynced().length;
-    if (count > 0) {
-      console.log(`[GpsSyncManager] Flushing ${count} leftover GPS records`);
-      await syncGpsRecords();
+    if (!getIsOnline()) return;
+    const unsynced = gpsStorage.getUnsynced();
+    if (unsynced.length === 0) {
+      await gpsSyncManager.syncTripSummaries();
+      return;
     }
+    // Flush directly — bypass the currentTicketId check since these are
+    // leftover records from a previous session that already have ticket_id stamped
+    console.log(`[GpsSyncManager] Flushing ${unsynced.length} leftover GPS records`);
+    let totalSynced = 0;
+    for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
+      if (!getIsOnline()) break;
+      const batch = unsynced.slice(i, i + BATCH_SIZE);
+      const records = batch.map(r => ({
+        client_id: r.id,
+        ticket_id: r.ticket_id,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        speed: r.speed,
+        heading: r.heading,
+        altitude: r.altitude,
+        accuracy: r.accuracy,
+        recorded_at: r.recorded_at,
+        is_speeding: r.is_speeding,
+        is_idle: r.is_idle,
+        accel_x: r.accel_x,
+        accel_y: r.accel_y,
+        zone: r.zone,
+      }));
+      try {
+        await gpsApi.saveRecords(records);
+        gpsStorage.markSynced(batch.map(r => r.id));
+        totalSynced += batch.length;
+      } catch (err: any) {
+        console.warn(`[GpsSyncManager] Flush batch failed: ${err.message}`);
+      }
+    }
+    console.log(`[GpsSyncManager] Flushed ${totalSynced}/${unsynced.length} records`);
     await gpsSyncManager.syncTripSummaries();
   },
 };

@@ -4,6 +4,7 @@ import notifee, {AndroidImportance, EventType} from '@notifee/react-native';
 import {notificationsApi} from './api';
 import {storage} from './storage';
 import type {DriverNotification} from './api';
+import {requestLocationPermissions} from './backgroundGpsTracker';
 
 /** Emitted when a foreground silent push says a delivery record is incomplete. */
 export const DELIVERY_RECORD_INCOMPLETE_EVENT = 'delivery_record_incomplete';
@@ -133,6 +134,12 @@ export async function registerDevice(): Promise<void> {
     console.log('Device registered for push notifications');
   } catch (e) {
     console.warn('Failed to register device:', e);
+  }
+  // Request location permission after notification registration
+  try {
+    await requestLocationPermissions();
+  } catch (e) {
+    console.warn('Failed to request location permission:', e);
   }
 }
 

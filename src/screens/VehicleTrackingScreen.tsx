@@ -213,7 +213,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       });
     }
 
-    backgroundGpsTracker.stop();
+    // Only stop UI tracking (timers, accelerometer, UI state)
+    // GPS continues running in background — always active after login
     if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
     if (etaTimer.current) { clearInterval(etaTimer.current); etaTimer.current = null; }
     if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }

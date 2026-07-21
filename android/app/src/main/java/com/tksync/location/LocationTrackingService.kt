@@ -236,13 +236,13 @@ class LocationTrackingService : Service() {
         val request = LocationRequest.create().apply {
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
             if (isSilentMode) {
-                interval = 120000L
-                fastestInterval = 60000L
-                smallestDisplacement = 20f
-            } else {
-                interval = 120000L
-                fastestInterval = 60000L
+                interval = 10000L
+                fastestInterval = 10000L
                 smallestDisplacement = 10f
+            } else {
+                interval = 10000L
+                fastestInterval = 10000L
+                smallestDisplacement = 5f
             }
         }
 

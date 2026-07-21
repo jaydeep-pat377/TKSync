@@ -100,24 +100,25 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     };
   }, []);
 
-  // Auto-start GPS tracking after driver login if there's an active ticket
+  // Auto-start GPS tracking after driver login — always, regardless of ticket
   // Auto-stop on logout
   useEffect(() => {
     if (!isDriverLoggedIn) {
-      // Clear GPS data and fully stop native service (no silent mode on logout)
       backgroundGpsTracker.clearAllData();
       return;
     }
 
     if (backgroundGpsTracker.isRunning()) return;
 
+    // Try to get active ticket for tagging GPS records, but start GPS regardless
     trackingApi.getMe().then(res => {
       const ticketId = res.data?.current_load?.id ?? null;
-      if (ticketId) {
-        console.log(`[OfflineSync] Active ticket ${ticketId} found — auto-starting GPS`);
-        backgroundGpsTracker.start(ticketId);
-      }
-    }).catch(() => {});
+      console.log(`[OfflineSync] Auto-starting GPS — ticketId: ${ticketId || 'none'}`);
+      backgroundGpsTracker.startAlways(ticketId);
+    }).catch(() => {
+      console.log('[OfflineSync] Auto-starting GPS — no ticket info (API failed)');
+      backgroundGpsTracker.startAlways(null);
+    });
   }, [isDriverLoggedIn]);
 
   const saveDeliveryTab = useCallback(

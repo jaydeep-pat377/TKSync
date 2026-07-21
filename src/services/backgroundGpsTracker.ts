@@ -6,7 +6,7 @@ import {gpsSyncManager} from './gpsSyncManager';
 import {startTrackingService} from './trackingForegroundService';
 import notifee from '@notifee/react-native';
 import {showToast} from '../utils/toast';
-import {getIsOnline} from '../hooks/useNetworkStatus';
+import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -55,6 +55,10 @@ async function checkPermissions(): Promise<boolean> {
     PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
   );
   return fine;
+}
+
+export async function requestLocationPermissions(): Promise<boolean> {
+  return requestPermissions();
 }
 
 async function requestPermissions(): Promise<boolean> {
@@ -152,11 +156,11 @@ function startWatch() {
       lastPosition = pos;
       notifyListeners(pos);
 
+      console.log(`[BackgroundGPS] Position: lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, accuracy=${accuracy?.toFixed(0)}m`);
+
       // Skip recording very inaccurate GPS fixes (>200m radius)
       if (accuracy != null && accuracy > 200) {
-        if (__DEV__) {
-          console.log(`[BackgroundGPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
-        }
+        console.log(`[BackgroundGPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
         return;
       }
 
@@ -183,9 +187,9 @@ function startWatch() {
     },
     {
       enableHighAccuracy: true,
-      distanceFilter: 10,
-      interval: 120000,
-      fastestInterval: 60000,
+      distanceFilter: 5,
+      interval: 10000,
+      fastestInterval: 10000,
       showLocationDialog: true,
       forceRequestLocation: true,
     },
@@ -258,24 +262,47 @@ export const backgroundGpsTracker = {
     return true;
   },
 
-  /** Stop visible GPS tracking. Native service continues silently. */
+  /**
+   * Start GPS tracking unconditionally — called after login.
+   * Does not require an active ticket. GPS always runs until logout.
+   */
+  async startAlways(ticketId?: number | null): Promise<boolean> {
+    if (running) return true;
+
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return false;
+
+    // Try to start gpsSyncManager with ticket — if no ticket, start sync anyway
+    const hasTicket = await gpsSyncManager.start(ticketId);
+    if (!hasTicket) {
+      gpsSyncManager.startWithoutTicket();
+    }
+
+    await startTrackingService(ticketId);
+    startWatch();
+
+    running = true;
+    persistState(true, ticketId ?? null);
+    console.log(`[BackgroundGPS] Started always — ticket: ${ticketId || 'none'}`);
+    return true;
+  },
+
+  /** Stop UI tracking — native service continues collecting GPS silently. */
   stop(): void {
     if (!running && watchId === null) return;
 
-    // Guard against double-stop
     const wasRunning = running;
     running = false;
 
     stopWatch();
-    gpsSyncManager.stop();
 
-    // Switch native service to silent mode instead of stopping it
+    // Switch native service to silent mode — keeps collecting GPS in background
     if (Platform.OS === 'android' && LocationTrackingModule) {
       LocationTrackingModule.setSilentMode(true).catch(() => {});
       console.log('[BackgroundGPS] Native service switched to silent mode');
     }
 
-    // Stop only the notifee foreground service (not the native one)
+    // Stop notifee foreground notification (UI only)
     if (wasRunning) {
       try {
         notifee.stopForegroundService().catch(() => {});
@@ -283,9 +310,13 @@ export const backgroundGpsTracker = {
       } catch {}
     }
 
+    // Stop the 30s sync interval (no JS records to sync, saves unnecessary API calls)
+    // Native records will be imported and flushed on next app open via autoResume()
+    gpsSyncManager.stop();
+
     lastPosition = null;
-    persistState(false, null);
-    console.log('[BackgroundGPS] Visible tracking stopped — native continues silently');
+    // Keep persistState as active so autoResume works on next app open
+    console.log('[BackgroundGPS] UI stopped — native GPS continues silently');
   },
 
   /** Whether tracking is currently active. */
@@ -365,9 +396,17 @@ export const backgroundGpsTracker = {
     // Import GPS records collected by native service while app was killed
     const imported = await importNativeRecords();
 
-    // Flush any imported records to server immediately (even if tracking won't resume)
-    if (imported > 0 && getIsOnline()) {
-      gpsSyncManager.flushUnsynced();
+    // Flush any imported records to server (if online now, or when internet returns)
+    if (imported > 0) {
+      if (getIsOnline()) {
+        gpsSyncManager.flushUnsynced();
+      } else {
+        // Register a one-time listener to flush when internet comes back
+        const unsub = onConnectivityRestored(() => {
+          unsub();
+          gpsSyncManager.flushUnsynced();
+        });
+      }
     }
 
     const wasActive = store.getBoolean(ACTIVE_KEY);
@@ -395,9 +434,9 @@ export const backgroundGpsTracker = {
 
     console.log(`[BackgroundGPS] Auto-resuming — ticket: ${savedTicketId}, imported: ${imported} native records`);
 
-    const started = await backgroundGpsTracker.start(savedTicketId, true);
+    const started = await backgroundGpsTracker.startAlways(savedTicketId);
     if (!started) {
-      console.log('[BackgroundGPS] Auto-resume failed — clearing state');
+      console.log('[BackgroundGPS] Auto-resume failed (permission denied) — clearing state');
       persistState(false, null);
     }
   },

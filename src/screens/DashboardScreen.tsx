@@ -40,6 +40,7 @@ import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
 import { storage } from '../services/storage';
 import { DELIVERY_RECORD_INCOMPLETE_EVENT } from '../services/notifications';
+import { backgroundGpsTracker } from '../services/backgroundGpsTracker';
 import { useScrollIndicator } from '../components/ScrollIndicator';
 import { syncManager } from '../services/syncManager';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
@@ -395,7 +396,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [productsViewH, setProductsViewH] = useState(0);
   const [vehicleVisible, setVehicleVisible] = useState(false);
   const [weatherVisible, setWeatherVisible] = useState(false);
-  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const isBroadcasting = backgroundGpsTracker.isRunning();
   const [directionsAlert, setDirectionsAlert] = useState(false);
   const [languageVisible, setLanguageVisible] = useState(false);
   const [activeBottom, setActiveBottom] = useState(-1);
@@ -594,18 +595,16 @@ export default function DashboardScreen({ navigation }: Props) {
   // Listen for delivery_record_incomplete push (foreground event or background tap)
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener(DELIVERY_RECORD_INCOMPLETE_EVENT, () => {
-      // Refresh delivery record then show missing fields modal
+      // Refresh delivery record silently — modal already opens via setPendingDetails
+      // when the driver taps a completed ticket tab
       const ticket = ticketsRef.current[activeTicketRef.current];
       if (ticket) {
         ticketsApi.getDeliveryRecord(ticket.id)
           .then(res => {
             setDeliveryRecord(res.data);
             offlineStorage.cacheDeliveryRecord(ticket.id, res.data);
-            setDetailsVisible(true);
           })
-          .catch(() => setDetailsVisible(true));
-      } else {
-        setDetailsVisible(true);
+          .catch(() => {});
       }
     });
     // Check if app was opened from a background notification tap for missing fields
@@ -2716,7 +2715,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={{ marginTop: wp(30), alignItems: 'center' }}>
             <Text style={styles.vehicleLabel}>BROADCASTING STATUS</Text>
             <Text style={styles.vehicleStatusText}>
-              {isBroadcasting ? 'BROADCASTING' : 'NOT BROADCASTING'}
+              {isBroadcasting ? 'BROADCASTING' : 'STARTING...'}
             </Text>
             <TouchableOpacity
               style={{
@@ -2729,9 +2728,9 @@ export default function DashboardScreen({ navigation }: Props) {
                 alignItems: 'center',
               }}
               activeOpacity={0.8}
-              onPress={() => setIsBroadcasting(b => !b)}>
+              onPress={() => {}}>
               <Text style={styles.vehicleBtnText}>
-                {isBroadcasting ? 'TURN OFF' : 'TURN ON'}
+                {isBroadcasting ? 'ALWAYS ON' : 'STARTING...'}
               </Text>
             </TouchableOpacity>
           </View>
