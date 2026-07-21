@@ -1,9 +1,12 @@
-import {Platform} from 'react-native';
+import {Platform, DeviceEventEmitter} from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import notifee, {AndroidImportance, EventType} from '@notifee/react-native';
 import {notificationsApi} from './api';
 import {storage} from './storage';
 import type {DriverNotification} from './api';
+
+/** Emitted when a foreground silent push says a delivery record is incomplete. */
+export const DELIVERY_RECORD_INCOMPLETE_EVENT = 'delivery_record_incomplete';
 
 // Navigation ref — set from AppNavigator so notification taps can navigate
 let _navigationRef: any = null;
@@ -76,6 +79,36 @@ async function showLocalNotification(data: Record<string, string> = {}) {
   }
 }
 
+async function showDeliveryIncompleteNotification(data: Record<string, string>) {
+  try {
+    const channelId = await notifee.createChannel({
+      id: 'tksync',
+      name: 'TKSync Notifications',
+      importance: AndroidImportance.HIGH,
+      sound: 'default',
+    });
+    const ticketLabel = data.ticket_code ? `Ticket ${data.ticket_code}` : 'A completed ticket';
+    await notifee.displayNotification({
+      title: 'Incomplete Delivery Record',
+      body: `${ticketLabel} has missing fields. Please fill the required fields.`,
+      android: {
+        channelId,
+        smallIcon: 'ic_launcher',
+        importance: AndroidImportance.HIGH,
+        pressAction: {id: 'open-missing-fields'},
+        sound: 'default',
+      },
+      ios: {
+        sound: 'default',
+        foregroundPresentationOptions: {banner: true, sound: true, badge: true},
+      },
+      data,
+    });
+  } catch (e) {
+    console.error('Delivery incomplete notification error:', e);
+  }
+}
+
 export async function requestPermission(): Promise<boolean> {
   try {
     const authStatus = await messaging().requestPermission();
@@ -136,6 +169,13 @@ export function setupBackgroundHandler() {
       data.title = data.title || remoteMessage.notification.title || '';
       data.body = data.body || remoteMessage.notification.body || '';
     }
+
+    // Incomplete delivery record — show a meaningful notification that opens Dashboard
+    if (data.type === 'delivery_record_incomplete') {
+      await showDeliveryIncompleteNotification(data);
+      return;
+    }
+
     await showLocalNotification(data);
   });
 }
@@ -148,13 +188,32 @@ export function setupForegroundHandler() {
       data.title = data.title || remoteMessage.notification.title || '';
       data.body = data.body || remoteMessage.notification.body || '';
     }
+
+    // Silent push for incomplete delivery record — notify Dashboard directly, no visible notification
+    if (data.type === 'delivery_record_incomplete') {
+      DeviceEventEmitter.emit(DELIVERY_RECORD_INCOMPLETE_EVENT, {
+        ticket_id: data.ticket_id,
+        ticket_code: data.ticket_code,
+      });
+      return;
+    }
+
     await showLocalNotification(data);
   });
 
-  // Handle notification press (foreground) — navigate to Notifications screen
+  // Handle notification press (foreground)
   const unsubNotifee = notifee.onForegroundEvent(({type, detail}) => {
-    if (type === EventType.PRESS && detail.pressAction?.id === 'open-notifications') {
-      navigateToNotifications();
+    if (type === EventType.PRESS) {
+      if (detail.pressAction?.id === 'open-missing-fields') {
+        // Emit event so Dashboard shows the missing fields modal
+        const d = (detail.notification?.data || {}) as Record<string, string>;
+        DeviceEventEmitter.emit(DELIVERY_RECORD_INCOMPLETE_EVENT, {
+          ticket_id: d.ticket_id,
+          ticket_code: d.ticket_code,
+        });
+      } else if (detail.pressAction?.id === 'open-notifications') {
+        navigateToNotifications();
+      }
     }
   });
 
@@ -164,9 +223,13 @@ export function setupForegroundHandler() {
 /** Handle notification press when app was in background/killed */
 export function setupBackgroundNotifeeHandler() {
   notifee.onBackgroundEvent(async ({type, detail}) => {
-    if (type === EventType.PRESS && detail.pressAction?.id === 'open-notifications') {
-      // Store flag — AppNavigator checks on mount and navigates
-      storage.set('pending_notification_nav', 'true');
+    if (type === EventType.PRESS) {
+      if (detail.pressAction?.id === 'open-missing-fields') {
+        // Store flag — Dashboard checks on mount and shows missing fields modal
+        storage.set('pending_missing_fields', 'true');
+      } else if (detail.pressAction?.id === 'open-notifications') {
+        storage.set('pending_notification_nav', 'true');
+      }
     }
   });
 }

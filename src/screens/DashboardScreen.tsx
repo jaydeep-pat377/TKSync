@@ -15,6 +15,7 @@ import {
   TextInput,
   Keyboard,
   Platform,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
@@ -37,6 +38,9 @@ import CurblineReleaseModal from '../components/CurblineReleaseModal';
 import MobileTicketModal from '../components/MobileTicketModal';
 import { wp, ms } from '../utils/responsive';
 import { offlineStorage } from '../services/offlineStorage';
+import { storage } from '../services/storage';
+import { DELIVERY_RECORD_INCOMPLETE_EVENT } from '../services/notifications';
+import { useScrollIndicator } from '../components/ScrollIndicator';
 import { syncManager } from '../services/syncManager';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
 import { useFontScaleRefresh, useFontSize, getFontScale } from '../contexts/FontSizeContext';
@@ -383,6 +387,7 @@ export default function DashboardScreen({ navigation }: Props) {
   }, [loadMorePlants]);
   const [editVisible, setEditVisible] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
+  const missingScrollIndicator = useScrollIndicator();
   const [pendingDetails, setPendingDetails] = useState(false);
   const [productsVisible, setProductsVisible] = useState(false);
   const productsScrollY = useRef(new Animated.Value(0)).current;
@@ -585,6 +590,32 @@ export default function DashboardScreen({ navigation }: Props) {
     }
     wasOnline.current = isOnline;
   }, [isOnline, silentRefreshAll]);
+
+  // Listen for delivery_record_incomplete push (foreground event or background tap)
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(DELIVERY_RECORD_INCOMPLETE_EVENT, () => {
+      // Refresh delivery record then show missing fields modal
+      const ticket = ticketsRef.current[activeTicketRef.current];
+      if (ticket) {
+        ticketsApi.getDeliveryRecord(ticket.id)
+          .then(res => {
+            setDeliveryRecord(res.data);
+            offlineStorage.cacheDeliveryRecord(ticket.id, res.data);
+            setDetailsVisible(true);
+          })
+          .catch(() => setDetailsVisible(true));
+      } else {
+        setDetailsVisible(true);
+      }
+    });
+    // Check if app was opened from a background notification tap for missing fields
+    const pending = storage.getString('pending_missing_fields');
+    if (pending === 'true') {
+      storage.remove('pending_missing_fields');
+      setPendingDetails(true);
+    }
+    return () => sub.remove();
+  }, []);
 
   // Fetch detail + delivery record when ticket changes
   useEffect(() => {
@@ -2928,125 +2959,131 @@ export default function DashboardScreen({ navigation }: Props) {
         maxWidth={L ? (lt ? 540 : 440) : isTablet ? 540 : 420}
         widthPercent={L ? (lt ? 50 : 70) : isTablet ? 60 : 90}
         maxHeightPercent={L ? 95 : 85}>
-        <View style={{ backgroundColor: c.surface }}>
-          {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8), padding: wp(12), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
-            <View style={{ width: wp(28), height: wp(28), borderRadius: wp(8), backgroundColor: c.warningSurface, justifyContent: 'center', alignItems: 'center' }}>
-              <Icon name="warning" size={ms(16)} color={c.warningDark} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.missingTitle}>Missing Fields</Text>
-              <Text style={styles.missingSubtitle}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
-            </View>
-            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Icon name="close" size={ms(18)} color={c.textSecondary} />
-            </TouchableOpacity>
+        {/* Header — direct child of modal, outside scroll wrapper */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8), padding: wp(12), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, backgroundColor: c.surface }}>
+          <View style={{ width: wp(28), height: wp(28), borderRadius: wp(8), backgroundColor: c.warningSurface, justifyContent: 'center', alignItems: 'center' }}>
+            <Icon name="warning" size={ms(16)} color={c.warningDark} />
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.missingTitle}>Missing Fields</Text>
+            <Text style={styles.missingSubtitle}>TICKET {deliveryRecord?.ticket?.ticket_code || '-'} / ORDER {deliveryRecord?.ticket?.order_code || '-'}</Text>
+          </View>
+          <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface }]} onPress={() => setDetailsVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Icon name="close" size={ms(18)} color={c.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
-          <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: wp(12), gap: wp(12) }}>
-            {(() => {
-              if (!deliveryRecord) return null;
-              const missing: { section: string; icon: string; fields: string[] }[] = [];
+        {/* Scroll wrapper — same pattern as AcceptTicketModal */}
+        <View style={{ flex: 0, maxHeight: Math.round(winHeight * (isLandscape ? 0.72 : 0.65)) }}>
+        <ScrollView bounces={false} {...missingScrollIndicator.scrollViewProps} contentContainerStyle={{ padding: wp(12), paddingBottom: wp(32), gap: wp(12), backgroundColor: c.surface }}>
+          {(() => {
+            if (!deliveryRecord) return null;
+            const missing: { section: string; icon: string; fields: string[] }[] = [];
 
-              // Plant
-              if (deliveryRecord.plant) {
-                const p = deliveryRecord.plant;
-                const fields: string[] = [];
-                if (p.slump_from_plant == null) fields.push('Slump From Plant');
-                if (p.slump_to_job == null) fields.push('Slump To Job');
-                if (p.temp_at_plant == null) fields.push('Temp At Plant');
-                if (p.water_added_full == null) fields.push('Water Added');
-                if (!p.water_reason) fields.push('Water Reason');
-                if (!p.truck_start) fields.push('Truck Start');
-                if (!p.truck_end) fields.push('Truck End');
-                if (p.hand_added == null) fields.push('Hand Added');
-                if (p.nitrogen_added == null) fields.push('Nitrogen Added');
-                if (p.fibers_added == null) fields.push('Fibers Added');
-                if (p.load_tested == null) fields.push('Load Tested');
-                if (!p.notes) fields.push('Notes');
-                if (fields.length > 0) missing.push({ section: 'Plant', icon: 'factory', fields });
-              }
+            // Plant
+            if (deliveryRecord.plant) {
+              const p = deliveryRecord.plant;
+              const fields: string[] = [];
+              if (p.slump_from_plant == null) fields.push('Slump From Plant');
+              if (p.slump_to_job == null) fields.push('Slump To Job');
+              if (p.temp_at_plant == null) fields.push('Temp At Plant');
+              if (p.water_added_full == null) fields.push('Water Added');
+              if (!p.water_reason) fields.push('Water Reason');
+              if (!p.truck_start) fields.push('Truck Start');
+              if (!p.truck_end) fields.push('Truck End');
+              if (p.hand_added == null) fields.push('Hand Added');
+              if (p.nitrogen_added == null) fields.push('Nitrogen Added');
+              if (p.fibers_added == null) fields.push('Fibers Added');
+              if (p.load_tested == null) fields.push('Load Tested');
+              if (!p.notes) fields.push('Notes');
+              if (fields.length > 0) missing.push({ section: 'Plant', icon: 'factory', fields });
+            }
 
-              // Jobsite
-              if (deliveryRecord.jobsite) {
-                const j = deliveryRecord.jobsite;
-                const fields: string[] = [];
-                if (j.full_load_litres == null) fields.push('Full Load Litres');
-                if (!j.full_load_reason) fields.push('Full Load Reason');
-                if (j.full_load_mm == null) fields.push('Full Load MM');
-                if (j.customer_water_litres == null) fields.push('Customer Water Litres');
-                if (j.customer_water_mm == null) fields.push('Customer Water MM');
-                if (j.maintenance_water_litres == null) fields.push('Maintenance Water Litres');
-                if (j.maintenance_water_mm == null) fields.push('Maintenance Water MM');
-                if (!j.super_plasticizer) fields.push('Super Plasticizer');
-                if (!j.conveyor) fields.push('Conveyor');
-                if (!j.color) fields.push('Color');
-                if (!j.fiber) fields.push('Fiber');
-                if (!j.other) fields.push('Other');
-                if (j.conveyor_ordered_not_used == null) fields.push('Conveyor Ordered Not Used');
-                if (j.unloaded_conveyor == null) fields.push('Unloaded Conveyor');
-                if (j.load_disputed == null) fields.push('Load Disputed');
-                if (!j.washout_area) fields.push('Washout Area');
-                if (j.load_tested == null) fields.push('Load Tested');
-                if (!j.notes) fields.push('Notes');
-                if (fields.length > 0) missing.push({ section: 'Jobsite', icon: 'location-on', fields });
-              }
+            // Jobsite
+            if (deliveryRecord.jobsite) {
+              const j = deliveryRecord.jobsite;
+              const fields: string[] = [];
+              if (j.full_load_litres == null) fields.push('Full Load Litres');
+              if (!j.full_load_reason) fields.push('Full Load Reason');
+              if (j.full_load_mm == null) fields.push('Full Load MM');
+              if (j.customer_water_litres == null) fields.push('Customer Water Litres');
+              if (j.customer_water_mm == null) fields.push('Customer Water MM');
+              if (j.maintenance_water_litres == null) fields.push('Maintenance Water Litres');
+              if (j.maintenance_water_mm == null) fields.push('Maintenance Water MM');
+              if (!j.super_plasticizer) fields.push('Super Plasticizer');
+              if (!j.conveyor) fields.push('Conveyor');
+              if (!j.color) fields.push('Color');
+              if (!j.fiber) fields.push('Fiber');
+              if (!j.other) fields.push('Other');
+              if (j.conveyor_ordered_not_used == null) fields.push('Conveyor Ordered Not Used');
+              if (j.unloaded_conveyor == null) fields.push('Unloaded Conveyor');
+              if (j.load_disputed == null) fields.push('Load Disputed');
+              if (!j.washout_area) fields.push('Washout Area');
+              if (j.load_tested == null) fields.push('Load Tested');
+              if (!j.notes) fields.push('Notes');
+              if (fields.length > 0) missing.push({ section: 'Jobsite', icon: 'location-on', fields });
+            }
 
-              // Returned
-              if (deliveryRecord.returned) {
-                const r = deliveryRecord.returned;
-                const fields: string[] = [];
-                if (r.returned_concrete_m3 == null) fields.push('Returned Concrete');
-                if (!r.disposal_method) fields.push('Disposal Method');
-                if (!r.reason_for_return) fields.push('Reason For Return');
-                if (fields.length > 0) missing.push({ section: 'Returned', icon: 'undo', fields });
-              }
+            // Returned
+            if (deliveryRecord.returned) {
+              const r = deliveryRecord.returned;
+              const fields: string[] = [];
+              if (r.returned_concrete_m3 == null) fields.push('Returned Concrete');
+              if (!r.disposal_method) fields.push('Disposal Method');
+              if (!r.reason_for_return) fields.push('Reason For Return');
+              if (fields.length > 0) missing.push({ section: 'Returned', icon: 'undo', fields });
+            }
 
-              // Time
-              if (deliveryRecord.time?.steps) {
-                const fields = deliveryRecord.time.steps.filter(s => !s.done).map(s => s.label);
-                if (fields.length > 0) missing.push({ section: 'Time', icon: 'schedule', fields });
-              }
+            // Time
+            if (deliveryRecord.time?.steps) {
+              const fields = deliveryRecord.time.steps.filter(s => !s.done).map(s => s.label);
+              if (fields.length > 0) missing.push({ section: 'Time', icon: 'schedule', fields });
+            }
 
-              // COD
-              if (deliveryRecord.cod) {
-                const cd = deliveryRecord.cod;
-                const fields: string[] = [];
-                if (!cd.payment_type) fields.push('Payment Type');
-                if (cd.amount == null) fields.push('Amount');
-                if (cd.wait_time_minutes == null) fields.push('Wait Time');
-                if (!cd.notes) fields.push('Notes');
-                if (fields.length > 0) missing.push({ section: 'COD', icon: 'payments', fields });
-              }
+            // COD
+            if (deliveryRecord.cod) {
+              const cd = deliveryRecord.cod;
+              const fields: string[] = [];
+              if (!cd.payment_type) fields.push('Payment Type');
+              if (cd.amount == null) fields.push('Amount');
+              if (cd.wait_time_minutes == null) fields.push('Wait Time');
+              if (!cd.notes) fields.push('Notes');
+              if (fields.length > 0) missing.push({ section: 'COD', icon: 'payments', fields });
+            }
 
-              if (missing.length === 0) {
-                return (
-                  <View style={{ alignItems: 'center', paddingVertical: wp(20) }}>
-                    <Icon name="check-circle" size={ms(40)} color={c.primary} />
-                    <Text style={styles.allFilledText}>All fields are filled</Text>
-                  </View>
-                );
-              }
-
-              return missing.map((group) => (
-                <View key={group.section}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), marginBottom: wp(6) }}>
-                    <Icon name={group.icon as any} size={ms(14)} color={c.warningDark} />
-                    <Text style={styles.missingSectionLabel}>{group.section}</Text>
-                    <View style={{ backgroundColor: c.warningSurface, paddingHorizontal: wp(6), paddingVertical: wp(1), borderRadius: wp(8) }}>
-                      <Text style={styles.missingCountBadge}>{group.fields.length}</Text>
-                    </View>
-                  </View>
-                  {group.fields.map((field, idx) => (
-                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingVertical: wp(4), borderBottomWidth: idx < group.fields.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                      <Icon name="radio-button-unchecked" size={ms(10)} color={c.error} />
-                      <Text style={styles.missingFieldText}>{field}</Text>
-                    </View>
-                  ))}
+            if (missing.length === 0) {
+              return (
+                <View style={{ alignItems: 'center', paddingVertical: wp(20) }}>
+                  <Icon name="check-circle" size={ms(40)} color={c.primary} />
+                  <Text style={styles.allFilledText}>All fields are filled</Text>
                 </View>
-              ));
-            })()}
-          </ScrollView>
+              );
+            }
+
+            return missing.map((group) => (
+              <View key={group.section}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), marginBottom: wp(6) }}>
+                  <Icon name={group.icon as any} size={ms(14)} color={c.warningDark} />
+                  <Text style={styles.missingSectionLabel}>{group.section}</Text>
+                  <View style={{ backgroundColor: c.warningSurface, paddingHorizontal: wp(6), paddingVertical: wp(1), borderRadius: wp(8) }}>
+                    <Text style={styles.missingCountBadge}>{group.fields.length}</Text>
+                  </View>
+                </View>
+                {group.fields.map((field, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingVertical: wp(4), borderBottomWidth: idx < group.fields.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                    <Icon name="radio-button-unchecked" size={ms(10)} color={c.error} />
+                    <Text style={styles.missingFieldText}>{field}</Text>
+                  </View>
+                ))}
+              </View>
+            ));
+          })()}
+        </ScrollView>
+        {missingScrollIndicator.canScroll && (
+          <View style={{position: 'absolute', right: 1, top: 0, bottom: 0, width: missingScrollIndicator.trackW, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', borderRadius: 2}} pointerEvents="none">
+            <Animated.View style={{width: missingScrollIndicator.trackW, height: missingScrollIndicator.thumbH, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', transform: [{translateY: missingScrollIndicator.translateY}]}} />
+          </View>
+        )}
         </View>
       </ResponsiveModal>
 
