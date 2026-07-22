@@ -51,6 +51,53 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
     }
 
     @ReactMethod
+    fun setIdleMode(idle: Boolean, promise: Promise) {
+        try {
+            LocationTrackingService.setIdleMode(reactContext, idle)
+            Log.d(TAG, "setIdleMode called — idle: $idle")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "setIdleMode failed", e)
+            promise.reject("IDLE_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun setJsAlive(alive: Boolean, promise: Promise) {
+        try {
+            LocationTrackingService.setJsAlive(reactContext, alive)
+            Log.d(TAG, "setJsAlive called — alive: $alive")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "setJsAlive failed", e)
+            promise.reject("JS_ALIVE_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun updateJsHeartbeat(promise: Promise) {
+        try {
+            LocationTrackingService.updateJsHeartbeat(reactContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("HEARTBEAT_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun updateTicketId(ticketId: Int, promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences("tksync_native_gps", 0)
+            prefs.edit().putInt("ticket_id", ticketId).apply()
+            Log.d(TAG, "updateTicketId called — ticket: $ticketId")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "updateTicketId failed", e)
+            promise.reject("UPDATE_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
     fun getStoredRecords(promise: Promise) {
         try {
             val records = LocationTrackingService.getStoredRecords(reactContext)

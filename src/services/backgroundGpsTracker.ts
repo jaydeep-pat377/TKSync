@@ -35,10 +35,19 @@ const ACTIVE_KEY = 'tracking_active';
 const TICKET_KEY = 'tracking_ticket_id';
 
 let running = false;
+let starting = false; // Guard against duplicate start() calls
 let watchId: number | null = null;
 let lastPosition: GpsPosition | null = null;
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
+
+// Idle detection — stop recording when truck is stationary
+const IDLE_SPEED_THRESHOLD = 1.0; // m/s (~3.6 km/h)
+const IDLE_CONSECUTIVE_THRESHOLD = 3; // consecutive idle fixes before pausing
+const IDLE_CHECK_INTERVAL = 60_000; // 60s polling while idle
+let consecutiveIdleCount = 0;
+let isIdle = false;
+let idleCheckTimer: ReturnType<typeof setInterval> | null = null;
 
 function notifyListeners(pos: GpsPosition) {
   for (const cb of listeners) {
@@ -93,13 +102,17 @@ async function importNativeRecords(): Promise<number> {
     const records = await LocationTrackingModule.getStoredRecords();
     if (!records || records.length === 0) return 0;
 
-    // Deduplicate: check existing MMKV records to avoid duplicates if previous import was interrupted
-    const existing = new Set(gpsStorage.getAll().map(r => r.recorded_at));
+    // Deduplicate: check existing MMKV records by timestamp+coordinates to avoid duplicates
+    // (Native IDs use "native_" prefix, MMKV uses "gps_" prefix — can't match by ID)
+    const existing = new Set(
+      gpsStorage.getAll().map(r => `${r.recorded_at}_${r.latitude}_${r.longitude}`),
+    );
 
     let imported = 0;
     for (const r of records) {
       if (r.synced) continue;
-      if (existing.has(r.recorded_at)) continue; // skip duplicates
+      const key = `${r.recorded_at}_${r.latitude}_${r.longitude}`;
+      if (existing.has(key)) continue; // skip duplicates
       gpsStorage.addRecord({
         ticket_id: r.ticket_id || null,
         latitude: r.latitude,
@@ -136,55 +149,116 @@ async function importNativeRecords(): Promise<number> {
   }
 }
 
+function handlePosition(position: any) {
+  const {latitude, longitude, speed, heading, altitude, accuracy} = position.coords;
+  const rawSpeed = typeof speed === 'number' && !isNaN(speed) ? speed : 0;
+  const currentSpeed = Math.max(0, rawSpeed);
+
+  const pos: GpsPosition = {
+    latitude,
+    longitude,
+    speed: currentSpeed,
+    heading: heading ?? 0,
+    altitude: altitude || 0,
+    accuracy: accuracy || 0,
+    timestamp: position.timestamp,
+  };
+  lastPosition = pos;
+  notifyListeners(pos);
+
+  console.log(`[BackgroundGPS] Position: lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, accuracy=${accuracy?.toFixed(0)}m`);
+
+  // Skip recording very inaccurate GPS fixes (>200m radius)
+  if (accuracy != null && accuracy > 200) {
+    console.log(`[BackgroundGPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
+    return;
+  }
+
+  // Idle detection: track consecutive low-speed readings
+  if (currentSpeed < IDLE_SPEED_THRESHOLD) {
+    consecutiveIdleCount++;
+    if (consecutiveIdleCount >= IDLE_CONSECUTIVE_THRESHOLD && !isIdle) {
+      console.log(`[BackgroundGPS] Truck idle — pausing GPS recording (${consecutiveIdleCount} consecutive idle fixes)`);
+      isIdle = true;
+      // Stop high-frequency watcher, switch to low-frequency idle check
+      stopWatch();
+      startIdleCheck();
+      // Notify native layer to reduce frequency too
+      if (Platform.OS === 'android' && LocationTrackingModule) {
+        LocationTrackingModule.setIdleMode(true).catch(() => {});
+      }
+      return;
+    }
+    if (isIdle) {
+      // Still idle during idle check — don't record
+      console.log(`[BackgroundGPS] Still idle — skipping record`);
+      return;
+    }
+  } else {
+    // Moving — reset idle state
+    if (isIdle) {
+      console.log(`[BackgroundGPS] Movement detected — resuming normal GPS tracking`);
+      isIdle = false;
+      stopIdleCheck();
+      // Notify native layer to resume normal frequency
+      if (Platform.OS === 'android' && LocationTrackingModule) {
+        LocationTrackingModule.setIdleMode(false).catch(() => {});
+      }
+      startWatch();
+    }
+    consecutiveIdleCount = 0;
+  }
+
+  gpsStorage.addRecord({
+    ticket_id: gpsSyncManager.getTicketId(),
+    latitude,
+    longitude,
+    speed: currentSpeed,
+    heading: heading ?? 0,
+    altitude: altitude || null,
+    accuracy: accuracy || null,
+    recorded_at: new Date(position.timestamp).toISOString(),
+    ...currentBehavior,
+  });
+
+}
+
+function handleError(error: any) {
+  console.warn('[BackgroundGPS] GPS Error:', error.code, error.message);
+  if (error.code === 1) {
+    console.error('[BackgroundGPS] Location permission denied — stopping tracking');
+    showToast('error', 'GPS Permission Lost', 'Location permission was revoked. Tracking stopped.');
+    backgroundGpsTracker.stop();
+  }
+}
+
+/** Low-frequency single-shot GPS check while idle to detect movement resumption. */
+function startIdleCheck() {
+  if (idleCheckTimer !== null) return;
+  idleCheckTimer = setInterval(() => {
+    Geolocation.getCurrentPosition(
+      (position) => handlePosition(position),
+      (error) => console.warn('[BackgroundGPS] Idle check error:', error.message),
+      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+    );
+  }, IDLE_CHECK_INTERVAL);
+  console.log('[BackgroundGPS] Idle check started (60s interval)');
+}
+
+function stopIdleCheck() {
+  if (idleCheckTimer !== null) {
+    clearInterval(idleCheckTimer);
+    idleCheckTimer = null;
+    console.log('[BackgroundGPS] Idle check stopped');
+  }
+}
+
 function startWatch() {
   if (watchId !== null) return;
 
   watchId = Geolocation.watchPosition(
-    (position) => {
-      const {latitude, longitude, speed, heading, altitude, accuracy} = position.coords;
-      const currentSpeed = Math.max(0, speed || 0);
-
-      const pos: GpsPosition = {
-        latitude,
-        longitude,
-        speed: currentSpeed,
-        heading: heading ?? 0,
-        altitude: altitude || 0,
-        accuracy: accuracy || 0,
-        timestamp: position.timestamp,
-      };
-      lastPosition = pos;
-      notifyListeners(pos);
-
-      console.log(`[BackgroundGPS] Position: lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, accuracy=${accuracy?.toFixed(0)}m`);
-
-      // Skip recording very inaccurate GPS fixes (>200m radius)
-      if (accuracy != null && accuracy > 200) {
-        console.log(`[BackgroundGPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
-        return;
-      }
-
-      gpsStorage.addRecord({
-        ticket_id: gpsSyncManager.getTicketId(),
-        latitude,
-        longitude,
-        speed: currentSpeed,
-        heading: heading ?? 0,
-        altitude: altitude || null,
-        accuracy: accuracy || null,
-        recorded_at: new Date(position.timestamp).toISOString(),
-        ...currentBehavior,
-      });
-    },
-    (error) => {
-      console.warn('[BackgroundGPS] GPS Error:', error.code, error.message);
-      // Code 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
-      if (error.code === 1) {
-        console.error('[BackgroundGPS] Location permission denied — stopping tracking');
-        showToast('error', 'GPS Permission Lost', 'Location permission was revoked. Tracking stopped.');
-        backgroundGpsTracker.stop();
-      }
-    },
+    (position) => handlePosition(position),
+    (error) => handleError(error),
     {
       enableHighAccuracy: true,
       distanceFilter: 5,
@@ -222,11 +296,13 @@ export const backgroundGpsTracker = {
    * Returns false if no ticket or no permission.
    */
   async start(ticketId?: number | null, silent = false): Promise<boolean> {
-    if (running) return true;
+    if (running || starting) return true;
+    starting = true;
 
     // Check/request permissions
     const hasPermission = silent ? await checkPermissions() : await requestPermissions();
     if (!hasPermission) {
+      starting = false;
       if (!silent) {
         showToast('error', 'Permission Denied', 'Location permission is required for GPS tracking.');
       }
@@ -236,6 +312,7 @@ export const backgroundGpsTracker = {
     // Resolve ticket via gpsSyncManager
     const hasTicket = await gpsSyncManager.start(ticketId);
     if (!hasTicket) {
+      starting = false;
       if (!silent) {
         showToast('error', 'No Active Ticket', 'GPS tracking requires an in-process delivery.');
       }
@@ -257,6 +334,7 @@ export const backgroundGpsTracker = {
     startWatch();
 
     running = true;
+    starting = false;
     persistState(true, resolvedTicketId);
     console.log('[BackgroundGPS] Started globally');
     return true;
@@ -267,10 +345,14 @@ export const backgroundGpsTracker = {
    * Does not require an active ticket. GPS always runs until logout.
    */
   async startAlways(ticketId?: number | null): Promise<boolean> {
-    if (running) return true;
+    if (running || starting) return true;
+    starting = true;
 
     const hasPermission = await requestPermissions();
-    if (!hasPermission) return false;
+    if (!hasPermission) {
+      starting = false;
+      return false;
+    }
 
     // Try to start gpsSyncManager with ticket — if no ticket, start sync anyway
     const hasTicket = await gpsSyncManager.start(ticketId);
@@ -282,6 +364,7 @@ export const backgroundGpsTracker = {
     startWatch();
 
     running = true;
+    starting = false;
     persistState(true, ticketId ?? null);
     console.log(`[BackgroundGPS] Started always — ticket: ${ticketId || 'none'}`);
     return true;
@@ -293,13 +376,18 @@ export const backgroundGpsTracker = {
 
     const wasRunning = running;
     running = false;
+    starting = false;
 
     stopWatch();
+    stopIdleCheck();
+    isIdle = false;
+    consecutiveIdleCount = 0;
 
     // Switch native service to silent mode — keeps collecting GPS in background
     if (Platform.OS === 'android' && LocationTrackingModule) {
+      LocationTrackingModule.setIdleMode(false).catch(() => {});
       LocationTrackingModule.setSilentMode(true).catch(() => {});
-      console.log('[BackgroundGPS] Native service switched to silent mode');
+      console.log('[BackgroundGPS] Native service switched to silent mode (idle reset)');
     }
 
     // Stop notifee foreground notification (UI only)
@@ -362,8 +450,11 @@ export const backgroundGpsTracker = {
 
   /** Clear all GPS data and fully stop everything (called on driver logout). */
   clearAllData(): void {
-    // Stop JS watcher
+    // Stop JS watcher + idle check
     stopWatch();
+    stopIdleCheck();
+    isIdle = false;
+    consecutiveIdleCount = 0;
     // Stop sync interval
     gpsSyncManager.stop();
     // Stop notifee
@@ -381,6 +472,7 @@ export const backgroundGpsTracker = {
     // Clear all local data
     gpsStorage.clear();
     running = false;
+    starting = false;
     lastPosition = null;
     currentBehavior = {};
     persistState(false, null);

@@ -86,6 +86,8 @@ export default function TripHistoryScreen({navigation, route}: Props) {
   const [isSatellite, setIsSatellite] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(14);
   const cameraRef = useRef<MapboxGL.Camera>(null);
+  const [matchedCoords, setMatchedCoords] = useState<[number, number][]>([]);
+  const mapboxToken = Config.MAPBOX_ACCESS_TOKEN || '';
 
   const fetchData = async () => {
     if (!ticketId) {
@@ -109,6 +111,91 @@ export default function TripHistoryScreen({navigation, route}: Props) {
   useEffect(() => {
     fetchData();
   }, [ticketId]);
+
+  // Snap GPS trail to roads via Mapbox Map Matching + Directions API fallback
+  useEffect(() => {
+    if (records.length < 2 || !mapboxToken) {
+      setMatchedCoords([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const getDirectionsRoute = async (
+      from: {lng: number; lat: number},
+      to: {lng: number; lat: number},
+    ): Promise<[number, number][]> => {
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/driving/${from.lng},${from.lat};${to.lng},${to.lat}?access_token=${mapboxToken}&geometries=geojson&overview=full`,
+        );
+        const json = await res.json();
+        if (json.routes?.[0]?.geometry?.coordinates?.length > 0) {
+          return json.routes[0].geometry.coordinates;
+        }
+      } catch {}
+      return [[from.lng, from.lat], [to.lng, to.lat]];
+    };
+
+    const matchToRoads = async () => {
+      const trail = records.map(r => ({lng: r.longitude, lat: r.latitude}));
+      const allCoords: [number, number][] = [];
+      const BATCH = 100;
+
+      for (let i = 0; i < trail.length; i += BATCH - 1) {
+        const batch = trail.slice(i, i + BATCH);
+        const coords = batch.map(p => `${p.lng},${p.lat}`).join(';');
+        const radiuses = batch.map(() => '100').join(';');
+
+        try {
+          const res = await fetch(
+            `https://api.mapbox.com/matching/v5/mapbox/driving/${coords}?access_token=${mapboxToken}&geometries=geojson&radiuses=${radiuses}&overview=full`,
+          );
+          const json = await res.json();
+
+          const batchCoords: [number, number][] = [];
+          if (json.matchings?.length > 0) {
+            for (const matching of json.matchings) {
+              if (matching.geometry?.coordinates) {
+                const sliceFrom = batchCoords.length > 0 ? 1 : 0;
+                batchCoords.push(...matching.geometry.coordinates.slice(sliceFrom));
+              }
+            }
+          }
+
+          if (batchCoords.length > 0) {
+            const sliceFrom = i > 0 ? 1 : 0;
+            allCoords.push(...batchCoords.slice(sliceFrom));
+          } else {
+            // Map Matching failed — use Directions API
+            for (let j = (i > 0 ? 1 : 0); j < batch.length - 1; j++) {
+              const segment = await getDirectionsRoute(batch[j], batch[j + 1]);
+              const sliceFrom = allCoords.length > 0 ? 1 : 0;
+              allCoords.push(...segment.slice(sliceFrom));
+            }
+          }
+        } catch {
+          // Network error — use Directions API
+          for (let j = (i > 0 ? 1 : 0); j < batch.length - 1; j++) {
+            try {
+              const segment = await getDirectionsRoute(batch[j], batch[j + 1]);
+              const sliceFrom = allCoords.length > 0 ? 1 : 0;
+              allCoords.push(...segment.slice(sliceFrom));
+            } catch {
+              allCoords.push([batch[j].lng, batch[j].lat]);
+            }
+          }
+        }
+      }
+
+      if (!cancelled && allCoords.length >= 2) {
+        setMatchedCoords(allCoords);
+      }
+    };
+
+    matchToRoads();
+    return () => { cancelled = true; };
+  }, [records, mapboxToken]);
 
   // Compute trip summary
   const summary = useMemo(() => {
@@ -147,9 +234,14 @@ export default function TripHistoryScreen({navigation, route}: Props) {
     };
   }, [records]);
 
-  // Build GeoJSON line
+  // Build GeoJSON line — use road-snapped coords if available, raw GPS as fallback
   const routeGeoJSON = useMemo(() => {
-    if (records.length < 2) return null;
+    const coords = matchedCoords.length >= 2
+      ? matchedCoords
+      : records.length >= 2
+        ? records.map(r => [r.longitude, r.latitude] as [number, number])
+        : null;
+    if (!coords || coords.length < 2) return null;
     return {
       type: 'FeatureCollection' as const,
       features: [
@@ -158,12 +250,12 @@ export default function TripHistoryScreen({navigation, route}: Props) {
           properties: {},
           geometry: {
             type: 'LineString' as const,
-            coordinates: records.map(r => [r.longitude, r.latitude]),
+            coordinates: coords,
           },
         },
       ],
     };
-  }, [records]);
+  }, [records, matchedCoords]);
 
   // Compute bounds for camera
   const bounds = useMemo(() => {

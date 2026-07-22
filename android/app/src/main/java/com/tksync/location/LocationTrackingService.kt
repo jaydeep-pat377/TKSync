@@ -29,7 +29,48 @@ class LocationTrackingService : Service() {
         private const val KEY_TICKET_ID = "ticket_id"
         private const val KEY_ACTIVE = "tracking_active"
         private const val KEY_SILENT = "silent_mode"
-        private const val MAX_RECORDS = 50000
+        private const val MAX_RECORDS = 10000 // ~27 hours at 10s intervals; keeps SharedPrefs fast
+        private const val KEY_IDLE = "idle_mode"
+        private const val KEY_JS_ALIVE = "js_alive" // When true, JS is recording — native skips saving
+        private const val KEY_JS_HEARTBEAT = "js_heartbeat" // Last time JS recorded a GPS fix (epoch ms)
+        private const val JS_HEARTBEAT_STALE_MS = 30_000L // If no heartbeat for 30s, JS is frozen/dead
+        private const val IDLE_SPEED_THRESHOLD = 1.0 // m/s
+        private const val IDLE_CONSECUTIVE_THRESHOLD = 3
+
+        fun setJsAlive(context: Context, alive: Boolean) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putBoolean(KEY_JS_ALIVE, alive)
+                .putLong(KEY_JS_HEARTBEAT, if (alive) System.currentTimeMillis() else 0L)
+                .apply()
+            Log.d(TAG, "JS alive set to: $alive")
+        }
+
+        fun updateJsHeartbeat(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putLong(KEY_JS_HEARTBEAT, System.currentTimeMillis()).apply()
+        }
+
+        fun setIdleMode(context: Context, idle: Boolean) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(KEY_IDLE, idle).apply()
+
+            // Restart service to update location request frequency
+            if (prefs.getBoolean(KEY_ACTIVE, false)) {
+                val ticketId = prefs.getInt(KEY_TICKET_ID, 0)
+                val silent = prefs.getBoolean(KEY_SILENT, false)
+                val intent = Intent(context, LocationTrackingService::class.java)
+                intent.putExtra("ticket_id", ticketId)
+                intent.putExtra("silent", silent)
+                intent.putExtra("idle", idle)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }
+            Log.d(TAG, "Idle mode set to: $idle")
+        }
 
         fun start(context: Context, ticketId: Int, silent: Boolean = false) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -74,6 +115,7 @@ class LocationTrackingService : Service() {
             prefs.edit()
                 .putBoolean(KEY_ACTIVE, false)
                 .putBoolean(KEY_SILENT, false)
+                .putBoolean(KEY_IDLE, false)
                 .apply()
 
             val intent = Intent(context, LocationTrackingService::class.java)
@@ -109,6 +151,11 @@ class LocationTrackingService : Service() {
     private lateinit var prefs: SharedPreferences
     private var ticketId: Int = 0
     private var isSilent: Boolean = false
+    private var isIdleMode: Boolean = false
+    private var consecutiveIdleCount: Int = 0
+    private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
+    private var pendingCount = 0
+    private val WRITE_BATCH_SIZE = 5 // Flush to SharedPrefs every 5 records
     private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
@@ -129,15 +176,25 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // If intent is null, service was restarted by Android after kill (START_STICKY)
+        // JS is definitely dead — reset js_alive so native starts recording
+        if (intent == null) {
+            prefs.edit().putBoolean(KEY_JS_ALIVE, false).apply()
+            Log.d(TAG, "Service restarted by system (no intent) — JS is dead, native will record")
+        }
+
         ticketId = intent?.getIntExtra("ticket_id", 0)
             ?: prefs.getInt(KEY_TICKET_ID, 0)
         isSilent = intent?.getBooleanExtra("silent", false)
             ?: prefs.getBoolean(KEY_SILENT, false)
+        isIdleMode = intent?.getBooleanExtra("idle", false)
+            ?: prefs.getBoolean(KEY_IDLE, false)
 
         prefs.edit()
             .putInt(KEY_TICKET_ID, ticketId)
             .putBoolean(KEY_ACTIVE, true)
             .putBoolean(KEY_SILENT, isSilent)
+            .putBoolean(KEY_IDLE, isIdleMode)
             .apply()
 
         createNotificationChannels()
@@ -153,21 +210,54 @@ class LocationTrackingService : Service() {
         // Remove old location updates before starting new ones (prevents duplicates on restart)
         fusedClient.removeLocationUpdates(locationCallback)
         startLocationUpdates()
-        Log.d(TAG, "Service started — ticket: $ticketId, silent: $isSilent, START_STICKY")
+        Log.d(TAG, "Service started — ticket: $ticketId, silent: $isSilent, idle: $isIdleMode, START_STICKY")
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
         fusedClient.removeLocationUpdates(locationCallback)
+        // Flush any buffered records before dying
+        if (pendingCount > 0) {
+            flushPendingRecords()
+        }
         Log.d(TAG, "Service destroyed")
+    }
+
+    private fun flushPendingRecords() {
+        if (pendingCount == 0) return
+        val records = getStoredRecords(this)
+        for (i in 0 until pendingRecords.length()) {
+            records.put(pendingRecords.getJSONObject(i))
+        }
+
+        val toWrite = if (records.length() > MAX_RECORDS) {
+            val trimmed = JSONArray()
+            for (i in (records.length() - MAX_RECORDS) until records.length()) {
+                trimmed.put(records.getJSONObject(i))
+            }
+            trimmed
+        } else {
+            records
+        }
+
+        prefs.edit().putString(KEY_RECORDS, toWrite.toString()).apply()
+        Log.d(TAG, "Flushed $pendingCount records to SharedPrefs (total: ${toWrite.length()})")
+        pendingRecords = JSONArray()
+        pendingCount = 0
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        Log.d(TAG, "Task removed (app killed) — service will restart via START_STICKY")
+        // JS is dead — native must start saving records
+        prefs.edit().putBoolean(KEY_JS_ALIVE, false).apply()
+        // Flush buffered records so they survive the restart
+        if (pendingCount > 0) {
+            flushPendingRecords()
+        }
+        Log.d(TAG, "Task removed (app killed) — JS dead, native will record, service restart via START_STICKY")
     }
 
     private fun createNotificationChannels() {
@@ -233,13 +323,21 @@ class LocationTrackingService : Service() {
     @Suppress("MissingPermission", "DEPRECATION")
     private fun startLocationUpdates() {
         val isSilentMode = prefs.getBoolean(KEY_SILENT, false)
+        val isIdle = prefs.getBoolean(KEY_IDLE, false)
         val request = LocationRequest.create().apply {
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-            if (isSilentMode) {
+            if (isIdle) {
+                // Idle mode: low-frequency polling just to detect movement resumption
+                priority = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
+                interval = 60000L
+                fastestInterval = 30000L
+                smallestDisplacement = 50f
+            } else if (isSilentMode) {
+                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 interval = 10000L
                 fastestInterval = 10000L
                 smallestDisplacement = 10f
             } else {
+                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 interval = 10000L
                 fastestInterval = 10000L
                 smallestDisplacement = 5f
@@ -256,10 +354,46 @@ class LocationTrackingService : Service() {
     }
 
     private fun saveLocation(location: Location) {
-        val speedMs = Math.max(0.0, (location.speed ?: 0f).toDouble())
+
+        // Re-read ticket ID from prefs in case JS updated it mid-session
+        val latestTicketId = prefs.getInt(KEY_TICKET_ID, ticketId)
+        if (latestTicketId != ticketId && latestTicketId > 0) {
+            Log.d(TAG, "Ticket ID updated: $ticketId → $latestTicketId")
+            ticketId = latestTicketId
+        }
+
+        val rawSpeed = (location.speed ?: 0f).toDouble()
+        val speedMs = if (rawSpeed.isNaN()) 0.0 else Math.max(0.0, rawSpeed)
         val speedKmh = speedMs * 3.6
         val isSpeeding = speedKmh > 80.0
-        val isIdle = speedMs < 1.0
+        val isIdle = speedMs < IDLE_SPEED_THRESHOLD
+
+        // Native idle detection (works in background/kill mode without JS)
+        if (isIdle) {
+            consecutiveIdleCount++
+            if (consecutiveIdleCount >= IDLE_CONSECUTIVE_THRESHOLD) {
+                if (!isIdleMode) {
+                    Log.d(TAG, "Truck idle — switching to low-frequency mode ($consecutiveIdleCount consecutive idle fixes)")
+                    isIdleMode = true
+                    prefs.edit().putBoolean(KEY_IDLE, true).apply()
+                    // Restart location updates with idle parameters
+                    fusedClient.removeLocationUpdates(locationCallback)
+                    startLocationUpdates()
+                }
+                Log.d(TAG, "Idle — skipping GPS record | speed: ${String.format("%.1f", speedMs)} m/s")
+                return
+            }
+        } else {
+            // Movement detected — resume normal tracking if was idle
+            if (isIdleMode) {
+                Log.d(TAG, "Movement detected — resuming normal GPS tracking")
+                isIdleMode = false
+                prefs.edit().putBoolean(KEY_IDLE, false).apply()
+                fusedClient.removeLocationUpdates(locationCallback)
+                startLocationUpdates()
+            }
+            consecutiveIdleCount = 0
+        }
 
         val record = JSONObject().apply {
             put("ticket_id", ticketId)
@@ -271,26 +405,21 @@ class LocationTrackingService : Service() {
             put("accuracy", location.accuracy.toDouble())
             put("recorded_at", isoFormat.format(Date(location.time)))
             put("synced", false)
-            put("id", "native_${System.currentTimeMillis()}_${(Math.random() * 100000).toInt()}")
+            put("id", "native_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}")
             put("is_speeding", isSpeeding)
             put("is_idle", isIdle)
         }
 
-        val records = getStoredRecords(this)
-        records.put(record)
+        pendingRecords.put(record)
+        pendingCount++
 
-        if (records.length() > MAX_RECORDS) {
-            val trimmed = JSONArray()
-            for (i in (records.length() - MAX_RECORDS) until records.length()) {
-                trimmed.put(records.getJSONObject(i))
-            }
-            prefs.edit().putString(KEY_RECORDS, trimmed.toString()).apply()
-        } else {
-            prefs.edit().putString(KEY_RECORDS, records.toString()).apply()
+        // Batch writes — flush to SharedPrefs every WRITE_BATCH_SIZE records
+        if (pendingCount >= WRITE_BATCH_SIZE) {
+            flushPendingRecords()
         }
 
-        Log.d(TAG, "GPS #${records.length()} | lat: ${String.format("%.6f", location.latitude)}, " +
+        Log.d(TAG, "GPS (pending: $pendingCount) | lat: ${String.format("%.6f", location.latitude)}, " +
                 "lng: ${String.format("%.6f", location.longitude)} | " +
-                "speed: ${String.format("%.1f", location.speed)} m/s | ticket: $ticketId | silent: $isSilent")
+                "speed: ${String.format("%.1f", speedMs)} m/s | ticket: $ticketId | silent: $isSilent")
     }
 }

@@ -1,7 +1,10 @@
+import {Platform, NativeModules} from 'react-native';
 import {gpsStorage} from './gpsStorage';
 import {gpsApi, trackingApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {createMMKV} from 'react-native-mmkv';
+
+const {LocationTrackingModule} = NativeModules;
 
 const BASE_SYNC_INTERVAL_MS = 30_000; // 30 seconds
 let currentSyncInterval = BASE_SYNC_INTERVAL_MS;
@@ -65,6 +68,10 @@ async function syncAndRefreshTicket(): Promise<void> {
   if (newTicketId !== null && newTicketId !== currentTicketId) {
     console.log(`[GpsSyncManager] Ticket changed: ${currentTicketId} → ${newTicketId}`);
     currentTicketId = newTicketId;
+    // Sync new ticket ID to native service so killed-state records get correct ticket
+    if (Platform.OS === 'android' && LocationTrackingModule) {
+      LocationTrackingModule.updateTicketId(newTicketId).catch(() => {});
+    }
   }
 }
 
@@ -136,10 +143,9 @@ async function syncGpsRecords(): Promise<void> {
 }
 
 function resetSyncInterval(): void {
-  if (syncInterval) {
-    clearInterval(syncInterval);
-    syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
-  }
+  if (!syncInterval) return; // Stopped — don't recreate
+  clearInterval(syncInterval);
+  syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
 }
 
 export const gpsSyncManager = {
