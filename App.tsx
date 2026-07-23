@@ -12,7 +12,10 @@ import NetworkBanner from './src/components/NetworkBanner';
 import ToastContainer from './src/components/ToastContainer';
 import {initSentry} from './src/services/sentry';
 import {setupBackgroundNotifeeHandler} from './src/services/notifications';
+import {logCapture} from './src/utils/logCapture';
+import {DebugLogViewer} from './src/components/DebugLogViewer';
 
+logCapture.install(); // Intercept console.log/warn/error before anything else
 initSentry();
 setupBackgroundNotifeeHandler();
 
@@ -74,6 +77,7 @@ function App() {
       <SafeAreaProvider>
         <FontSizeProvider>
           <AppContent />
+          <DebugLogViewer />
         </FontSizeProvider>
       </SafeAreaProvider>
     </View>

@@ -38,7 +38,7 @@ const OfflineSyncContext = createContext<OfflineSyncContextType | null>(null);
 
 export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
   const {isOnline} = useNetworkStatus();
-  const {isDriverLoggedIn} = useAuth();
+  const {isDriverLoggedIn, isLoading: authLoading} = useAuth();
   const [pendingCount, setPendingCount] = useState(
     offlineStorage.getPendingCount(),
   );
@@ -52,9 +52,6 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     syncManager.init();
     gpsSyncManager.flushUnsynced().catch(err => {
       console.error('[OfflineSync] flushUnsynced failed:', err);
-    });
-    backgroundGpsTracker.autoResume().catch(err => {
-      console.error('[OfflineSync] autoResume failed:', err);
     });
 
     const failedItems: string[] = [];
@@ -103,23 +100,33 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
   // Auto-start GPS tracking after driver login — always, regardless of ticket
   // Auto-stop on logout
   useEffect(() => {
+    // Don't act while auth is still restoring from storage — isDriverLoggedIn
+    // is false during loading, which would incorrectly call clearAllData()
+    if (authLoading) return;
+
     if (!isDriverLoggedIn) {
-      backgroundGpsTracker.clearAllData();
+      backgroundGpsTracker.clearAllData().catch(() => {});
       return;
     }
 
     if (backgroundGpsTracker.isRunning()) return;
 
-    // Try to get active ticket for tagging GPS records, but start GPS regardless
-    trackingApi.getMe().then(res => {
-      const ticketId = res.data?.current_load?.id ?? null;
-      console.log(`[OfflineSync] Auto-starting GPS — ticketId: ${ticketId || 'none'}`);
-      backgroundGpsTracker.startAlways(ticketId);
-    }).catch(() => {
-      console.log('[OfflineSync] Auto-starting GPS — no ticket info (API failed)');
-      backgroundGpsTracker.startAlways(null);
+    // Start GPS — fetch ticket for tagging, but start regardless
+    const startGps = async () => {
+      try {
+        const res = await trackingApi.getMe();
+        const ticketId = res.data?.current_load?.id ?? null;
+        console.log(`[OfflineSync] Auto-starting GPS — ticketId: ${ticketId || 'none'}`);
+        await backgroundGpsTracker.startAlways(ticketId);
+      } catch {
+        console.log('[OfflineSync] Auto-starting GPS — no ticket info (API failed)');
+        await backgroundGpsTracker.startAlways(null);
+      }
+    };
+    startGps().catch(err => {
+      console.error('[OfflineSync] GPS start failed:', err);
     });
-  }, [isDriverLoggedIn]);
+  }, [isDriverLoggedIn, authLoading]);
 
   const saveDeliveryTab = useCallback(
     async (

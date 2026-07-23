@@ -1,14 +1,10 @@
-import {Platform, PermissionsAndroid, NativeModules} from 'react-native';
+import {Platform, PermissionsAndroid, AppState} from 'react-native';
+import type {AppStateStatus} from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import {createMMKV} from 'react-native-mmkv';
 import {gpsStorage} from './gpsStorage';
 import {gpsSyncManager} from './gpsSyncManager';
-import {startTrackingService} from './trackingForegroundService';
-import notifee from '@notifee/react-native';
 import {showToast} from '../utils/toast';
-import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
-
-const {LocationTrackingModule} = NativeModules;
+import {getIsOnline, onConnectivityRestored, onConnectivityLost} from '../hooks/useNetworkStatus';
 
 export type GpsPosition = {
   latitude: number;
@@ -30,24 +26,71 @@ export type BehaviorData = {
 
 type GpsListener = (position: GpsPosition) => void;
 
-const store = createMMKV({id: 'tksync-bg-tracker'});
-const ACTIVE_KEY = 'tracking_active';
-const TICKET_KEY = 'tracking_ticket_id';
-
 let running = false;
-let starting = false; // Guard against duplicate start() calls
+let starting = false;
+let clearing = false; // Guard against clearAllData/startAlways race
+let permissionDenied = false; // True if permission was denied — retry on foreground
+let pendingTicketId: number | null = null; // Ticket to use when retrying after permission grant
 let watchId: number | null = null;
 let lastPosition: GpsPosition | null = null;
+let lastSavedPosition: {latitude: number; longitude: number} | null = null;
+const MIN_DISTANCE_TO_SAVE = 5; // metres — only save when moved this far
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
+let appStateSubscription: {remove: () => void} | null = null;
+let connectivityRestoredUnsub: (() => void) | null = null;
+let connectivityLostUnsub: (() => void) | null = null;
+let isOfflineMode = false;
 
-// Idle detection — stop recording when truck is stationary
-const IDLE_SPEED_THRESHOLD = 1.0; // m/s (~3.6 km/h)
-const IDLE_CONSECUTIVE_THRESHOLD = 3; // consecutive idle fixes before pausing
-const IDLE_CHECK_INTERVAL = 60_000; // 60s polling while idle
-let consecutiveIdleCount = 0;
-let isIdle = false;
-let idleCheckTimer: ReturnType<typeof setInterval> | null = null;
+/** Haversine distance in metres between two lat/lng points. */
+function haversineDistance(
+  lat1: number, lon1: number, lat2: number, lon2: number,
+): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── App Lifecycle ───────────────────────────────────────────────
+// GPS fetches ONLY in foreground. Stop on background/killed.
+
+function setupAppStateListener() {
+  if (appStateSubscription) return;
+  appStateSubscription = AppState.addEventListener('change', (state: AppStateStatus) => {
+    if (state === 'active') {
+      if (permissionDenied) {
+        // User might have granted permission in Settings — retry
+        console.log('[GPS] App foregrounded — retrying after permission denial');
+        permissionDenied = false;
+        backgroundGpsTracker.startAlways(pendingTicketId).catch(() => {});
+      } else if (running && watchId === null) {
+        // Normal resume from background
+        console.log('[GPS] App foregrounded — resuming GPS');
+        startWatch();
+      }
+    } else if (state === 'background' || state === 'inactive') {
+      // App went to background — stop GPS immediately
+      if (watchId !== null) {
+        console.log('[GPS] App backgrounded — stopping GPS');
+        stopWatch();
+      }
+    }
+  });
+}
+
+function removeAppStateListener() {
+  if (appStateSubscription) {
+    appStateSubscription.remove();
+    appStateSubscription = null;
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────
 
 function notifyListeners(pos: GpsPosition) {
   for (const cb of listeners) {
@@ -55,104 +98,28 @@ function notifyListeners(pos: GpsPosition) {
   }
 }
 
-async function checkPermissions(): Promise<boolean> {
+async function requestPermissions(): Promise<boolean> {
   if (Platform.OS === 'ios') {
-    const status = await Geolocation.requestAuthorization('always');
+    const status = await Geolocation.requestAuthorization('whenInUse');
     return status === 'granted' || status === 'restricted';
   }
-  const fine = await PermissionsAndroid.check(
+  const granted = await PermissionsAndroid.request(
     PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    {title: 'Location Permission', message: 'Vehicle tracking needs access to your location.', buttonPositive: 'OK'},
   );
-  return fine;
+  return granted === PermissionsAndroid.RESULTS.GRANTED;
 }
 
 export async function requestLocationPermissions(): Promise<boolean> {
   return requestPermissions();
 }
 
-async function requestPermissions(): Promise<boolean> {
-  if (Platform.OS === 'ios') {
-    const status = await Geolocation.requestAuthorization('always');
-    return status === 'granted' || status === 'restricted';
-  }
-  const fineGranted = await PermissionsAndroid.request(
-    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-    {title: 'Location Permission', message: 'Vehicle tracking needs access to your location.', buttonPositive: 'OK'},
-  );
-  if (fineGranted !== PermissionsAndroid.RESULTS.GRANTED) return false;
-  if (Number(Platform.Version) >= 29) {
-    const bgGranted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
-      {title: 'Background Location', message: 'Allow background location so tracking continues when the screen is off.', buttonPositive: 'OK'},
-    );
-    if (bgGranted !== PermissionsAndroid.RESULTS.GRANTED) {
-      showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
-    }
-  }
-  return true;
-}
-
-/**
- * Import GPS records collected by the native Android service while the app was killed.
- * Moves them into MMKV gpsStorage so gpsSyncManager can sync them to the API.
- */
-async function importNativeRecords(): Promise<number> {
-  if (Platform.OS !== 'android' || !LocationTrackingModule) return 0;
-  try {
-    const records = await LocationTrackingModule.getStoredRecords();
-    if (!records || records.length === 0) return 0;
-
-    // Deduplicate: check existing MMKV records by timestamp+coordinates to avoid duplicates
-    // (Native IDs use "native_" prefix, MMKV uses "gps_" prefix — can't match by ID)
-    const existing = new Set(
-      gpsStorage.getAll().map(r => `${r.recorded_at}_${r.latitude}_${r.longitude}`),
-    );
-
-    let imported = 0;
-    for (const r of records) {
-      if (r.synced) continue;
-      const key = `${r.recorded_at}_${r.latitude}_${r.longitude}`;
-      if (existing.has(key)) continue; // skip duplicates
-      gpsStorage.addRecord({
-        ticket_id: r.ticket_id || null,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        speed: r.speed || 0,
-        heading: r.heading ?? 0,
-        altitude: r.altitude || null,
-        accuracy: r.accuracy || null,
-        recorded_at: r.recorded_at,
-        is_speeding: r.is_speeding || false,
-        is_idle: r.is_idle || false,
-      });
-      imported++;
-    }
-
-    // Clear native records after successful import, with retry
-    try {
-      await LocationTrackingModule.clearStoredRecords();
-    } catch (clearErr: any) {
-      console.warn('[BackgroundGPS] clearStoredRecords failed, retrying:', clearErr.message);
-      try {
-        await LocationTrackingModule.clearStoredRecords();
-      } catch {
-        console.error('[BackgroundGPS] clearStoredRecords retry failed — duplicates may occur on next import');
-      }
-    }
-    if (imported > 0) {
-      console.log(`[BackgroundGPS] Imported ${imported} native GPS records from killed state`);
-    }
-    return imported;
-  } catch (e: any) {
-    console.error('[BackgroundGPS] Failed to import native records:', e.message);
-    return 0;
-  }
-}
+// ─── Position Handling ───────────────────────────────────────────
 
 function handlePosition(position: any) {
   const {latitude, longitude, speed, heading, altitude, accuracy} = position.coords;
-  const rawSpeed = typeof speed === 'number' && !isNaN(speed) ? speed : 0;
-  const currentSpeed = Math.max(0, rawSpeed);
+  const speedAvailable = typeof speed === 'number' && !isNaN(speed) && speed >= 0;
+  const currentSpeed = speedAvailable ? speed : 0;
 
   const pos: GpsPosition = {
     latitude,
@@ -166,48 +133,26 @@ function handlePosition(position: any) {
   lastPosition = pos;
   notifyListeners(pos);
 
-  console.log(`[BackgroundGPS] Position: lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, accuracy=${accuracy?.toFixed(0)}m`);
+  console.log(`[GPS] Position: lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, accuracy=${accuracy?.toFixed(0)}m`);
 
-  // Skip recording very inaccurate GPS fixes (>200m radius)
+  // Skip very inaccurate fixes
   if (accuracy != null && accuracy > 200) {
-    console.log(`[BackgroundGPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
+    console.log(`[GPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
     return;
   }
 
-  // Idle detection: track consecutive low-speed readings
-  if (currentSpeed < IDLE_SPEED_THRESHOLD) {
-    consecutiveIdleCount++;
-    if (consecutiveIdleCount >= IDLE_CONSECUTIVE_THRESHOLD && !isIdle) {
-      console.log(`[BackgroundGPS] Truck idle — pausing GPS recording (${consecutiveIdleCount} consecutive idle fixes)`);
-      isIdle = true;
-      // Stop high-frequency watcher, switch to low-frequency idle check
-      stopWatch();
-      startIdleCheck();
-      // Notify native layer to reduce frequency too
-      if (Platform.OS === 'android' && LocationTrackingModule) {
-        LocationTrackingModule.setIdleMode(true).catch(() => {});
-      }
-      return;
+  // Only save when truck has moved > 5m from last saved position
+  if (lastSavedPosition) {
+    const dist = haversineDistance(
+      lastSavedPosition.latitude, lastSavedPosition.longitude,
+      latitude, longitude,
+    );
+    if (dist < MIN_DISTANCE_TO_SAVE) {
+      return; // Truck hasn't moved — skip saving
     }
-    if (isIdle) {
-      // Still idle during idle check — don't record
-      console.log(`[BackgroundGPS] Still idle — skipping record`);
-      return;
-    }
-  } else {
-    // Moving — reset idle state
-    if (isIdle) {
-      console.log(`[BackgroundGPS] Movement detected — resuming normal GPS tracking`);
-      isIdle = false;
-      stopIdleCheck();
-      // Notify native layer to resume normal frequency
-      if (Platform.OS === 'android' && LocationTrackingModule) {
-        LocationTrackingModule.setIdleMode(false).catch(() => {});
-      }
-      startWatch();
-    }
-    consecutiveIdleCount = 0;
   }
+
+  lastSavedPosition = {latitude, longitude};
 
   gpsStorage.addRecord({
     ticket_id: gpsSyncManager.getTicketId(),
@@ -221,40 +166,26 @@ function handlePosition(position: any) {
     ...currentBehavior,
   });
 
+  console.log(`[GPS] Record saved — lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
 }
 
 function handleError(error: any) {
-  console.warn('[BackgroundGPS] GPS Error:', error.code, error.message);
+  console.warn('[GPS] Error:', error.code, error.message);
   if (error.code === 1) {
-    console.error('[BackgroundGPS] Location permission denied — stopping tracking');
+    console.error('[GPS] Location permission denied — stopping tracking');
     showToast('error', 'GPS Permission Lost', 'Location permission was revoked. Tracking stopped.');
     backgroundGpsTracker.stop();
   }
 }
 
-/** Low-frequency single-shot GPS check while idle to detect movement resumption. */
-function startIdleCheck() {
-  if (idleCheckTimer !== null) return;
-  idleCheckTimer = setInterval(() => {
-    Geolocation.getCurrentPosition(
-      (position) => handlePosition(position),
-      (error) => console.warn('[BackgroundGPS] Idle check error:', error.message),
-      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
-    );
-  }, IDLE_CHECK_INTERVAL);
-  console.log('[BackgroundGPS] Idle check started (60s interval)');
-}
-
-function stopIdleCheck() {
-  if (idleCheckTimer !== null) {
-    clearInterval(idleCheckTimer);
-    idleCheckTimer = null;
-    console.log('[BackgroundGPS] Idle check stopped');
-  }
-}
+// ─── Watch Control ───────────────────────────────────────────────
 
 function startWatch() {
   if (watchId !== null) return;
+
+  // When offline, use GPS-only mode (no Google A-GPS servers needed)
+  const online = getIsOnline();
+  isOfflineMode = !online;
 
   watchId = Geolocation.watchPosition(
     (position) => handlePosition(position),
@@ -262,176 +193,232 @@ function startWatch() {
     {
       enableHighAccuracy: true,
       distanceFilter: 5,
-      interval: 10000,
-      fastestInterval: 10000,
+      interval: 5000,
+      fastestInterval: 5000,
       showLocationDialog: true,
       forceRequestLocation: true,
+      maximumAge: 10000,
+      // When offline, bypass Google FusedLocationProvider and use Android's
+      // raw LocationManager with GPS_PROVIDER — works without network
+      forceLocationManager: !online,
     },
   );
-  console.log('[BackgroundGPS] watchPosition started');
-}
+  console.log(`[GPS] watchPosition started (5s interval, forceLocationManager=${!online})`);
 
-function stopWatch() {
-  if (watchId !== null) {
-    Geolocation.clearWatch(watchId);
-    watchId = null;
-    console.log('[BackgroundGPS] watchPosition stopped');
+  // Listen for network going OFF — switch to GPS-only (forceLocationManager)
+  if (!connectivityLostUnsub) {
+    connectivityLostUnsub = onConnectivityLost(() => {
+      if (running && !isOfflineMode) {
+        console.log('[GPS] Network lost — restarting GPS with forceLocationManager (satellite-only)');
+        stopWatch();
+        isOfflineMode = true;
+        startWatch();
+      }
+    });
+  }
+
+  // Listen for network coming BACK — switch to FusedLocationProvider
+  if (!connectivityRestoredUnsub) {
+    connectivityRestoredUnsub = onConnectivityRestored(() => {
+      if (running && isOfflineMode) {
+        console.log('[GPS] Network restored — restarting GPS with FusedLocationProvider');
+        stopWatch();
+        isOfflineMode = false;
+        startWatch();
+      }
+    });
   }
 }
 
-function persistState(active: boolean, ticketId: number | null) {
-  store.set(ACTIVE_KEY, active);
-  if (ticketId !== null) {
-    store.set(TICKET_KEY, ticketId);
-  } else {
-    store.set(TICKET_KEY, 0);
-  }
-}
+// ─── Public API ──────────────────────────────────────────────────
 
 export const backgroundGpsTracker = {
   /**
-   * Start global GPS tracking.
-   * @param ticketId - fallback ticket ID (passed from Dashboard/VehicleTracking)
-   * @param silent - if true, skip permission request (for auto-resume); just check if already granted
-   * Returns false if no ticket or no permission.
+   * Start GPS tracking after login.
+   * Only fetches in foreground. Stops on background/logout.
    */
-  async start(ticketId?: number | null, silent = false): Promise<boolean> {
-    if (running || starting) return true;
+  async startAlways(ticketId?: number | null): Promise<boolean> {
+    if (running || starting || clearing) {
+      console.log(`[GPS] startAlways skipped — running=${running}, starting=${starting}, clearing=${clearing}`);
+      return running;
+    }
     starting = true;
 
-    // Check/request permissions
-    const hasPermission = silent ? await checkPermissions() : await requestPermissions();
-    if (!hasPermission) {
-      starting = false;
-      if (!silent) {
-        showToast('error', 'Permission Denied', 'Location permission is required for GPS tracking.');
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) {
+        console.warn('[GPS] Permission denied — will retry when app returns to foreground');
+        permissionDenied = true;
+        pendingTicketId = ticketId ?? null;
+        setupAppStateListener(); // Listen for foreground to retry
+        return false;
       }
-      return false;
-    }
+      permissionDenied = false;
 
-    // Resolve ticket via gpsSyncManager
-    const hasTicket = await gpsSyncManager.start(ticketId);
-    if (!hasTicket) {
-      starting = false;
-      if (!silent) {
-        showToast('error', 'No Active Ticket', 'GPS tracking requires an in-process delivery.');
+      // Start sync manager for uploading records
+      const hasTicket = await gpsSyncManager.start(ticketId);
+      if (!hasTicket) {
+        gpsSyncManager.startWithoutTicket();
       }
+
+      if (!getIsOnline()) {
+        showToast('info', 'Offline Mode', 'GPS data will be uploaded when connection is restored.');
+      }
+
+      // Only start GPS if app is currently in foreground
+      if (AppState.currentState === 'active') {
+        startWatch();
+      }
+      setupAppStateListener();
+
+      running = true;
+      console.log(`[GPS] Started — foreground only — ticket: ${ticketId || 'none'}`);
+      return true;
+    } catch (err: any) {
+      console.error(`[GPS] startAlways failed: ${err.message}`);
       return false;
+    } finally {
+      starting = false;
     }
-
-    if (!getIsOnline() && !silent) {
-      showToast('info', 'Offline Mode', 'GPS data will be uploaded when connection is restored.');
-    }
-
-    // Auto-stop when ticket becomes inactive
-    gpsSyncManager.setOnTicketInactive(() => {
-      backgroundGpsTracker.stop();
-      showToast('info', 'Tracking Stopped', 'Ticket is no longer in process.');
-    });
-
-    const resolvedTicketId = gpsSyncManager.getTicketId();
-    await startTrackingService(resolvedTicketId);
-    startWatch();
-
-    running = true;
-    starting = false;
-    persistState(true, resolvedTicketId);
-    console.log('[BackgroundGPS] Started globally');
-    return true;
   },
 
   /**
-   * Start GPS tracking unconditionally — called after login.
-   * Does not require an active ticket. GPS always runs until logout.
+   * Start with ticket requirement (used from VehicleTrackingScreen).
    */
-  async startAlways(ticketId?: number | null): Promise<boolean> {
-    if (running || starting) return true;
+  async start(ticketId?: number | null, silent = false): Promise<boolean> {
+    if (running || starting || clearing) return running;
     starting = true;
 
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) {
-      starting = false;
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) {
+        if (!silent) {
+          showToast('error', 'Permission Denied', 'Location permission is required for GPS tracking.');
+        }
+        return false;
+      }
+
+      const hasTicket = await gpsSyncManager.start(ticketId);
+      if (!hasTicket) {
+        if (!silent) {
+          showToast('error', 'No Active Ticket', 'GPS tracking requires an in-process delivery.');
+        }
+        return false;
+      }
+
+      gpsSyncManager.setOnTicketInactive(() => {
+        backgroundGpsTracker.stop();
+        showToast('info', 'Tracking Stopped', 'Ticket is no longer in process.');
+      });
+
+      if (AppState.currentState === 'active') {
+        startWatch();
+      }
+      setupAppStateListener();
+
+      running = true;
+      console.log(`[GPS] Started — foreground only — ticket: ${gpsSyncManager.getTicketId()}`);
+      return true;
+    } catch (err: any) {
+      console.error(`[GPS] start failed: ${err.message}`);
       return false;
+    } finally {
+      starting = false;
     }
-
-    // Try to start gpsSyncManager with ticket — if no ticket, start sync anyway
-    const hasTicket = await gpsSyncManager.start(ticketId);
-    if (!hasTicket) {
-      gpsSyncManager.startWithoutTicket();
-    }
-
-    await startTrackingService(ticketId);
-    startWatch();
-
-    running = true;
-    starting = false;
-    persistState(true, ticketId ?? null);
-    console.log(`[BackgroundGPS] Started always — ticket: ${ticketId || 'none'}`);
-    return true;
   },
 
-  /** Stop UI tracking — native service continues collecting GPS silently. */
+  /** Stop GPS tracking completely. */
   stop(): void {
-    if (!running && watchId === null) return;
+    if (!running && watchId === null && !permissionDenied) return;
 
-    const wasRunning = running;
     running = false;
     starting = false;
-
+    permissionDenied = false;
+    pendingTicketId = null;
     stopWatch();
-    stopIdleCheck();
-    isIdle = false;
-    consecutiveIdleCount = 0;
-
-    // Switch native service to silent mode — keeps collecting GPS in background
-    if (Platform.OS === 'android' && LocationTrackingModule) {
-      LocationTrackingModule.setIdleMode(false).catch(() => {});
-      LocationTrackingModule.setSilentMode(true).catch(() => {});
-      console.log('[BackgroundGPS] Native service switched to silent mode (idle reset)');
-    }
-
-    // Stop notifee foreground notification (UI only)
-    if (wasRunning) {
-      try {
-        notifee.stopForegroundService().catch(() => {});
-        notifee.cancelNotification('tracking-foreground').catch(() => {});
-      } catch {}
-    }
-
-    // Stop the 30s sync interval (no JS records to sync, saves unnecessary API calls)
-    // Native records will be imported and flushed on next app open via autoResume()
+    removeAppStateListener();
+    connectivityRestoredUnsub?.();
+    connectivityRestoredUnsub = null;
+    connectivityLostUnsub?.();
+    connectivityLostUnsub = null;
+    isOfflineMode = false;
     gpsSyncManager.stop();
-
     lastPosition = null;
-    // Keep persistState as active so autoResume works on next app open
-    console.log('[BackgroundGPS] UI stopped — native GPS continues silently');
+    lastSavedPosition = null;
+    console.log('[GPS] Stopped');
   },
 
-  /** Whether tracking is currently active. */
+  /** Stop GPS, upload pending records, clear only uploaded records, then logout. */
+  async clearAllData(): Promise<void> {
+    clearing = true;
+    stopWatch();
+    removeAppStateListener();
+    connectivityRestoredUnsub?.();
+    connectivityRestoredUnsub = null;
+    connectivityLostUnsub?.();
+    connectivityLostUnsub = null;
+    isOfflineMode = false;
+
+    try {
+      const unsynced = gpsStorage.getUnsynced();
+      if (unsynced.length > 0) {
+        console.log(`[GPS] ${unsynced.length} unsynced records — uploading before logout...`);
+        await gpsSyncManager.flushUnsynced();
+
+        const stillUnsynced = gpsStorage.getUnsynced();
+        if (stillUnsynced.length === 0) {
+          console.log('[GPS] All records uploaded — clearing storage');
+          gpsStorage.clear();
+        } else {
+          console.log(`[GPS] ${stillUnsynced.length} records failed to upload — keeping for next login`);
+          gpsStorage.clearSynced();
+        }
+      } else {
+        gpsStorage.clear();
+      }
+    } catch (err: any) {
+      console.warn(`[GPS] clearAllData flush error: ${err.message}`);
+    }
+
+    gpsSyncManager.stop();
+    running = false;
+    starting = false;
+    permissionDenied = false;
+    pendingTicketId = null;
+    lastPosition = null;
+    lastSavedPosition = null;
+    currentBehavior = {};
+    clearing = false;
+    console.log('[GPS] Logout complete');
+  },
+
+  /** Whether tracking is active. */
   isRunning(): boolean {
     return running;
   },
 
-  /** Get the last known GPS position (null if not tracking). */
+  /** Get last known position. */
   getLastPosition(): GpsPosition | null {
     return lastPosition;
   },
 
-  /**
-   * Subscribe to real-time position updates.
-   * Returns an unsubscribe function.
-   */
+  /** Whether idle (kept for VehicleTrackingScreen compatibility). */
+  isCurrentlyIdle(): boolean {
+    return false; // No idle detection in foreground-only mode
+  },
+
+  /** Subscribe to position updates. */
   addListener(cb: GpsListener): () => void {
     listeners.add(cb);
     return () => { listeners.delete(cb); };
   },
 
-  /** Update behavior data that gets attached to each GPS record. */
+  /** Attach behavior data to GPS records. */
   setBehavior(data: BehaviorData): void {
     currentBehavior = data;
   },
 
-  /** Save a trip summary (called when driver stops tracking). */
+  /** Save a trip summary. */
   saveTripSummary(summary: {
     ticket_id: number | null;
     started_at: string;
@@ -448,88 +435,10 @@ export const backgroundGpsTracker = {
     gpsSyncManager.syncTripSummaries();
   },
 
-  /** Clear all GPS data and fully stop everything (called on driver logout). */
-  clearAllData(): void {
-    // Stop JS watcher + idle check
-    stopWatch();
-    stopIdleCheck();
-    isIdle = false;
-    consecutiveIdleCount = 0;
-    // Stop sync interval
-    gpsSyncManager.stop();
-    // Stop notifee
-    try {
-      notifee.stopForegroundService().catch(() => {});
-      notifee.cancelNotification('tracking-foreground').catch(() => {});
-    } catch {}
-
-    // Fully stop native service
-    if (Platform.OS === 'android' && LocationTrackingModule) {
-      LocationTrackingModule.stopTracking().catch(() => {});
-      LocationTrackingModule.clearStoredRecords().catch(() => {});
-    }
-
-    // Clear all local data
-    gpsStorage.clear();
-    running = false;
-    starting = false;
-    lastPosition = null;
-    currentBehavior = {};
-    persistState(false, null);
-    console.log('[BackgroundGPS] All GPS data cleared + everything stopped (driver logout)');
-  },
-
-  /**
-   * Auto-resume tracking on app startup if it was active before (e.g., after app kill).
-   * Called from OfflineSyncContext. Uses silent mode (no permission prompts, no toasts).
-   * Also imports any GPS records collected natively while the app was killed.
-   */
+  /** No-op — kept for OfflineSyncContext compatibility. */
   async autoResume(): Promise<void> {
-    // Import GPS records collected by native service while app was killed
-    const imported = await importNativeRecords();
-
-    // Flush any imported records to server (if online now, or when internet returns)
-    if (imported > 0) {
-      if (getIsOnline()) {
-        gpsSyncManager.flushUnsynced();
-      } else {
-        // Register a one-time listener to flush when internet comes back
-        const unsub = onConnectivityRestored(() => {
-          unsub();
-          gpsSyncManager.flushUnsynced();
-        });
-      }
-    }
-
-    const wasActive = store.getBoolean(ACTIVE_KEY);
-    // Also check native service state (it survives app kill via START_STICKY)
-    let nativeActive = false;
-    if (Platform.OS === 'android' && LocationTrackingModule) {
-      try {
-        nativeActive = await LocationTrackingModule.isTrackingActive();
-      } catch {}
-    }
-
-    if (!wasActive && !nativeActive) return;
-
-    let savedTicketId: number | null = null;
-    const raw = store.getNumber(TICKET_KEY);
-    savedTicketId = raw && raw > 0 ? raw : null;
-
-    // If no ticket from MMKV, try native service
-    if (!savedTicketId && nativeActive && LocationTrackingModule) {
-      try {
-        const nativeTicket = await LocationTrackingModule.getTicketId();
-        if (nativeTicket && nativeTicket > 0) savedTicketId = nativeTicket;
-      } catch {}
-    }
-
-    console.log(`[BackgroundGPS] Auto-resuming — ticket: ${savedTicketId}, imported: ${imported} native records`);
-
-    const started = await backgroundGpsTracker.startAlways(savedTicketId);
-    if (!started) {
-      console.log('[BackgroundGPS] Auto-resume failed (permission denied) — clearing state');
-      persistState(false, null);
-    }
+    // Foreground-only mode: no background/killed state to resume from.
+    // GPS starts fresh via startAlways() after login.
+    console.log('[GPS] autoResume skipped — foreground-only mode');
   },
 };

@@ -31,8 +31,7 @@ type Props = {
 
 const HARD_BRAKE_THRESHOLD = 6;
 const HARD_CORNER_THRESHOLD = 5;
-const IDLE_SPEED_THRESHOLD = 1;
-const SPEED_LIMIT_KMH = 80;
+const DEFAULT_SPEED_LIMIT_KMH = 80;
 
 const toKmh = (v: number) => Math.round(v * 3.6);
 const toCompass = (deg: number): string => {
@@ -97,9 +96,16 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const [accelX, setAccelX] = useState(0);
   const [accelY, setAccelY] = useState(0);
 
-  // Speeding
+  // Speeding — configurable per ticket/zone, falls back to default
+  const [speedLimitKmh, setSpeedLimitKmh] = useState(DEFAULT_SPEED_LIMIT_KMH);
+  const speedLimitRef = useRef(DEFAULT_SPEED_LIMIT_KMH);
+  speedLimitRef.current = speedLimitKmh;
   const [isSpeeding, setIsSpeeding] = useState(false);
   const isSpeedingRef = useRef(false);
+
+  // Latest accelerometer values (ref for immediate access in GPS callback)
+  const accelXRef = useRef(0);
+  const accelYRef = useRef(0);
 
   // Geofence
   const [geofenceZones, setGeofenceZones] = useState<{name: string; lat: number; lng: number; radius: number}[]>([]);
@@ -168,13 +174,16 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       setTripDuration(Math.floor((Date.now() - tripStartTime.current) / 1000));
     }, 1000);
 
-    // Fetch geofence zones from ticket
+    // Fetch geofence zones and speed limit from ticket
     if (passedTicketId) {
       ticketsApi.getById(passedTicketId).then(res => {
         const zones: {name: string; lat: number; lng: number; radius: number}[] = [];
         if (res.data?.location?.plant) zones.push({name: 'Plant', lat: res.data.location.plant.lat, lng: res.data.location.plant.lng, radius: 200});
         if (res.data?.location?.delivery) zones.push({name: 'Jobsite', lat: res.data.location.delivery.lat, lng: res.data.location.delivery.lng, radius: res.data.location.delivery.radius_m || 200});
         setGeofenceZones(zones);
+        // Use ticket/zone speed limit if provided by API
+        const limit = res.data?.speed_limit_kmh;
+        if (typeof limit === 'number' && limit > 0) setSpeedLimitKmh(limit);
       }).catch(() => {});
     }
 
@@ -189,6 +198,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
 
     setUpdateIntervalForType(SensorTypes.accelerometer, 200);
     accelSub.current = accelerometer.subscribe(({x, y}) => {
+      accelXRef.current = x;
+      accelYRef.current = y;
       setAccelX(x);
       setAccelY(y);
       if (Math.abs(y) > HARD_BRAKE_THRESHOLD) setHardBrakes(prev => prev + 1);
@@ -197,14 +208,15 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   }, [haversine]);
 
   const stopTracking = useCallback(() => {
-    // Save trip summary before stopping
+    // Save trip summary before stopping — use Date.now() for accurate duration
     if (tripStartTime.current > 0) {
+      const actualDuration = Math.floor((Date.now() - tripStartTime.current) / 1000);
       backgroundGpsTracker.saveTripSummary({
         ticket_id: passedTicketId,
         started_at: new Date(tripStartTime.current).toISOString(),
         ended_at: new Date().toISOString(),
         total_distance_m: tripDistance,
-        total_duration_s: tripDuration,
+        total_duration_s: actualDuration,
         max_speed_ms: maxSpeed,
         avg_speed_ms: avgSpeed,
         hard_brakes: hardBrakes,
@@ -220,7 +232,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
     if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
     setIsTracking(false);
     setGpsActive(false);
-  }, [passedTicketId, tripDistance, tripDuration, maxSpeed, avgSpeed, hardBrakes, hardCorners, idleTime]);
+  }, [passedTicketId, tripDistance, maxSpeed, avgSpeed, hardBrakes, hardCorners, idleTime]);
 
   // Subscribe to background GPS position updates (for UI display)
   useEffect(() => {
@@ -233,11 +245,12 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       setAccuracy(pos.accuracy);
 
       const kmh = Math.round(pos.speed * 3.6);
-      if (kmh > SPEED_LIMIT_KMH && !isSpeedingRef.current) {
+      const limit = speedLimitRef.current;
+      if (kmh > limit && !isSpeedingRef.current) {
         isSpeedingRef.current = true;
         setIsSpeeding(true);
-        showToast('error', 'Speeding Alert', `Speed ${kmh} km/h exceeds limit of ${SPEED_LIMIT_KMH} km/h`);
-      } else if (kmh <= SPEED_LIMIT_KMH) {
+        showToast('error', 'Speeding Alert', `Speed ${kmh} km/h exceeds limit of ${limit} km/h`);
+      } else if (kmh <= limit) {
         isSpeedingRef.current = false;
         setIsSpeeding(false);
       }
@@ -273,7 +286,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
         }
       }
 
-      const idle = pos.speed < IDLE_SPEED_THRESHOLD;
+      // Use tracker's idle state as single source of truth
+      const idle = backgroundGpsTracker.isCurrentlyIdle();
       if (idle) {
         if (!idleStart.current) idleStart.current = Date.now();
         setIsIdle(true);
@@ -285,11 +299,12 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       }
 
       // Send behavior data to tracker so it's saved with each GPS record
+      // Use refs for accelerometer values to avoid stale closure data
       backgroundGpsTracker.setBehavior({
         is_speeding: isSpeedingRef.current,
         is_idle: idle,
-        accel_x: accelX,
-        accel_y: accelY,
+        accel_x: accelXRef.current,
+        accel_y: accelYRef.current,
         zone: lastZone.current,
       });
     });

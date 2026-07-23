@@ -36,6 +36,7 @@ class LocationTrackingService : Service() {
         private const val JS_HEARTBEAT_STALE_MS = 30_000L // If no heartbeat for 30s, JS is frozen/dead
         private const val IDLE_SPEED_THRESHOLD = 1.0 // m/s
         private const val IDLE_CONSECUTIVE_THRESHOLD = 3
+        private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
 
         fun setJsAlive(context: Context, alive: Boolean) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -153,6 +154,8 @@ class LocationTrackingService : Service() {
     private var isSilent: Boolean = false
     private var isIdleMode: Boolean = false
     private var consecutiveIdleCount: Int = 0
+    private var idleLat: Double = 0.0
+    private var idleLng: Double = 0.0
     private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
     private var pendingCount = 0
     private val WRITE_BATCH_SIZE = 5 // Flush to SharedPrefs every 5 records
@@ -326,20 +329,20 @@ class LocationTrackingService : Service() {
         val isIdle = prefs.getBoolean(KEY_IDLE, false)
         val request = LocationRequest.create().apply {
             if (isIdle) {
-                // Idle mode: low-frequency polling just to detect movement resumption
-                priority = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
-                interval = 60000L
-                fastestInterval = 30000L
-                smallestDisplacement = 50f
+                // Idle mode: reduced frequency but keep HIGH_ACCURACY for reliable distance checks
+                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+                interval = 30000L
+                fastestInterval = 15000L
+                smallestDisplacement = 20f
             } else if (isSilentMode) {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 10000L
-                fastestInterval = 10000L
+                interval = 5000L
+                fastestInterval = 5000L
                 smallestDisplacement = 10f
             } else {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 10000L
-                fastestInterval = 10000L
+                interval = 5000L
+                fastestInterval = 5000L
                 smallestDisplacement = 5f
             }
         }
@@ -362,32 +365,60 @@ class LocationTrackingService : Service() {
             ticketId = latestTicketId
         }
 
-        val rawSpeed = (location.speed ?: 0f).toDouble()
-        val speedMs = if (rawSpeed.isNaN()) 0.0 else Math.max(0.0, rawSpeed)
+        val speedAvailable = location.hasSpeed() && location.speed >= 0f
+        val speedMs = if (speedAvailable) location.speed.toDouble() else 0.0
         val speedKmh = speedMs * 3.6
         val isSpeeding = speedKmh > 80.0
-        val isIdle = speedMs < IDLE_SPEED_THRESHOLD
+        val isIdle = speedAvailable && speedMs < IDLE_SPEED_THRESHOLD
 
         // Native idle detection (works in background/kill mode without JS)
+        // Also checks distance from idle position — speed from FusedLocation can be 0 even while driving
         if (isIdle) {
-            consecutiveIdleCount++
-            if (consecutiveIdleCount >= IDLE_CONSECUTIVE_THRESHOLD) {
-                if (!isIdleMode) {
-                    Log.d(TAG, "Truck idle — switching to low-frequency mode ($consecutiveIdleCount consecutive idle fixes)")
-                    isIdleMode = true
-                    prefs.edit().putBoolean(KEY_IDLE, true).apply()
-                    // Restart location updates with idle parameters
-                    fusedClient.removeLocationUpdates(locationCallback)
-                    startLocationUpdates()
+            // Check distance from idle position
+            var movedFromIdle = false
+            if (isIdleMode && idleLat != 0.0 && idleLng != 0.0) {
+                val results = FloatArray(1)
+                Location.distanceBetween(idleLat, idleLng, location.latitude, location.longitude, results)
+                val dist = results[0].toDouble()
+                if (dist > IDLE_DISTANCE_THRESHOLD) {
+                    Log.d(TAG, "Moved ${String.format("%.0f", dist)}m from idle position — resuming tracking")
+                    movedFromIdle = true
                 }
-                Log.d(TAG, "Idle — skipping GPS record | speed: ${String.format("%.1f", speedMs)} m/s")
-                return
+            }
+
+            if (movedFromIdle) {
+                isIdleMode = false
+                idleLat = 0.0
+                idleLng = 0.0
+                consecutiveIdleCount = 0
+                prefs.edit().putBoolean(KEY_IDLE, false).apply()
+                fusedClient.removeLocationUpdates(locationCallback)
+                startLocationUpdates()
+                // Fall through to save this record
+            } else {
+                consecutiveIdleCount++
+                if (consecutiveIdleCount >= IDLE_CONSECUTIVE_THRESHOLD) {
+                    if (!isIdleMode) {
+                        Log.d(TAG, "Truck idle — switching to low-frequency mode ($consecutiveIdleCount consecutive idle fixes)")
+                        isIdleMode = true
+                        idleLat = location.latitude
+                        idleLng = location.longitude
+                        prefs.edit().putBoolean(KEY_IDLE, true).apply()
+                        // Restart location updates with idle parameters
+                        fusedClient.removeLocationUpdates(locationCallback)
+                        startLocationUpdates()
+                    }
+                    Log.d(TAG, "Idle — skipping GPS record | speed: ${String.format("%.1f", speedMs)} m/s")
+                    return
+                }
             }
         } else {
             // Movement detected — resume normal tracking if was idle
             if (isIdleMode) {
                 Log.d(TAG, "Movement detected — resuming normal GPS tracking")
                 isIdleMode = false
+                idleLat = 0.0
+                idleLng = 0.0
                 prefs.edit().putBoolean(KEY_IDLE, false).apply()
                 fusedClient.removeLocationUpdates(locationCallback)
                 startLocationUpdates()

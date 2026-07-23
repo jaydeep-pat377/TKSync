@@ -1,6 +1,6 @@
 import {Platform, NativeModules} from 'react-native';
 import {gpsStorage} from './gpsStorage';
-import {gpsApi, trackingApi} from './api';
+import {gpsApi, trackingApi, heartbeatApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {createMMKV} from 'react-native-mmkv';
 
@@ -54,10 +54,8 @@ async function resolveTicketId(): Promise<number | null> {
   }
 }
 
-/** Sync unsynced GPS records + re-resolve ticket ID for new records. */
-async function syncAndRefreshTicket(): Promise<void> {
-  await syncGpsRecords();
-  // Re-resolve ticket ID — check if ticket is still active
+/** Check if ticket is still active — called every 5 minutes (not every 30s). */
+async function refreshTicket(): Promise<void> {
   const newTicketId = await resolveTicketId();
   if (newTicketId === null && currentTicketId !== null) {
     console.log(`[GpsSyncManager] Ticket ${currentTicketId} is no longer active — auto-stopping`);
@@ -68,7 +66,6 @@ async function syncAndRefreshTicket(): Promise<void> {
   if (newTicketId !== null && newTicketId !== currentTicketId) {
     console.log(`[GpsSyncManager] Ticket changed: ${currentTicketId} → ${newTicketId}`);
     currentTicketId = newTicketId;
-    // Sync new ticket ID to native service so killed-state records get correct ticket
     if (Platform.OS === 'android' && LocationTrackingModule) {
       LocationTrackingModule.updateTicketId(newTicketId).catch(() => {});
     }
@@ -80,11 +77,12 @@ const BATCH_SIZE = 100;
 async function syncGpsRecords(): Promise<void> {
   if (isSyncing || !getIsOnline()) return;
 
-  // Only upload to API when there's an active ticket
-  if (!currentTicketId) return;
-
   const unsynced = gpsStorage.getUnsynced();
-  if (unsynced.length === 0) return;
+  if (unsynced.length === 0) {
+    // No GPS records to upload — send heartbeat so server knows we're online
+    heartbeatApi.ping().catch(() => {});
+    return;
+  }
 
   isSyncing = true;
   let totalSynced = 0;
@@ -127,6 +125,10 @@ async function syncGpsRecords(): Promise<void> {
       consecutiveFailures = 0;
       resetSyncInterval();
     }
+    // Check ticket status after successful upload (no separate timer needed)
+    if (totalSynced > 0) {
+      refreshTicket();
+    }
   } catch (err: any) {
     console.warn(`[GpsSyncManager] Sync failed after ${totalSynced} records: ${err.message}`);
     // Exponential backoff: 30s → 60s → 120s → max 5min
@@ -145,7 +147,7 @@ async function syncGpsRecords(): Promise<void> {
 function resetSyncInterval(): void {
   if (!syncInterval) return; // Stopped — don't recreate
   clearInterval(syncInterval);
-  syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
+  syncInterval = setInterval(syncGpsRecords, currentSyncInterval);
 }
 
 export const gpsSyncManager = {
@@ -169,7 +171,7 @@ export const gpsSyncManager = {
     console.log(`[GpsSyncManager] Started — ticket_id: ${currentTicketId}`);
     consecutiveFailures = 0;
     currentSyncInterval = BASE_SYNC_INTERVAL_MS;
-    syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
+    syncInterval = setInterval(syncGpsRecords, currentSyncInterval);
     unsubConnectivity = onConnectivityRestored(() => syncGpsRecords());
     syncGpsRecords();
     return true;
@@ -182,7 +184,7 @@ export const gpsSyncManager = {
     console.log('[GpsSyncManager] Started without ticket — GPS records will have no ticket_id');
     consecutiveFailures = 0;
     currentSyncInterval = BASE_SYNC_INTERVAL_MS;
-    syncInterval = setInterval(syncAndRefreshTicket, currentSyncInterval);
+    syncInterval = setInterval(syncGpsRecords, currentSyncInterval);
     unsubConnectivity = onConnectivityRestored(() => syncGpsRecords());
   },
 

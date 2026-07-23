@@ -54,6 +54,15 @@ export function onConnectivityRestored(cb: (online: boolean) => void) {
   };
 }
 
+const offlineListeners = new Set<() => void>();
+
+export function onConnectivityLost(cb: () => void) {
+  offlineListeners.add(cb);
+  return () => {
+    offlineListeners.delete(cb);
+  };
+}
+
 export function useNetworkStatus(): UseNetworkStatusReturn {
   const [status, setStatus] = useState<NetworkStatus>({
     isConnected: true,
@@ -82,6 +91,7 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
 
       if (!effectiveOnline && prevOnline.current) {
         console.log('[Network] Connection lost — saves will be queued offline');
+        offlineListeners.forEach(cb => cb());
       }
 
       prevOnline.current = effectiveOnline;

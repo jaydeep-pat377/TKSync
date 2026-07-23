@@ -32,6 +32,7 @@ const SILENT_ENDPOINTS = [
   ENDPOINTS.NOTIFICATION_UNREGISTER,
   ENDPOINTS.TRACKING_ME,
   ENDPOINTS.TRACKING_GPS,
+  ENDPOINTS.TRACKING_HEARTBEAT,
 ];
 
 function classifyError(err: unknown): {title: string; message: string} {
@@ -80,9 +81,13 @@ async function request<T = any>(
     throw new ApiError(offlineMsg, 'OFFLINE');
   }
 
-  console.log(`[API Request] ${method} ${url}`, {
-    ...(options.body ? {hasBody: true} : {}),
-  });
+  try {
+    console.log(`[API Request] ${method} ${url}`, options.body
+      ? JSON.parse(options.body as string)
+      : '(no body)');
+  } catch {
+    console.log(`[API Request] ${method} ${url}`, '(body not JSON)');
+  }
 
   let res: Response;
   try {
@@ -815,6 +820,11 @@ export const notificationsApi = {
 export const trackingApi = {
   getMe: () =>
     request<{truck: any; current_load: {id: number; ticket_id: number; ticket_code: string} | null; eta: any}>(ENDPOINTS.TRACKING_ME),
+};
+
+export const heartbeatApi = {
+  ping: () =>
+    request(ENDPOINTS.TRACKING_HEARTBEAT, { method: 'POST' }),
 };
 
 export const gpsApi = {

@@ -138,6 +138,14 @@ export const gpsStorage = {
     gpsStore.set(TRIP_SUMMARIES_KEY, '[]');
   },
 
+  /** Remove only synced records — keep unsynced for next login. */
+  clearSynced(): void {
+    const records = getRecords().filter(r => !r.synced);
+    setRecords(records);
+    const summaries = getTripSummaries().filter(s => !s.synced);
+    setTripSummaries(summaries);
+  },
+
   /** Save a trip summary when tracking stops. */
   addTripSummary(summary: Omit<TripSummary, 'id' | 'synced'>): void {
     const summaries = getTripSummaries();
