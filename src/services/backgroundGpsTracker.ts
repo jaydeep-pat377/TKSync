@@ -35,6 +35,7 @@ let watchId: number | null = null;
 let lastPosition: GpsPosition | null = null;
 let lastSavedPosition: {latitude: number; longitude: number} | null = null;
 const MIN_DISTANCE_TO_SAVE = 5; // metres — only save when moved this far
+let wasStationary = false; // true after first stationary fix is saved — suppresses drift
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
 let appStateSubscription: {remove: () => void} | null = null;
@@ -141,8 +142,23 @@ function handlePosition(position: any) {
     return;
   }
 
+  // Stationary detection: skip GPS drift when truck is not moving
+  const isStationary = currentSpeed < 1.0; // < 1 m/s ≈ 3.6 km/h
+
+  if (isStationary) {
+    if (wasStationary) {
+      // Already saved the "stopped at" position — skip drift records
+      return;
+    }
+    // First stationary fix — save it so we know WHERE the truck stopped
+    wasStationary = true;
+  } else {
+    // Moving — reset stationary flag
+    wasStationary = false;
+  }
+
   // Only save when truck has moved > 5m from last saved position
-  if (lastSavedPosition) {
+  if (!isStationary && lastSavedPosition) {
     const dist = haversineDistance(
       lastSavedPosition.latitude, lastSavedPosition.longitude,
       latitude, longitude,
@@ -179,6 +195,14 @@ function handleError(error: any) {
 }
 
 // ─── Watch Control ───────────────────────────────────────────────
+
+function stopWatch() {
+  if (watchId !== null) {
+    Geolocation.clearWatch(watchId);
+    watchId = null;
+    console.log('[GPS] watchPosition stopped');
+  }
+}
 
 function startWatch() {
   if (watchId !== null) return;
@@ -345,6 +369,7 @@ export const backgroundGpsTracker = {
     gpsSyncManager.stop();
     lastPosition = null;
     lastSavedPosition = null;
+    wasStationary = false;
     console.log('[GPS] Stopped');
   },
 
@@ -387,6 +412,7 @@ export const backgroundGpsTracker = {
     pendingTicketId = null;
     lastPosition = null;
     lastSavedPosition = null;
+    wasStationary = false;
     currentBehavior = {};
     clearing = false;
     console.log('[GPS] Logout complete');
