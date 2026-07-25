@@ -12,6 +12,7 @@ import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {syncManager, SyncEvent} from '../services/syncManager';
 import {gpsSyncManager} from '../services/gpsSyncManager';
 import {backgroundGpsTracker} from '../services/backgroundGpsTracker';
+
 import {offlineStorage} from '../services/offlineStorage';
 import {ticketsApi, trackingApi} from '../services/api';
 import {validateDeliveryTab} from '../utils/validateDeliveryTab';
@@ -50,6 +51,10 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     if (initialized.current) return;
     initialized.current = true;
     syncManager.init();
+    // Import any native GPS records left from previous session (e.g., after app kill)
+    backgroundGpsTracker.autoResume().catch(err => {
+      console.error('[OfflineSync] autoResume failed:', err);
+    });
     gpsSyncManager.flushUnsynced().catch(err => {
       console.error('[OfflineSync] flushUnsynced failed:', err);
     });

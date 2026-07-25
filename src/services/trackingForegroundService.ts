@@ -18,10 +18,10 @@ async function ensureChannel(): Promise<string> {
 export async function startTrackingService(ticketId?: number | null): Promise<void> {
   if (Platform.OS !== 'android') return;
 
-  // Use native sticky service for killed-state survival
-  if (LocationTrackingModule && ticketId) {
+  // Use native service for background GPS tracking
+  if (LocationTrackingModule) {
     try {
-      await LocationTrackingModule.startTracking(Number(ticketId));
+      await LocationTrackingModule.startTracking(Number(ticketId) || 0);
       console.log('[TrackingService] Native sticky service started');
       return;
     } catch (e: any) {

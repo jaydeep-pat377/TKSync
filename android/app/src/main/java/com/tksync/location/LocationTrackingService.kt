@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
@@ -14,8 +15,14 @@ import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.Executors
 
 class LocationTrackingService : Service() {
 
@@ -34,6 +41,10 @@ class LocationTrackingService : Service() {
         private const val KEY_JS_ALIVE = "js_alive" // When true, JS is recording — native skips saving
         private const val KEY_JS_HEARTBEAT = "js_heartbeat" // Last time JS recorded a GPS fix (epoch ms)
         private const val JS_HEARTBEAT_STALE_MS = 30_000L // If no heartbeat for 30s, JS is frozen/dead
+        private const val KEY_API_BASE_URL = "api_base_url"
+        private const val KEY_API_TOKEN = "api_token"
+        private const val UPLOAD_BATCH_SIZE = 50
+        private const val UPLOAD_INTERVAL_MS = 30_000L // Upload every 30 seconds
         private const val IDLE_SPEED_THRESHOLD = 1.0 // m/s
         private const val IDLE_CONSECUTIVE_THRESHOLD = 3
         private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
@@ -136,6 +147,21 @@ class LocationTrackingService : Service() {
             Log.d(TAG, "Stored records cleared")
         }
 
+        fun setApiCredentials(context: Context, baseUrl: String, token: String) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString(KEY_API_BASE_URL, baseUrl)
+                .putString(KEY_API_TOKEN, token)
+                .apply()
+            Log.d(TAG, "API credentials updated — baseUrl: $baseUrl")
+        }
+
+        fun updateApiToken(context: Context, token: String) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_API_TOKEN, token).apply()
+            Log.d(TAG, "API token updated")
+        }
+
         fun isActive(context: Context): Boolean {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             return prefs.getBoolean(KEY_ACTIVE, false)
@@ -158,10 +184,13 @@ class LocationTrackingService : Service() {
     private var idleLng: Double = 0.0
     private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
     private var pendingCount = 0
-    private val WRITE_BATCH_SIZE = 5 // Flush to SharedPrefs every 5 records
+    private val WRITE_BATCH_SIZE = 1 // Flush to SharedPrefs immediately — ensures no records lost on foreground transition
     private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
+    private val uploadExecutor = Executors.newSingleThreadExecutor()
+    private val uploadHandler = Handler(Looper.getMainLooper())
+    private var isUploading = false
 
     override fun onCreate() {
         super.onCreate()
@@ -179,11 +208,11 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // If intent is null, service was restarted by Android after kill (START_STICKY)
-        // JS is definitely dead — reset js_alive so native starts recording
+        // If intent is null, service was restarted by Android after kill — stop immediately
         if (intent == null) {
-            prefs.edit().putBoolean(KEY_JS_ALIVE, false).apply()
-            Log.d(TAG, "Service restarted by system (no intent) — JS is dead, native will record")
+            Log.d(TAG, "Service restarted by system after kill — stopping (background only, not kill)")
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         ticketId = intent?.getIntExtra("ticket_id", 0)
@@ -213,13 +242,15 @@ class LocationTrackingService : Service() {
         // Remove old location updates before starting new ones (prevents duplicates on restart)
         fusedClient.removeLocationUpdates(locationCallback)
         startLocationUpdates()
-        Log.d(TAG, "Service started — ticket: $ticketId, silent: $isSilent, idle: $isIdleMode, START_STICKY")
-        return START_STICKY
+        scheduleUpload()
+        Log.d(TAG, "Service started — ticket: $ticketId, silent: $isSilent, idle: $isIdleMode, START_NOT_STICKY")
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
         fusedClient.removeLocationUpdates(locationCallback)
+        uploadHandler.removeCallbacksAndMessages(null)
         // Flush any buffered records before dying
         if (pendingCount > 0) {
             flushPendingRecords()
@@ -254,13 +285,16 @@ class LocationTrackingService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // JS is dead — native must start saving records
-        prefs.edit().putBoolean(KEY_JS_ALIVE, false).apply()
-        // Flush buffered records so they survive the restart
+        // App killed — flush any buffered records then stop service
         if (pendingCount > 0) {
             flushPendingRecords()
         }
-        Log.d(TAG, "Task removed (app killed) — JS dead, native will record, service restart via START_STICKY")
+        prefs.edit()
+            .putBoolean(KEY_JS_ALIVE, false)
+            .putBoolean(KEY_ACTIVE, false)
+            .apply()
+        stopSelf()
+        Log.d(TAG, "Task removed (app killed) — flushed records, service stopping")
     }
 
     private fun createNotificationChannels() {
@@ -330,20 +364,19 @@ class LocationTrackingService : Service() {
         val request = LocationRequest.create().apply {
             if (isIdle) {
                 // Idle mode: reduced frequency but keep HIGH_ACCURACY for reliable distance checks
+                // No smallestDisplacement — time-based updates ensure saveLocation() runs
+                // so heartbeat staleness can be detected and idle-to-active transitions work
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 interval = 30000L
                 fastestInterval = 15000L
-                smallestDisplacement = 20f
             } else if (isSilentMode) {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 interval = 5000L
                 fastestInterval = 5000L
-                smallestDisplacement = 10f
             } else {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 interval = 5000L
                 fastestInterval = 5000L
-                smallestDisplacement = 5f
             }
         }
 
@@ -357,6 +390,19 @@ class LocationTrackingService : Service() {
     }
 
     private fun saveLocation(location: Location) {
+
+        // Skip saving if JS is alive (foreground) — JS handles recording, avoids duplicates
+        val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
+        if (jsAlive) {
+            // Check heartbeat — if JS hasn't updated in 30s, it's probably frozen/backgrounded
+            val heartbeat = prefs.getLong(KEY_JS_HEARTBEAT, 0L)
+            if (heartbeat > 0 && System.currentTimeMillis() - heartbeat < JS_HEARTBEAT_STALE_MS) {
+                return // JS is actively recording — skip native save
+            }
+            // JS heartbeat stale — JS is frozen/backgrounded, self-correct the flag
+            prefs.edit().putBoolean(KEY_JS_ALIVE, false).apply()
+            Log.d(TAG, "JS heartbeat stale — set jsAlive=false, native taking over recording")
+        }
 
         // Re-read ticket ID from prefs in case JS updated it mid-session
         val latestTicketId = prefs.getInt(KEY_TICKET_ID, ticketId)
@@ -452,5 +498,136 @@ class LocationTrackingService : Service() {
         Log.d(TAG, "GPS (pending: $pendingCount) | lat: ${String.format("%.6f", location.latitude)}, " +
                 "lng: ${String.format("%.6f", location.longitude)} | " +
                 "speed: ${String.format("%.1f", speedMs)} m/s | ticket: $ticketId | silent: $isSilent")
+    }
+
+    // ─── Background API Upload ─────────────────────────────────────
+
+    private fun scheduleUpload() {
+        uploadHandler.removeCallbacksAndMessages(null)
+        uploadHandler.postDelayed(object : Runnable {
+            override fun run() {
+                // Only upload when JS is NOT alive (background mode)
+                val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
+                if (!jsAlive) {
+                    uploadRecordsToApi()
+                }
+                uploadHandler.postDelayed(this, UPLOAD_INTERVAL_MS)
+            }
+        }, UPLOAD_INTERVAL_MS)
+    }
+
+    private fun uploadRecordsToApi() {
+        if (isUploading) return
+        val baseUrl = prefs.getString(KEY_API_BASE_URL, null)
+        val token = prefs.getString(KEY_API_TOKEN, null)
+        if (baseUrl.isNullOrEmpty() || token.isNullOrEmpty()) {
+            Log.d(TAG, "Upload skipped — no API credentials")
+            return
+        }
+
+        val records = getStoredRecords(this)
+        // Find unsynced records
+        val unsynced = JSONArray()
+        val unsyncedIndices = mutableListOf<Int>()
+        for (i in 0 until records.length()) {
+            val r = records.getJSONObject(i)
+            if (!r.optBoolean("synced", false)) {
+                unsynced.put(r)
+                unsyncedIndices.add(i)
+            }
+        }
+        if (unsynced.length() == 0) return
+
+        isUploading = true
+        uploadExecutor.execute {
+            try {
+                // Upload in batches
+                var totalSynced = 0
+                var offset = 0
+                while (offset < unsynced.length()) {
+                    val batchSize = minOf(UPLOAD_BATCH_SIZE, unsynced.length() - offset)
+                    val batch = JSONArray()
+                    for (i in offset until offset + batchSize) {
+                        val r = unsynced.getJSONObject(i)
+                        batch.put(JSONObject().apply {
+                            put("client_id", r.optString("id", ""))
+                            put("ticket_id", r.optInt("ticket_id", 0))
+                            put("latitude", r.optDouble("latitude"))
+                            put("longitude", r.optDouble("longitude"))
+                            put("speed", r.optDouble("speed", 0.0))
+                            put("heading", r.optDouble("heading", 0.0))
+                            put("altitude", r.optDouble("altitude", 0.0))
+                            put("accuracy", r.optDouble("accuracy", 0.0))
+                            put("recorded_at", r.optString("recorded_at", ""))
+                            put("is_speeding", r.optBoolean("is_speeding", false))
+                            put("is_idle", r.optBoolean("is_idle", false))
+                        })
+                    }
+
+                    val body = JSONObject().apply { put("records", batch) }
+                    val success = postToApi("$baseUrl/tracking/gps", token, body)
+                    if (success) {
+                        totalSynced += batchSize
+                        // Mark records as synced
+                        for (i in offset until offset + batchSize) {
+                            val idx = unsyncedIndices[i]
+                            records.getJSONObject(idx).put("synced", true)
+                        }
+                    } else {
+                        break // Stop on first failure
+                    }
+                    offset += batchSize
+                }
+
+                if (totalSynced > 0) {
+                    // Save synced status and remove synced records to keep SharedPrefs small
+                    val remaining = JSONArray()
+                    for (i in 0 until records.length()) {
+                        if (!records.getJSONObject(i).optBoolean("synced", false)) {
+                            remaining.put(records.getJSONObject(i))
+                        }
+                    }
+                    prefs.edit().putString(KEY_RECORDS, remaining.toString()).apply()
+                    Log.d(TAG, "Upload complete — synced: $totalSynced, remaining: ${remaining.length()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Upload failed: ${e.message}")
+            } finally {
+                isUploading = false
+            }
+        }
+    }
+
+    private fun postToApi(url: String, token: String, body: JSONObject): Boolean {
+        var conn: HttpURLConnection? = null
+        try {
+            conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
+            conn.doOutput = true
+
+            OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()) }
+
+            val code = conn.responseCode
+            if (code in 200..299) {
+                val response = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                Log.d(TAG, "API upload success ($code) — ${body.getJSONArray("records").length()} records")
+                return true
+            } else {
+                val error = try {
+                    BufferedReader(InputStreamReader(conn.errorStream)).use { it.readText() }
+                } catch (_: Exception) { "no error body" }
+                Log.w(TAG, "API upload failed ($code): $error")
+                return false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "API upload error: ${e.message}")
+            return false
+        } finally {
+            conn?.disconnect()
+        }
     }
 }

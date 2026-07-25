@@ -98,6 +98,30 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
     }
 
     @ReactMethod
+    fun setApiCredentials(baseUrl: String, token: String, promise: Promise) {
+        try {
+            LocationTrackingService.setApiCredentials(reactContext, baseUrl, token)
+            Log.d(TAG, "setApiCredentials called")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "setApiCredentials failed", e)
+            promise.reject("API_CRED_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun updateApiToken(token: String, promise: Promise) {
+        try {
+            LocationTrackingService.updateApiToken(reactContext, token)
+            Log.d(TAG, "updateApiToken called")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "updateApiToken failed", e)
+            promise.reject("API_TOKEN_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
     fun getStoredRecords(promise: Promise) {
         try {
             val records = LocationTrackingService.getStoredRecords(reactContext)

@@ -196,6 +196,13 @@ async function refreshAccessToken(): Promise<boolean> {
 
     if (json.success) {
       storage.set('access_token', json.data.access_token);
+      // Update native service token for background API uploads
+      try {
+        const {NativeModules: NM, Platform: P} = require('react-native');
+        if (P.OS === 'android' && NM.LocationTrackingModule) {
+          NM.LocationTrackingModule.updateApiToken(json.data.access_token).catch(() => {});
+        }
+      } catch {}
       return true;
     }
   } catch {}
