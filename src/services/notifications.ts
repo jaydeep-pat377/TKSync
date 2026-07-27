@@ -9,6 +9,9 @@ import {requestLocationPermissions} from './backgroundGpsTracker';
 /** Emitted when a foreground silent push says a delivery record is incomplete. */
 export const DELIVERY_RECORD_INCOMPLETE_EVENT = 'delivery_record_incomplete';
 
+/** Emitted when a force_logout push is received from the dispatcher. */
+export const FORCE_LOGOUT_EVENT = 'force_logout';
+
 // Navigation ref — set from AppNavigator so notification taps can navigate
 let _navigationRef: any = null;
 export function setNotificationNavigationRef(ref: any) {
@@ -177,6 +180,24 @@ export function setupBackgroundHandler() {
       data.body = data.body || remoteMessage.notification.body || '';
     }
 
+    // Force logout from dispatcher — upload GPS data, stop tracking, then clear tokens
+    if (data.type === 'force_logout') {
+      console.log('Force logout received in background');
+      storage.set('force_logout', 'true');
+      // Upload GPS data and stop tracking BEFORE clearing tokens
+      try {
+        const {backgroundGpsTracker} = require('./backgroundGpsTracker');
+        await backgroundGpsTracker.clearAllData();
+      } catch (e) {
+        console.warn('Failed to stop GPS on force logout:', e);
+      }
+      // Now clear tokens so no more API calls happen
+      storage.remove('access_token');
+      storage.remove('refresh_token');
+      storage.remove('driver');
+      return;
+    }
+
     // Incomplete delivery record — show a meaningful notification that opens Dashboard
     if (data.type === 'delivery_record_incomplete') {
       await showDeliveryIncompleteNotification(data);
@@ -194,6 +215,13 @@ export function setupForegroundHandler() {
     if (remoteMessage.notification) {
       data.title = data.title || remoteMessage.notification.title || '';
       data.body = data.body || remoteMessage.notification.body || '';
+    }
+
+    // Force logout from dispatcher — emit event so AuthContext handles it immediately
+    if (data.type === 'force_logout') {
+      console.log('Force logout received in foreground');
+      DeviceEventEmitter.emit(FORCE_LOGOUT_EVENT);
+      return;
     }
 
     // Silent push for incomplete delivery record — notify Dashboard directly, no visible notification

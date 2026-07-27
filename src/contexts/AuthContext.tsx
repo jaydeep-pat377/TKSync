@@ -1,4 +1,5 @@
 import React, {createContext, useContext, useState, useCallback, useEffect, useMemo} from 'react';
+import {DeviceEventEmitter} from 'react-native';
 import {storage} from '../services/storage';
 import {
   authApi,
@@ -9,7 +10,8 @@ import {
 } from '../services/api';
 import {setSentryUser} from '../services/sentry';
 import {showToast} from '../utils/toast';
-import {registerDevice, unregisterDevice, setupTokenRefreshListener, setupForegroundHandler} from '../services/notifications';
+import {registerDevice, unregisterDevice, setupTokenRefreshListener, setupForegroundHandler, FORCE_LOGOUT_EVENT} from '../services/notifications';
+import {IDLE_AUTO_LOGOUT_EVENT} from '../services/backgroundGpsTracker';
 
 type CompanyInfo = {
   company_id: number;
@@ -193,6 +195,70 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     const unsubForeground = setupForegroundHandler();
     return () => { unsubRefresh(); unsubForeground(); };
   }, [state.isDriverLoggedIn]);
+
+  // Force logout — uploads GPS data, then clears everything locally
+  // (server already closed the session), redirects to company login screen
+  const forceLogoutCleanup = useCallback(async () => {
+    setSentryUser(null);
+
+    // Upload GPS data and stop tracking BEFORE clearing tokens
+    try {
+      const {backgroundGpsTracker} = require('../services/backgroundGpsTracker');
+      await backgroundGpsTracker.clearAllData();
+    } catch (e) {
+      // non-fatal
+    }
+
+    // Now clear all tokens and stored data
+    storage.remove('access_token');
+    storage.remove('refresh_token');
+    storage.remove('company');
+    storage.remove('driver');
+    storage.remove('fcm_token');
+    storage.remove('force_logout');
+
+    // Full state reset — back to company login
+    setState({
+      isLoading: false,
+      isCompanyLoggedIn: false,
+      isDriverLoggedIn: false,
+      company: null,
+      driver: null,
+    });
+
+    showToast('error', 'Logged Out', 'You have been logged out by the dispatcher.');
+  }, []);
+
+  // Listen for force_logout push (foreground) and check flag (background/killed)
+  useEffect(() => {
+    // Check if force_logout was received while app was in background/killed
+    const pendingForceLogout = storage.getString('force_logout');
+    if (pendingForceLogout === 'true') {
+      (async () => { await forceLogoutCleanup(); })();
+      return;
+    }
+
+    if (!state.isDriverLoggedIn) return;
+
+    // Listen for force_logout event (foreground)
+    const sub = DeviceEventEmitter.addListener(FORCE_LOGOUT_EVENT, async () => {
+      await forceLogoutCleanup();
+    });
+
+    return () => sub.remove();
+  }, [state.isDriverLoggedIn, forceLogoutCleanup]);
+
+  // Idle auto-logout: driver logout only (keep company selected)
+  useEffect(() => {
+    if (!state.isDriverLoggedIn) return;
+
+    const sub = DeviceEventEmitter.addListener(IDLE_AUTO_LOGOUT_EVENT, () => {
+      showToast('error', 'Auto Logout', 'You have been logged out due to 2 hours of inactivity.');
+      driverLogout();
+    });
+
+    return () => sub.remove();
+  }, [state.isDriverLoggedIn, driverLogout]);
 
   useEffect(() => {
     setOnSessionExpired(() => {

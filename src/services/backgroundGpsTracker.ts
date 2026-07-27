@@ -5,6 +5,7 @@ import Geolocation from 'react-native-geolocation-service';
 import {gpsStorage} from './gpsStorage';
 import {gpsSyncManager} from './gpsSyncManager';
 import {storage} from './storage';
+import {DeviceEventEmitter} from 'react-native';
 import {startTrackingService, stopTrackingService} from './trackingForegroundService';
 import {showToast} from '../utils/toast';
 import {getIsOnline, onConnectivityRestored, onConnectivityLost} from '../hooks/useNetworkStatus';
@@ -47,6 +48,17 @@ let appStateSubscription: {remove: () => void} | null = null;
 let connectivityRestoredUnsub: (() => void) | null = null;
 let connectivityLostUnsub: (() => void) | null = null;
 let isOfflineMode = false;
+
+// ─── Idle Auto-Logout ────────────────────────────────────────────
+// Auto-logout if no new GPS record is saved for 2 hours.
+// A GPS record is only saved when the truck's position actually changes (> 5m),
+// so "no record" = truck hasn't moved.
+const IDLE_LOGOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+const IDLE_WARNING_MS = (2 * 60 - 10) * 60 * 1000; // 1h 50m (10 min before logout)
+export const IDLE_AUTO_LOGOUT_EVENT = 'idle_auto_logout';
+let lastMovementTime: number = Date.now();
+let idleCheckInterval: ReturnType<typeof setInterval> | null = null;
+let idleWarningShown = false;
 
 /** Haversine distance in metres between two lat/lng points. */
 function haversineDistance(
@@ -263,6 +275,10 @@ function handlePosition(position: any) {
 
   lastSavedPosition = {latitude, longitude};
 
+  // Reset idle auto-logout timer — a new GPS record means position changed
+  lastMovementTime = Date.now();
+  idleWarningShown = false;
+
   gpsStorage.addRecord({
     ticket_id: gpsSyncManager.getTicketId(),
     latitude,
@@ -285,6 +301,60 @@ function handleError(error: any) {
     showToast('error', 'GPS Permission Lost', 'Location permission was revoked. Tracking stopped.');
     backgroundGpsTracker.stop();
   }
+}
+
+// ─── Idle Auto-Logout Timer ──────────────────────────────────────
+
+async function showIdleWarningNotification() {
+  try {
+    const notifee = (await import('@notifee/react-native')).default;
+    const {AndroidImportance} = await import('@notifee/react-native');
+    const channelId = await notifee.createChannel({
+      id: 'tksync-idle',
+      name: 'Idle Warnings',
+      importance: AndroidImportance.HIGH,
+      sound: 'default',
+    });
+    await notifee.displayNotification({
+      title: 'Inactivity Warning',
+      body: 'No movement detected for nearly 2 hours. You will be logged out in 10 minutes.',
+      android: {channelId, smallIcon: 'ic_launcher', importance: AndroidImportance.HIGH, sound: 'default'},
+      ios: {sound: 'default', foregroundPresentationOptions: {banner: true, sound: true, badge: true}},
+    });
+  } catch (e) {
+    console.warn('[GPS] Failed to show idle warning notification:', e);
+  }
+}
+
+function startIdleCheck() {
+  stopIdleCheck();
+  lastMovementTime = Date.now();
+  idleWarningShown = false;
+  idleCheckInterval = setInterval(() => {
+    const idleMs = Date.now() - lastMovementTime;
+
+    // Warning at 1h 50m
+    if (idleMs >= IDLE_WARNING_MS && !idleWarningShown) {
+      idleWarningShown = true;
+      console.log('[GPS] Idle warning — no movement for 1h 50m');
+      showIdleWarningNotification();
+    }
+
+    // Auto-logout at 2h
+    if (idleMs >= IDLE_LOGOUT_MS) {
+      console.log('[GPS] Idle auto-logout — no movement for 2 hours');
+      stopIdleCheck();
+      DeviceEventEmitter.emit(IDLE_AUTO_LOGOUT_EVENT);
+    }
+  }, 60_000); // Check every 60 seconds
+}
+
+function stopIdleCheck() {
+  if (idleCheckInterval) {
+    clearInterval(idleCheckInterval);
+    idleCheckInterval = null;
+  }
+  idleWarningShown = false;
 }
 
 // ─── Watch Control ───────────────────────────────────────────────
@@ -399,6 +469,7 @@ export const backgroundGpsTracker = {
       setupAppStateListener();
 
       running = true;
+      startIdleCheck();
       console.log(`[GPS] Started — native background enabled — ticket: ${ticketId || 'none'}`);
       return true;
     } catch (err: any) {
@@ -463,6 +534,7 @@ export const backgroundGpsTracker = {
     permissionDenied = false;
     pendingTicketId = null;
     stopWatch();
+    stopIdleCheck();
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
@@ -483,8 +555,10 @@ export const backgroundGpsTracker = {
 
   /** Stop GPS, upload pending records, fully stop native service, then logout. */
   async clearAllData(): Promise<void> {
+    if (clearing) return; // Prevent double execution
     clearing = true;
     stopWatch();
+    stopIdleCheck();
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;

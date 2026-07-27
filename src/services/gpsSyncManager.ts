@@ -2,6 +2,7 @@ import {Platform, NativeModules} from 'react-native';
 import {gpsStorage} from './gpsStorage';
 import {gpsApi, trackingApi, heartbeatApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
+import {storage} from './storage';
 import {createMMKV} from 'react-native-mmkv';
 
 const {LocationTrackingModule} = NativeModules;
@@ -76,6 +77,13 @@ const BATCH_SIZE = 100;
 
 async function syncGpsRecords(): Promise<void> {
   if (isSyncing || !getIsOnline()) return;
+
+  // Check if driver is still logged in before making API calls
+  const driverData = storage.getString('driver');
+  if (!driverData) {
+    console.log('[GpsSyncManager] Driver not logged in — skipping sync');
+    return;
+  }
 
   const unsynced = gpsStorage.getUnsynced();
   if (unsynced.length === 0) {
@@ -220,6 +228,7 @@ export const gpsSyncManager = {
   /** Sync trip summaries to API. */
   async syncTripSummaries(): Promise<void> {
     if (!getIsOnline()) return;
+    if (!storage.getString('driver')) return;
     const unsynced = gpsStorage.getUnsyncedTripSummaries();
     if (unsynced.length === 0) return;
 
@@ -252,6 +261,8 @@ export const gpsSyncManager = {
    */
   async flushUnsynced(): Promise<void> {
     if (!getIsOnline()) return;
+    // Check if driver is still logged in before making API calls
+    if (!storage.getString('driver')) return;
     const unsynced = gpsStorage.getUnsynced();
     if (unsynced.length === 0) {
       await gpsSyncManager.syncTripSummaries();
