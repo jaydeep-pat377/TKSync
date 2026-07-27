@@ -586,7 +586,18 @@ export const backgroundGpsTracker = {
           console.log('[GPS] All records uploaded — clearing storage');
           gpsStorage.clear();
         } else {
-          console.log(`[GPS] ${stillUnsynced.length} records failed to upload — keeping for next login`);
+          // Save driver-scoped auth token so orphaned records can be uploaded
+          // on next login with the correct driver identity.
+          // Only save if driver is still in storage (not after normal logout
+          // where the token is company-scoped and has no driver identity).
+          const token = storage.getString('access_token');
+          const driver = storage.getString('driver');
+          if (token && driver) {
+            storage.set('orphaned_gps_token', token);
+            console.log(`[GPS] ${stillUnsynced.length} records orphaned — saved auth token for deferred upload`);
+          } else {
+            console.log(`[GPS] ${stillUnsynced.length} records failed to upload — no driver token to save`);
+          }
           gpsStorage.clearSynced();
         }
       } else {

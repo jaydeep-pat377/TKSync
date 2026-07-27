@@ -10,7 +10,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@expo-google-fonts/roboto-mono": "^0.4.2",
     "@notifee/react-native": "^9.1.8",
     "@react-native-community/netinfo": "^12.0.1",
     "@react-native-firebase/app": "^24.1.1",
@@ -26,7 +25,6 @@
     "react-native-config": "^1.6.1",
     "react-native-fs": "^2.20.0",
     "react-native-geolocation-service": "^5.3.1",
-    "react-native-live-audio-stream": "^1.1.1",
     "react-native-localize": "^3.7.0",
     "react-native-mmkv": "^4.3.1",
     "react-native-nitro-modules": "^0.35.9",
@@ -35,7 +33,6 @@
     "react-native-screens": "^4.25.1",
     "react-native-sensors": "^7.3.6",
     "react-native-signature-canvas": "^5.0.2",
-    "react-native-sound": "^0.13.0",
     "react-native-svg": "^15.15.5",
     "react-native-vector-icons": "^10.3.0",
     "react-native-webview": "^14.0.1"

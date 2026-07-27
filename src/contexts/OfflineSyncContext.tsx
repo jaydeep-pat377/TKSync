@@ -51,13 +51,23 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     if (initialized.current) return;
     initialized.current = true;
     syncManager.init();
-    // Import any native GPS records left from previous session (e.g., after app kill)
-    backgroundGpsTracker.autoResume().catch(err => {
-      console.error('[OfflineSync] autoResume failed:', err);
-    });
-    gpsSyncManager.flushUnsynced().catch(err => {
-      console.error('[OfflineSync] flushUnsynced failed:', err);
-    });
+    // Flush orphaned GPS records first (from previous force logout while offline),
+    // then import native records and flush any remaining unsynced records.
+    // Sequential to avoid double-uploading the same records.
+    (async () => {
+      try {
+        await gpsSyncManager.flushOrphaned();
+      } catch (err) {
+        console.error('[OfflineSync] flushOrphaned failed:', err);
+      }
+      // Import any native GPS records left from previous session (e.g., after app kill)
+      backgroundGpsTracker.autoResume().catch(err => {
+        console.error('[OfflineSync] autoResume failed:', err);
+      });
+      gpsSyncManager.flushUnsynced().catch(err => {
+        console.error('[OfflineSync] flushUnsynced failed:', err);
+      });
+    })();
 
     const failedItems: string[] = [];
     const unsub = syncManager.addListener((event: SyncEvent) => {

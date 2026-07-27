@@ -1,5 +1,5 @@
-import React, {useEffect} from 'react';
-import {View, StyleSheet, Platform, PermissionsAndroid, Text, TextInput} from 'react-native';
+import React from 'react';
+import {View, StyleSheet, Text, TextInput} from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {ThemeProvider} from './src/contexts/ThemeContext';
@@ -62,16 +62,6 @@ function AppContent() {
 }
 
 function App() {
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
-        title: 'Microphone Permission',
-        message: 'TKSync needs microphone access for voice input.',
-        buttonPositive: 'Allow',
-      }).catch(() => {});
-    }
-  }, []);
-
   return (
     <View style={s.root}>
       <SafeAreaProvider>

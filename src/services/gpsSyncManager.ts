@@ -4,6 +4,7 @@ import {gpsApi, trackingApi, heartbeatApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {storage} from './storage';
 import {createMMKV} from 'react-native-mmkv';
+import Config from 'react-native-config';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -251,6 +252,83 @@ export const gpsSyncManager = {
       } catch (err: any) {
         console.warn(`[GpsSyncManager] Trip summary sync failed: ${err.message}`);
       }
+    }
+  },
+
+  /**
+   * Flush orphaned GPS records left from a force logout while offline.
+   * Uses a direct fetch() with the saved auth token (from the original driver
+   * session) — bypasses the normal request() pipeline to avoid:
+   *   - Token swap race conditions with concurrent syncGpsRecords
+   *   - Unintended token refresh that would use the new driver's refresh_token
+   */
+  async flushOrphaned(): Promise<void> {
+    const orphanedToken = storage.getString('orphaned_gps_token');
+    if (!orphanedToken) return;
+
+    const unsynced = gpsStorage.getUnsynced();
+    if (unsynced.length === 0) {
+      storage.remove('orphaned_gps_token');
+      return;
+    }
+
+    if (!getIsOnline()) {
+      // Register a one-time listener to retry when connectivity is restored
+      const unsub = onConnectivityRestored(() => {
+        unsub();
+        gpsSyncManager.flushOrphaned().catch(() => {});
+      });
+      return;
+    }
+
+    const baseUrl = Config.API_BASE_URL || '';
+    console.log(`[GpsSyncManager] Flushing ${unsynced.length} orphaned GPS records with saved token`);
+
+    let totalSynced = 0;
+    try {
+      for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
+        if (!getIsOnline()) break;
+        const batch = unsynced.slice(i, i + BATCH_SIZE);
+        const records = batch.map(r => ({
+          client_id: r.id,
+          ticket_id: r.ticket_id,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          speed: r.speed,
+          heading: r.heading,
+          altitude: r.altitude,
+          accuracy: r.accuracy,
+          recorded_at: r.recorded_at,
+          is_speeding: r.is_speeding,
+          is_idle: r.is_idle,
+          accel_x: r.accel_x,
+          accel_y: r.accel_y,
+          zone: r.zone,
+        }));
+        try {
+          const res = await fetch(`${baseUrl}/tracking/gps`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${orphanedToken}`,
+            },
+            body: JSON.stringify({records}),
+          });
+          if (!res.ok) {
+            console.warn(`[GpsSyncManager] Orphaned batch failed: HTTP ${res.status}`);
+            break; // Token expired or invalid — stop trying
+          }
+          gpsStorage.markSynced(batch.map(r => r.id));
+          totalSynced += batch.length;
+        } catch (err: any) {
+          console.warn(`[GpsSyncManager] Orphaned batch failed: ${err.message}`);
+          break;
+        }
+      }
+      console.log(`[GpsSyncManager] Orphaned flush: ${totalSynced}/${unsynced.length} records uploaded`);
+    } finally {
+      storage.remove('orphaned_gps_token');
+      gpsStorage.clearSynced();
     }
   },
 
