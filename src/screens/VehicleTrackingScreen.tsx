@@ -383,13 +383,6 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
           <Text style={st.idleBadgeText}>SPEEDING {toKmh(speed)} km/h</Text>
         </View>
       )}
-      <TouchableOpacity
-        style={[st.trackBtn, isTracking ? st.trackBtnStop : st.trackBtnStart, L && st.trackBtnLandscape]}
-        activeOpacity={0.8}
-        onPress={isTracking ? stopTracking : startTracking}>
-        <Icon name={isTracking ? 'stop' : 'play-arrow'} size={ms(L ? 14 : 16)} color="#fff" />
-        <Text style={[st.trackBtnText, L && st.trackBtnTextLandscape]}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -534,28 +527,6 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
           </View>
         </View>
       )}
-
-      {/* ── BROADCASTING ── */}
-      <View style={[st.card, L && st.broadcastCardLandscape]}>
-        <View style={st.broadcastRow}>
-          <View style={[st.cardIconBg, isBroadcasting ? st.cardIconBgBroadcastOn : st.cardIconBgBroadcastOff, L && st.cardIconBgLandscape]}>
-            <Icon name="cell-tower" size={L ? fs(13) : ms(14)} color={isBroadcasting ? '#22C55E' : c.textMuted} />
-          </View>
-          <View style={L ? st.broadcastTextLandscape : st.broadcastText}>
-            <Text style={[st.broadcastTitle, L && st.broadcastTitleLandscape]}>Broadcasting</Text>
-            <Text style={[st.broadcastSub, isBroadcasting ? st.broadcastSubOn : st.broadcastSubOff, L && st.broadcastSubLandscape]}>
-              {isBroadcasting ? 'Sharing live location' : 'Location sharing off'}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={[st.broadcastToggle, isBroadcasting ? st.broadcastToggleStop : st.broadcastToggleStart, L && st.broadcastToggleLandscape]}
-            activeOpacity={0.8}
-            onPress={() => setIsBroadcasting(b => !b)}>
-            <Icon name={isBroadcasting ? 'stop' : 'play-arrow'} size={L ? fs(14) : ms(14)} color="#fff" />
-            <Text style={[st.broadcastToggleText, L && st.broadcastToggleTextLandscape]}>{isBroadcasting ? 'STOP' : 'START'}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {/* ── TRIP HISTORY ── */}
       {passedTicketId && (
@@ -705,13 +676,6 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
                   <Text style={st.idleBadgeText}>SPEEDING {toKmh(speed)} km/h</Text>
                 </View>
               )}
-              <TouchableOpacity
-                style={[st.trackBtn, isTracking ? st.trackBtnStop : st.trackBtnStart, st.trackBtnPortrait]}
-                activeOpacity={0.8}
-                onPress={isTracking ? stopTracking : startTracking}>
-                <Icon name={isTracking ? 'stop' : 'play-arrow'} size={ms(14)} color="#fff" />
-                <Text style={st.trackBtnTextPortrait}>{isTracking ? 'Stop Tracking' : 'Start Tracking'}</Text>
-              </TouchableOpacity>
             </View>
           </View>
           {directionTab}

@@ -827,6 +827,8 @@ export const notificationsApi = {
 export const trackingApi = {
   getMe: () =>
     request<{truck: any; current_load: {id: number; ticket_id: number; ticket_code: string} | null; eta: any}>(ENDPOINTS.TRACKING_ME),
+  getGpsHistory: (date: string) =>
+    request<{truck_code: string; date: string; count: number; points: {latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string}[]}>(ENDPOINTS.TRACKING_GPS_HISTORY(date)),
 };
 
 export const heartbeatApi = {

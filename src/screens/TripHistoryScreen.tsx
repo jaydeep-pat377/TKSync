@@ -16,15 +16,14 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms, wp} from '../utils/responsive';
-import {ticketsApi} from '../services/api';
+import {ticketsApi, trackingApi} from '../services/api';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
-
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 MapboxGL.setAccessToken(Config.MAPBOX_ACCESS_TOKEN || '');
 
 type GpsRecord = {
-  id: number;
+  id?: number;
   latitude: number;
   longitude: number;
   speed: number | null;
@@ -90,18 +89,33 @@ export default function TripHistoryScreen({navigation, route}: Props) {
   const mapboxToken = Config.MAPBOX_ACCESS_TOKEN || '';
 
   const fetchData = async () => {
-    if (!ticketId) {
-      setError('No ticket ID provided');
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
-      const res = await ticketsApi.getGpsRecords(ticketId);
-      console.log('[TripHistory] ticketId:', ticketId, 'response:', JSON.stringify(res.data));
-      setRecords(res.data.points || res.data.records || []);
+      // Fetch full day GPS history by truck_code (same as web app)
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const res = await trackingApi.getGpsHistory(today);
+      console.log('[TripHistory] GPS history — date:', today, 'points:', res.data?.count);
+      const points = res.data?.points || [];
+
+      if (points.length > 0) {
+        setRecords(points);
+      } else if (ticketId) {
+        // Fallback: ticket-specific GPS if no day-level data
+        const fallback = await ticketsApi.getGpsRecords(ticketId);
+        setRecords(fallback.data?.points || []);
+      }
     } catch (err: any) {
+      // Fallback to ticket-based endpoint if new endpoint not available
+      if (ticketId) {
+        try {
+          const fallback = await ticketsApi.getGpsRecords(ticketId);
+          setRecords(fallback.data?.points || []);
+          setLoading(false);
+          return;
+        } catch {}
+      }
       setError(err?.message || 'Failed to load GPS records');
     } finally {
       setLoading(false);
@@ -412,7 +426,7 @@ export default function TripHistoryScreen({navigation, route}: Props) {
               <MapboxGL.LineLayer
                 id="routeLine"
                 style={{
-                  lineColor: '#22C55E',
+                  lineColor: '#3B82F6',
                   lineWidth: 4,
                   lineCap: 'round',
                   lineJoin: 'round',
@@ -421,26 +435,56 @@ export default function TripHistoryScreen({navigation, route}: Props) {
             </MapboxGL.ShapeSource>
           )}
 
-          {/* Start marker */}
+          {/* Route direction arrows — triangle rotated 90° to follow line direction (same as web) */}
+          {routeGeoJSON && (
+            <MapboxGL.ShapeSource id="arrowSource" shape={routeGeoJSON}>
+              <MapboxGL.SymbolLayer
+                id="routeArrows"
+                style={{
+                  textField: '▲',
+                  symbolPlacement: 'line',
+                  symbolSpacing: 80,
+                  textSize: 14,
+                  textRotate: 90,
+                  textColor: '#1E40AF',
+                  textHaloColor: '#ffffff',
+                  textHaloWidth: 1.5,
+                  textAllowOverlap: true,
+                  textRotationAlignment: 'map',
+                  textKeepUpright: false,
+                }}
+              />
+            </MapboxGL.ShapeSource>
+          )}
+
+          {/* Start marker — green badge + dot */}
           {startPoint && (
             <MapboxGL.PointAnnotation
               id="start"
               coordinate={[startPoint.longitude, startPoint.latitude]}
+              anchor={{x: 0.5, y: 1}}
               title="Start">
-              <View style={styles.markerStart}>
-                <Icon name="play-arrow" size={16} color="#fff" />
+              <View style={styles.markerWrapper}>
+                <View style={[styles.markerLabel, styles.markerLabelStart]}>
+                  <Text style={styles.markerLabelText}>START</Text>
+                </View>
+                <View style={[styles.markerDot, styles.markerDotStart]} />
               </View>
             </MapboxGL.PointAnnotation>
           )}
 
-          {/* End marker */}
+          {/* End marker — red badge + dot */}
           {endPoint && records.length > 1 && (
             <MapboxGL.PointAnnotation
               id="end"
               coordinate={[endPoint.longitude, endPoint.latitude]}
+              anchor={{x: 0.5, y: 1}}
               title="End">
-              <View style={styles.markerEnd}>
-                <Icon name="stop" size={16} color="#fff" />
+              <View style={styles.markerWrapper}>
+                <View style={[styles.markerLabel, styles.markerLabelEnd]}>
+                  <Text style={styles.markerLabelText}>END</Text>
+                </View>
+                <View style={[styles.markerDot, styles.markerDotEnd]} />
               </View>
             </MapboxGL.PointAnnotation>
           )}
@@ -619,32 +663,50 @@ const createStyles = (c: any) =>
     mapWrapper: {flex: 1},
     map: {flex: 1},
 
-    // Markers
-    markerStart: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      justifyContent: 'center',
+    // Markers — matches web START/END badges
+    markerWrapper: {
       alignItems: 'center',
-      backgroundColor: '#22C55E',
-      elevation: 4,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
     },
-    markerEnd: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#EF4444',
+    markerLabel: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 3,
+      marginBottom: 2,
       elevation: 4,
       shadowColor: '#000',
       shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
+      shadowOpacity: 0.3,
+      shadowRadius: 3,
+    },
+    markerLabelStart: {
+      backgroundColor: '#16A34A',
+    },
+    markerLabelEnd: {
+      backgroundColor: '#DC2626',
+    },
+    markerLabelText: {
+      fontSize: 8,
+      fontWeight: '800',
+      color: '#fff',
+      letterSpacing: 0.5,
+    },
+    markerDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: '#fff',
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 1},
+      shadowOpacity: 0.3,
+      shadowRadius: 2,
+    },
+    markerDotStart: {
+      backgroundColor: '#22C55E',
+    },
+    markerDotEnd: {
+      backgroundColor: '#EF4444',
     },
 
     // Zoom controls

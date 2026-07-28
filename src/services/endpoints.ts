@@ -30,6 +30,7 @@ export const ENDPOINTS = {
   // Tracking
   TRACKING_ME: '/tracking/me',
   TRACKING_GPS: '/tracking/gps',
+  TRACKING_GPS_HISTORY: (date: string) => `/tracking/gps-history?date=${date}`,
   TRACKING_TRIP_SUMMARY: '/tracking/trip-summary',
   TRACKING_HEARTBEAT: '/tracking/heartbeat',
 
