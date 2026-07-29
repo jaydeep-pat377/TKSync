@@ -143,6 +143,14 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   );
 
   const driverLogout = useCallback(async () => {
+    // Upload GPS data BEFORE clearing driver — needs driver token to upload
+    try {
+      const {backgroundGpsTracker} = require('../services/backgroundGpsTracker');
+      await backgroundGpsTracker.clearAllData();
+    } catch {
+      // non-fatal — GPS data may be orphaned
+    }
+
     await unregisterDevice();
     try {
       const {data} = await authApi.driverLogout();
@@ -165,6 +173,16 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   }, []);
 
   const companyLogout = useCallback(async () => {
+    // Upload GPS data BEFORE clearing tokens — needs auth to upload
+    if (state.isDriverLoggedIn) {
+      try {
+        const {backgroundGpsTracker} = require('../services/backgroundGpsTracker');
+        await backgroundGpsTracker.clearAllData();
+      } catch {
+        // non-fatal — GPS data may be orphaned
+      }
+    }
+
     try {
       await authApi.companyLogout();
     } catch {
@@ -186,7 +204,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       company: null,
       driver: null,
     });
-  }, []);
+  }, [state.isDriverLoggedIn]);
 
   // Setup FCM token refresh and foreground push listeners
   useEffect(() => {
@@ -262,6 +280,10 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
 
   useEffect(() => {
     setOnSessionExpired(() => {
+      // Note: GPS data cannot be uploaded here — token is already expired.
+      // api.ts already cleared access_token/refresh_token before this callback.
+      // OfflineSyncContext will call clearAllData() which preserves unsynced
+      // records via orphaned_gps_token for deferred upload on next login.
       setSentryUser(null);
       storage.remove('access_token');
       storage.remove('refresh_token');

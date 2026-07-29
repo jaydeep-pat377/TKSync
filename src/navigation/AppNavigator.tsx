@@ -2,6 +2,7 @@ import React, {useMemo, useRef, useCallback, useEffect} from 'react';
 import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
+import {useAuth} from '../contexts/AuthContext';
 import {addBreadcrumb} from '../services/sentry';
 import {setNotificationNavigationRef} from '../services/notifications';
 import {storage} from '../services/storage';
@@ -20,6 +21,7 @@ const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   const {c} = useTheme();
+  const {isCompanyLoggedIn, isDriverLoggedIn, isLoading} = useAuth();
 
   const navTheme = useMemo(() => ({
     ...DefaultTheme,
@@ -42,6 +44,26 @@ export default function AppNavigator() {
       addBreadcrumb(`Navigate to ${currentRoute}`, 'navigation');
     }
   }, []);
+
+  // Global auth redirect — works from ANY screen
+  useEffect(() => {
+    if (isLoading) return;
+    const currentRoute = navigationRef.current?.getCurrentRoute?.()?.name;
+    if (!currentRoute || currentRoute === 'Splash') return;
+
+    if (!isCompanyLoggedIn) {
+      // Company session lost → go to CompanyLogin
+      if (currentRoute !== 'Login' && currentRoute !== 'CompanyLogin') {
+        navigationRef.current?.reset({index: 0, routes: [{name: 'CompanyLogin'}]});
+      }
+    } else if (!isDriverLoggedIn) {
+      // Company OK but driver logged out (idle timeout, etc.) → go to DriverLogin
+      const protectedScreens = ['Dashboard', 'Map', 'DeliveredToMap', 'VehicleTracking', 'TripHistory', 'Notifications'];
+      if (protectedScreens.includes(currentRoute)) {
+        navigationRef.current?.reset({index: 0, routes: [{name: 'DriverLogin'}]});
+      }
+    }
+  }, [isCompanyLoggedIn, isDriverLoggedIn, isLoading]);
 
   // Check if app was opened from a background notification tap
   const onReady = useCallback(() => {

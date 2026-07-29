@@ -12,6 +12,7 @@ import {
   Animated,
   Keyboard,
   Image,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -24,6 +25,7 @@ import {ApiError} from '../services/api';
 import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
+import ResponsiveModal from '../components/ResponsiveModal';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -44,9 +46,11 @@ export default function DriverLoginScreen({navigation}: Props) {
   const [rememberMe, setRememberMe] = useState(savedRemember);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const {t} = useTranslation();
   const {c} = useTheme();
-  const {driverLogin, company} = useAuth();
+  const {driverLogin, companyLogout, company} = useAuth();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
 
@@ -99,6 +103,17 @@ export default function DriverLoginScreen({navigation}: Props) {
       Keyboard.dismiss();
     }
   }, [isLandscape]);
+
+  const handleCompanyLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await companyLogout();
+      // AppNavigator redirects to CompanyLogin → screen unmounts → modal destroyed
+    } catch {
+      // Logout failed — stay on modal so user can retry or cancel
+      setLoggingOut(false);
+    }
+  };
 
   const handleLogin = async () => {
     const truck = truckNumber.trim();
@@ -230,10 +245,14 @@ export default function DriverLoginScreen({navigation}: Props) {
               ]}>
                 {t('app.tagline')}
               </Text>
-              <View style={styles.companyBadge}>
+              <TouchableOpacity
+                style={styles.companyBadge}
+                onPress={() => setShowLogoutConfirm(true)}
+                activeOpacity={0.7}>
                 <Icon name="check-circle" size={ms(12)} color={c.success} />
                 <Text style={styles.companyBadgeText}>{company?.company_name ?? ''}</Text>
-              </View>
+                <Icon name="close" size={ms(12)} color={c.textOnDark60} />
+              </TouchableOpacity>
             </Animated.View>
 
             {/* Form Card */}
@@ -410,6 +429,49 @@ export default function DriverLoginScreen({navigation}: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Company Logout Confirmation Modal */}
+      <ResponsiveModal
+        visible={showLogoutConfirm}
+        onClose={() => !loggingOut && setShowLogoutConfirm(false)}
+        maxWidth={360}
+        widthPercent={isLandscape ? 40 : 80}>
+        <View style={styles.confirmContent}>
+          <View style={[styles.confirmIconWrap, {backgroundColor: c.errorSurface}]}>
+            <Icon name="domain-disabled" size={ms(28)} color={c.error} />
+          </View>
+          <Text style={styles.confirmTitle}>
+            {t('driverLogin.changeCompanyTitle', 'Change Company')}
+          </Text>
+          <Text style={styles.confirmMessage}>
+            {t('driverLogin.changeCompanyMessage', 'Are you sure you want to disconnect from this company?')}
+          </Text>
+          <View style={styles.confirmButtons}>
+            <TouchableOpacity
+              style={[styles.confirmBtn, {backgroundColor: c.surface, borderWidth: 1, borderColor: c.border}]}
+              onPress={() => setShowLogoutConfirm(false)}
+              disabled={loggingOut}
+              activeOpacity={0.7}>
+              <Text style={[styles.confirmBtnText, {color: c.textPrimary}]}>
+                {t('common.cancel', 'Cancel')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmBtn, {backgroundColor: c.error}, loggingOut && {opacity: 0.7}]}
+              onPress={handleCompanyLogout}
+              disabled={loggingOut}
+              activeOpacity={0.7}>
+              {loggingOut ? (
+                <ActivityIndicator size="small" color={c.textOnPrimary} />
+              ) : (
+                <Text style={[styles.confirmBtnText, {color: c.textOnPrimary}]}>
+                  {t('driverLogin.disconnect', 'Disconnect')}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ResponsiveModal>
     </View>
   );
 }
@@ -485,4 +547,13 @@ const createStyles = (c: any, isTablet: boolean, landscapePhone: boolean, landsc
   footerTablet: {marginTop: 16},
   footerDivider: {flex: 1, height: 1, backgroundColor: c.border},
   footerText: {fontSize: ms(9), fontWeight: '500', color: c.textPlaceholder},
+
+  // Confirm modal (matches DashboardScreen logout modal styling)
+  confirmContent: {padding: wp(16), alignItems: 'center'},
+  confirmIconWrap: {width: wp(48), height: wp(48), borderRadius: wp(24), justifyContent: 'center', alignItems: 'center', marginBottom: wp(10)},
+  confirmTitle: {fontSize: ms(13), fontWeight: '700', marginBottom: wp(4), fontFamily: MONO, color: c.textPrimary},
+  confirmMessage: {fontSize: ms(10), fontWeight: '400', textAlign: 'center', lineHeight: ms(15), marginBottom: wp(14), fontFamily: MONO, color: c.textSecondary},
+  confirmButtons: {flexDirection: 'row', gap: wp(8), width: '100%'},
+  confirmBtn: {flex: 1, paddingVertical: wp(10), borderRadius: wp(10), alignItems: 'center', justifyContent: 'center'},
+  confirmBtnText: {fontSize: ms(10), fontWeight: '600', fontFamily: MONO},
 });

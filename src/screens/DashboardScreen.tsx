@@ -445,7 +445,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { isDark, toggle, c } = useTheme();
   const styles = createStyles(c, isDark);
-  const { driverLogout, companyLogout, driver, company, isCompanyLoggedIn } = useAuth();
+  const { driverLogout, companyLogout, driver, company } = useAuth();
   const { unreadCount: notifUnread } = useNotifications();
   const { isOnline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
@@ -459,12 +459,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const menuOpacity = useRef(new Animated.Value(0)).current;
   const syncSpin = useRef(new Animated.Value(0)).current;
 
-  // Redirect to login when session expires
-  useEffect(() => {
-    if (!isCompanyLoggedIn) {
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-    }
-  }, [isCompanyLoggedIn, navigation]);
+  // Session expiry redirect handled globally in AppNavigator
 
   // Relative time updater
   useEffect(() => {
@@ -724,13 +719,13 @@ export default function DashboardScreen({ navigation }: Props) {
     try {
       if (type === 'driver') {
         await driverLogout();
-        setLogoutType(null);
-        navigation.replace('DriverLogin');
+        // AppNavigator redirects to DriverLogin → screen unmounts → modal destroyed
       } else if (type === 'tenant') {
         await companyLogout();
-        setLogoutType(null);
-        navigation.replace('Login');
+        // AppNavigator redirects to CompanyLogin → screen unmounts → modal destroyed
       }
+    } catch {
+      // Logout failed — stay on modal so user can retry or cancel
     } finally {
       setLoggingOut(false);
     }
@@ -2873,7 +2868,7 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* ─── LOGOUT CONFIRMATION MODAL ─── */}
       <ResponsiveModal
         visible={logoutType !== null}
-        onClose={() => setLogoutType(null)}
+        onClose={() => !loggingOut && setLogoutType(null)}
         maxWidth={360}
         widthPercent={isLandscape ? 40 : 80}>
         <View style={{ padding: wp(16), alignItems: 'center' }}>

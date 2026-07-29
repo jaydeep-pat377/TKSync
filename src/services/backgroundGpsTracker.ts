@@ -90,15 +90,20 @@ function setupAppStateListener() {
         if (Platform.OS === 'android' && LocationTrackingModule) {
           LocationTrackingModule.setJsAlive(true).catch(() => {});
         }
-        // 2. Resume JS watcher
+        // 2. Pause idle check — prevent false logout before native records are imported
+        stopIdleCheck();
+        // 3. Resume JS watcher
         if (watchId === null) {
           console.log('[GPS] App foregrounded — resuming JS GPS');
           startWatch();
         }
-        // 3. Import native records (WRITE_BATCH_SIZE=1 means all records are already flushed)
-        importNativeRecords().then(count => {
-          if (count > 0) console.log(`[GPS] Imported ${count} native records from background`);
-        });
+        // 4. Import native records, update idle timer, then restart idle interval
+        importNativeRecordsAndUpdateIdle()
+          .catch(() => {
+            // Import failed — reset timer to avoid false logout with stale data
+            lastMovementTime = Date.now();
+          })
+          .finally(() => resumeIdleCheck());
       }
     } else if (state === 'background' || state === 'inactive') {
       // Stop JS watcher — native service continues tracking in background
@@ -215,6 +220,25 @@ async function importNativeRecords(): Promise<number> {
   }
 }
 
+/**
+ * Import native background GPS records and update the idle timer.
+ * If native records show the truck was moving while the app was backgrounded,
+ * reset the idle timer to prevent false auto-logout on foreground resume.
+ * If no new positions (truck was stationary), leave the idle timer as-is
+ * so it correctly reflects the last actual movement time.
+ */
+async function importNativeRecordsAndUpdateIdle(): Promise<void> {
+  const count = await importNativeRecords();
+  if (count > 0) {
+    console.log(`[GPS] Imported ${count} native records from background`);
+    // New positions imported — truck was moving in background, reset idle timer
+    lastMovementTime = Date.now();
+    idleWarningShown = false;
+  }
+  // count === 0: truck was stationary in background — lastMovementTime stays as-is,
+  // idle timer will correctly fire if 2h has elapsed since last real movement.
+}
+
 // ─── Position Handling ───────────────────────────────────────────
 
 function handlePosition(position: any) {
@@ -326,10 +350,17 @@ async function showIdleWarningNotification() {
   }
 }
 
+/** Start idle check from scratch — resets timer to now. Used on GPS tracker start. */
 function startIdleCheck() {
   stopIdleCheck();
   lastMovementTime = Date.now();
   idleWarningShown = false;
+  resumeIdleCheck();
+}
+
+/** Resume idle interval without resetting lastMovementTime. Used after foreground import. */
+function resumeIdleCheck() {
+  if (idleCheckInterval) return; // already running
   idleCheckInterval = setInterval(() => {
     const idleMs = Date.now() - lastMovementTime;
 
