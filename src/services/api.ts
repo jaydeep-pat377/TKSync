@@ -690,13 +690,14 @@ export type SigningData = {
 };
 
 export const ticketsApi = {
-  getLatest: (params?: {page?: number; limit?: number; date?: string; all?: boolean; status?: string}) => {
+  getLatest: (params?: {page?: number; limit?: number; date?: string; all?: boolean; status?: string; active?: boolean}) => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.date) query.set('date', params.date);
     if (params?.all) query.set('all', 'true');
+    if (params?.active !== undefined) query.set('active', String(params.active));
     const qs = query.toString();
     return request<TicketsResponse>(`${ENDPOINTS.TICKETS_LATEST}${qs ? `?${qs}` : ''}`);
   },

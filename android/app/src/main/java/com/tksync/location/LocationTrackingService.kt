@@ -27,6 +27,12 @@ import java.util.concurrent.Executors
 class LocationTrackingService : Service() {
 
     companion object {
+        /** True while native is uploading GPS records on background thread. JS checks this
+         *  before importing native records to avoid duplicate uploads. */
+        @Volatile
+        var isCurrentlyUploading = false
+            private set
+
         private const val TAG = "LocationTrackingService"
         private const val CHANNEL_ID = "tksync-native-tracking"
         private const val SILENT_CHANNEL_ID = "tksync-sync"
@@ -539,6 +545,7 @@ class LocationTrackingService : Service() {
         if (unsynced.length() == 0) return
 
         isUploading = true
+        isCurrentlyUploading = true
         uploadExecutor.execute {
             try {
                 // Upload in batches
@@ -594,6 +601,7 @@ class LocationTrackingService : Service() {
                 Log.w(TAG, "Upload failed: ${e.message}")
             } finally {
                 isUploading = false
+                isCurrentlyUploading = false
             }
         }
     }

@@ -479,7 +479,7 @@ export default function DashboardScreen({ navigation }: Props) {
     try {
       setLoading(true);
       setRefreshing(true);
-      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, active: true });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
       ticketsRef.current = data.data;
@@ -533,7 +533,7 @@ export default function DashboardScreen({ navigation }: Props) {
     const idx = activeTicketRef.current;
     // Refresh ticket list
     try {
-      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20 });
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, active: true });
       // Pre-mark so the useEffect skips when setTickets triggers it
       const currentTicket = data.data[idx];
       if (currentTicket && activeTicketRef.current === idx) {

@@ -108,6 +108,23 @@ export const gpsStorage = {
     setRecords(records);
   },
 
+  /** Import a record with a specific ID (used for native background records).
+   *  Skips if a record with the same ID already exists. */
+  importRecord(id: string, record: Omit<GpsRecord, 'id' | 'synced'>): boolean {
+    let records = getRecords();
+    // Deduplicate by ID — prevents double-upload when native already uploaded
+    if (records.some(r => r.id === id)) return false;
+    records.push({...record, id, synced: false});
+    if (records.length > 600) {
+      const unsynced = records.filter(r => !r.synced);
+      const synced = records.filter(r => r.synced);
+      const recentSynced = synced.slice(-100);
+      records = [...recentSynced, ...unsynced];
+    }
+    setRecords(records);
+    return true;
+  },
+
   /** Get all records not yet synced to the API. */
   getUnsynced(): GpsRecord[] {
     return getRecords().filter(r => !r.synced);

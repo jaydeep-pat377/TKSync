@@ -8,7 +8,7 @@ import {storage} from './storage';
 import {DeviceEventEmitter} from 'react-native';
 import {startTrackingService, stopTrackingService} from './trackingForegroundService';
 import {showToast} from '../utils/toast';
-import {getIsOnline, onConnectivityRestored, onConnectivityLost} from '../hooks/useNetworkStatus';
+import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -46,8 +46,6 @@ let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
 let appStateSubscription: {remove: () => void} | null = null;
 let connectivityRestoredUnsub: (() => void) | null = null;
-let connectivityLostUnsub: (() => void) | null = null;
-let isOfflineMode = false;
 
 // ─── Idle Auto-Logout ────────────────────────────────────────────
 // Auto-logout if no new GPS record is saved for 2 hours.
@@ -172,26 +170,49 @@ export async function requestLocationPermissions(): Promise<boolean> {
 }
 
 /**
+ * Wait for any in-flight native GPS upload to complete.
+ * After setJsAlive(true), no NEW uploads start, but one may be mid-flight.
+ * Polls the native isUploading flag every 500ms, up to 20 seconds max.
+ */
+async function waitForNativeUpload(): Promise<void> {
+  if (!LocationTrackingModule?.isUploading) return;
+  const maxWait = 20000;
+  const start = Date.now();
+  while (Date.now() - start < maxWait) {
+    try {
+      const uploading = await LocationTrackingModule.isUploading();
+      if (!uploading) return;
+      console.log('[GPS] Waiting for native upload to finish...');
+    } catch {
+      return; // Module not available — skip wait
+    }
+    await new Promise<void>(resolve => setTimeout(resolve, 500));
+  }
+  console.warn('[GPS] Native upload still running after 20s — importing anyway');
+}
+
+/**
  * Import GPS records collected by the native Android service while the app was in background/killed.
  * Moves them into MMKV gpsStorage so gpsSyncManager can sync them to the API.
  */
 async function importNativeRecords(): Promise<number> {
   if (Platform.OS !== 'android' || !LocationTrackingModule) return 0;
   try {
+    // Wait for any in-flight native upload to complete before reading records.
+    // Without this, we import records that native is actively uploading,
+    // creating duplicate routes on the server.
+    await waitForNativeUpload();
+
     const records = await LocationTrackingModule.getStoredRecords();
     if (!records || records.length === 0) return 0;
-
-    // Deduplicate by timestamp+coordinates
-    const existing = new Set(
-      gpsStorage.getAll().map(r => `${r.recorded_at}_${r.latitude}_${r.longitude}`),
-    );
 
     let imported = 0;
     for (const r of records) {
       if (r.synced) continue;
-      const key = `${r.recorded_at}_${r.latitude}_${r.longitude}`;
-      if (existing.has(key)) continue;
-      gpsStorage.addRecord({
+      // Preserve the original native ID — if native already uploaded this record,
+      // gpsSyncManager will send the same client_id, avoiding duplicate routes.
+      const nativeId = r.id || `native_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const added = gpsStorage.importRecord(nativeId, {
         ticket_id: r.ticket_id || null,
         latitude: r.latitude,
         longitude: r.longitude,
@@ -203,7 +224,7 @@ async function importNativeRecords(): Promise<number> {
         is_speeding: r.is_speeding || false,
         is_idle: r.is_idle || false,
       });
-      imported++;
+      if (added) imported++;
     }
 
     // Clear native records after import
@@ -259,6 +280,12 @@ function handlePosition(position: any) {
   notifyListeners(pos);
 
   console.log(`[GPS] Position: lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, accuracy=${accuracy?.toFixed(0)}m`);
+
+  // Skip mock/emulator GPS — default Android emulator location is Google HQ (37.42, -122.08)
+  if (__DEV__ && position.mocked) {
+    console.log('[GPS] Skipping mocked/emulator GPS position');
+    return;
+  }
 
   // Update native heartbeat so it knows JS is actively recording
   if (Platform.OS === 'android' && LocationTrackingModule) {
@@ -401,10 +428,11 @@ function stopWatch() {
 function startWatch() {
   if (watchId !== null) return;
 
-  // When offline, use GPS-only mode (no Google A-GPS servers needed)
-  const online = getIsOnline();
-  isOfflineMode = !online;
-
+  // FusedLocationProvider works with GPS satellites even without internet —
+  // A-GPS just speeds up the initial satellite fix. Using forceLocationManager
+  // with enableHighAccuracy causes timeout errors on many Android devices
+  // (see: github.com/Agontuk/react-native-geolocation-service/issues/402).
+  // Always use FusedLocationProvider for reliability.
   watchId = Geolocation.watchPosition(
     (position) => handlePosition(position),
     (error) => handleError(error),
@@ -416,36 +444,9 @@ function startWatch() {
       showLocationDialog: true,
       forceRequestLocation: true,
       maximumAge: 10000,
-      // When offline, bypass Google FusedLocationProvider and use Android's
-      // raw LocationManager with GPS_PROVIDER — works without network
-      forceLocationManager: !online,
     },
   );
-  console.log(`[GPS] watchPosition started (5s interval, forceLocationManager=${!online})`);
-
-  // Listen for network going OFF — switch to GPS-only (forceLocationManager)
-  if (!connectivityLostUnsub) {
-    connectivityLostUnsub = onConnectivityLost(() => {
-      if (running && !isOfflineMode) {
-        console.log('[GPS] Network lost — restarting GPS with forceLocationManager (satellite-only)');
-        stopWatch();
-        isOfflineMode = true;
-        startWatch();
-      }
-    });
-  }
-
-  // Listen for network coming BACK — switch to FusedLocationProvider
-  if (!connectivityRestoredUnsub) {
-    connectivityRestoredUnsub = onConnectivityRestored(() => {
-      if (running && isOfflineMode) {
-        console.log('[GPS] Network restored — restarting GPS with FusedLocationProvider');
-        stopWatch();
-        isOfflineMode = false;
-        startWatch();
-      }
-    });
-  }
+  console.log('[GPS] watchPosition started (5s interval, FusedLocationProvider)');
 }
 
 // ─── Public API ──────────────────────────────────────────────────
@@ -569,9 +570,6 @@ export const backgroundGpsTracker = {
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
-    connectivityLostUnsub?.();
-    connectivityLostUnsub = null;
-    isOfflineMode = false;
     gpsSyncManager.stop();
     lastPosition = null;
     lastSavedPosition = null;
@@ -593,9 +591,6 @@ export const backgroundGpsTracker = {
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
-    connectivityLostUnsub?.();
-    connectivityLostUnsub = null;
-    isOfflineMode = false;
 
     // Stop native service FIRST so it stops writing new records
     await stopTrackingService();

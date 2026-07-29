@@ -177,4 +177,9 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
             promise.reject("CHECK_ERROR", e.message, e)
         }
     }
+
+    @ReactMethod
+    fun isUploading(promise: Promise) {
+        promise.resolve(LocationTrackingService.isCurrentlyUploading)
+    }
 }

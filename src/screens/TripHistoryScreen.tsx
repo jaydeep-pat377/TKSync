@@ -85,51 +85,94 @@ export default function TripHistoryScreen({navigation, route}: Props) {
   const [isSatellite, setIsSatellite] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(14);
   const cameraRef = useRef<MapboxGL.Camera>(null);
-  const [matchedCoords, setMatchedCoords] = useState<[number, number][]>([]);
+  const [matchedSegments, setMatchedSegments] = useState<[number, number][][]>([]);
   const mapboxToken = Config.MAPBOX_ACCESS_TOKEN || '';
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    try {
-      // Fetch full day GPS history by truck_code (same as web app)
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const res = await trackingApi.getGpsHistory(today);
-      console.log('[TripHistory] GPS history — date:', today, 'points:', res.data?.count);
-      const points = res.data?.points || [];
 
+    // Use UTC date — same as web dispatch monitoring (new Date().toISOString().split("T")[0])
+    const today = new Date().toISOString().split('T')[0];
+
+    // Primary: full day GPS by truck_code (same data source as web dispatch monitoring)
+    try {
+      const res = await trackingApi.getGpsHistory(today);
+      console.log('[TripHistory] GPS history — date:', today, 'truck points:', res.data?.count);
+      const points = res.data?.points || [];
       if (points.length > 0) {
+        points.sort((a: GpsRecord, b: GpsRecord) =>
+          new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
+        );
         setRecords(points);
-      } else if (ticketId) {
-        // Fallback: ticket-specific GPS if no day-level data
-        const fallback = await ticketsApi.getGpsRecords(ticketId);
-        setRecords(fallback.data?.points || []);
+        setLoading(false);
+        return;
       }
+      console.log('[TripHistory] GPS history returned 0 points for today');
     } catch (err: any) {
-      // Fallback to ticket-based endpoint if new endpoint not available
-      if (ticketId) {
-        try {
-          const fallback = await ticketsApi.getGpsRecords(ticketId);
-          setRecords(fallback.data?.points || []);
+      console.warn('[TripHistory] GPS history endpoint failed:', err.message);
+    }
+
+    // Fallback: ticket-specific GPS (fewer records — only those tagged with this ticket)
+    if (ticketId) {
+      try {
+        console.log('[TripHistory] Falling back to ticket-specific GPS — ticketId:', ticketId);
+        const fallback = await ticketsApi.getGpsRecords(ticketId);
+        const points = fallback.data?.points || [];
+        console.log('[TripHistory] Ticket GPS — points:', points.length);
+        if (points.length > 0) {
+          points.sort((a: GpsRecord, b: GpsRecord) =>
+            new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
+          );
+          setRecords(points);
           setLoading(false);
           return;
-        } catch {}
+        }
+      } catch (err: any) {
+        console.warn('[TripHistory] Ticket GPS fallback failed:', err.message);
       }
-      setError(err?.message || 'Failed to load GPS records');
-    } finally {
-      setLoading(false);
     }
+
+    setError('No GPS data available for today. Check that the GPS history API is deployed.');
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
   }, [ticketId]);
 
-  // Snap GPS trail to roads via Mapbox Map Matching + Directions API fallback
+  // Auto-refresh every 30s — only re-fetch if DB has new records
+  const lastPointCount = useRef(0);
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await trackingApi.getGpsHistory(today);
+        const points = res.data?.points || [];
+        if (points.length > lastPointCount.current) {
+          console.log(`[TrackHistory] Auto-refresh — ${lastPointCount.current} → ${points.length} points`);
+          points.sort((a: GpsRecord, b: GpsRecord) =>
+            new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
+          );
+          setRecords(points);
+          lastPointCount.current = points.length;
+        }
+      } catch {}
+    }, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Keep lastPointCount in sync when records change from manual fetch/refresh
+  useEffect(() => {
+    lastPointCount.current = records.length;
+  }, [records.length]);
+
+  // Snap GPS trail to roads via Mapbox Map Matching + Directions API fallback.
+  // Splits trail into segments at 5-minute gaps (same as web dispatch monitoring)
+  // so disconnected trips don't get joined by a straight line.
   useEffect(() => {
     if (records.length < 2 || !mapboxToken) {
-      setMatchedCoords([]);
+      setMatchedSegments([]);
       return;
     }
 
@@ -151,8 +194,7 @@ export default function TripHistoryScreen({navigation, route}: Props) {
       return [[from.lng, from.lat], [to.lng, to.lat]];
     };
 
-    const matchToRoads = async () => {
-      const trail = records.map(r => ({lng: r.longitude, lat: r.latitude}));
+    const matchSegment = async (trail: {lng: number; lat: number}[]): Promise<[number, number][]> => {
       const allCoords: [number, number][] = [];
       const BATCH = 100;
 
@@ -181,7 +223,6 @@ export default function TripHistoryScreen({navigation, route}: Props) {
             const sliceFrom = i > 0 ? 1 : 0;
             allCoords.push(...batchCoords.slice(sliceFrom));
           } else {
-            // Map Matching failed — use Directions API
             for (let j = (i > 0 ? 1 : 0); j < batch.length - 1; j++) {
               const segment = await getDirectionsRoute(batch[j], batch[j + 1]);
               const sliceFrom = allCoords.length > 0 ? 1 : 0;
@@ -189,7 +230,6 @@ export default function TripHistoryScreen({navigation, route}: Props) {
             }
           }
         } catch {
-          // Network error — use Directions API
           for (let j = (i > 0 ? 1 : 0); j < batch.length - 1; j++) {
             try {
               const segment = await getDirectionsRoute(batch[j], batch[j + 1]);
@@ -201,13 +241,41 @@ export default function TripHistoryScreen({navigation, route}: Props) {
           }
         }
       }
+      return allCoords;
+    };
 
-      if (!cancelled && allCoords.length >= 2) {
-        setMatchedCoords(allCoords);
+    const processTrail = async () => {
+      // Split trail into segments at 5-minute gaps (same as web)
+      const GAP_MS = 5 * 60 * 1000;
+      const trail = records.map(r => ({lng: r.longitude, lat: r.latitude, recorded_at: r.recorded_at}));
+      const segments: {lng: number; lat: number}[][] = [];
+      let current: {lng: number; lat: number}[] = [trail[0]];
+
+      for (let j = 1; j < trail.length; j++) {
+        const gap = new Date(trail[j].recorded_at).getTime() - new Date(trail[j - 1].recorded_at).getTime();
+        if (gap > GAP_MS) {
+          if (current.length >= 2) segments.push(current);
+          current = [trail[j]];
+        } else {
+          current.push(trail[j]);
+        }
+      }
+      if (current.length >= 2) segments.push(current);
+
+      // Snap each segment to roads separately
+      const result: [number, number][][] = [];
+      for (const seg of segments) {
+        if (cancelled) return;
+        const matched = await matchSegment(seg);
+        if (matched.length >= 2) result.push(matched);
+      }
+
+      if (!cancelled) {
+        setMatchedSegments(result);
       }
     };
 
-    matchToRoads();
+    processTrail();
     return () => { cancelled = true; };
   }, [records, mapboxToken]);
 
@@ -248,14 +316,14 @@ export default function TripHistoryScreen({navigation, route}: Props) {
     };
   }, [records]);
 
-  // Build GeoJSON line — use road-snapped coords if available, raw GPS as fallback
+  // Build GeoJSON — MultiLineString with gap-split segments (same as web)
   const routeGeoJSON = useMemo(() => {
-    const coords = matchedCoords.length >= 2
-      ? matchedCoords
+    const segments = matchedSegments.length > 0
+      ? matchedSegments
       : records.length >= 2
-        ? records.map(r => [r.longitude, r.latitude] as [number, number])
+        ? [records.map(r => [r.longitude, r.latitude] as [number, number])]
         : null;
-    if (!coords || coords.length < 2) return null;
+    if (!segments || segments.length === 0) return null;
     return {
       type: 'FeatureCollection' as const,
       features: [
@@ -263,13 +331,13 @@ export default function TripHistoryScreen({navigation, route}: Props) {
           type: 'Feature' as const,
           properties: {},
           geometry: {
-            type: 'LineString' as const,
-            coordinates: coords,
+            type: 'MultiLineString' as const,
+            coordinates: segments,
           },
         },
       ],
     };
-  }, [records, matchedCoords]);
+  }, [records, matchedSegments]);
 
   // Compute bounds for camera
   const bounds = useMemo(() => {
@@ -294,8 +362,23 @@ export default function TripHistoryScreen({navigation, route}: Props) {
     };
   }, [records]);
 
-  const startPoint = records.length > 0 ? records[0] : null;
-  const endPoint = records.length > 0 ? records[records.length - 1] : null;
+  // Use matched route endpoints for markers (same as web) — falls back to raw GPS
+  const startPoint = useMemo(() => {
+    if (matchedSegments.length > 0) {
+      const first = matchedSegments[0][0];
+      return first ? {latitude: first[1], longitude: first[0], recorded_at: records[0]?.recorded_at} : null;
+    }
+    return records.length > 0 ? records[0] : null;
+  }, [records, matchedSegments]);
+
+  const endPoint = useMemo(() => {
+    if (matchedSegments.length > 0) {
+      const lastSeg = matchedSegments[matchedSegments.length - 1];
+      const last = lastSeg[lastSeg.length - 1];
+      return last ? {latitude: last[1], longitude: last[0], recorded_at: records[records.length - 1]?.recorded_at} : null;
+    }
+    return records.length > 0 ? records[records.length - 1] : null;
+  }, [records, matchedSegments]);
 
   const toKmh = (mps: number) => Math.round(mps * 3.6);
 
@@ -320,7 +403,7 @@ export default function TripHistoryScreen({navigation, route}: Props) {
           </TouchableOpacity>
           <View style={styles.headerTitleWrapper}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              Trip History{ticketCode ? ` - ${ticketCode}` : ''}
+              Track History{ticketCode ? ` - ${ticketCode}` : ''}
             </Text>
           </View>
         </View>
@@ -342,7 +425,7 @@ export default function TripHistoryScreen({navigation, route}: Props) {
           </TouchableOpacity>
           <View style={styles.headerTitleWrapper}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              Trip History{ticketCode ? ` - ${ticketCode}` : ''}
+              Track History{ticketCode ? ` - ${ticketCode}` : ''}
             </Text>
           </View>
         </View>
@@ -368,7 +451,7 @@ export default function TripHistoryScreen({navigation, route}: Props) {
           </TouchableOpacity>
           <View style={styles.headerTitleWrapper}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              Trip History{ticketCode ? ` - ${ticketCode}` : ''}
+              Track History{ticketCode ? ` - ${ticketCode}` : ''}
             </Text>
           </View>
         </View>
@@ -394,12 +477,12 @@ export default function TripHistoryScreen({navigation, route}: Props) {
         </TouchableOpacity>
         <View style={styles.headerTitleWrapper}>
           <Text style={styles.headerTitle} numberOfLines={1}>
-            Trip History{ticketCode ? ` - ${ticketCode}` : ''}
-          </Text>
-          <Text style={styles.headerSub}>
-            {summary.points} GPS points
+            Track History{ticketCode ? ` - ${ticketCode}` : ''}
           </Text>
         </View>
+        <TouchableOpacity onPress={() => fetchData()} style={styles.headerBtn} activeOpacity={0.7}>
+          <Icon name="refresh" size={20} color={c.textOnPrimary} />
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsSatellite(s => !s)} style={styles.headerBtn} activeOpacity={0.7}>
           <Icon name={isSatellite ? 'map' : 'satellite'} size={20} color={c.textOnPrimary} />
         </TouchableOpacity>
@@ -420,14 +503,25 @@ export default function TripHistoryScreen({navigation, route}: Props) {
             animationDuration={1000}
           />
 
-          {/* Route line */}
+          {/* Route line — outline + fill (same as web dispatch monitoring) */}
           {routeGeoJSON && (
             <MapboxGL.ShapeSource id="routeSource" shape={routeGeoJSON}>
               <MapboxGL.LineLayer
+                id="routeLineOutline"
+                style={{
+                  lineColor: '#1E40AF',
+                  lineWidth: 7,
+                  lineOpacity: 0.2,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+              />
+              <MapboxGL.LineLayer
                 id="routeLine"
                 style={{
-                  lineColor: '#3B82F6',
+                  lineColor: '#2563EB',
                   lineWidth: 4,
+                  lineOpacity: 0.85,
                   lineCap: 'round',
                   lineJoin: 'round',
                 }}
@@ -435,58 +529,75 @@ export default function TripHistoryScreen({navigation, route}: Props) {
             </MapboxGL.ShapeSource>
           )}
 
-          {/* Route direction arrows — triangle rotated 90° to follow line direction (same as web) */}
+          {/* Route direction arrows — custom chevron icon same as web dispatch monitoring */}
+          {routeGeoJSON && (
+            <MapboxGL.Images images={{routeArrow: require('../../assets/route-arrow.png')}} />
+          )}
           {routeGeoJSON && (
             <MapboxGL.ShapeSource id="arrowSource" shape={routeGeoJSON}>
               <MapboxGL.SymbolLayer
                 id="routeArrows"
                 style={{
-                  textField: '▲',
+                  iconImage: 'routeArrow',
                   symbolPlacement: 'line',
                   symbolSpacing: 80,
-                  textSize: 14,
-                  textRotate: 90,
-                  textColor: '#1E40AF',
-                  textHaloColor: '#ffffff',
-                  textHaloWidth: 1.5,
-                  textAllowOverlap: true,
-                  textRotationAlignment: 'map',
-                  textKeepUpright: false,
+                  iconSize: 0.5,
+                  iconRotate: 90,
+                  iconAllowOverlap: true,
+                  iconRotationAlignment: 'map',
                 }}
               />
             </MapboxGL.ShapeSource>
           )}
 
-          {/* Start marker — green badge + dot */}
+          {/* Start marker — green badge + dot (same as web) */}
           {startPoint && (
-            <MapboxGL.PointAnnotation
-              id="start"
-              coordinate={[startPoint.longitude, startPoint.latitude]}
-              anchor={{x: 0.5, y: 1}}
-              title="Start">
-              <View style={styles.markerWrapper}>
-                <View style={[styles.markerLabel, styles.markerLabelStart]}>
-                  <Text style={styles.markerLabelText}>START</Text>
-                </View>
-                <View style={[styles.markerDot, styles.markerDotStart]} />
-              </View>
-            </MapboxGL.PointAnnotation>
+            <MapboxGL.ShapeSource
+              id="startMarker"
+              shape={{type: 'Feature', properties: {label: 'START'}, geometry: {type: 'Point', coordinates: [startPoint.longitude, startPoint.latitude]}}}>
+              <MapboxGL.CircleLayer
+                id="startDot"
+                style={{circleRadius: 6, circleColor: '#22C55E', circleStrokeColor: '#fff', circleStrokeWidth: 2}}
+              />
+              <MapboxGL.SymbolLayer
+                id="startLabel"
+                style={{
+                  textField: 'START',
+                  textSize: 9,
+                  textFont: ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+                  textColor: '#fff',
+                  textHaloColor: '#16A34A',
+                  textHaloWidth: 4,
+                  textOffset: [0, -1.8],
+                  textAllowOverlap: true,
+                }}
+              />
+            </MapboxGL.ShapeSource>
           )}
 
-          {/* End marker — red badge + dot */}
+          {/* End marker — red badge + dot (same as web) */}
           {endPoint && records.length > 1 && (
-            <MapboxGL.PointAnnotation
-              id="end"
-              coordinate={[endPoint.longitude, endPoint.latitude]}
-              anchor={{x: 0.5, y: 1}}
-              title="End">
-              <View style={styles.markerWrapper}>
-                <View style={[styles.markerLabel, styles.markerLabelEnd]}>
-                  <Text style={styles.markerLabelText}>END</Text>
-                </View>
-                <View style={[styles.markerDot, styles.markerDotEnd]} />
-              </View>
-            </MapboxGL.PointAnnotation>
+            <MapboxGL.ShapeSource
+              id="endMarker"
+              shape={{type: 'Feature', properties: {label: 'END'}, geometry: {type: 'Point', coordinates: [endPoint.longitude, endPoint.latitude]}}}>
+              <MapboxGL.CircleLayer
+                id="endDot"
+                style={{circleRadius: 6, circleColor: '#EF4444', circleStrokeColor: '#fff', circleStrokeWidth: 2}}
+              />
+              <MapboxGL.SymbolLayer
+                id="endLabel"
+                style={{
+                  textField: 'END',
+                  textSize: 9,
+                  textFont: ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+                  textColor: '#fff',
+                  textHaloColor: '#DC2626',
+                  textHaloWidth: 4,
+                  textOffset: [0, -1.8],
+                  textAllowOverlap: true,
+                }}
+              />
+            </MapboxGL.ShapeSource>
           )}
         </MapboxGL.MapView>
 

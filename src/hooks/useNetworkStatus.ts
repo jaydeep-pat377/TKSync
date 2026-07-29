@@ -1,4 +1,6 @@
 import {useState, useEffect, useRef} from 'react';
+import {AppState} from 'react-native';
+import type {AppStateStatus} from 'react-native';
 import NetInfo, {NetInfoState} from '@react-native-community/netinfo';
 
 type NetworkStatus = {
@@ -97,6 +99,36 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
       prevOnline.current = effectiveOnline;
     });
 
+    // Re-fetch NetInfo when app returns from background — NetInfo does NOT
+    // receive network state change events while backgrounded, so currentOnline
+    // and listeners can be stale. A manual fetch + synthetic event fixes this.
+    const appStateSub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        NetInfo.fetch().then((state: NetInfoState) => {
+          const isConn = state.isConnected ?? false;
+          const isReach = state.isInternetReachable ?? isConn;
+          const realOnline = isConn && isReach !== false;
+
+          const wasOnline = currentOnline;
+          currentOnline = realOnline;
+          setStatus({isConnected: isConn, isInternetReachable: isReach});
+
+          const effectiveOnline = realOnline && !_forceOffline;
+          const wasEffective = wasOnline && !_forceOffline;
+
+          if (effectiveOnline && !wasEffective) {
+            console.log('[Network] Foreground resume — connection restored, triggering sync');
+            listeners.forEach(cb => cb(true));
+          }
+          if (!effectiveOnline && wasEffective) {
+            console.log('[Network] Foreground resume — connection lost');
+            offlineListeners.forEach(cb => cb());
+          }
+          prevOnline.current = effectiveOnline;
+        });
+      }
+    });
+
     // Re-render when forceOffline toggles so isOnline updates immediately
     const unsubForce = __DEV__
       ? (() => {
@@ -108,6 +140,7 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
 
     return () => {
       unsubscribe();
+      appStateSub.remove();
       unsubForce?.();
     };
   }, []);
