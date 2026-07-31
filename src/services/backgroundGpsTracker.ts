@@ -42,6 +42,8 @@ let lastPosition: GpsPosition | null = null;
 let lastSavedPosition: {latitude: number; longitude: number} | null = null;
 const MIN_DISTANCE_TO_SAVE = 5; // metres — only save when moved this far
 let wasStationary = false; // true after first stationary fix is saved — suppresses drift
+let consecutiveMovingCount = 0;
+const MOVING_CONFIRM_THRESHOLD = 3; // Require 3 consecutive moving fixes to clear stationary
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
 let appStateSubscription: {remove: () => void} | null = null;
@@ -90,12 +92,15 @@ function setupAppStateListener() {
         }
         // 2. Pause idle check — prevent false logout before native records are imported
         stopIdleCheck();
-        // 3. Resume JS watcher
+        // 3. Stationary flag persists across foreground/background transitions
+        //    to prevent GPS drift on resume. Real movement will be confirmed
+        //    by consecutive speed checks (MOVING_CONFIRM_THRESHOLD).
+        // 4. Resume JS watcher
         if (watchId === null) {
           console.log('[GPS] App foregrounded — resuming JS GPS');
           startWatch();
         }
-        // 4. Import native records, update idle timer, then restart idle interval
+        // 5. Import native records, update idle timer, then restart idle interval
         importNativeRecordsAndUpdateIdle()
           .catch(() => {
             // Import failed — reset timer to avoid false logout with stale data
@@ -109,6 +114,8 @@ function setupAppStateListener() {
         console.log('[GPS] App backgrounded — JS GPS stopped, native service continues');
         stopWatch();
       }
+      // Reset consecutive moving count — prevents carry-over across long background gaps
+      consecutiveMovingCount = 0;
       // Tell native service JS is dead — native starts saving records
       if (Platform.OS === 'android' && LocationTrackingModule) {
         LocationTrackingModule.setJsAlive(false).catch(() => {});
@@ -293,40 +300,49 @@ function handlePosition(position: any) {
   }
 
   // Skip very inaccurate fixes
-  if (accuracy != null && accuracy > 200) {
+  if (accuracy != null && accuracy > 100) {
     console.log(`[GPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
     return;
   }
 
   // Stationary detection: skip GPS drift when truck is not moving
-  const isStationary = currentSpeed < 1.0; // < 1 m/s ≈ 3.6 km/h
+  const isStationary = currentSpeed < 1.67; // < 1.67 m/s ≈ 6 km/h — filters out walking
 
   if (isStationary) {
+    consecutiveMovingCount = 0;
     if (wasStationary) {
-      // Already saved the "stopped at" position — skip drift records
+      console.log(`[GPS] DRIFT BLOCKED: speed=${currentSpeed.toFixed(1)}, wasStationary=true, lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
       return;
     }
     // First stationary fix — save it so we know WHERE the truck stopped
     wasStationary = true;
+    console.log(`[GPS] FIRST STOP: saving stopped-at position, lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
   } else {
-    // Moving — reset stationary flag
-    wasStationary = false;
+    consecutiveMovingCount++;
+    if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD) {
+      // Confirmed real movement — clear stationary flag
+      wasStationary = false;
+      console.log(`[GPS] MOVEMENT CONFIRMED: ${consecutiveMovingCount} consecutive moving fixes, speed=${currentSpeed.toFixed(1)}`);
+    } else if (wasStationary) {
+      console.log(`[GPS] SPIKE BLOCKED: speed=${currentSpeed.toFixed(1)}, movingCount=${consecutiveMovingCount}/${MOVING_CONFIRM_THRESHOLD}, lat=${latitude.toFixed(6)}`);
+      return;
+    }
   }
 
   // Only save when truck has moved > 5m from last saved position
-  if (!isStationary && lastSavedPosition) {
+  if (lastSavedPosition) {
     const dist = haversineDistance(
       lastSavedPosition.latitude, lastSavedPosition.longitude,
       latitude, longitude,
     );
     if (dist < MIN_DISTANCE_TO_SAVE) {
-      return; // Truck hasn't moved — skip saving
+      return; // Truck hasn't moved enough — skip saving
     }
   }
 
   lastSavedPosition = {latitude, longitude};
 
-  // Reset idle auto-logout timer — a new GPS record means position changed
+  // Reset idle auto-logout timer — a new GPS record means activity
   lastMovementTime = Date.now();
   idleWarningShown = false;
 
@@ -339,6 +355,7 @@ function handlePosition(position: any) {
     altitude: altitude || null,
     accuracy: accuracy || null,
     recorded_at: new Date(position.timestamp).toISOString(),
+    is_idle: isStationary,
     ...currentBehavior,
   });
 
@@ -574,6 +591,7 @@ export const backgroundGpsTracker = {
     lastPosition = null;
     lastSavedPosition = null;
     wasStationary = false;
+    consecutiveMovingCount = 0;
     // Switch native service to silent mode — keeps collecting GPS in background
     if (Platform.OS === 'android' && LocationTrackingModule) {
       LocationTrackingModule.setJsAlive(false).catch(() => {});
@@ -641,6 +659,7 @@ export const backgroundGpsTracker = {
     lastPosition = null;
     lastSavedPosition = null;
     wasStationary = false;
+    consecutiveMovingCount = 0;
     currentBehavior = {};
     clearing = false;
     console.log('[GPS] Logout complete — native service stopped');

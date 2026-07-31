@@ -97,13 +97,15 @@ const UOM_MAP: Record<string, string> = {MQ: 'CY'};
 const normUOM = (u: string | null) => (!u ? '-' : UOM_MAP[u.toUpperCase()] || u);
 const fmtDate = (t: string | null) => {
   if (!t) return '--';
-  const d = new Date(t);
-  return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+  // Extract date directly from string — avoids timezone conversion
+  const m = String(t).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : '--';
 };
 const fmtTime = (t: string | null) => {
   if (!t) return '---';
-  const d = new Date(t);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  // Extract time directly from string — avoids timezone conversion
+  const m = String(t).match(/T(\d{2}):(\d{2})/);
+  return m ? `${m[1]}:${m[2]}` : '---';
 };
 const fmtAmt = (v: number | null, oa: boolean) => (oa || v == null ? 'ON ACCOUNT' : `$${v.toFixed(2)}`);
 

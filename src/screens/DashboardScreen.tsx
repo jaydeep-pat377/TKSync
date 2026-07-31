@@ -88,14 +88,11 @@ const TIMELINE_LABEL_KEYS: Record<string, string> = {
 
 function formatTime(dateStr: string | null): string {
   if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  const Y = d.getFullYear();
-  const M = (d.getMonth() + 1).toString().padStart(2, '0');
-  const D = d.getDate().toString().padStart(2, '0');
-  const h = d.getHours().toString().padStart(2, '0');
-  const m = d.getMinutes().toString().padStart(2, '0');
-  const s = d.getSeconds().toString().padStart(2, '0');
-  return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+  // Extract date/time directly from string — avoids timezone conversion issues
+  // Backend sends floated times (no offset) OR mobile saves with +00:00
+  const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):?(\d{2})?/);
+  if (!match) return '--';
+  return `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6] || '00'}`;
 }
 
 function formatLocalTime(timeStr: string | null | undefined): string {
@@ -638,8 +635,10 @@ export default function DashboardScreen({ navigation }: Props) {
               if (item.tab === 'time' && merged.time?.steps) {
                 merged.time = { ...merged.time, steps: merged.time.steps.map((s: any) => {
                   if (item.body[s.key]) {
-                    const d = new Date(item.body[s.key]);
-                    const time_local = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    // Extract HH:mm directly from wall-clock string "...THH:mm:ss+00:00"
+                    // Don't use new Date().getHours() — it converts +00:00 to local timezone
+                    const match = String(item.body[s.key]).match(/T(\d{2}):(\d{2})/);
+                    const time_local = match ? `${match[1]}:${match[2]}` : '--';
                     return { ...s, done: true, time: item.body[s.key], time_local };
                   }
                   return s;
@@ -1281,7 +1280,7 @@ export default function DashboardScreen({ navigation }: Props) {
       key: s.key,
       name: s.label,
       filled: s.done,
-      value: s.done ? (s.time_local || (s.time ? (() => { const d = new Date(s.time); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })() : undefined)) : undefined,
+      value: s.done ? (s.time_local || (s.time ? (() => { const m = String(s.time).match(/T(\d{2}):(\d{2})/); return m ? `${m[1]}:${m[2]}` : undefined; })() : undefined)) : undefined,
       fieldType: 'datetime',
       tab: 'time',
     }));

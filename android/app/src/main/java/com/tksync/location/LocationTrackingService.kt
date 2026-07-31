@@ -51,7 +51,7 @@ class LocationTrackingService : Service() {
         private const val KEY_API_TOKEN = "api_token"
         private const val UPLOAD_BATCH_SIZE = 50
         private const val UPLOAD_INTERVAL_MS = 30_000L // Upload every 30 seconds
-        private const val IDLE_SPEED_THRESHOLD = 1.0 // m/s
+        private const val IDLE_SPEED_THRESHOLD = 1.67 // m/s ≈ 6 km/h — filters out walking
         private const val IDLE_CONSECUTIVE_THRESHOLD = 3
         private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
 
@@ -188,6 +188,11 @@ class LocationTrackingService : Service() {
     private var consecutiveIdleCount: Int = 0
     private var idleLat: Double = 0.0
     private var idleLng: Double = 0.0
+    private var wasStationary: Boolean = false // true after first stationary fix is saved — suppresses drift
+    private var consecutiveMovingCount: Int = 0
+    private val MOVING_CONFIRM_THRESHOLD = 3 // Require 3 consecutive moving fixes to clear stationary
+    private var lastSavedLat: Double = 0.0
+    private var lastSavedLng: Double = 0.0
     private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
     private var pendingCount = 0
     private val WRITE_BATCH_SIZE = 1 // Flush to SharedPrefs immediately — ensures no records lost on foreground transition
@@ -417,16 +422,74 @@ class LocationTrackingService : Service() {
             ticketId = latestTicketId
         }
 
+        // Skip very inaccurate fixes (>100m) — in background, GPS can degrade severely
+        val accuracy = location.accuracy.toDouble()
+        if (location.hasAccuracy() && accuracy > 100.0) {
+            Log.d(TAG, "Skipping inaccurate fix: ${String.format("%.0f", accuracy)}m")
+            return
+        }
+
         val speedAvailable = location.hasSpeed() && location.speed >= 0f
         val speedMs = if (speedAvailable) location.speed.toDouble() else 0.0
         val speedKmh = speedMs * 3.6
         val isSpeeding = speedKmh > 80.0
-        val isIdle = speedAvailable && speedMs < IDLE_SPEED_THRESHOLD
+        // Treat speed-unavailable as idle (don't assume movement when we don't know)
+        val isIdle = !speedAvailable || speedMs < IDLE_SPEED_THRESHOLD
+        // Only consider it confirmed movement when speed is available AND above threshold
+        val isConfirmedMoving = speedAvailable && speedMs >= IDLE_SPEED_THRESHOLD
 
-        // Native idle detection (works in background/kill mode without JS)
-        // Also checks distance from idle position — speed from FusedLocation can be 0 even while driving
-        if (isIdle) {
-            // Check distance from idle position
+        // ── Stationary drift suppression ──────────────────────────────
+        // When the truck is not confirmed moving, save ONE "stopped at" position
+        // then suppress all subsequent drift points until real movement (speed
+        // above threshold) is detected. This mirrors the JS-side wasStationary
+        // logic and is the primary fix for the zigzag-while-parked bug.
+        //
+        // Uses a flag instead of early return so the idle-mode frequency
+        // reduction (below) still runs — otherwise the service polls at 5s
+        // forever while parked, wasting battery.
+        var suppressDrift = false
+
+        if (isConfirmedMoving) {
+            consecutiveMovingCount++
+            if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD) {
+                // Confirmed real movement — clear stationary flag
+                wasStationary = false
+                Log.d(TAG, "MOVEMENT CONFIRMED: $consecutiveMovingCount consecutive, speed=${String.format("%.1f", speedMs)}")
+            } else if (wasStationary) {
+                // Speed spike — not enough consecutive moving fixes to confirm
+                suppressDrift = true
+                Log.d(TAG, "SPIKE BLOCKED: speed=${String.format("%.1f", speedMs)}, movingCount=$consecutiveMovingCount/$MOVING_CONFIRM_THRESHOLD")
+            }
+        } else {
+            consecutiveMovingCount = 0
+            if (wasStationary) {
+                suppressDrift = true
+                Log.d(TAG, "DRIFT BLOCKED: speed=${String.format("%.1f", speedMs)}, wasStationary=true, " +
+                    "lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
+            } else {
+                // First stationary fix — save it so we know WHERE the truck stopped
+                wasStationary = true
+                Log.d(TAG, "FIRST STOP: saving stopped-at, lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
+                // Fall through to save this one record
+            }
+        }
+
+        // Native idle detection — controls polling frequency (5s → 30s when idle)
+        // Runs even when drift is suppressed so the service reduces battery usage.
+        if (isConfirmedMoving) {
+            // Confirmed movement — resume normal 5s polling if was idle
+            if (isIdleMode) {
+                Log.d(TAG, "Movement detected — resuming normal GPS tracking")
+                isIdleMode = false
+                idleLat = 0.0
+                idleLng = 0.0
+                prefs.edit().putBoolean(KEY_IDLE, false).apply()
+                fusedClient.removeLocationUpdates(locationCallback)
+                startLocationUpdates()
+            }
+            consecutiveIdleCount = 0
+        } else {
+            // Idle or speed unknown — build up idle counter for frequency reduction
             var movedFromIdle = false
             if (isIdleMode && idleLat != 0.0 && idleLng != 0.0) {
                 val results = FloatArray(1)
@@ -456,27 +519,35 @@ class LocationTrackingService : Service() {
                         idleLat = location.latitude
                         idleLng = location.longitude
                         prefs.edit().putBoolean(KEY_IDLE, true).apply()
-                        // Restart location updates with idle parameters
                         fusedClient.removeLocationUpdates(locationCallback)
                         startLocationUpdates()
                     }
-                    Log.d(TAG, "Idle — skipping GPS record | speed: ${String.format("%.1f", speedMs)} m/s")
+                    // Idle mode active — skip record (drift or not)
                     return
                 }
             }
-        } else {
-            // Movement detected — resume normal tracking if was idle
-            if (isIdleMode) {
-                Log.d(TAG, "Movement detected — resuming normal GPS tracking")
-                isIdleMode = false
-                idleLat = 0.0
-                idleLng = 0.0
-                prefs.edit().putBoolean(KEY_IDLE, false).apply()
-                fusedClient.removeLocationUpdates(locationCallback)
-                startLocationUpdates()
-            }
-            consecutiveIdleCount = 0
         }
+
+        // Drift was detected — record already suppressed, idle mode handled above
+        if (suppressDrift) return
+
+        // Skip if truck hasn't moved enough from last saved position.
+        // Scale minimum distance by accuracy — poor fixes need more displacement
+        // to confirm real movement (prevents zigzag drift from degraded GPS).
+        val minDistance = if (location.hasAccuracy() && accuracy > 15.0) {
+            maxOf(10.0, accuracy * 0.75) // 75% of accuracy radius, minimum 10m
+        } else {
+            5.0
+        }
+        if (lastSavedLat != 0.0 && lastSavedLng != 0.0) {
+            val distResults = FloatArray(1)
+            Location.distanceBetween(lastSavedLat, lastSavedLng, location.latitude, location.longitude, distResults)
+            if (distResults[0] < minDistance.toFloat()) {
+                return
+            }
+        }
+        lastSavedLat = location.latitude
+        lastSavedLng = location.longitude
 
         val record = JSONObject().apply {
             put("ticket_id", ticketId)
@@ -534,12 +605,10 @@ class LocationTrackingService : Service() {
         val records = getStoredRecords(this)
         // Find unsynced records
         val unsynced = JSONArray()
-        val unsyncedIndices = mutableListOf<Int>()
         for (i in 0 until records.length()) {
             val r = records.getJSONObject(i)
             if (!r.optBoolean("synced", false)) {
                 unsynced.put(r)
-                unsyncedIndices.add(i)
             }
         }
         if (unsynced.length() == 0) return
@@ -547,6 +616,7 @@ class LocationTrackingService : Service() {
         isUploading = true
         isCurrentlyUploading = true
         uploadExecutor.execute {
+            val syncedIds = mutableSetOf<String>()
             try {
                 // Upload in batches
                 var totalSynced = 0
@@ -575,10 +645,8 @@ class LocationTrackingService : Service() {
                     val success = postToApi("$baseUrl/tracking/gps", token, body)
                     if (success) {
                         totalSynced += batchSize
-                        // Mark records as synced
                         for (i in offset until offset + batchSize) {
-                            val idx = unsyncedIndices[i]
-                            records.getJSONObject(idx).put("synced", true)
+                            syncedIds.add(unsynced.getJSONObject(i).optString("id", ""))
                         }
                     } else {
                         break // Stop on first failure
@@ -587,15 +655,23 @@ class LocationTrackingService : Service() {
                 }
 
                 if (totalSynced > 0) {
-                    // Save synced status and remove synced records to keep SharedPrefs small
-                    val remaining = JSONArray()
-                    for (i in 0 until records.length()) {
-                        if (!records.getJSONObject(i).optBoolean("synced", false)) {
-                            remaining.put(records.getJSONObject(i))
+                    // Post back to main thread for a fresh read-filter-write.
+                    // This prevents a race condition where saveLocation/flushPendingRecords
+                    // adds new records to SharedPrefs while the upload is in progress —
+                    // a stale write from the executor would overwrite those new records.
+                    val synced = HashSet(syncedIds)
+                    uploadHandler.post {
+                        val freshRecords = getStoredRecords(this@LocationTrackingService)
+                        val remaining = JSONArray()
+                        for (i in 0 until freshRecords.length()) {
+                            val r = freshRecords.getJSONObject(i)
+                            if (!synced.contains(r.optString("id", ""))) {
+                                remaining.put(r)
+                            }
                         }
+                        prefs.edit().putString(KEY_RECORDS, remaining.toString()).apply()
+                        Log.d(TAG, "Upload complete — synced: ${synced.size}, remaining: ${remaining.length()}")
                     }
-                    prefs.edit().putString(KEY_RECORDS, remaining.toString()).apply()
-                    Log.d(TAG, "Upload complete — synced: $totalSynced, remaining: ${remaining.length()}")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Upload failed: ${e.message}")

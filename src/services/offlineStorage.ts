@@ -176,8 +176,9 @@ export const offlineStorage = {
     if (tab === 'time' && cached[tab]?.steps) {
       cached[tab].steps = cached[tab].steps.map((s: any) => {
         if (body[s.key]) {
-          const d = new Date(body[s.key]);
-          const time_local = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          // Extract HH:mm directly — don't use getHours() which converts +00:00 to local timezone
+          const match = String(body[s.key]).match(/T(\d{2}):(\d{2})/);
+          const time_local = match ? `${match[1]}:${match[2]}` : '--';
           return {...s, done: true, time: body[s.key], time_local};
         }
         return s;
@@ -253,5 +254,10 @@ export const offlineStorage = {
     } catch {
       return null;
     }
+  },
+
+  /** Wipe all offline data — queue, caches, field definitions. Called on full logout. */
+  clearAll(): void {
+    offlineStore.clearAll();
   },
 };

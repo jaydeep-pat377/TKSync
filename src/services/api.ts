@@ -161,10 +161,16 @@ async function request<T = any>(
           throw retryErr;
         }
       }
+      // refresh failed — onSessionExpired already called by refreshAccessToken
+    } else if (res.status === 401) {
+      // Non-TOKEN_EXPIRED 401 (session revoked from web, driver logged out, etc.)
+      console.log(`[API] Session invalid (401, error_code=${json.error_code}) — logging out`);
+      onSessionExpired?.();
     }
 
     // Toast API-level errors (validation, auth, etc.) — skip silent endpoints
-    if (!isSilent && !httpErr) {
+    // Skip on 401 — onSessionExpired already shows "Session Expired" toast
+    if (!isSilent && !httpErr && res.status !== 401) {
       const errMsg = json.errors?.map(e => e.message).join(', ') || json.message;
       showToast('error', 'Error', errMsg);
     }
@@ -181,6 +187,9 @@ async function request<T = any>(
 async function refreshAccessToken(): Promise<boolean> {
   const refreshToken = storage.getString('refresh_token');
   if (!refreshToken) {
+    // No refresh token — session is dead, trigger logout
+    storage.remove('access_token');
+    onSessionExpired?.();
     return false;
   }
 

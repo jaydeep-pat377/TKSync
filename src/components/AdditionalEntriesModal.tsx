@@ -131,8 +131,8 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     setWaterReason(p?.water_reason || '');
     setNitrogenAdded(p?.nitrogen_added === true || p?.nitrogen_added === 'true' ? 'ADDED — ON TICKET' : p?.nitrogen_added === false || p?.nitrogen_added === 'false' ? 'NOT ADDED' : (typeof p?.nitrogen_added === 'string' && p.nitrogen_added !== 'true' && p.nitrogen_added !== 'false') ? p.nitrogen_added : '');
     setFibersAdded(p?.fibers_added === true || p?.fibers_added === 'true' ? 'ADDED — ON TICKET' : p?.fibers_added === false || p?.fibers_added === 'false' ? 'NOT ADDED' : (typeof p?.fibers_added === 'string' && p.fibers_added !== 'true' && p.fibers_added !== 'false') ? p.fibers_added : '');
-    setTruckStart(p?.truck_start ? (() => { try { const d = new Date(p.truck_start); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch { return ''; } })() : '');
-    setTruckEnd(p?.truck_end ? (() => { try { const d = new Date(p.truck_end); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch { return ''; } })() : '');
+    setTruckStart(p?.truck_start ? (() => { const m = String(p.truck_start).match(/T(\d{2}):(\d{2})/); return m ? `${m[1]}:${m[2]}` : ''; })() : '');
+    setTruckEnd(p?.truck_end ? (() => { const m = String(p.truck_end).match(/T(\d{2}):(\d{2})/); return m ? `${m[1]}:${m[2]}` : ''; })() : '');
     setPlantNotes(p?.notes || '');
     setLoadTested(p?.load_tested === true || p?.load_tested === 'true' ? 'YES' : p?.load_tested === false || p?.load_tested === 'false' ? 'NO' : (typeof p?.load_tested === 'string' && p.load_tested !== 'true' && p.load_tested !== 'false') ? p.load_tested : '');
     setLoadTemp(p?.load_temp ?? 0);

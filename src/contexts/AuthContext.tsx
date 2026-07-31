@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useState, useCallback, useEffect, useMemo} from 'react';
-import {DeviceEventEmitter} from 'react-native';
+import {DeviceEventEmitter, AppState} from 'react-native';
+import type {AppStateStatus} from 'react-native';
 import {storage} from '../services/storage';
 import {
   authApi,
@@ -12,6 +13,7 @@ import {setSentryUser} from '../services/sentry';
 import {showToast} from '../utils/toast';
 import {registerDevice, unregisterDevice, setupTokenRefreshListener, setupForegroundHandler, FORCE_LOGOUT_EVENT} from '../services/notifications';
 import {IDLE_AUTO_LOGOUT_EVENT} from '../services/backgroundGpsTracker';
+import {offlineStorage} from '../services/offlineStorage';
 
 type CompanyInfo = {
   company_id: number;
@@ -183,6 +185,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       }
     }
 
+    await unregisterDevice();
     try {
       await authApi.companyLogout();
     } catch {
@@ -196,6 +199,11 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     storage.remove('refresh_token');
     storage.remove('company');
     storage.remove('driver');
+    storage.remove('notification_history');
+    storage.remove('pending_missing_fields');
+    storage.remove('pending_notification_nav');
+    storage.remove('orphaned_gps_token');
+    offlineStorage.clearAll();
 
     setState({
       isLoading: false,
@@ -234,6 +242,11 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     storage.remove('driver');
     storage.remove('fcm_token');
     storage.remove('force_logout');
+    storage.remove('notification_history');
+    storage.remove('pending_missing_fields');
+    storage.remove('pending_notification_nav');
+    storage.remove('orphaned_gps_token');
+    offlineStorage.clearAll();
 
     // Full state reset — back to company login
     setState({
@@ -258,12 +271,24 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
 
     if (!state.isDriverLoggedIn) return;
 
-    // Listen for force_logout event (foreground)
+    // Listen for force_logout event (foreground push)
     const sub = DeviceEventEmitter.addListener(FORCE_LOGOUT_EVENT, async () => {
       await forceLogoutCleanup();
     });
 
-    return () => sub.remove();
+    // Check for pending force_logout when app returns from background —
+    // the background push handler sets the flag, but this useEffect doesn't
+    // re-run because deps haven't changed. AppState listener catches it.
+    const appStateSub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        const pending = storage.getString('force_logout');
+        if (pending === 'true') {
+          forceLogoutCleanup();
+        }
+      }
+    });
+
+    return () => { sub.remove(); appStateSub.remove(); };
   }, [state.isDriverLoggedIn, forceLogoutCleanup]);
 
   // Idle auto-logout: driver logout only (keep company selected)
@@ -280,15 +305,21 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
 
   useEffect(() => {
     setOnSessionExpired(() => {
-      // Note: GPS data cannot be uploaded here — token is already expired.
-      // api.ts already cleared access_token/refresh_token before this callback.
-      // OfflineSyncContext will call clearAllData() which preserves unsynced
-      // records via orphaned_gps_token for deferred upload on next login.
+      // Skip if force_logout is pending — forceLogoutCleanup handles it on resume.
+      if (storage.getString('force_logout') === 'true') return;
+      // Skip if already handled — prevents multiple toasts from concurrent 401s
+      if (!storage.getString('access_token')) return;
+
       setSentryUser(null);
       storage.remove('access_token');
       storage.remove('refresh_token');
       storage.remove('company');
       storage.remove('driver');
+      storage.remove('notification_history');
+      storage.remove('pending_missing_fields');
+      storage.remove('pending_notification_nav');
+      storage.remove('orphaned_gps_token');
+      offlineStorage.clearAll();
       setState({
         isLoading: false,
         isCompanyLoggedIn: false,
