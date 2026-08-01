@@ -14,6 +14,7 @@ import {showToast} from '../utils/toast';
 import {registerDevice, unregisterDevice, setupTokenRefreshListener, setupForegroundHandler, FORCE_LOGOUT_EVENT} from '../services/notifications';
 import {IDLE_AUTO_LOGOUT_EVENT} from '../services/backgroundGpsTracker';
 import {offlineStorage} from '../services/offlineStorage';
+import {gpsStorage} from '../services/gpsStorage';
 
 type CompanyInfo = {
   company_id: number;
@@ -166,6 +167,12 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     }
 
     setSentryUser(null);
+    offlineStorage.clearAll();
+    gpsStorage.clear();
+    storage.remove('notification_history');
+    storage.remove('pending_missing_fields');
+    storage.remove('pending_notification_nav');
+    storage.remove('orphaned_gps_token');
 
     setState(prev => ({
       ...prev,
@@ -204,6 +211,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     storage.remove('pending_notification_nav');
     storage.remove('orphaned_gps_token');
     offlineStorage.clearAll();
+    gpsStorage.clear();
 
     setState({
       isLoading: false,
@@ -247,6 +255,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     storage.remove('pending_notification_nav');
     storage.remove('orphaned_gps_token');
     offlineStorage.clearAll();
+    gpsStorage.clear();
 
     // Full state reset — back to company login
     setState({
@@ -320,6 +329,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       storage.remove('pending_notification_nav');
       storage.remove('orphaned_gps_token');
       offlineStorage.clearAll();
+      gpsStorage.clear();
       setState({
         isLoading: false,
         isCompanyLoggedIn: false,

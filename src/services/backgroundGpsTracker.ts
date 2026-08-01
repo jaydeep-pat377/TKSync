@@ -661,6 +661,7 @@ export const backgroundGpsTracker = {
     wasStationary = false;
     consecutiveMovingCount = 0;
     currentBehavior = {};
+    listeners.clear();
     clearing = false;
     console.log('[GPS] Logout complete — native service stopped');
   },

@@ -88,6 +88,7 @@ async function request<T = any>(
   } catch {
     console.log(`[API Request] ${method} ${url}`, '(body not JSON)');
   }
+  console.log(`[API Token] ${accessToken ? `Bearer ${accessToken}` : 'NO TOKEN'}`);
 
   let res: Response;
   try {

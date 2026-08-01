@@ -871,120 +871,160 @@ export default function DashboardScreen({ navigation }: Props) {
             </View>
           </View>
           {/* Ticket tabs */}
-          <View style={{ flexDirection: 'row', gap: wp(5), marginTop: wp(4), paddingBottom: wp(2) }}>
-            <Skeleton width={wp(80)} height={wp(26)} radius={wp(7)} />
-            <Skeleton width={wp(80)} height={wp(26)} radius={wp(7)} />
+          <View style={{ flexDirection: 'row', gap: wp(5), marginTop: wp(4), paddingBottom: wp(2), justifyContent: 'center' }}>
             <Skeleton width={wp(80)} height={wp(26)} radius={wp(7)} />
           </View>
         </View>
 
-        {/* Weather strip */}
-        <View style={[{ backgroundColor: c.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), gap: wp(10) }, skPad]}>
-          <Skeleton width={wp(24)} height={wp(24)} radius={wp(12)} />
-          <View style={{ flex: 1, gap: wp(4) }}>
-            <Skeleton width={wp(100)} height={wp(10)} radius={wp(3)} />
-            <Skeleton width={wp(140)} height={wp(8)} radius={wp(3)} />
+        {/* Info Bar */}
+        <View style={[{ backgroundColor: '#367000', flexDirection: 'row', alignItems: 'center', paddingVertical: wp(6), paddingHorizontal: wp(8), borderRadius: 0 }, skPad]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), flex: 1 }}>
+            <Skeleton width={wp(30)} height={wp(30)} radius={wp(15)} />
+            <View style={{ gap: wp(3) }}>
+              <Skeleton width={wp(40)} height={wp(10)} radius={wp(3)} />
+              <Skeleton width={wp(30)} height={wp(8)} radius={wp(2)} />
+            </View>
           </View>
-          <Skeleton width={wp(60)} height={wp(30)} radius={wp(8)} />
+          <View style={{ alignItems: 'center', flex: 2, gap: wp(3) }}>
+            <Skeleton width={wp(120)} height={wp(12)} radius={wp(3)} />
+            <Skeleton width={wp(90)} height={wp(9)} radius={wp(3)} />
+          </View>
+          <View style={{ flex: 1, alignItems: 'flex-end', gap: wp(3) }}>
+            <Skeleton width={wp(90)} height={wp(18)} radius={wp(4)} />
+            <Skeleton width={wp(90)} height={wp(18)} radius={wp(4)} />
+          </View>
         </View>
 
         {/* Content */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={[{ paddingTop: wp(4), paddingBottom: Math.max(wp(4), insets.bottom), gap: wp(3) }, skPad]}>
-          {/* KPI card */}
-          <View style={[cs.card, { padding: wp(6) }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(12) }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), flex: 1 }}>
-                <Skeleton width={wp(28)} height={wp(28)} radius={wp(8)} />
-                <View style={{ gap: wp(4) }}>
-                  <Skeleton width={wp(70)} height={wp(12)} radius={wp(3)} />
-                  <Skeleton width={wp(40)} height={wp(9)} radius={wp(3)} />
-                </View>
-              </View>
-              <View style={{ width: StyleSheet.hairlineWidth, height: wp(24), backgroundColor: c.border }} />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(6), flex: 1 }}>
-                <Skeleton width={wp(28)} height={wp(28)} radius={wp(8)} />
-                <View style={{ gap: wp(4) }}>
-                  <Skeleton width={wp(50)} height={wp(12)} radius={wp(3)} />
-                  <Skeleton width={wp(35)} height={wp(9)} radius={wp(3)} />
-                </View>
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: wp(6), marginTop: wp(6), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight, paddingTop: wp(6) }}>
-              <Skeleton width={wp(90)} height={wp(22)} radius={wp(8)} />
-              <Skeleton width={wp(80)} height={wp(22)} radius={wp(8)} />
-            </View>
-          </View>
-
-          {/* Delivery Progress card */}
-          <View style={[cs.card]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4), marginBottom: wp(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(4) }}>
-              <Skeleton width={wp(22)} height={wp(22)} radius={wp(7)} />
-              <Skeleton width={wp(110)} height={wp(10)} radius={wp(3)} />
-              <View style={{ flex: 1 }} />
-              <Skeleton width={wp(30)} height={wp(16)} radius={wp(6)} />
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: wp(2) }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[{ paddingTop: wp(6), paddingBottom: Math.max(wp(4), insets.bottom), gap: wp(6) }, skPad]}>
+          {/* Timeline */}
+          <View style={{ paddingHorizontal: wp(4) }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
               {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-                <React.Fragment key={i}>
-                  {i > 0 && <View style={{ flex: 1, height: 2, backgroundColor: c.border, borderRadius: 1 }} />}
-                  <Skeleton width={wp(10)} height={wp(10)} radius={wp(5)} />
-                </React.Fragment>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: wp(4), paddingHorizontal: wp(2) }}>
-              {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-                <View key={i} style={{ alignItems: 'center', gap: wp(2) }}>
-                  <Skeleton width={wp(28)} height={wp(7)} radius={wp(2)} />
-                  <Skeleton width={wp(22)} height={wp(8)} radius={wp(2)} />
+                <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+                  <Skeleton width={wp(30)} height={wp(7)} radius={wp(2)} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', height: wp(14), width: '100%', marginTop: wp(3) }}>
+                    {i === 0 ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: c.border, borderRadius: 1 }} />}
+                    <Skeleton width={wp(10)} height={wp(10)} radius={wp(5)} />
+                    {i === 7 ? <View style={{ flex: 1 }} /> : <View style={{ flex: 1, height: 2, backgroundColor: c.border, borderRadius: 1 }} />}
+                  </View>
+                  <Skeleton width={wp(24)} height={wp(8)} radius={wp(2)} style={{ marginTop: wp(2) }} />
                 </View>
               ))}
             </View>
           </View>
 
-          {/* Job Details + Mix Details cards */}
-          <View style={{ flexDirection: 'row', gap: wp(3) }}>
-            {/* Job Details */}
-            <View style={[cs.card, { flex: 1 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4), marginBottom: wp(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(4) }}>
-                <Skeleton width={wp(16)} height={wp(16)} radius={wp(4)} />
-                <Skeleton width={wp(65)} height={wp(10)} radius={wp(3)} />
-              </View>
-              {[0, 1, 2, 3, 4, 5].map(i => (
-                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), borderBottomWidth: i < 5 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                  <Skeleton width={wp(40)} height={wp(8)} radius={wp(2)} />
-                  <View style={{ flex: 1 }} />
-                  <Skeleton width={wp(60)} height={wp(8)} radius={wp(2)} />
+          {/* Two-column body */}
+          <View style={{ flexDirection: 'row', gap: wp(6) }}>
+            {/* LEFT — Customer + Products + Delivery Location + Quick Links */}
+            <View style={{ flex: 1, gap: wp(6) }}>
+              {/* Customer */}
+              <View style={[cs.card, { padding: wp(8) }]}>
+                <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(6), marginBottom: wp(4) }}>
+                  <Skeleton width={wp(70)} height={wp(9)} radius={wp(2)} />
                 </View>
-              ))}
+                {[0, 1].map(i => (
+                  <View key={i} style={{ flexDirection: 'row', paddingVertical: wp(5), borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                    <Skeleton width={wp(50)} height={wp(8)} radius={wp(2)} />
+                    <View style={{ flex: 1 }} />
+                    <Skeleton width={wp(100)} height={wp(8)} radius={wp(2)} />
+                  </View>
+                ))}
+              </View>
+              {/* Products */}
+              <View style={[cs.card, { padding: wp(8) }]}>
+                <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(6), marginBottom: wp(4) }}>
+                  <Skeleton width={wp(65)} height={wp(9)} radius={wp(2)} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: wp(6) }}>
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <View key={i} style={{ flex: 1, gap: wp(3) }}>
+                      <Skeleton width={wp(30)} height={wp(7)} radius={wp(2)} />
+                      <Skeleton width={wp(20)} height={wp(8)} radius={wp(2)} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+              {/* Delivery Location */}
+              <View style={[cs.card, { padding: wp(8) }]}>
+                <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(6), marginBottom: wp(4) }}>
+                  <Skeleton width={wp(100)} height={wp(9)} radius={wp(2)} />
+                </View>
+                {[0, 1, 2, 3, 4, 5].map(i => (
+                  <View key={i} style={{ flexDirection: 'row', paddingVertical: wp(5), borderBottomWidth: i < 5 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                    <Skeleton width={wp(55)} height={wp(8)} radius={wp(2)} />
+                    <View style={{ flex: 1 }} />
+                    <Skeleton width={wp(70)} height={wp(8)} radius={wp(2)} />
+                  </View>
+                ))}
+              </View>
+              {/* Quick Links */}
+              <View style={[cs.card, { padding: wp(8) }]}>
+                <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(6), marginBottom: wp(4) }}>
+                  <Skeleton width={wp(80)} height={wp(9)} radius={wp(2)} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: wp(8) }}>
+                  <Skeleton width={wp(90)} height={wp(8)} radius={wp(2)} />
+                  <Skeleton width={wp(70)} height={wp(8)} radius={wp(2)} />
+                  <Skeleton width={wp(85)} height={wp(8)} radius={wp(2)} />
+                </View>
+              </View>
             </View>
-            {/* Mix Details */}
-            <View style={[cs.card, { flex: 1, backgroundColor: c.primarySurface }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4), marginBottom: wp(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(4) }}>
-                <Skeleton width={wp(16)} height={wp(16)} radius={wp(4)} />
-                <Skeleton width={wp(60)} height={wp(10)} radius={wp(3)} />
-              </View>
-              {[0, 1, 2, 3, 4, 5].map(i => (
-                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: wp(5), borderBottomWidth: i < 5 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
-                  <Skeleton width={wp(40)} height={wp(8)} radius={wp(2)} />
+
+            {/* RIGHT — Required Entries + Additional Entries */}
+            <View style={{ flex: 1, gap: wp(6) }}>
+              {/* Required Entries */}
+              <View style={[cs.card, { padding: wp(8) }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(6), marginBottom: wp(4) }}>
+                  <Skeleton width={wp(100)} height={wp(9)} radius={wp(2)} />
                   <View style={{ flex: 1 }} />
-                  <Skeleton width={wp(55)} height={wp(8)} radius={wp(2)} />
+                  <Skeleton width={wp(30)} height={wp(16)} radius={wp(8)} />
                 </View>
-              ))}
+                {['PLANT', 'JOBSITE', 'RETURNED', 'STATUS TIMES'].map((_, si) => (
+                  <View key={si} style={{ marginBottom: wp(6), paddingBottom: wp(6), borderBottomWidth: si < 3 ? StyleSheet.hairlineWidth : 0, borderBottomColor: c.borderLight }}>
+                    <View style={{ flexDirection: 'row', marginBottom: wp(4) }}>
+                      <Skeleton width={wp(50)} height={wp(8)} radius={wp(2)} />
+                      <View style={{ flex: 1 }} />
+                      <Skeleton width={wp(20)} height={wp(8)} radius={wp(2)} />
+                    </View>
+                    {[0, 1].map(ii => (
+                      <View key={ii} style={{ flexDirection: 'row', alignItems: 'center', gap: wp(5), paddingVertical: wp(4) }}>
+                        <Skeleton width={wp(10)} height={wp(10)} radius={wp(5)} />
+                        <Skeleton width={wp(80)} height={wp(8)} radius={wp(2)} />
+                        <View style={{ flex: 1 }} />
+                        <Skeleton width={wp(25)} height={wp(8)} radius={wp(2)} />
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+              {/* Additional Entries */}
+              <View style={[cs.card, { padding: wp(8) }]}>
+                <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight, paddingBottom: wp(6), marginBottom: wp(4) }}>
+                  <Skeleton width={wp(110)} height={wp(9)} radius={wp(2)} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: wp(8) }}>
+                  <Skeleton width={wp(40)} height={wp(8)} radius={wp(2)} />
+                  <Skeleton width={wp(50)} height={wp(8)} radius={wp(2)} />
+                  <Skeleton width={wp(30)} height={wp(8)} radius={wp(2)} />
+                </View>
+              </View>
             </View>
           </View>
         </ScrollView>
 
-        {/* Bottom nav */}
+        {/* Bottom bar */}
         <View style={{
-          flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center',
+          flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: wp(8),
           borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border, backgroundColor: c.white,
-          paddingTop: 4, paddingBottom: insets.bottom || 6, paddingLeft: insets.left, paddingRight: insets.right,
+          paddingVertical: wp(6), paddingHorizontal: wp(12), paddingBottom: Math.max(insets.bottom, wp(6)),
+          paddingLeft: Math.max(wp(12), insets.left), paddingRight: Math.max(wp(12), insets.right),
         }}>
-          {[0, 1, 2, 3, 4].map(i => (
-            <View key={i} style={{ alignItems: 'center', paddingVertical: 4, minWidth: wp(48) }}>
-              <Skeleton width={wp(24)} height={wp(24)} radius={wp(6)} />
-            </View>
-          ))}
+          <Skeleton width={wp(140)} height={wp(10)} radius={wp(3)} />
+          <View style={{ flex: 1 }} />
+          <Skeleton width={wp(36)} height={wp(36)} radius={wp(10)} />
+          <Skeleton width={wp(36)} height={wp(36)} radius={wp(10)} />
+          <Skeleton width={wp(36)} height={wp(36)} radius={wp(10)} />
         </View>
       </View>
     );

@@ -153,6 +153,7 @@ export const gpsStorage = {
   clear(): void {
     gpsStore.set(RECORDS_KEY, '[]');
     gpsStore.set(TRIP_SUMMARIES_KEY, '[]');
+    gpsStore.delete('last_ticket_id');
   },
 
   /** Remove only synced records — keep unsynced for next login. */
