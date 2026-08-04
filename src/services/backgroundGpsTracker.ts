@@ -2,6 +2,8 @@ import {Platform, PermissionsAndroid, AppState, NativeModules} from 'react-nativ
 import type {AppStateStatus} from 'react-native';
 import Config from 'react-native-config';
 import Geolocation from 'react-native-geolocation-service';
+import {orientation, SensorTypes, setUpdateIntervalForType} from 'react-native-sensors';
+import type {Subscription} from 'rxjs';
 import {gpsStorage} from './gpsStorage';
 import {gpsSyncManager} from './gpsSyncManager';
 import {storage} from './storage';
@@ -49,6 +51,15 @@ const listeners = new Set<GpsListener>();
 let appStateSubscription: {remove: () => void} | null = null;
 let connectivityRestoredUnsub: (() => void) | null = null;
 
+// ─── Compass / Heading State ─────────────────────────────────────
+// Orientation sensor gives true compass heading on both platforms:
+// Android: TYPE_ROTATION_VECTOR → SensorManager.getOrientation() → azimuth from north
+// iOS: CMDeviceMotion with CMAttitudeReferenceFrameXMagneticNorthZVertical → yaw from north
+//      (patched in react-native-sensors — see patches/react-native-sensors+7.3.6.patch)
+let compassHeading: number | null = null;  // null = compass not yet received
+let lastGpsHeading: number = 0;            // last reliable GPS heading while moving
+let magnetometerSub: Subscription | null = null;
+
 // ─── Idle Auto-Logout ────────────────────────────────────────────
 // Auto-logout if no new GPS record is saved for 2 hours.
 // A GPS record is only saved when the truck's position actually changes (> 5m),
@@ -72,6 +83,61 @@ function haversineDistance(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── Compass (Orientation Sensor) ────────────────────────────────
+
+function startCompass() {
+  if (magnetometerSub) return;
+  try {
+    setUpdateIntervalForType(SensorTypes.orientation, 500); // 2 readings/sec
+    magnetometerSub = orientation.subscribe(
+      ({yaw}: {yaw: number; pitch: number; roll: number}) => {
+        // yaw = azimuth from magnetic north in radians (both platforms):
+        // Android: TYPE_ROTATION_VECTOR → SensorManager.getOrientation()
+        // iOS: CMDeviceMotion with XMagneticNorthZVertical reference frame
+        // Convert radians → degrees and normalize to 0–360
+        compassHeading = (((yaw * 180) / Math.PI) + 360) % 360;
+      },
+      (err: any) => {
+        console.warn('[GPS] Orientation sensor error:', err);
+        magnetometerSub = null;
+      },
+    );
+    console.log('[GPS] Compass (orientation sensor) started');
+  } catch (e: any) {
+    console.warn('[GPS] Failed to start orientation sensor:', e.message);
+  }
+}
+
+function stopCompass() {
+  if (magnetometerSub) {
+    magnetometerSub.unsubscribe();
+    magnetometerSub = null;
+    console.log('[GPS] Compass (orientation sensor) stopped');
+  }
+}
+
+/**
+ * Resolve heading: use GPS heading when moving, best available fallback when stopped.
+ *
+ * Priority:
+ * 1. Moving + valid GPS heading → GPS heading (most accurate travel direction)
+ * 2. Stopped + compass available → compass heading (real-time direction phone faces)
+ * 3. Stopped + compass not ready (sensor error / startup) → last known GPS heading
+ */
+function resolveHeading(gpsHeading: number | null, speed: number): number {
+  const isMoving = speed >= 1.67; // same threshold as stationary detection
+  if (isMoving && gpsHeading != null && Number.isFinite(gpsHeading)) {
+    // Save as last known GPS heading for fallback
+    lastGpsHeading = gpsHeading;
+    return gpsHeading;
+  }
+  // Stopped — use compass if available, otherwise last GPS heading
+  if (compassHeading != null) {
+    return compassHeading;
+  }
+  return lastGpsHeading;
 }
 
 // ─── App Lifecycle ───────────────────────────────────────────────
@@ -274,11 +340,14 @@ function handlePosition(position: any) {
   const speedAvailable = typeof speed === 'number' && !isNaN(speed) && speed >= 0;
   const currentSpeed = speedAvailable ? speed : 0;
 
+  // Hybrid heading: GPS when moving, compass (magnetometer) when stopped
+  const resolvedHeading = resolveHeading(heading, currentSpeed);
+
   const pos: GpsPosition = {
     latitude,
     longitude,
     speed: currentSpeed,
-    heading: heading ?? 0,
+    heading: resolvedHeading,
     altitude: altitude || 0,
     accuracy: accuracy || 0,
     timestamp: position.timestamp,
@@ -351,7 +420,7 @@ function handlePosition(position: any) {
     latitude,
     longitude,
     speed: currentSpeed,
-    heading: heading ?? 0,
+    heading: resolvedHeading,
     altitude: altitude || null,
     accuracy: accuracy || null,
     recorded_at: new Date(position.timestamp).toISOString(),
@@ -511,6 +580,9 @@ export const backgroundGpsTracker = {
         LocationTrackingModule.setJsAlive(true).catch(() => {});
       }
 
+      // Start compass for hybrid heading (GPS + magnetometer)
+      startCompass();
+
       // Start JS GPS if app is currently in foreground
       if (AppState.currentState === 'active') {
         startWatch();
@@ -519,7 +591,7 @@ export const backgroundGpsTracker = {
 
       running = true;
       startIdleCheck();
-      console.log(`[GPS] Started — native background enabled — ticket: ${ticketId || 'none'}`);
+      console.log(`[GPS] Started — native background enabled, compass active — ticket: ${ticketId || 'none'}`);
       return true;
     } catch (err: any) {
       console.error(`[GPS] startAlways failed: ${err.message}`);
@@ -558,13 +630,16 @@ export const backgroundGpsTracker = {
         showToast('info', 'Tracking Stopped', 'Ticket is no longer in process.');
       });
 
+      // Start compass for hybrid heading
+      startCompass();
+
       if (AppState.currentState === 'active') {
         startWatch();
       }
       setupAppStateListener();
 
       running = true;
-      console.log(`[GPS] Started — foreground only — ticket: ${gpsSyncManager.getTicketId()}`);
+      console.log(`[GPS] Started — foreground only, compass active — ticket: ${gpsSyncManager.getTicketId()}`);
       return true;
     } catch (err: any) {
       console.error(`[GPS] start failed: ${err.message}`);
@@ -583,6 +658,7 @@ export const backgroundGpsTracker = {
     permissionDenied = false;
     pendingTicketId = null;
     stopWatch();
+    stopCompass();
     stopIdleCheck();
     removeAppStateListener();
     connectivityRestoredUnsub?.();
@@ -592,6 +668,8 @@ export const backgroundGpsTracker = {
     lastSavedPosition = null;
     wasStationary = false;
     consecutiveMovingCount = 0;
+    compassHeading = null;
+    lastGpsHeading = 0;
     // Switch native service to silent mode — keeps collecting GPS in background
     if (Platform.OS === 'android' && LocationTrackingModule) {
       LocationTrackingModule.setJsAlive(false).catch(() => {});
@@ -605,6 +683,7 @@ export const backgroundGpsTracker = {
     if (clearing) return; // Prevent double execution
     clearing = true;
     stopWatch();
+    stopCompass();
     stopIdleCheck();
     removeAppStateListener();
     connectivityRestoredUnsub?.();
@@ -660,6 +739,8 @@ export const backgroundGpsTracker = {
     lastSavedPosition = null;
     wasStationary = false;
     consecutiveMovingCount = 0;
+    compassHeading = null;
+    lastGpsHeading = 0;
     currentBehavior = {};
     listeners.clear();
     clearing = false;
