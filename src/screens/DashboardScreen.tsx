@@ -476,7 +476,7 @@ export default function DashboardScreen({ navigation }: Props) {
     try {
       setLoading(true);
       setRefreshing(true);
-      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, active: true });
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, status: 'active' });
       console.log('[Tickets] fetched:', data.total, 'tickets, data length:', data.data.length);
       setTickets(data.data);
       ticketsRef.current = data.data;
@@ -530,7 +530,7 @@ export default function DashboardScreen({ navigation }: Props) {
     const idx = activeTicketRef.current;
     // Refresh ticket list
     try {
-      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, active: true });
+      const { data } = await ticketsApi.getLatest({ page: 1, limit: 20, status: 'active' });
       // Pre-mark so the useEffect skips when setTickets triggers it
       const currentTicket = data.data[idx];
       if (currentTicket && activeTicketRef.current === idx) {
@@ -718,11 +718,11 @@ export default function DashboardScreen({ navigation }: Props) {
     try {
       if (type === 'driver') {
         await driverLogout();
-        // AppNavigator redirects to DriverLogin → screen unmounts → modal destroyed
       } else if (type === 'tenant') {
         await companyLogout();
-        // AppNavigator redirects to CompanyLogin → screen unmounts → modal destroyed
       }
+      // Close modal BEFORE navigation — Android <Modal> blocks navigation if still open
+      setLogoutType(null);
     } catch {
       // Logout failed — stay on modal so user can retry or cancel
     } finally {
@@ -1176,6 +1176,110 @@ export default function DashboardScreen({ navigation }: Props) {
               )}
             </ScrollView>
           )}
+        </ResponsiveModal>
+
+        {/* ─── LOGOUT CONFIRMATION MODAL (empty state) ─── */}
+        <ResponsiveModal
+          visible={logoutType !== null}
+          onClose={() => !loggingOut && setLogoutType(null)}
+          maxWidth={360}
+          widthPercent={isLandscape ? 40 : 80}>
+          <View style={{ padding: wp(16), alignItems: 'center' }}>
+            <View style={[styles.logoutIconWrap, { backgroundColor: logoutType === 'tenant' ? c.errorSurface : c.warningSurface }]}>
+              <Icon
+                name={logoutType === 'tenant' ? 'domain-disabled' : 'person-off'}
+                size={ms(28)}
+                color={logoutType === 'tenant' ? c.error : c.warningDark}
+              />
+            </View>
+            <Text style={styles.logoutTitle}>
+              {logoutType === 'tenant' ? t('logout.tenantTitle') : t('logout.driverTitle')}
+            </Text>
+            <Text style={styles.logoutMessage}>
+              {logoutType === 'tenant' ? t('logout.tenantMessage') : t('logout.driverMessage')}
+            </Text>
+            <View style={styles.logoutButtons}>
+              <TouchableOpacity
+                style={[styles.logoutBtn, { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }]}
+                onPress={() => setLogoutType(null)}
+                activeOpacity={0.7}
+                disabled={loggingOut}>
+                <Text style={[styles.logoutBtnText, {color: c.textPrimary}]}>{t('logout.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.logoutBtn, { backgroundColor: logoutType === 'tenant' ? c.error : c.warningDark }, loggingOut && { opacity: 0.7 }]}
+                onPress={handleLogoutConfirm}
+                activeOpacity={0.7}
+                disabled={loggingOut}>
+                {loggingOut ? (
+                  <ActivityIndicator size="small" color={c.textOnPrimary} />
+                ) : (
+                  <Text style={[styles.logoutBtnText, {color: c.textOnPrimary}]}>{t('logout.confirm')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ResponsiveModal>
+
+        {/* ─── LANGUAGE MODAL (empty state) ─── */}
+        <ResponsiveModal
+          visible={languageVisible}
+          onClose={() => setLanguageVisible(false)}
+          maxWidth={360}
+          widthPercent={isLandscape ? 40 : 80}>
+          <View style={{ padding: wp(16), alignItems: 'center' }}>
+            <TouchableOpacity style={[styles.mCloseBtn, { backgroundColor: c.surface, position: 'absolute', top: wp(10), right: wp(10), zIndex: 10 }]} onPress={() => setLanguageVisible(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Icon name="close" size={ms(18)} color={c.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.logoutIconWrap, { backgroundColor: c.primarySurface }]}>
+              <Icon name="translate" size={ms(28)} color={c.primary} />
+            </View>
+            <Text style={styles.logoutTitle}>{t('menu.language')}</Text>
+            <View style={{ width: '100%', gap: wp(8), marginTop: wp(4) }}>
+              {[
+                { code: 'en', label: 'English', flag: '🇺🇸' },
+                { code: 'fr-CA', label: 'Français (CA)', flag: '🇨🇦' },
+                { code: 'es', label: 'Español', flag: '🇲🇽' },
+                { code: 'pt-BR', label: 'Português (BR)', flag: '🇧🇷' },
+              ].map(lang => {
+                const isSelected = i18n.language === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: wp(8), paddingVertical: wp(10), borderRadius: wp(10), backgroundColor: isSelected ? c.primary : c.surface, borderWidth: 1, borderColor: isSelected ? c.primary : c.border }}
+                    activeOpacity={0.7}
+                    onPress={() => { i18n.changeLanguage(lang.code); setLanguageVisible(false); }}>
+                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                    <Text style={{ fontSize: ms(12), fontWeight: '700', color: isSelected ? c.textOnPrimary : c.textPrimary, fontFamily: MONO }}>{lang.label}</Text>
+                    {isSelected && <Icon name="check-circle" size={ms(18)} color={c.textOnPrimary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </ResponsiveModal>
+
+        {/* ─── ABOUT MODAL (empty state) ─── */}
+        <ResponsiveModal
+          visible={aboutVisible}
+          onClose={() => setAboutVisible(false)}
+          maxWidth={340}
+          widthPercent={isLandscape ? 28 : 70}
+          maxHeightPercent={50}>
+          <View style={{ backgroundColor: c.white, borderRadius: 12, overflow: 'hidden', padding: 20 }}>
+            <Text style={styles.aboutTitle}>TRUCKAST SYNC</Text>
+            <Text style={styles.aboutBody}>
+              {`Truckast Sync, Version ${appVersion || '...'}\nCopyright (c) 2022–2026, All Rights\nReserved.`}
+            </Text>
+            <View style={{ alignItems: 'flex-end', marginTop: 16 }}>
+              <TouchableOpacity
+                onPress={() => setAboutVisible(false)}
+                activeOpacity={0.8}
+                style={{ backgroundColor: '#157a15', paddingVertical: 8, paddingHorizontal: 24, borderRadius: 6 }}>
+                <Text style={styles.aboutOkText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </ResponsiveModal>
       </View>
     );

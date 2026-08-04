@@ -29,7 +29,7 @@ function setCachedTicketId(id: number | null): void {
   if (id !== null) {
     gpsCache.set(CACHED_TICKET_KEY, id);
   } else {
-    gpsCache.delete(CACHED_TICKET_KEY);
+    gpsCache.remove(CACHED_TICKET_KEY);
   }
 }
 
