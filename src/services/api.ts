@@ -31,8 +31,11 @@ const SILENT_ENDPOINTS = [
   ENDPOINTS.NOTIFICATION_REGISTER,
   ENDPOINTS.NOTIFICATION_UNREGISTER,
   ENDPOINTS.TRACKING_ME,
-  ENDPOINTS.TRACKING_GPS,
   ENDPOINTS.TRACKING_HEARTBEAT,
+  ENDPOINTS.TRACKING_MQTT_TOKEN,
+  ENDPOINTS.KRONOS_CLOCK_IN,
+  ENDPOINTS.KRONOS_CLOCK_OUT,
+  ENDPOINTS.KRONOS_STATUS,
 ];
 
 function classifyError(err: unknown): {title: string; message: string} {
@@ -835,11 +838,21 @@ export const notificationsApi = {
     request(ENDPOINTS.NOTIFICATION_READ_ALL, {method: 'POST'}),
 };
 
+export type MqttTokenResponse = {
+  url: string;
+  username: string;
+  token: string;
+  topic: string;
+  expiresIn: number;
+};
+
 export const trackingApi = {
   getMe: () =>
     request<{truck: any; current_load: {id: number; ticket_id: number; ticket_code: string} | null; eta: any}>(ENDPOINTS.TRACKING_ME),
   getGpsHistory: (date: string) =>
     request<{truck_code: string; date: string; count: number; points: {latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string}[]}>(ENDPOINTS.TRACKING_GPS_HISTORY(date)),
+  getMqttToken: () =>
+    request<MqttTokenResponse>(ENDPOINTS.TRACKING_MQTT_TOKEN, {method: 'POST'}),
 };
 
 export const heartbeatApi = {
@@ -848,11 +861,6 @@ export const heartbeatApi = {
 };
 
 export const gpsApi = {
-  saveRecords: (records: {client_id: string; ticket_id: number | null; latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string; is_speeding?: boolean; is_idle?: boolean; accel_x?: number | null; accel_y?: number | null; zone?: string | null}[]) =>
-    request<{inserted: number}>(ENDPOINTS.TRACKING_GPS, {
-      method: 'POST',
-      body: JSON.stringify({records}),
-    }),
   saveTripSummary: (summary: {ticket_id: number | null; started_at: string; ended_at: string; total_distance_m: number; total_duration_s: number; max_speed_ms: number; avg_speed_ms: number; hard_brakes: number; hard_corners: number; total_idle_time_s: number}) =>
     request<{id: number}>(ENDPOINTS.TRACKING_TRIP_SUMMARY, {
       method: 'POST',
@@ -882,6 +890,43 @@ export const authApi = {
     request<CompanyLogoutResponse>(ENDPOINTS.AUTH_COMPANY_LOGOUT, {
       method: 'POST',
     }),
+};
+
+// --- Kronos Time & Attendance API ---
+
+export type KronosClockResponse = {
+  punched_at: string;
+  kronos_employee_id: string;
+  status: 'clocked_in' | 'clocked_out';
+};
+
+export type KronosShift = {
+  clock_in: string;
+  clock_out: string | null;
+  duration_minutes: number | null;
+};
+
+export type KronosStatusResponse = {
+  is_clocked_in: boolean;
+  last_punch_at: string | null;
+  kronos_employee_id: string | null;
+  shifts?: KronosShift[];
+  weekly_hours?: number;
+};
+
+export const kronosApi = {
+  clockIn: () =>
+    request<KronosClockResponse>(ENDPOINTS.KRONOS_CLOCK_IN, {
+      method: 'POST',
+    }),
+
+  clockOut: () =>
+    request<KronosClockResponse>(ENDPOINTS.KRONOS_CLOCK_OUT, {
+      method: 'POST',
+    }),
+
+  getStatus: () =>
+    request<KronosStatusResponse>(ENDPOINTS.KRONOS_STATUS),
 };
 
 const HEALTH_TIMEOUT_MS = 5000;

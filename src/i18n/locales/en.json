@@ -112,6 +112,7 @@
     "qr": "QR"
   },
   "menu": {
+    "timeCard": "Time Card",
     "vehicleTracking": "Vehicle Tracking",
     "vehicle": "Vehicle",
     "logoutDriver": "Logout Driver",

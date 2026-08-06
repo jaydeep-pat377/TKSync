@@ -29,10 +29,10 @@ export const ENDPOINTS = {
 
   // Tracking
   TRACKING_ME: '/tracking/me',
-  TRACKING_GPS: '/tracking/gps',
   TRACKING_GPS_HISTORY: (date: string) => `/tracking/gps-history?date=${date}`,
   TRACKING_TRIP_SUMMARY: '/tracking/trip-summary',
   TRACKING_HEARTBEAT: '/tracking/heartbeat',
+  TRACKING_MQTT_TOKEN: '/tracking/mqtt-token',
 
   // Notifications
   NOTIFICATION_REGISTER: '/notifications/register-device',
@@ -43,4 +43,9 @@ export const ENDPOINTS = {
 
   // Field Definitions
   FIELD_DEFINITIONS: '/field-definitions',
+
+  // Kronos Time & Attendance
+  KRONOS_CLOCK_IN: '/kronos/clock-in',
+  KRONOS_CLOCK_OUT: '/kronos/clock-out',
+  KRONOS_STATUS: '/kronos/status',
 } as const;

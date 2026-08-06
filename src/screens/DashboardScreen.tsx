@@ -232,6 +232,7 @@ const REASON_OPTIONS = [
 ];
 
 const MENU_ITEMS_BASE = [
+  { icon: 'schedule', labelKey: 'menu.timeCard', actionKey: 'TimeCard', color: '' },
   { icon: 'gps-fixed', labelKey: 'menu.vehicleTracking', actionKey: 'VehicleTracking', color: '' },
   { icon: 'dark-mode', labelKey: 'menu.darkMode', actionKey: 'DarkMode', color: '' },
   { icon: 'person-off', labelKey: 'menu.logoutDriver', actionKey: 'Logout Driver', color: '' },
@@ -732,7 +733,9 @@ export default function DashboardScreen({ navigation }: Props) {
 
   const handleMenuItemPress = (label: string) => {
     closeMenu();
-    if (label === 'VehicleTracking') {
+    if (label === 'TimeCard') {
+      navigation.navigate('TimeCard');
+    } else if (label === 'VehicleTracking') {
       navigation.navigate('VehicleTracking', { ticketId: currentTicket?.id });
     } else if (label === 'DarkMode') {
       toggle();

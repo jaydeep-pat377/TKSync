@@ -20,7 +20,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../contexts/ThemeContext';
 import {useAuth} from '../contexts/AuthContext';
-import {ApiError} from '../services/api';
+import {ApiError, checkApiHealth} from '../services/api';
 import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
@@ -91,6 +91,11 @@ export default function CompanyLoginScreen({navigation}: Props) {
     }
   }, [fadeAnim, slideAnim]);
 
+  // Warm up HTTPS connection on mount (fixes Android cold-start network failure)
+  useEffect(() => {
+    checkApiHealth().catch(() => {});
+  }, []);
+
   // Dismiss keyboard on orientation change to prevent layout chaos
   const prevLandscape = useRef(isLandscape);
   useEffect(() => {
@@ -109,18 +114,29 @@ export default function CompanyLoginScreen({navigation}: Props) {
 
     setError('');
     setLoading(true);
-    try {
-      await companyLogin(code);
-      navigation.replace('DriverLogin');
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError(t('companyLogin.errorNetwork', 'Network error. Please try again.'));
+
+    // Retry up to 3 times — fixes React Native cold-start network failure
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await companyLogin(code);
+        setLoading(false);
+        navigation.replace('DriverLogin');
+        return;
+      } catch (err) {
+        const isNetworkError = !(err instanceof ApiError);
+        if (isNetworkError && attempt < 3) {
+          console.log(`[Login] Network failed (attempt ${attempt}/3), retrying in 2s...`);
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError(t('companyLogin.errorNetwork', 'Network error. Please try again.'));
+        }
       }
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   // Fixed maxWidth caps (NOT scaled by wp() — prevents bloating on tablets)

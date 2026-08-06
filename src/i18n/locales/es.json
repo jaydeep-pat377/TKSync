@@ -112,6 +112,7 @@
     "qr": "QR"
   },
   "menu": {
+    "timeCard": "Tarjeta de tiempo",
     "vehicleTracking": "Seguimiento de vehículo",
     "vehicle": "Vehículo",
     "logoutDriver": "Cerrar sesión conductor",

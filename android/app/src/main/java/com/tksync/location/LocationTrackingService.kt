@@ -382,12 +382,12 @@ class LocationTrackingService : Service() {
                 fastestInterval = 15000L
             } else if (isSilentMode) {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 5000L
-                fastestInterval = 5000L
+                interval = 3000L
+                fastestInterval = 3000L
             } else {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 5000L
-                fastestInterval = 5000L
+                interval = 3000L
+                fastestInterval = 3000L
             }
         }
 
@@ -594,92 +594,10 @@ class LocationTrackingService : Service() {
     }
 
     private fun uploadRecordsToApi() {
-        if (isUploading) return
-        val baseUrl = prefs.getString(KEY_API_BASE_URL, null)
-        val token = prefs.getString(KEY_API_TOKEN, null)
-        if (baseUrl.isNullOrEmpty() || token.isNullOrEmpty()) {
-            Log.d(TAG, "Upload skipped — no API credentials")
-            return
-        }
-
-        val records = getStoredRecords(this)
-        // Find unsynced records
-        val unsynced = JSONArray()
-        for (i in 0 until records.length()) {
-            val r = records.getJSONObject(i)
-            if (!r.optBoolean("synced", false)) {
-                unsynced.put(r)
-            }
-        }
-        if (unsynced.length() == 0) return
-
-        isUploading = true
-        isCurrentlyUploading = true
-        uploadExecutor.execute {
-            val syncedIds = mutableSetOf<String>()
-            try {
-                // Upload in batches
-                var totalSynced = 0
-                var offset = 0
-                while (offset < unsynced.length()) {
-                    val batchSize = minOf(UPLOAD_BATCH_SIZE, unsynced.length() - offset)
-                    val batch = JSONArray()
-                    for (i in offset until offset + batchSize) {
-                        val r = unsynced.getJSONObject(i)
-                        batch.put(JSONObject().apply {
-                            put("client_id", r.optString("id", ""))
-                            put("ticket_id", r.optInt("ticket_id", 0))
-                            put("latitude", r.optDouble("latitude"))
-                            put("longitude", r.optDouble("longitude"))
-                            put("speed", r.optDouble("speed", 0.0))
-                            put("heading", r.optDouble("heading", 0.0))
-                            put("altitude", r.optDouble("altitude", 0.0))
-                            put("accuracy", r.optDouble("accuracy", 0.0))
-                            put("recorded_at", r.optString("recorded_at", ""))
-                            put("is_speeding", r.optBoolean("is_speeding", false))
-                            put("is_idle", r.optBoolean("is_idle", false))
-                        })
-                    }
-
-                    val body = JSONObject().apply { put("records", batch) }
-                    val success = postToApi("$baseUrl/tracking/gps", token, body)
-                    if (success) {
-                        totalSynced += batchSize
-                        for (i in offset until offset + batchSize) {
-                            syncedIds.add(unsynced.getJSONObject(i).optString("id", ""))
-                        }
-                    } else {
-                        break // Stop on first failure
-                    }
-                    offset += batchSize
-                }
-
-                if (totalSynced > 0) {
-                    // Post back to main thread for a fresh read-filter-write.
-                    // This prevents a race condition where saveLocation/flushPendingRecords
-                    // adds new records to SharedPrefs while the upload is in progress —
-                    // a stale write from the executor would overwrite those new records.
-                    val synced = HashSet(syncedIds)
-                    uploadHandler.post {
-                        val freshRecords = getStoredRecords(this@LocationTrackingService)
-                        val remaining = JSONArray()
-                        for (i in 0 until freshRecords.length()) {
-                            val r = freshRecords.getJSONObject(i)
-                            if (!synced.contains(r.optString("id", ""))) {
-                                remaining.put(r)
-                            }
-                        }
-                        prefs.edit().putString(KEY_RECORDS, remaining.toString()).apply()
-                        Log.d(TAG, "Upload complete — synced: ${synced.size}, remaining: ${remaining.length()}")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Upload failed: ${e.message}")
-            } finally {
-                isUploading = false
-                isCurrentlyUploading = false
-            }
-        }
+        // GPS data is now published via MQTT in real-time from JS.
+        // The REST endpoint POST /tracking/gps is turned off server-side.
+        // Native records are imported by JS on foreground resume and published via MQTT.
+        Log.d(TAG, "Upload skipped — GPS now uses MQTT (REST endpoint removed)")
     }
 
     private fun postToApi(url: String, token: String, body: JSONObject): Boolean {

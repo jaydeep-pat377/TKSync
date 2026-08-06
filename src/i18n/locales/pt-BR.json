@@ -112,6 +112,7 @@
     "qr": "QR"
   },
   "menu": {
+    "timeCard": "Cartão de ponto",
     "vehicleTracking": "Rastreamento de veículo",
     "vehicle": "Veículo",
     "logoutDriver": "Sair motorista",

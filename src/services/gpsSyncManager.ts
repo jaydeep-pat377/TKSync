@@ -18,6 +18,7 @@ let syncInterval: ReturnType<typeof setInterval> | null = null;
 let unsubConnectivity: (() => void) | null = null;
 let isSyncing = false;
 let currentTicketId: number | null = null;
+let currentTicketCode: string | null = null;
 let onTicketInactive: (() => void) | null = null;
 
 function getCachedTicketId(): number | null {
@@ -45,6 +46,7 @@ async function resolveTicketId(): Promise<number | null> {
   try {
     const res = await trackingApi.getMe();
     const id = res.data?.current_load?.id ?? null;
+    currentTicketCode = res.data?.current_load?.ticket_code ?? null;
     setCachedTicketId(id);
     return id;
   } catch {
@@ -86,68 +88,20 @@ async function syncGpsRecords(): Promise<void> {
     return;
   }
 
+  // GPS data is now published via MQTT in real-time (backgroundGpsTracker.ts).
+  // This periodic sync just marks local records as synced and sends heartbeats.
   const unsynced = gpsStorage.getUnsynced();
   if (unsynced.length === 0) {
-    // No GPS records to upload — send heartbeat so server knows we're online
     heartbeatApi.ping().catch(() => {});
     return;
   }
 
   isSyncing = true;
-  let totalSynced = 0;
   try {
-    // Send in batches to avoid large payloads
-    for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
-      if (!getIsOnline()) break; // Stop if we lose connection mid-sync
-      const batch = unsynced.slice(i, i + BATCH_SIZE);
-      const records = batch.map(r => ({
-        client_id: r.id,
-        ticket_id: r.ticket_id,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        speed: r.speed,
-        heading: r.heading,
-        altitude: r.altitude,
-        accuracy: r.accuracy,
-        recorded_at: r.recorded_at,
-        is_speeding: r.is_speeding,
-        is_idle: r.is_idle,
-        accel_x: r.accel_x,
-        accel_y: r.accel_y,
-        zone: r.zone,
-      }));
-
-      console.log(`[GpsSyncManager] Sending ${records.length} records to API:`, JSON.stringify(records));
-      try {
-        const res = await gpsApi.saveRecords(records);
-        console.log(`[GpsSyncManager] API response:`, JSON.stringify(res.data));
-        gpsStorage.markSynced(batch.map(r => r.id));
-        totalSynced += batch.length;
-      } catch (batchErr: any) {
-        console.warn(`[GpsSyncManager] Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${batchErr.message}, continuing with next batch`);
-        // Continue with next batch instead of stopping entirely
-      }
-    }
-    console.log(`[GpsSyncManager] Synced ${totalSynced}/${unsynced.length} GPS records`);
-    // Reset backoff on success
-    if (totalSynced > 0 && consecutiveFailures > 0) {
-      consecutiveFailures = 0;
-      resetSyncInterval();
-    }
-    // Check ticket status after successful upload (no separate timer needed)
-    if (totalSynced > 0) {
-      refreshTicket();
-    }
-  } catch (err: any) {
-    console.warn(`[GpsSyncManager] Sync failed after ${totalSynced} records: ${err.message}`);
-    // Exponential backoff: 30s → 60s → 120s → max 5min
-    consecutiveFailures++;
-    const backoff = Math.min(BASE_SYNC_INTERVAL_MS * Math.pow(2, consecutiveFailures), 300_000);
-    if (backoff !== currentSyncInterval) {
-      currentSyncInterval = backoff;
-      resetSyncInterval();
-      console.log(`[GpsSyncManager] Backoff: next sync in ${backoff / 1000}s`);
-    }
+    // Mark all unsynced records as synced — they were already published via MQTT
+    gpsStorage.markSynced(unsynced.map(r => r.id));
+    console.log(`[GpsSyncManager] Marked ${unsynced.length} MQTT-published records as synced`);
+    refreshTicket();
   } finally {
     isSyncing = false;
   }
@@ -216,6 +170,11 @@ export const gpsSyncManager = {
     return currentTicketId;
   },
 
+  /** Get the current ticket code. */
+  getTicketCode(): string | null {
+    return currentTicketCode;
+  },
+
   /** Set callback for when the ticket becomes inactive (auto-stop tracking). */
   setOnTicketInactive(cb: (() => void) | null): void {
     onTicketInactive = cb;
@@ -266,70 +225,16 @@ export const gpsSyncManager = {
     const orphanedToken = storage.getString('orphaned_gps_token');
     if (!orphanedToken) return;
 
+    // GPS data is now published via MQTT in real-time.
+    // Orphaned records from previous sessions can't be sent via REST (turned off).
+    // Clear them to prevent buildup.
     const unsynced = gpsStorage.getUnsynced();
-    if (unsynced.length === 0) {
-      storage.remove('orphaned_gps_token');
-      return;
+    if (unsynced.length > 0) {
+      console.log(`[GpsSyncManager] Clearing ${unsynced.length} orphaned GPS records (REST endpoint removed, MQTT is live)`);
+      gpsStorage.markSynced(unsynced.map(r => r.id));
     }
-
-    if (!getIsOnline()) {
-      // Register a one-time listener to retry when connectivity is restored
-      const unsub = onConnectivityRestored(() => {
-        unsub();
-        gpsSyncManager.flushOrphaned().catch(() => {});
-      });
-      return;
-    }
-
-    const baseUrl = Config.API_BASE_URL || '';
-    console.log(`[GpsSyncManager] Flushing ${unsynced.length} orphaned GPS records with saved token`);
-
-    let totalSynced = 0;
-    try {
-      for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
-        if (!getIsOnline()) break;
-        const batch = unsynced.slice(i, i + BATCH_SIZE);
-        const records = batch.map(r => ({
-          client_id: r.id,
-          ticket_id: r.ticket_id,
-          latitude: r.latitude,
-          longitude: r.longitude,
-          speed: r.speed,
-          heading: r.heading,
-          altitude: r.altitude,
-          accuracy: r.accuracy,
-          recorded_at: r.recorded_at,
-          is_speeding: r.is_speeding,
-          is_idle: r.is_idle,
-          accel_x: r.accel_x,
-          accel_y: r.accel_y,
-          zone: r.zone,
-        }));
-        try {
-          const res = await fetch(`${baseUrl}/tracking/gps`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${orphanedToken}`,
-            },
-            body: JSON.stringify({records}),
-          });
-          if (!res.ok) {
-            console.warn(`[GpsSyncManager] Orphaned batch failed: HTTP ${res.status}`);
-            break; // Token expired or invalid — stop trying
-          }
-          gpsStorage.markSynced(batch.map(r => r.id));
-          totalSynced += batch.length;
-        } catch (err: any) {
-          console.warn(`[GpsSyncManager] Orphaned batch failed: ${err.message}`);
-          break;
-        }
-      }
-      console.log(`[GpsSyncManager] Orphaned flush: ${totalSynced}/${unsynced.length} records uploaded`);
-    } finally {
-      storage.remove('orphaned_gps_token');
-      gpsStorage.clearSynced();
-    }
+    storage.remove('orphaned_gps_token');
+    gpsStorage.clearSynced();
   },
 
   /**
@@ -338,46 +243,14 @@ export const gpsSyncManager = {
    * No interval or tracking started — just sends and done.
    */
   async flushUnsynced(): Promise<void> {
-    if (!getIsOnline()) return;
-    // Check if driver is still logged in before making API calls
-    if (!storage.getString('driver')) return;
+    // GPS data is now published via MQTT in real-time.
+    // Leftover unsynced records from previous sessions can't be sent via
+    // the old REST endpoint (it's turned off). Mark them synced and clear.
     const unsynced = gpsStorage.getUnsynced();
-    if (unsynced.length === 0) {
-      await gpsSyncManager.syncTripSummaries();
-      return;
+    if (unsynced.length > 0) {
+      console.log(`[GpsSyncManager] Clearing ${unsynced.length} leftover GPS records (REST endpoint removed, MQTT is live)`);
+      gpsStorage.markSynced(unsynced.map(r => r.id));
     }
-    // Flush directly — bypass the currentTicketId check since these are
-    // leftover records from a previous session that already have ticket_id stamped
-    console.log(`[GpsSyncManager] Flushing ${unsynced.length} leftover GPS records`);
-    let totalSynced = 0;
-    for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
-      if (!getIsOnline()) break;
-      const batch = unsynced.slice(i, i + BATCH_SIZE);
-      const records = batch.map(r => ({
-        client_id: r.id,
-        ticket_id: r.ticket_id,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        speed: r.speed,
-        heading: r.heading,
-        altitude: r.altitude,
-        accuracy: r.accuracy,
-        recorded_at: r.recorded_at,
-        is_speeding: r.is_speeding,
-        is_idle: r.is_idle,
-        accel_x: r.accel_x,
-        accel_y: r.accel_y,
-        zone: r.zone,
-      }));
-      try {
-        await gpsApi.saveRecords(records);
-        gpsStorage.markSynced(batch.map(r => r.id));
-        totalSynced += batch.length;
-      } catch (err: any) {
-        console.warn(`[GpsSyncManager] Flush batch failed: ${err.message}`);
-      }
-    }
-    console.log(`[GpsSyncManager] Flushed ${totalSynced}/${unsynced.length} records`);
     await gpsSyncManager.syncTripSummaries();
   },
 };

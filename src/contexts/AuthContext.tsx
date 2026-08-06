@@ -4,10 +4,13 @@ import type {AppStateStatus} from 'react-native';
 import {storage} from '../services/storage';
 import {
   authApi,
+  kronosApi,
+  trackingApi,
   ApiError,
   setOnSessionExpired,
   type CompanyLoginResponse,
   type DriverLoginResponse,
+  type MqttTokenResponse,
 } from '../services/api';
 import {setSentryUser} from '../services/sentry';
 import {showToast} from '../utils/toast';
@@ -15,6 +18,7 @@ import {registerDevice, unregisterDevice, setupTokenRefreshListener, setupForegr
 import {IDLE_AUTO_LOGOUT_EVENT} from '../services/backgroundGpsTracker';
 import {offlineStorage} from '../services/offlineStorage';
 import {gpsStorage} from '../services/gpsStorage';
+import {KRONOS_MOCK_MODE, kronosMock} from '../services/kronosMock';
 
 type CompanyInfo = {
   company_id: number;
@@ -141,11 +145,47 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       }));
 
       registerDevice();
+
+      // MQTT: fetch token for real-time tracking (non-blocking)
+      trackingApi.getMqttToken().then(res => {
+        if (res.data) {
+          storage.set('mqtt_token', JSON.stringify(res.data));
+          console.log('[MQTT] Token received, topic:', res.data.topic);
+        }
+      }).catch(err => {
+        console.warn('[MQTT] Token fetch failed:', err);
+      });
+
+      // Kronos: auto clock-in on driver check-in (non-blocking)
+      if (KRONOS_MOCK_MODE) {
+        kronosMock.clockIn();
+        showToast('success', 'Clocked In', 'Kronos clock started successfully.');
+      } else {
+        kronosApi.clockIn().then(() => {
+          showToast('success', 'Clocked In', 'Kronos clock started successfully.');
+        }).catch((err) => {
+          console.warn('[Kronos] Clock-in failed:', err);
+          showToast('error', 'Kronos', 'Failed to start Kronos clock. Please clock in manually.');
+        });
+      }
     },
     [state.company],
   );
 
   const driverLogout = useCallback(async () => {
+    // Kronos: auto clock-out on driver logout (best-effort, before clearing auth)
+    try {
+      if (KRONOS_MOCK_MODE) {
+        kronosMock.clockOut();
+      } else {
+        await kronosApi.clockOut();
+      }
+      showToast('success', 'Clocked Out', 'Kronos clock stopped successfully.');
+    } catch (err) {
+      console.warn('[Kronos] Clock-out failed:', err);
+      showToast('error', 'Kronos', 'Failed to stop Kronos clock. Please clock out manually.');
+    }
+
     // Upload GPS data BEFORE clearing driver — needs driver token to upload
     try {
       const {backgroundGpsTracker} = require('../services/backgroundGpsTracker');
@@ -173,6 +213,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     storage.remove('pending_missing_fields');
     storage.remove('pending_notification_nav');
     storage.remove('orphaned_gps_token');
+    storage.remove('mqtt_token');
 
     setState(prev => ({
       ...prev,
@@ -241,6 +282,13 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       await backgroundGpsTracker.clearAllData();
     } catch (e) {
       // non-fatal
+    }
+
+    // Kronos: clock out before clearing session
+    if (KRONOS_MOCK_MODE) {
+      kronosMock.clockOut();
+    } else {
+      try { await kronosApi.clockOut(); } catch {}
     }
 
     // Now clear all tokens and stored data
@@ -318,6 +366,11 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       if (storage.getString('force_logout') === 'true') return;
       // Skip if already handled — prevents multiple toasts from concurrent 401s
       if (!storage.getString('access_token')) return;
+
+      // Kronos: clock out on session expiry
+      if (KRONOS_MOCK_MODE) {
+        kronosMock.clockOut();
+      }
 
       setSentryUser(null);
       storage.remove('access_token');

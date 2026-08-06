@@ -16,6 +16,7 @@ import DeliveredToMapScreen from '../screens/DeliveredToMapScreen';
 import VehicleTrackingScreen from '../screens/VehicleTrackingScreen';
 import TripHistoryScreen from '../screens/TripHistoryScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import TimeCardScreen from '../screens/TimeCardScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -58,7 +59,7 @@ export default function AppNavigator() {
       }
     } else if (!isDriverLoggedIn) {
       // Company OK but driver logged out (idle timeout, etc.) → go to DriverLogin
-      const protectedScreens = ['Dashboard', 'Map', 'DeliveredToMap', 'VehicleTracking', 'TripHistory', 'Notifications'];
+      const protectedScreens = ['Dashboard', 'Map', 'DeliveredToMap', 'VehicleTracking', 'TripHistory', 'Notifications', 'TimeCard'];
       if (protectedScreens.includes(currentRoute)) {
         navigationRef.current?.reset({index: 0, routes: [{name: 'DriverLogin'}]});
       }
@@ -121,6 +122,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Notifications"
           component={NotificationsScreen}
+          options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.background}}}
+        />
+        <Stack.Screen
+          name="TimeCard"
+          component={TimeCardScreen}
           options={{animation: 'slide_from_right', contentStyle: {backgroundColor: c.background}}}
         />
       </Stack.Navigator>

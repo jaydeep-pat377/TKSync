@@ -112,6 +112,7 @@
     "qr": "QR"
   },
   "menu": {
+    "timeCard": "Carte de temps",
     "vehicleTracking": "Suivi du véhicule",
     "vehicle": "Véhicule",
     "logoutDriver": "Déconnexion chauffeur",

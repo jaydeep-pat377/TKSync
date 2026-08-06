@@ -6,6 +6,7 @@ import {orientation, SensorTypes, setUpdateIntervalForType} from 'react-native-s
 import type {Subscription} from 'rxjs';
 import {gpsStorage} from './gpsStorage';
 import {gpsSyncManager} from './gpsSyncManager';
+import {mqttService} from './mqttService';
 import {storage} from './storage';
 import {DeviceEventEmitter} from 'react-native';
 import {startTrackingService, stopTrackingService} from './trackingForegroundService';
@@ -175,16 +176,15 @@ function setupAppStateListener() {
           .finally(() => resumeIdleCheck());
       }
     } else if (state === 'background' || state === 'inactive') {
-      // Stop JS watcher — native service continues tracking in background
-      if (watchId !== null) {
-        console.log('[GPS] App backgrounded — JS GPS stopped, native service continues');
-        stopWatch();
-      }
+      // Keep JS GPS watch + MQTT running in background.
+      // The foreground service notification keeps the process alive,
+      // so JS can continue collecting GPS and publishing via MQTT.
+      console.log('[GPS] App backgrounded — JS GPS + MQTT continue (foreground service active)');
       // Reset consecutive moving count — prevents carry-over across long background gaps
       consecutiveMovingCount = 0;
-      // Tell native service JS is dead — native starts saving records
+      // Tell native service JS is still alive — native won't duplicate GPS collection
       if (Platform.OS === 'android' && LocationTrackingModule) {
-        LocationTrackingModule.setJsAlive(false).catch(() => {});
+        LocationTrackingModule.setJsAlive(true).catch(() => {});
       }
     }
   });
@@ -328,9 +328,52 @@ async function importNativeRecordsAndUpdateIdle(): Promise<void> {
     // New positions imported — truck was moving in background, reset idle timer
     lastMovementTime = Date.now();
     idleWarningShown = false;
+
+    // Publish missed background records via MQTT (catch-up)
+    publishBackgroundRecords();
   }
   // count === 0: truck was stationary in background — lastMovementTime stays as-is,
   // idle timer will correctly fire if 2h has elapsed since last real movement.
+}
+
+/** Publish unsynced background records via MQTT when app returns to foreground. */
+async function publishBackgroundRecords(): Promise<void> {
+  if (!mqttService.isConnected()) {
+    const connected = await mqttService.connect();
+    if (!connected) {
+      console.log('[MQTT] Cannot publish background records — not connected');
+      return;
+    }
+  }
+
+  const unsynced = gpsStorage.getUnsynced();
+  if (unsynced.length === 0) return;
+
+  console.log(`[MQTT] Publishing ${unsynced.length} background GPS records...`);
+  let published = 0;
+  const successIds: string[] = [];
+  for (const r of unsynced) {
+    const success = mqttService.publish({
+      latitude: r.latitude,
+      longitude: r.longitude,
+      speed: r.speed,
+      heading: r.heading,
+      accuracy: r.accuracy,
+      recorded_at: r.recorded_at,
+      ticket_id: r.ticket_id,
+      ticket_code: gpsSyncManager.getTicketCode(),
+      client_id: r.id,
+    });
+    if (success) {
+      published++;
+      successIds.push(r.id);
+    }
+  }
+  // Only mark successfully published records as synced
+  if (successIds.length > 0) {
+    gpsStorage.markSynced(successIds);
+  }
+  console.log(`[MQTT] Background catch-up: ${published}/${unsynced.length} records published`);
 }
 
 // ─── Position Handling ───────────────────────────────────────────
@@ -415,18 +458,56 @@ function handlePosition(position: any) {
   lastMovementTime = Date.now();
   idleWarningShown = false;
 
+  const recordedAt = new Date(position.timestamp).toISOString();
+  const ticketId = gpsSyncManager.getTicketId();
+
   gpsStorage.addRecord({
-    ticket_id: gpsSyncManager.getTicketId(),
+    ticket_id: ticketId,
     latitude,
     longitude,
     speed: currentSpeed,
     heading: resolvedHeading,
     altitude: altitude || null,
     accuracy: accuracy || null,
-    recorded_at: new Date(position.timestamp).toISOString(),
+    recorded_at: recordedAt,
     is_idle: isStationary,
     ...currentBehavior,
   });
+
+  // Publish via MQTT in real-time (non-blocking)
+  // Get the record ID from the last added record for synced marking
+  const records = gpsStorage.getUnsynced();
+  const lastRecord = records.length > 0 ? records[records.length - 1] : null;
+
+  if (mqttService.isConnected()) {
+    const clientId = lastRecord?.id || `gps_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      latitude,
+      longitude,
+      speed: currentSpeed,
+      heading: resolvedHeading,
+      accuracy: accuracy || null,
+      recorded_at: recordedAt,
+      ticket_id: ticketId,
+      ticket_code: gpsSyncManager.getTicketCode(),
+      client_id: clientId,
+    };
+    const published = mqttService.publish(payload);
+    if (published && lastRecord) {
+      // Mark as synced immediately to prevent duplicate on foreground catch-up
+      gpsStorage.markSynced([lastRecord.id]);
+    }
+    console.log(`[MQTT] GPS ${published ? 'published' : 'FAILED'} — lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}`);
+  } else {
+    console.log(`[MQTT] Not connected — GPS fix saved locally only`);
+    // Auto-retry MQTT connection on each GPS fix if not connected
+    mqttService.connect().then(connected => {
+      if (connected) {
+        console.log('[MQTT] Auto-reconnected on GPS fix');
+        publishBackgroundRecords();
+      }
+    });
+  }
 
   console.log(`[GPS] Record saved — lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
 }
@@ -524,15 +605,15 @@ function startWatch() {
     (error) => handleError(error),
     {
       enableHighAccuracy: true,
-      distanceFilter: 5,
-      interval: 5000,
-      fastestInterval: 5000,
+      distanceFilter: 3,
+      interval: 3000,
+      fastestInterval: 3000,
       showLocationDialog: true,
       forceRequestLocation: true,
-      maximumAge: 10000,
+      maximumAge: 6000,
     },
   );
-  console.log('[GPS] watchPosition started (5s interval, FusedLocationProvider)');
+  console.log('[GPS] watchPosition started (3s interval, FusedLocationProvider)');
 }
 
 // ─── Public API ──────────────────────────────────────────────────
@@ -591,6 +672,28 @@ export const backgroundGpsTracker = {
 
       running = true;
       startIdleCheck();
+
+      // Connect MQTT for real-time GPS publishing (non-blocking, with retry)
+      mqttService.setOnReconnect(() => publishBackgroundRecords());
+      const onMqttConnected = () => {
+        // Publish any GPS fixes that were saved before MQTT connected
+        publishBackgroundRecords();
+      };
+      mqttService.connect().then(connected => {
+        if (connected) {
+          console.log('[MQTT] GPS tracking connect: OK');
+          onMqttConnected();
+        } else {
+          console.log('[MQTT] GPS tracking connect: failed, retrying in 5s...');
+          setTimeout(() => {
+            mqttService.connect().then(retry => {
+              console.log(`[MQTT] GPS tracking retry: ${retry ? 'OK' : 'failed (will retry on next GPS fix)'}`);
+              if (retry) onMqttConnected();
+            });
+          }, 5000);
+        }
+      });
+
       console.log(`[GPS] Started — native background enabled, compass active — ticket: ${ticketId || 'none'}`);
       return true;
     } catch (err: any) {
@@ -639,6 +742,27 @@ export const backgroundGpsTracker = {
       setupAppStateListener();
 
       running = true;
+
+      // Connect MQTT for real-time GPS publishing (non-blocking, with retry)
+      mqttService.setOnReconnect(() => publishBackgroundRecords());
+      const onMqttConnected2 = () => {
+        publishBackgroundRecords();
+      };
+      mqttService.connect().then(connected => {
+        if (connected) {
+          console.log('[MQTT] GPS tracking connect: OK');
+          onMqttConnected2();
+        } else {
+          console.log('[MQTT] GPS tracking connect: failed, retrying in 5s...');
+          setTimeout(() => {
+            mqttService.connect().then(retry => {
+              console.log(`[MQTT] GPS tracking retry: ${retry ? 'OK' : 'failed (will retry on next GPS fix)'}`);
+              if (retry) onMqttConnected2();
+            });
+          }, 5000);
+        }
+      });
+
       console.log(`[GPS] Started — foreground only, compass active — ticket: ${gpsSyncManager.getTicketId()}`);
       return true;
     } catch (err: any) {
@@ -675,6 +799,7 @@ export const backgroundGpsTracker = {
       LocationTrackingModule.setJsAlive(false).catch(() => {});
       LocationTrackingModule.setSilentMode(true).catch(() => {});
     }
+    mqttService.disconnect();
     console.log('[GPS] UI stopped — native GPS continues silently');
   },
 
@@ -688,6 +813,9 @@ export const backgroundGpsTracker = {
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
+
+    // Disconnect MQTT
+    mqttService.disconnect();
 
     // Stop native service FIRST so it stops writing new records
     await stopTrackingService();
