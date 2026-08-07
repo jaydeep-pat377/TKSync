@@ -128,6 +128,9 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.google.android.gms:play-services-location:18.0.0")
 
+    // Eclipse Paho MQTT — native background MQTT publishing
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

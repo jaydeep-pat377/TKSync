@@ -53,6 +53,10 @@
 # Google Play Services Location
 -keep class com.google.android.gms.location.** { *; }
 
+# Eclipse Paho MQTT
+-keep class org.eclipse.paho.client.mqttv3.** { *; }
+-dontwarn org.eclipse.paho.client.mqttv3.**
+
 # OkHttp (used by networking)
 -dontwarn okhttp3.**
 -dontwarn okio.**

@@ -51,6 +51,7 @@ let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
 let appStateSubscription: {remove: () => void} | null = null;
 let connectivityRestoredUnsub: (() => void) | null = null;
+let nativeGpsSubscription: {remove: () => void} | null = null;
 
 // ─── Compass / Heading State ─────────────────────────────────────
 // Orientation sensor gives true compass heading on both platforms:
@@ -141,6 +142,63 @@ function resolveHeading(gpsHeading: number | null, speed: number): number {
   return lastGpsHeading;
 }
 
+// ─── Native GPS → MQTT Bridge (Background) ─────────────────────
+// When the app is backgrounded, JS watchPosition stops. Native service
+// collects GPS and emits events to JS via the RN bridge so MQTT can publish.
+
+function handleNativeGpsRecord(data: {
+  id: string;
+  ticket_id: number;
+  latitude: number;
+  longitude: number;
+  speed: number;
+  heading: number;
+  accuracy: number;
+  recorded_at: string;
+  is_idle: boolean;
+}) {
+  const payload = {
+    latitude: data.latitude,
+    longitude: data.longitude,
+    speed: data.speed,
+    heading: data.heading,
+    accuracy: data.accuracy,
+    recorded_at: data.recorded_at,
+    ticket_id: data.ticket_id || gpsSyncManager.getTicketId(),
+    ticket_code: gpsSyncManager.getTicketCode(),
+    client_id: data.id,
+  };
+
+  if (mqttService.isConnected()) {
+    const published = mqttService.publish(payload);
+    console.log(`[MQTT/Native] ${published ? 'Published' : 'FAILED'} — lat=${data.latitude.toFixed(6)}, speed=${data.speed.toFixed(1)}`);
+  } else {
+    console.log('[MQTT/Native] Not connected — reconnecting...');
+    mqttService.connect().then(connected => {
+      if (connected) {
+        mqttService.publish(payload);
+        console.log('[MQTT/Native] Reconnected and published');
+      } else {
+        console.log('[MQTT/Native] Reconnect failed — record saved locally by native');
+      }
+    }).catch(() => {});
+  }
+}
+
+function startNativeGpsListener() {
+  if (nativeGpsSubscription || Platform.OS !== 'android') return;
+  nativeGpsSubscription = DeviceEventEmitter.addListener('nativeGpsRecord', handleNativeGpsRecord);
+  console.log('[GPS] Native GPS → MQTT bridge started');
+}
+
+function stopNativeGpsListener() {
+  if (nativeGpsSubscription) {
+    nativeGpsSubscription.remove();
+    nativeGpsSubscription = null;
+    console.log('[GPS] Native GPS → MQTT bridge stopped');
+  }
+}
+
 // ─── App Lifecycle ───────────────────────────────────────────────
 // JS GPS runs in foreground. Native service handles background/killed.
 
@@ -176,15 +234,16 @@ function setupAppStateListener() {
           .finally(() => resumeIdleCheck());
       }
     } else if (state === 'background' || state === 'inactive') {
-      // Keep JS GPS watch + MQTT running in background.
-      // The foreground service notification keeps the process alive,
-      // so JS can continue collecting GPS and publishing via MQTT.
-      console.log('[GPS] App backgrounded — JS GPS + MQTT continue (foreground service active)');
-      // Reset consecutive moving count — prevents carry-over across long background gaps
+      // JS watchPosition is unreliable in background on Android.
+      // Stop it and let native service take over GPS collection immediately.
+      // Native emits GPS events to JS via the RN bridge for MQTT publishing.
+      console.log('[GPS] App backgrounded — native GPS + JS MQTT bridge');
       consecutiveMovingCount = 0;
-      // Tell native service JS is still alive — native won't duplicate GPS collection
+      // Stop JS GPS — native service will collect GPS instead
+      stopWatch();
+      // Tell native to take over GPS immediately (no 30s heartbeat gap)
       if (Platform.OS === 'android' && LocationTrackingModule) {
-        LocationTrackingModule.setJsAlive(true).catch(() => {});
+        LocationTrackingModule.setJsAlive(false).catch(() => {});
       }
     }
   });
@@ -606,8 +665,8 @@ function startWatch() {
     {
       enableHighAccuracy: true,
       distanceFilter: 3,
-      interval: 3000,
-      fastestInterval: 3000,
+      interval: 1000,
+      fastestInterval: 1000,
       showLocationDialog: true,
       forceRequestLocation: true,
       maximumAge: 6000,
@@ -669,6 +728,7 @@ export const backgroundGpsTracker = {
         startWatch();
       }
       setupAppStateListener();
+      startNativeGpsListener();
 
       running = true;
       startIdleCheck();
@@ -740,6 +800,7 @@ export const backgroundGpsTracker = {
         startWatch();
       }
       setupAppStateListener();
+      startNativeGpsListener();
 
       running = true;
 
@@ -784,6 +845,7 @@ export const backgroundGpsTracker = {
     stopWatch();
     stopCompass();
     stopIdleCheck();
+    stopNativeGpsListener();
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
@@ -810,6 +872,7 @@ export const backgroundGpsTracker = {
     stopWatch();
     stopCompass();
     stopIdleCheck();
+    stopNativeGpsListener();
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
@@ -835,22 +898,10 @@ export const backgroundGpsTracker = {
         const stillUnsynced = gpsStorage.getUnsynced();
         if (stillUnsynced.length === 0) {
           console.log('[GPS] All records uploaded — clearing storage');
-          gpsStorage.clear();
         } else {
-          // Save driver-scoped auth token so orphaned records can be uploaded
-          // on next login with the correct driver identity.
-          // Only save if driver is still in storage (not after normal logout
-          // where the token is company-scoped and has no driver identity).
-          const token = storage.getString('access_token');
-          const driver = storage.getString('driver');
-          if (token && driver) {
-            storage.set('orphaned_gps_token', token);
-            console.log(`[GPS] ${stillUnsynced.length} records orphaned — saved auth token for deferred upload`);
-          } else {
-            console.log(`[GPS] ${stillUnsynced.length} records failed to upload — no driver token to save`);
-          }
-          gpsStorage.clearSynced();
+          console.log(`[GPS] ${stillUnsynced.length} records failed to upload — discarding (must upload before logout)`);
         }
+        gpsStorage.clear();
       } else {
         gpsStorage.clear();
       }
@@ -920,18 +971,11 @@ export const backgroundGpsTracker = {
 
   /** Import any leftover native records on app startup. */
   async autoResume(): Promise<void> {
-    // Import any GPS records left in native storage (from previous background session)
-    const imported = await importNativeRecords();
-    if (imported > 0) {
-      console.log(`[GPS] autoResume — imported ${imported} leftover native records`);
-      if (getIsOnline()) {
-        gpsSyncManager.flushUnsynced().catch(() => {});
-      } else {
-        const unsub = onConnectivityRestored(() => {
-          unsub();
-          gpsSyncManager.flushUnsynced().catch(() => {});
-        });
-      }
+    // Clear any leftover GPS records from previous session (native storage + local)
+    if (Platform.OS === 'android' && LocationTrackingModule) {
+      LocationTrackingModule.clearStoredRecords().catch(() => {});
     }
+    gpsStorage.clear();
+    console.log('[GPS] autoResume — cleared leftover records from previous session');
   },
 };

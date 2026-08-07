@@ -13,6 +13,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
+import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -32,6 +34,10 @@ class LocationTrackingService : Service() {
         @Volatile
         var isCurrentlyUploading = false
             private set
+
+        /** Callback invoked when native saves a GPS record — bridges to JS for MQTT publishing. */
+        @Volatile
+        var onGpsRecord: ((JSONObject) -> Unit)? = null
 
         private const val TAG = "LocationTrackingService"
         private const val CHANNEL_ID = "tksync-native-tracking"
@@ -54,6 +60,13 @@ class LocationTrackingService : Service() {
         private const val IDLE_SPEED_THRESHOLD = 1.67 // m/s ≈ 6 km/h — filters out walking
         private const val IDLE_CONSECUTIVE_THRESHOLD = 3
         private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
+
+        // MQTT credential keys
+        private const val KEY_MQTT_URL = "mqtt_url"
+        private const val KEY_MQTT_USERNAME = "mqtt_username"
+        private const val KEY_MQTT_PASSWORD = "mqtt_password"
+        private const val KEY_MQTT_TOPIC = "mqtt_topic"
+        private const val KEY_MQTT_TICKET_CODE = "mqtt_ticket_code"
 
         fun setJsAlive(context: Context, alive: Boolean) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -168,6 +181,30 @@ class LocationTrackingService : Service() {
             Log.d(TAG, "API token updated")
         }
 
+        fun setMqttCredentials(context: Context, url: String, username: String, password: String, topic: String, ticketCode: String) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString(KEY_MQTT_URL, url)
+                .putString(KEY_MQTT_USERNAME, username)
+                .putString(KEY_MQTT_PASSWORD, password)
+                .putString(KEY_MQTT_TOPIC, topic)
+                .putString(KEY_MQTT_TICKET_CODE, ticketCode)
+                .apply()
+            Log.d(TAG, "MQTT credentials updated — topic: $topic")
+        }
+
+        fun clearMqttCredentials(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .remove(KEY_MQTT_URL)
+                .remove(KEY_MQTT_USERNAME)
+                .remove(KEY_MQTT_PASSWORD)
+                .remove(KEY_MQTT_TOPIC)
+                .remove(KEY_MQTT_TICKET_CODE)
+                .apply()
+            Log.d(TAG, "MQTT credentials cleared")
+        }
+
         fun isActive(context: Context): Boolean {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             return prefs.getBoolean(KEY_ACTIVE, false)
@@ -202,6 +239,12 @@ class LocationTrackingService : Service() {
     private val uploadExecutor = Executors.newSingleThreadExecutor()
     private val uploadHandler = Handler(Looper.getMainLooper())
     private var isUploading = false
+
+    // ─── Native MQTT ─────────────────────────────────────────────────
+    private var mqttClient: MqttAsyncClient? = null
+    private var mqttTopic: String? = null
+    private var lastMqttConnectAttempt: Long = 0L
+    private val MQTT_RECONNECT_COOLDOWN_MS = 30_000L
 
     override fun onCreate() {
         super.onCreate()
@@ -254,6 +297,10 @@ class LocationTrackingService : Service() {
         fusedClient.removeLocationUpdates(locationCallback)
         startLocationUpdates()
         scheduleUpload()
+
+        // Connect native MQTT early so it's ready when app goes to background
+        connectMqtt()
+
         Log.d(TAG, "Service started — ticket: $ticketId, silent: $isSilent, idle: $isIdleMode, START_NOT_STICKY")
         return START_NOT_STICKY
     }
@@ -266,6 +313,7 @@ class LocationTrackingService : Service() {
         if (pendingCount > 0) {
             flushPendingRecords()
         }
+        disconnectMqtt()
         Log.d(TAG, "Service destroyed")
     }
 
@@ -300,6 +348,7 @@ class LocationTrackingService : Service() {
         if (pendingCount > 0) {
             flushPendingRecords()
         }
+        disconnectMqtt()
         prefs.edit()
             .putBoolean(KEY_JS_ALIVE, false)
             .putBoolean(KEY_ACTIVE, false)
@@ -307,6 +356,146 @@ class LocationTrackingService : Service() {
         stopSelf()
         Log.d(TAG, "Task removed (app killed) — flushed records, service stopping")
     }
+
+    // ─── Native MQTT Connection ──────────────────────────────────────
+
+    private fun convertMqttUrl(rawUrl: String): String {
+        // Convert JS mqtt library URL schemes to Paho-compatible schemes
+        return when {
+            rawUrl.startsWith("mqtt://") -> rawUrl.replaceFirst("mqtt://", "tcp://")
+            rawUrl.startsWith("mqtts://") -> rawUrl.replaceFirst("mqtts://", "ssl://")
+            else -> rawUrl // ws:// and wss:// are supported by Paho 1.2+
+        }
+    }
+
+    private fun connectMqtt() {
+        if (mqttClient?.isConnected == true) return
+
+        val url = prefs.getString(KEY_MQTT_URL, "") ?: ""
+        val username = prefs.getString(KEY_MQTT_USERNAME, "") ?: ""
+        val password = prefs.getString(KEY_MQTT_PASSWORD, "") ?: ""
+        val topic = prefs.getString(KEY_MQTT_TOPIC, "") ?: ""
+
+        if (url.isEmpty() || password.isEmpty() || topic.isEmpty()) {
+            Log.d(TAG, "MQTT: No credentials — skipping connect")
+            return
+        }
+
+        mqttTopic = topic
+
+        try {
+            // Disconnect any old stale client first
+            try { mqttClient?.close(true) } catch (_: Exception) {}
+            mqttClient = null
+
+            val pahoUrl = convertMqttUrl(url)
+            val clientId = "tksync_native_${username}_${System.currentTimeMillis()}"
+            val client = MqttAsyncClient(pahoUrl, clientId, MemoryPersistence())
+
+            client.setCallback(object : MqttCallbackExtended {
+                override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                    Log.d(TAG, "MQTT ${if (reconnect) "reconnected" else "connected"} — $serverURI")
+                }
+                override fun connectionLost(cause: Throwable?) {
+                    Log.w(TAG, "MQTT connection lost: ${cause?.message}")
+                }
+                override fun messageArrived(topic: String?, message: MqttMessage?) {}
+                override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+            })
+
+            val opts = MqttConnectOptions().apply {
+                this.userName = username
+                this.password = password.toCharArray()
+                isCleanSession = true
+                connectionTimeout = 10
+                keepAliveInterval = 60
+                isAutomaticReconnect = true
+            }
+
+            client.connect(opts, null, object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    Log.d(TAG, "MQTT connected — topic: $topic")
+                }
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.w(TAG, "MQTT connect failed: ${exception?.message}")
+                }
+            })
+
+            mqttClient = client
+            lastMqttConnectAttempt = System.currentTimeMillis()
+        } catch (e: Exception) {
+            Log.e(TAG, "MQTT connect error: ${e.message}")
+            mqttClient = null
+        }
+    }
+
+    private fun disconnectMqtt() {
+        try {
+            if (mqttClient?.isConnected == true) {
+                mqttClient?.disconnect()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "MQTT disconnect error: ${e.message}")
+        }
+        try {
+            mqttClient?.close(true)
+        } catch (_: Exception) {}
+        mqttClient = null
+        mqttTopic = null
+        Log.d(TAG, "MQTT disconnected")
+    }
+
+    private fun ensureMqttConnected() {
+        if (mqttClient?.isConnected == true) return
+
+        // Cooldown — don't hammer reconnect attempts
+        val now = System.currentTimeMillis()
+        if (now - lastMqttConnectAttempt < MQTT_RECONNECT_COOLDOWN_MS) return
+        lastMqttConnectAttempt = now
+
+        // Tear down stale client and reconnect with fresh credentials from SharedPrefs
+        disconnectMqtt()
+        connectMqtt()
+    }
+
+    private fun publishToMqtt(record: JSONObject) {
+        val client = mqttClient ?: return
+        val topic = mqttTopic ?: return
+
+        if (!client.isConnected) return // Will retry on next GPS fix via ensureMqttConnected
+
+        val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
+
+        try {
+            val payload = JSONObject().apply {
+                put("latitude", record.optDouble("latitude"))
+                put("longitude", record.optDouble("longitude"))
+                put("speed", record.optDouble("speed"))
+                put("heading", record.optDouble("heading"))
+                put("accuracy", record.optDouble("accuracy"))
+                put("recorded_at", record.optString("recorded_at"))
+                put("ticket_id", record.optInt("ticket_id"))
+                put("ticket_code", ticketCode)
+                put("client_id", record.optString("id"))
+            }
+
+            val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
+            message.qos = 1
+
+            client.publish(topic, message, null, object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    Log.d(TAG, "MQTT published — lat: ${String.format("%.6f", record.optDouble("latitude"))}, speed: ${String.format("%.1f", record.optDouble("speed"))}")
+                }
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.w(TAG, "MQTT publish failed: ${exception?.message}")
+                }
+            })
+        } catch (e: Exception) {
+            Log.w(TAG, "MQTT publish error: ${e.message}")
+        }
+    }
+
+    // ─── Notifications ───────────────────────────────────────────────
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -368,26 +557,25 @@ class LocationTrackingService : Service() {
         }
     }
 
+    // ─── Location Updates ────────────────────────────────────────────
+
     @Suppress("MissingPermission", "DEPRECATION")
     private fun startLocationUpdates() {
         val isSilentMode = prefs.getBoolean(KEY_SILENT, false)
         val isIdle = prefs.getBoolean(KEY_IDLE, false)
         val request = LocationRequest.create().apply {
             if (isIdle) {
-                // Idle mode: reduced frequency but keep HIGH_ACCURACY for reliable distance checks
-                // No smallestDisplacement — time-based updates ensure saveLocation() runs
-                // so heartbeat staleness can be detected and idle-to-active transitions work
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 interval = 30000L
                 fastestInterval = 15000L
             } else if (isSilentMode) {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 3000L
-                fastestInterval = 3000L
+                interval = 1000L
+                fastestInterval = 1000L
             } else {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 3000L
-                fastestInterval = 3000L
+                interval = 1000L
+                fastestInterval = 1000L
             }
         }
 
@@ -402,7 +590,7 @@ class LocationTrackingService : Service() {
 
     private fun saveLocation(location: Location) {
 
-        // Skip saving if JS is alive (foreground) — JS handles recording, avoids duplicates
+        // Skip saving if JS is alive (foreground) — JS handles recording + JS MQTT, avoids duplicates
         val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
         if (jsAlive) {
             // Check heartbeat — if JS hasn't updated in 30s, it's probably frozen/backgrounded
@@ -433,30 +621,18 @@ class LocationTrackingService : Service() {
         val speedMs = if (speedAvailable) location.speed.toDouble() else 0.0
         val speedKmh = speedMs * 3.6
         val isSpeeding = speedKmh > 80.0
-        // Treat speed-unavailable as idle (don't assume movement when we don't know)
         val isIdle = !speedAvailable || speedMs < IDLE_SPEED_THRESHOLD
-        // Only consider it confirmed movement when speed is available AND above threshold
         val isConfirmedMoving = speedAvailable && speedMs >= IDLE_SPEED_THRESHOLD
 
         // ── Stationary drift suppression ──────────────────────────────
-        // When the truck is not confirmed moving, save ONE "stopped at" position
-        // then suppress all subsequent drift points until real movement (speed
-        // above threshold) is detected. This mirrors the JS-side wasStationary
-        // logic and is the primary fix for the zigzag-while-parked bug.
-        //
-        // Uses a flag instead of early return so the idle-mode frequency
-        // reduction (below) still runs — otherwise the service polls at 5s
-        // forever while parked, wasting battery.
         var suppressDrift = false
 
         if (isConfirmedMoving) {
             consecutiveMovingCount++
             if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD) {
-                // Confirmed real movement — clear stationary flag
                 wasStationary = false
                 Log.d(TAG, "MOVEMENT CONFIRMED: $consecutiveMovingCount consecutive, speed=${String.format("%.1f", speedMs)}")
             } else if (wasStationary) {
-                // Speed spike — not enough consecutive moving fixes to confirm
                 suppressDrift = true
                 Log.d(TAG, "SPIKE BLOCKED: speed=${String.format("%.1f", speedMs)}, movingCount=$consecutiveMovingCount/$MOVING_CONFIRM_THRESHOLD")
             }
@@ -467,17 +643,13 @@ class LocationTrackingService : Service() {
                 Log.d(TAG, "DRIFT BLOCKED: speed=${String.format("%.1f", speedMs)}, wasStationary=true, " +
                     "lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
             } else {
-                // First stationary fix — save it so we know WHERE the truck stopped
                 wasStationary = true
                 Log.d(TAG, "FIRST STOP: saving stopped-at, lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
-                // Fall through to save this one record
             }
         }
 
-        // Native idle detection — controls polling frequency (5s → 30s when idle)
-        // Runs even when drift is suppressed so the service reduces battery usage.
+        // Native idle detection — controls polling frequency
         if (isConfirmedMoving) {
-            // Confirmed movement — resume normal 5s polling if was idle
             if (isIdleMode) {
                 Log.d(TAG, "Movement detected — resuming normal GPS tracking")
                 isIdleMode = false
@@ -489,7 +661,6 @@ class LocationTrackingService : Service() {
             }
             consecutiveIdleCount = 0
         } else {
-            // Idle or speed unknown — build up idle counter for frequency reduction
             var movedFromIdle = false
             if (isIdleMode && idleLat != 0.0 && idleLng != 0.0) {
                 val results = FloatArray(1)
@@ -509,7 +680,6 @@ class LocationTrackingService : Service() {
                 prefs.edit().putBoolean(KEY_IDLE, false).apply()
                 fusedClient.removeLocationUpdates(locationCallback)
                 startLocationUpdates()
-                // Fall through to save this record
             } else {
                 consecutiveIdleCount++
                 if (consecutiveIdleCount >= IDLE_CONSECUTIVE_THRESHOLD) {
@@ -522,20 +692,16 @@ class LocationTrackingService : Service() {
                         fusedClient.removeLocationUpdates(locationCallback)
                         startLocationUpdates()
                     }
-                    // Idle mode active — skip record (drift or not)
                     return
                 }
             }
         }
 
-        // Drift was detected — record already suppressed, idle mode handled above
         if (suppressDrift) return
 
-        // Skip if truck hasn't moved enough from last saved position.
-        // Scale minimum distance by accuracy — poor fixes need more displacement
-        // to confirm real movement (prevents zigzag drift from degraded GPS).
+        // Skip if truck hasn't moved enough from last saved position
         val minDistance = if (location.hasAccuracy() && accuracy > 15.0) {
-            maxOf(10.0, accuracy * 0.75) // 75% of accuracy radius, minimum 10m
+            maxOf(10.0, accuracy * 0.75)
         } else {
             5.0
         }
@@ -567,6 +733,17 @@ class LocationTrackingService : Service() {
         pendingRecords.put(record)
         pendingCount++
 
+        // Publish via native MQTT (works reliably in background)
+        ensureMqttConnected()
+        publishToMqtt(record)
+
+        // Also emit to JS bridge as fallback (server deduplicates by client_id)
+        try {
+            onGpsRecord?.invoke(record)
+        } catch (e: Exception) {
+            Log.w(TAG, "onGpsRecord callback error: ${e.message}")
+        }
+
         // Batch writes — flush to SharedPrefs every WRITE_BATCH_SIZE records
         if (pendingCount >= WRITE_BATCH_SIZE) {
             flushPendingRecords()
@@ -577,27 +754,20 @@ class LocationTrackingService : Service() {
                 "speed: ${String.format("%.1f", speedMs)} m/s | ticket: $ticketId | silent: $isSilent")
     }
 
-    // ─── Background API Upload ─────────────────────────────────────
+    // ─── Background Upload (legacy — kept for compatibility) ─────────
 
     private fun scheduleUpload() {
         uploadHandler.removeCallbacksAndMessages(null)
         uploadHandler.postDelayed(object : Runnable {
             override fun run() {
-                // Only upload when JS is NOT alive (background mode)
                 val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
                 if (!jsAlive) {
-                    uploadRecordsToApi()
+                    // Ensure MQTT stays connected in background
+                    ensureMqttConnected()
                 }
                 uploadHandler.postDelayed(this, UPLOAD_INTERVAL_MS)
             }
         }, UPLOAD_INTERVAL_MS)
-    }
-
-    private fun uploadRecordsToApi() {
-        // GPS data is now published via MQTT in real-time from JS.
-        // The REST endpoint POST /tracking/gps is turned off server-side.
-        // Native records are imported by JS on foreground resume and published via MQTT.
-        Log.d(TAG, "Upload skipped — GPS now uses MQTT (REST endpoint removed)")
     }
 
     private fun postToApi(url: String, token: String, body: JSONObject): Boolean {

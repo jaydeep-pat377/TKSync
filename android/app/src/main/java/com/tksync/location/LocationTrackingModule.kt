@@ -2,6 +2,7 @@ package com.tksync.location
 
 import android.util.Log
 import com.facebook.react.bridge.*
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import org.json.JSONArray
 
 class LocationTrackingModule(private val reactContext: ReactApplicationContext) :
@@ -13,6 +14,46 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
     }
 
     override fun getName(): String = NAME
+
+    override fun initialize() {
+        super.initialize()
+        LocationTrackingService.onGpsRecord = { record ->
+            try {
+                if (reactContext.hasActiveReactInstance()) {
+                    val params = Arguments.createMap().apply {
+                        putString("id", record.optString("id", ""))
+                        putInt("ticket_id", record.optInt("ticket_id", 0))
+                        putDouble("latitude", record.optDouble("latitude", 0.0))
+                        putDouble("longitude", record.optDouble("longitude", 0.0))
+                        putDouble("speed", record.optDouble("speed", 0.0))
+                        putDouble("heading", record.optDouble("heading", 0.0))
+                        putDouble("accuracy", record.optDouble("accuracy", 0.0))
+                        putString("recorded_at", record.optString("recorded_at", ""))
+                        putBoolean("is_idle", record.optBoolean("is_idle", false))
+                    }
+                    reactContext
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                        .emit("nativeGpsRecord", params)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to emit nativeGpsRecord: ${e.message}")
+            }
+        }
+        Log.d(TAG, "Initialized — nativeGpsRecord bridge active")
+    }
+
+    override fun onCatalystInstanceDestroy() {
+        super.onCatalystInstanceDestroy()
+        LocationTrackingService.onGpsRecord = null
+        Log.d(TAG, "Catalyst destroyed — nativeGpsRecord bridge cleared")
+    }
+
+    // Required for RN NativeEventEmitter
+    @ReactMethod
+    fun addListener(eventName: String) {}
+
+    @ReactMethod
+    fun removeListeners(count: Int) {}
 
     @ReactMethod
     fun startTracking(ticketId: Int, promise: Promise) {
@@ -175,6 +216,29 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
             promise.resolve(LocationTrackingService.getTicketId(reactContext))
         } catch (e: Exception) {
             promise.reject("CHECK_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun setMqttCredentials(url: String, username: String, password: String, topic: String, ticketCode: String, promise: Promise) {
+        try {
+            LocationTrackingService.setMqttCredentials(reactContext, url, username, password, topic, ticketCode)
+            Log.d(TAG, "setMqttCredentials called — topic: $topic")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "setMqttCredentials failed", e)
+            promise.reject("MQTT_CRED_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun clearMqttCredentials(promise: Promise) {
+        try {
+            LocationTrackingService.clearMqttCredentials(reactContext)
+            Log.d(TAG, "clearMqttCredentials called")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("MQTT_CLEAR_ERROR", e.message, e)
         }
     }
 

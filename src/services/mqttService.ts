@@ -1,7 +1,10 @@
 import mqtt from 'mqtt';
 import type {MqttClient, IClientOptions} from 'mqtt';
+import {Platform, NativeModules} from 'react-native';
 import {storage} from './storage';
 import {trackingApi, type MqttTokenResponse} from './api';
+
+const {LocationTrackingModule} = NativeModules;
 
 let client: MqttClient | null = null;
 let mqttToken: MqttTokenResponse | null = null;
@@ -86,6 +89,8 @@ export async function connect(): Promise<boolean> {
         console.log('[MQTT] Connected, topic:', mqttToken!.topic);
         reconnecting = false;
         scheduleTokenRefresh(mqttToken!.expiresIn);
+        // Sync MQTT credentials to native service for background publishing
+        syncCredentialsToNative();
         // On reconnect (not first connect), flush offline records
         if (hasConnectedBefore && onReconnectCallback) {
           console.log('[MQTT] Reconnected — flushing offline records');
@@ -126,6 +131,26 @@ export async function connect(): Promise<boolean> {
   });
 }
 
+/** Pass MQTT credentials to native Android service for background publishing. */
+function syncCredentialsToNative() {
+  if (Platform.OS !== 'android' || !LocationTrackingModule || !mqttToken) return;
+  LocationTrackingModule.setMqttCredentials(
+    mqttToken.url,
+    mqttToken.username,
+    mqttToken.token,
+    mqttToken.topic,
+    currentTicketCode || '',
+  ).catch(() => {});
+  console.log('[MQTT] Credentials synced to native service');
+}
+
+/** Set ticket code for native MQTT payload. */
+export function setTicketCode(code: string | null) {
+  currentTicketCode = code;
+}
+
+let currentTicketCode: string | null = null;
+
 export function disconnect() {
   if (refreshTimer) {
     clearTimeout(refreshTimer);
@@ -140,6 +165,10 @@ export function disconnect() {
   reconnecting = false;
   hasConnectedBefore = false;
   onReconnectCallback = null;
+  // Clear native MQTT credentials on disconnect
+  if (Platform.OS === 'android' && LocationTrackingModule) {
+    LocationTrackingModule.clearMqttCredentials().catch(() => {});
+  }
   console.log('[MQTT] Disconnected and cleaned up');
 }
 
@@ -188,4 +217,5 @@ export const mqttService = {
   getTopic,
   fetchAndStoreToken,
   setOnReconnect,
+  setTicketCode,
 };

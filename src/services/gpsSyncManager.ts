@@ -5,6 +5,7 @@ import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {storage} from './storage';
 import {createMMKV} from 'react-native-mmkv';
 import Config from 'react-native-config';
+import {mqttService} from './mqttService';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -47,6 +48,8 @@ async function resolveTicketId(): Promise<number | null> {
     const res = await trackingApi.getMe();
     const id = res.data?.current_load?.id ?? null;
     currentTicketCode = res.data?.current_load?.ticket_code ?? null;
+    // Sync ticket code to native MQTT so background publishes include it
+    mqttService.setTicketCode(currentTicketCode);
     setCachedTicketId(id);
     return id;
   } catch {
