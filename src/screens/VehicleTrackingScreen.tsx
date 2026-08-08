@@ -207,33 +207,6 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
     });
   }, [haversine]);
 
-  const stopTracking = useCallback(() => {
-    // Save trip summary before stopping — use Date.now() for accurate duration
-    if (tripStartTime.current > 0) {
-      const actualDuration = Math.floor((Date.now() - tripStartTime.current) / 1000);
-      backgroundGpsTracker.saveTripSummary({
-        ticket_id: passedTicketId,
-        started_at: new Date(tripStartTime.current).toISOString(),
-        ended_at: new Date().toISOString(),
-        total_distance_m: tripDistance,
-        total_duration_s: actualDuration,
-        max_speed_ms: maxSpeed,
-        avg_speed_ms: avgSpeed,
-        hard_brakes: hardBrakes,
-        hard_corners: hardCorners,
-        total_idle_time_s: idleTime,
-      });
-    }
-
-    // Only stop UI tracking (timers, accelerometer, UI state)
-    // GPS continues running in background — always active after login
-    if (tripTimer.current) { clearInterval(tripTimer.current); tripTimer.current = null; }
-    if (etaTimer.current) { clearInterval(etaTimer.current); etaTimer.current = null; }
-    if (accelSub.current) { accelSub.current.unsubscribe(); accelSub.current = null; }
-    setIsTracking(false);
-    setGpsActive(false);
-  }, [passedTicketId, tripDistance, maxSpeed, avgSpeed, hardBrakes, hardCorners, idleTime]);
-
   // Subscribe to background GPS position updates (for UI display)
   useEffect(() => {
     const unsub = backgroundGpsTracker.addListener((pos) => {
@@ -739,7 +712,6 @@ const createSt = (c: any, L: boolean, isTablet: boolean, ls: (n: number) => numb
   idleBadgeText: {fontSize: ms(11), fontWeight: '800', letterSpacing: 0.5, color: '#EF4444', fontFamily: MONO},
   trackBtn: {flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingVertical: wp(10), paddingHorizontal: wp(28), borderRadius: wp(14), marginTop: wp(12), elevation: 4, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.15, shadowRadius: 6},
   trackBtnStart: {backgroundColor: '#22C55E'},
-  trackBtnStop: {backgroundColor: '#EF4444'},
   trackBtnLandscape: {marginTop: wp(8), paddingVertical: wp(7), paddingHorizontal: wp(18)},
   trackBtnPortrait: {alignSelf: 'center', paddingVertical: wp(8), paddingHorizontal: wp(20)},
   trackBtnText: {fontSize: ms(14), fontWeight: '800', color: '#fff', letterSpacing: 0.3},

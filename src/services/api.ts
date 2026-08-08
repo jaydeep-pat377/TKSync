@@ -925,6 +925,17 @@ export const kronosApi = {
       method: 'POST',
     }),
 
+  startBreak: (reason: string) =>
+    request<{start: string; reason: string}>(ENDPOINTS.KRONOS_BREAK_START, {
+      method: 'POST',
+      body: JSON.stringify({reason}),
+    }),
+
+  endBreak: () =>
+    request<{start: string; end: string; reason: string; duration_minutes: number}>(ENDPOINTS.KRONOS_BREAK_END, {
+      method: 'POST',
+    }),
+
   getStatus: () =>
     request<KronosStatusResponse>(ENDPOINTS.KRONOS_STATUS),
 };
