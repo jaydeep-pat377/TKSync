@@ -60,13 +60,17 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
       } catch (err) {
         console.error('[OfflineSync] flushOrphaned failed:', err);
       }
-      // Import any native GPS records left from previous session (e.g., after app kill)
-      backgroundGpsTracker.autoResume().catch(err => {
+      // Import + publish native GPS records from previous session, then flush remaining
+      try {
+        await backgroundGpsTracker.autoResume();
+      } catch (err) {
         console.error('[OfflineSync] autoResume failed:', err);
-      });
-      gpsSyncManager.flushUnsynced().catch(err => {
+      }
+      try {
+        await gpsSyncManager.flushUnsynced();
+      } catch (err) {
         console.error('[OfflineSync] flushUnsynced failed:', err);
-      });
+      }
     })();
 
     const failedItems: string[] = [];

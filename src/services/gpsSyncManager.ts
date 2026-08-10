@@ -91,19 +91,12 @@ async function syncGpsRecords(): Promise<void> {
     return;
   }
 
-  // GPS data is now published via MQTT in real-time (backgroundGpsTracker.ts).
-  // This periodic sync just marks local records as synced and sends heartbeats.
-  const unsynced = gpsStorage.getUnsynced();
-  if (unsynced.length === 0) {
-    heartbeatApi.ping().catch(() => {});
-    return;
-  }
-
+  // GPS data is published via MQTT in real-time (backgroundGpsTracker.ts).
+  // DO NOT mark records as synced here — only MQTT publish should mark them synced.
+  // Marking them here would silently discard offline records that haven't been published yet.
   isSyncing = true;
   try {
-    // Mark all unsynced records as synced — they were already published via MQTT
-    gpsStorage.markSynced(unsynced.map(r => r.id));
-    console.log(`[GpsSyncManager] Marked ${unsynced.length} MQTT-published records as synced`);
+    heartbeatApi.ping().catch(() => {});
     refreshTicket();
   } finally {
     isSyncing = false;
@@ -246,14 +239,9 @@ export const gpsSyncManager = {
    * No interval or tracking started — just sends and done.
    */
   async flushUnsynced(): Promise<void> {
-    // GPS data is now published via MQTT in real-time.
-    // Leftover unsynced records from previous sessions can't be sent via
-    // the old REST endpoint (it's turned off). Mark them synced and clear.
-    const unsynced = gpsStorage.getUnsynced();
-    if (unsynced.length > 0) {
-      console.log(`[GpsSyncManager] Clearing ${unsynced.length} leftover GPS records (REST endpoint removed, MQTT is live)`);
-      gpsStorage.markSynced(unsynced.map(r => r.id));
-    }
+    // DO NOT mark GPS records as synced here — autoResume() handles publishing
+    // them to MQTT. If MQTT was unavailable, records are kept for startAlways().
+    // Only sync trip summaries here.
     await gpsSyncManager.syncTripSummaries();
   },
 };

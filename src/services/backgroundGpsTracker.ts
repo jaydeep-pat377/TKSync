@@ -228,8 +228,8 @@ function setupAppStateListener() {
         // 5. Import native records, update idle timer, then restart idle interval
         importNativeRecordsAndUpdateIdle()
           .catch(() => {
-            // Import failed — reset timer to avoid false logout with stale data
-            lastMovementTime = Date.now();
+            // Import failed — do NOT reset lastMovementTime.
+            // If truck was idle for 2h+, the timer should still trigger logout.
           })
           .finally(() => resumeIdleCheck());
       }
@@ -611,26 +611,31 @@ function startIdleCheck() {
   resumeIdleCheck();
 }
 
+/** Check idle time once and take action if needed. */
+function checkIdleNow() {
+  const idleMs = Date.now() - lastMovementTime;
+
+  // Warning at 1h 50m
+  if (idleMs >= IDLE_WARNING_MS && !idleWarningShown) {
+    idleWarningShown = true;
+    console.log('[GPS] Idle warning — no movement for 1h 50m');
+    showIdleWarningNotification();
+  }
+
+  // Auto-logout at 2h
+  if (idleMs >= IDLE_LOGOUT_MS) {
+    console.log('[GPS] Idle auto-logout — no movement for 2 hours');
+    stopIdleCheck();
+    DeviceEventEmitter.emit(IDLE_AUTO_LOGOUT_EVENT);
+  }
+}
+
 /** Resume idle interval without resetting lastMovementTime. Used after foreground import. */
 function resumeIdleCheck() {
   if (idleCheckInterval) return; // already running
-  idleCheckInterval = setInterval(() => {
-    const idleMs = Date.now() - lastMovementTime;
-
-    // Warning at 1h 50m
-    if (idleMs >= IDLE_WARNING_MS && !idleWarningShown) {
-      idleWarningShown = true;
-      console.log('[GPS] Idle warning — no movement for 1h 50m');
-      showIdleWarningNotification();
-    }
-
-    // Auto-logout at 2h
-    if (idleMs >= IDLE_LOGOUT_MS) {
-      console.log('[GPS] Idle auto-logout — no movement for 2 hours');
-      stopIdleCheck();
-      DeviceEventEmitter.emit(IDLE_AUTO_LOGOUT_EVENT);
-    }
-  }, 60_000); // Check every 60 seconds
+  // Immediate check — catches 2h+ idle that accumulated during background
+  checkIdleNow();
+  idleCheckInterval = setInterval(checkIdleNow, 60_000); // Then check every 60 seconds
 }
 
 function stopIdleCheck() {
@@ -733,6 +738,17 @@ export const backgroundGpsTracker = {
       running = true;
       startIdleCheck();
 
+      // Publish offline GPS records when connectivity is restored
+      connectivityRestoredUnsub?.();
+      connectivityRestoredUnsub = onConnectivityRestored(() => {
+        console.log('[GPS] Connectivity restored — reconnecting MQTT and publishing offline records');
+        mqttService.connect().then(connected => {
+          if (connected) {
+            publishBackgroundRecords();
+          }
+        }).catch(() => {});
+      });
+
       // Connect MQTT for real-time GPS publishing (non-blocking, with retry)
       mqttService.setOnReconnect(() => publishBackgroundRecords());
       const onMqttConnected = () => {
@@ -803,6 +819,17 @@ export const backgroundGpsTracker = {
       startNativeGpsListener();
 
       running = true;
+
+      // Publish offline GPS records when connectivity is restored
+      connectivityRestoredUnsub?.();
+      connectivityRestoredUnsub = onConnectivityRestored(() => {
+        console.log('[GPS] Connectivity restored — reconnecting MQTT and publishing offline records');
+        mqttService.connect().then(connected => {
+          if (connected) {
+            publishBackgroundRecords();
+          }
+        }).catch(() => {});
+      });
 
       // Connect MQTT for real-time GPS publishing (non-blocking, with retry)
       mqttService.setOnReconnect(() => publishBackgroundRecords());
@@ -877,9 +904,6 @@ export const backgroundGpsTracker = {
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
 
-    // Disconnect MQTT
-    mqttService.disconnect();
-
     // Stop native service FIRST so it stops writing new records
     await stopTrackingService();
 
@@ -889,24 +913,27 @@ export const backgroundGpsTracker = {
       LocationTrackingModule.clearStoredRecords().catch(() => {});
     }
 
+    // Publish all remaining GPS records to MQTT BEFORE disconnecting
+    let publishedAll = false;
     try {
-      const unsynced = gpsStorage.getUnsynced();
-      if (unsynced.length > 0) {
-        console.log(`[GPS] ${unsynced.length} unsynced records — uploading before logout...`);
-        await gpsSyncManager.flushUnsynced();
-
-        const stillUnsynced = gpsStorage.getUnsynced();
-        if (stillUnsynced.length === 0) {
-          console.log('[GPS] All records uploaded — clearing storage');
-        } else {
-          console.log(`[GPS] ${stillUnsynced.length} records failed to upload — discarding (must upload before logout)`);
-        }
-        gpsStorage.clear();
-      } else {
-        gpsStorage.clear();
-      }
+      await publishBackgroundRecords();
+      const remaining = gpsStorage.getUnsynced();
+      publishedAll = remaining.length === 0;
     } catch (err: any) {
-      console.warn(`[GPS] clearAllData flush error: ${err.message}`);
+      console.warn(`[GPS] MQTT flush on logout failed: ${err.message}`);
+    }
+
+    // NOW disconnect MQTT
+    mqttService.disconnect();
+
+    if (publishedAll) {
+      // All records published — safe to clear
+      gpsStorage.clear();
+    } else {
+      // Offline — keep unsynced records for next app launch.
+      // autoResume() will publish them when internet is available.
+      console.log('[GPS] Offline logout — keeping unsynced records for next launch');
+      gpsStorage.clearSynced();
     }
 
     gpsSyncManager.stop();
@@ -969,13 +996,40 @@ export const backgroundGpsTracker = {
     gpsSyncManager.syncTripSummaries();
   },
 
-  /** Import any leftover native records on app startup. */
+  /** Import any leftover native records on app startup, publish to MQTT, then clear. */
   async autoResume(): Promise<void> {
-    // Clear any leftover GPS records from previous session (native storage + local)
+    // Import native records from previous session (e.g., collected before app was killed)
+    const imported = await importNativeRecords();
+    if (imported > 0) {
+      console.log(`[GPS] autoResume — imported ${imported} native records from previous session`);
+    }
+
+    // Clear native SharedPrefs — records are now in MMKV gpsStorage
     if (Platform.OS === 'android' && LocationTrackingModule) {
       LocationTrackingModule.clearStoredRecords().catch(() => {});
     }
-    gpsStorage.clear();
-    console.log('[GPS] autoResume — cleared leftover records from previous session');
+
+    // Try to publish leftover records to MQTT
+    const unsynced = gpsStorage.getUnsynced();
+    if (unsynced.length > 0) {
+      console.log(`[GPS] autoResume — ${unsynced.length} leftover records, attempting MQTT publish...`);
+      try {
+        const connected = await mqttService.connect();
+        if (connected) {
+          await publishBackgroundRecords();
+          console.log('[GPS] autoResume — leftover records published');
+          gpsStorage.clear();
+        } else {
+          // MQTT not available — keep records in gpsStorage for later.
+          // startAlways() will connect MQTT and publishBackgroundRecords() on login.
+          console.log('[GPS] autoResume — MQTT not available, keeping records for later publish');
+        }
+      } catch (err: any) {
+        console.warn(`[GPS] autoResume — publish failed, keeping records: ${err.message}`);
+      }
+    } else {
+      gpsStorage.clear();
+      console.log('[GPS] autoResume — no leftover records');
+    }
   },
 };

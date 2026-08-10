@@ -39,6 +39,10 @@ class LocationTrackingService : Service() {
         @Volatile
         var onGpsRecord: ((JSONObject) -> Unit)? = null
 
+        /** Reference to the running service instance so static methods can trigger actions. */
+        @Volatile
+        private var instance: LocationTrackingService? = null
+
         private const val TAG = "LocationTrackingService"
         private const val CHANNEL_ID = "tksync-native-tracking"
         private const val SILENT_CHANNEL_ID = "tksync-sync"
@@ -191,6 +195,10 @@ class LocationTrackingService : Service() {
                 .putString(KEY_MQTT_TICKET_CODE, ticketCode)
                 .apply()
             Log.d(TAG, "MQTT credentials updated — topic: $topic")
+            // Connect native MQTT immediately so it's ready before screen lock
+            instance?.let { svc ->
+                Handler(Looper.getMainLooper()).post { svc.connectMqtt() }
+            }
         }
 
         fun clearMqttCredentials(context: Context) {
@@ -248,6 +256,7 @@ class LocationTrackingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         fusedClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -307,6 +316,7 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         fusedClient.removeLocationUpdates(locationCallback)
         uploadHandler.removeCallbacksAndMessages(null)
         // Flush any buffered records before dying
@@ -395,6 +405,10 @@ class LocationTrackingService : Service() {
             client.setCallback(object : MqttCallbackExtended {
                 override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                     Log.d(TAG, "MQTT ${if (reconnect) "reconnected" else "connected"} — $serverURI")
+                    // Replay offline records that were saved while MQTT was disconnected
+                    if (reconnect) {
+                        replayOfflineRecords()
+                    }
                 }
                 override fun connectionLost(cause: Throwable?) {
                     Log.w(TAG, "MQTT connection lost: ${cause?.message}")
@@ -456,6 +470,50 @@ class LocationTrackingService : Service() {
         // Tear down stale client and reconnect with fresh credentials from SharedPrefs
         disconnectMqtt()
         connectMqtt()
+    }
+
+    /**
+     * Replay stored GPS records via MQTT after reconnecting.
+     * Called when native MQTT reconnects in background after an offline period.
+     * Records are published with their original client_id so the server deduplicates.
+     */
+    private fun replayOfflineRecords() {
+        val client = mqttClient ?: return
+        val topic = mqttTopic ?: return
+        if (!client.isConnected) return
+
+        val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
+        if (jsAlive) return // JS is handling — don't replay from native
+
+        val records = getStoredRecords(this)
+        if (records.length() == 0) return
+
+        val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
+        var published = 0
+
+        for (i in 0 until records.length()) {
+            try {
+                val r = records.getJSONObject(i)
+                val payload = JSONObject().apply {
+                    put("latitude", r.optDouble("latitude"))
+                    put("longitude", r.optDouble("longitude"))
+                    put("speed", r.optDouble("speed"))
+                    put("heading", r.optDouble("heading"))
+                    put("accuracy", r.optDouble("accuracy"))
+                    put("recorded_at", r.optString("recorded_at"))
+                    put("ticket_id", r.optInt("ticket_id"))
+                    put("ticket_code", ticketCode)
+                    put("client_id", r.optString("id"))
+                }
+                val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
+                message.qos = 1
+                client.publish(topic, message)
+                published++
+            } catch (e: Exception) {
+                Log.w(TAG, "MQTT replay error at index $i: ${e.message}")
+            }
+        }
+        Log.d(TAG, "MQTT replayed $published/${records.length()} offline records")
     }
 
     private fun publishToMqtt(record: JSONObject) {

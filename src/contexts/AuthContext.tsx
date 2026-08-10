@@ -208,12 +208,17 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
 
     setSentryUser(null);
     offlineStorage.clearAll();
-    gpsStorage.clear();
+    // Only clear GPS storage + MQTT token if all records were published.
+    // If offline, clearAllData() kept unsynced records for next launch.
+    const hasUnsynced = gpsStorage.getUnsynced().length > 0;
+    if (!hasUnsynced) {
+      gpsStorage.clear();
+      storage.remove('mqtt_token');
+    }
     storage.remove('notification_history');
     storage.remove('pending_missing_fields');
     storage.remove('pending_notification_nav');
     storage.remove('orphaned_gps_token');
-    storage.remove('mqtt_token');
 
     setState(prev => ({
       ...prev,
@@ -252,7 +257,11 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     storage.remove('pending_notification_nav');
     storage.remove('orphaned_gps_token');
     offlineStorage.clearAll();
-    gpsStorage.clear();
+    const hasUnsyncedCompany = gpsStorage.getUnsynced().length > 0;
+    if (!hasUnsyncedCompany) {
+      gpsStorage.clear();
+      storage.remove('mqtt_token');
+    }
 
     setState({
       isLoading: false,
@@ -303,7 +312,11 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     storage.remove('pending_notification_nav');
     storage.remove('orphaned_gps_token');
     offlineStorage.clearAll();
-    gpsStorage.clear();
+    const hasUnsyncedForce = gpsStorage.getUnsynced().length > 0;
+    if (!hasUnsyncedForce) {
+      gpsStorage.clear();
+      storage.remove('mqtt_token');
+    }
 
     // Full state reset — back to company login
     setState({
