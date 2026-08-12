@@ -7,6 +7,7 @@ import {addBreadcrumb} from '../services/sentry';
 import {setNotificationNavigationRef} from '../services/notifications';
 import {storage} from '../services/storage';
 import SplashScreen from '../screens/SplashScreen';
+import PermissionScreen from '../screens/PermissionScreen';
 import CompanyLoginScreen from '../screens/CompanyLoginScreen';
 import DriverLoginScreen from '../screens/DriverLoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -87,6 +88,7 @@ export default function AppNavigator() {
           contentStyle: {backgroundColor: c.primaryDark},
         }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Permission" component={PermissionScreen} />
         <Stack.Screen name="Login" component={CompanyLoginScreen} />
         <Stack.Screen name="CompanyLogin" component={CompanyLoginScreen} />
         <Stack.Screen

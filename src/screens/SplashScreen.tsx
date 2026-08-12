@@ -13,6 +13,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms} from '../utils/responsive';
+import {isPermissionOnboardingDone} from './PermissionScreen';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
@@ -221,7 +222,7 @@ export default function SplashScreen({navigation}: Props) {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        navigation.replace('Login');
+        navigation.replace(isPermissionOnboardingDone() ? 'Login' : 'Permission');
       });
     }, 3200);
 

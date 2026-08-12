@@ -10,7 +10,7 @@ async function ensureChannel(): Promise<string> {
   return notifee.createChannel({
     id: CHANNEL_ID,
     name: 'Vehicle Tracking',
-    importance: AndroidImportance.LOW,
+    importance: AndroidImportance.DEFAULT,
     sound: '',
   });
 }
@@ -38,7 +38,7 @@ export async function startTrackingService(ticketId?: number | null): Promise<vo
     android: {
       channelId,
       smallIcon: 'ic_launcher',
-      importance: AndroidImportance.LOW,
+      importance: AndroidImportance.DEFAULT,
       ongoing: true,
       pressAction: {id: 'default'},
       asForegroundService: true,

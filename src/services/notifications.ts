@@ -1,4 +1,4 @@
-import {Platform, DeviceEventEmitter} from 'react-native';
+import {Platform, DeviceEventEmitter, Linking, Alert, PermissionsAndroid} from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import notifee, {AndroidImportance, EventType} from '@notifee/react-native';
 import {notificationsApi} from './api';
@@ -115,16 +115,57 @@ async function showDeliveryIncompleteNotification(data: Record<string, string>) 
 
 export async function requestPermission(): Promise<boolean> {
   try {
+    // Android 13+ (API 33+) requires POST_NOTIFICATIONS runtime permission
+    if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+      const result = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+        {
+          title: 'Enable Notifications',
+          message: 'TKSync needs notifications for tracking alerts, idle warnings, and dispatch messages.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny',
+        },
+      );
+      if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('Notification permission: denied (Android 13+)');
+        promptNotificationSettings();
+        return false;
+      }
+    }
     const authStatus = await messaging().requestPermission();
     const granted =
       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
     console.log('Notification permission:', granted ? 'granted' : 'denied');
+    if (!granted) {
+      promptNotificationSettings();
+    }
     return granted;
   } catch (e) {
     console.warn('Notification permission error:', e);
     return false;
   }
+}
+
+/** Prompt the driver to enable notifications from Settings when denied. */
+function promptNotificationSettings() {
+  Alert.alert(
+    'Notifications Disabled',
+    'TKSync needs notifications for tracking alerts, idle warnings, and dispatch messages. Please enable notifications in Settings.',
+    [
+      {text: 'Not Now', style: 'cancel'},
+      {
+        text: 'Open Settings',
+        onPress: () => {
+          if (Platform.OS === 'android') {
+            Linking.openSettings();
+          } else {
+            Linking.openURL('app-settings:');
+          }
+        },
+      },
+    ],
+  );
 }
 
 export async function registerDevice(): Promise<void> {

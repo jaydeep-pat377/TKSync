@@ -17,14 +17,10 @@ import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
+
+import android.os.BatteryManager
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.Executors
 
 class LocationTrackingService : Service() {
 
@@ -44,7 +40,7 @@ class LocationTrackingService : Service() {
         private var instance: LocationTrackingService? = null
 
         private const val TAG = "LocationTrackingService"
-        private const val CHANNEL_ID = "tksync-native-tracking"
+        private const val CHANNEL_ID = "tksync-tracking-v3"
         private const val SILENT_CHANNEL_ID = "tksync-sync"
         private const val NOTIFICATION_ID = 9001
         private const val PREFS_NAME = "tksync_native_gps"
@@ -61,9 +57,10 @@ class LocationTrackingService : Service() {
         private const val KEY_API_TOKEN = "api_token"
         private const val UPLOAD_BATCH_SIZE = 50
         private const val UPLOAD_INTERVAL_MS = 30_000L // Upload every 30 seconds
-        private const val IDLE_SPEED_THRESHOLD = 1.67 // m/s ≈ 6 km/h — filters out walking
+        private const val IDLE_SPEED_THRESHOLD = 1.0 // m/s ≈ 3.6 km/h — only truly stopped
         private const val IDLE_CONSECUTIVE_THRESHOLD = 3
         private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
+        private const val ACTION_NOTIFICATION_DISMISSED = "com.tksync.TRACKING_NOTIFICATION_DISMISSED"
 
         // MQTT credential keys
         private const val KEY_MQTT_URL = "mqtt_url"
@@ -236,17 +233,15 @@ class LocationTrackingService : Service() {
     private var wasStationary: Boolean = false // true after first stationary fix is saved — suppresses drift
     private var consecutiveMovingCount: Int = 0
     private val MOVING_CONFIRM_THRESHOLD = 3 // Require 3 consecutive moving fixes to clear stationary
-    private var lastSavedLat: Double = 0.0
-    private var lastSavedLng: Double = 0.0
+    private var lastSavedLat: Double? = null
+    private var lastSavedLng: Double? = null
     private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
     private var pendingCount = 0
     private val WRITE_BATCH_SIZE = 1 // Flush to SharedPrefs immediately — ensures no records lost on foreground transition
     private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
-    private val uploadExecutor = Executors.newSingleThreadExecutor()
     private val uploadHandler = Handler(Looper.getMainLooper())
-    private var isUploading = false
 
     // ─── Native MQTT ─────────────────────────────────────────────────
     private var mqttClient: MqttAsyncClient? = null
@@ -271,11 +266,16 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // If intent is null, service was restarted by Android after kill — stop immediately
+        // If intent is null, service was restarted by Android after being killed in background.
+        // Resume GPS tracking using saved state from SharedPrefs instead of stopping.
         if (intent == null) {
-            Log.d(TAG, "Service restarted by system after kill — stopping (background only, not kill)")
-            stopSelf()
-            return START_NOT_STICKY
+            val wasActive = prefs.getBoolean(KEY_ACTIVE, false)
+            if (!wasActive) {
+                Log.d(TAG, "Service restarted by system but tracking was inactive — stopping")
+                stopSelf()
+                return START_STICKY
+            }
+            Log.d(TAG, "Service restarted by system — resuming GPS from SharedPrefs")
         }
 
         ticketId = intent?.getIntExtra("ticket_id", 0)
@@ -302,6 +302,31 @@ class LocationTrackingService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
 
+        // Samsung One UI may not display the foreground notification on first cold start
+        // (seen=false in NotificationManager). Cancel and re-post after delay to force visibility.
+        if (!isSilent) {
+            val handler = Handler(Looper.getMainLooper())
+            handler.postDelayed({
+                try {
+                    val manager = getSystemService(NotificationManager::class.java)
+                    // Cancel the existing notification first
+                    manager.cancel(NOTIFICATION_ID)
+                    // Re-post after a brief pause so Samsung registers it as new
+                    handler.postDelayed({
+                        try {
+                            val freshNotification = buildNotification()
+                            manager.notify(NOTIFICATION_ID, freshNotification)
+                            Log.d(TAG, "Notification cancel+re-posted for Samsung visibility")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Notification re-post failed: ${e.message}")
+                        }
+                    }, 500)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Notification cancel failed: ${e.message}")
+                }
+            }, 3000)
+        }
+
         // Remove old location updates before starting new ones (prevents duplicates on restart)
         fusedClient.removeLocationUpdates(locationCallback)
         startLocationUpdates()
@@ -310,13 +335,17 @@ class LocationTrackingService : Service() {
         // Connect native MQTT early so it's ready when app goes to background
         connectMqtt()
 
-        Log.d(TAG, "Service started — ticket: $ticketId, silent: $isSilent, idle: $isIdleMode, START_NOT_STICKY")
-        return START_NOT_STICKY
+        // Register receiver to re-post notification if user dismisses it (Android 13+)
+        registerNotificationDismissReceiver()
+
+        Log.d(TAG, "Service started — ticket: $ticketId, silent: $isSilent, idle: $isIdleMode, START_STICKY")
+        return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
         instance = null
+        unregisterNotificationDismissReceiver()
         fusedClient.removeLocationUpdates(locationCallback)
         uploadHandler.removeCallbacksAndMessages(null)
         // Flush any buffered records before dying
@@ -354,17 +383,15 @@ class LocationTrackingService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // App killed — flush any buffered records then stop service
+        // App swiped away — flush buffered records, let native continue tracking.
+        // Do NOT set KEY_ACTIVE=false or call stopSelf() — START_STICKY will restart
+        // the service, and it should resume GPS collection in background.
         if (pendingCount > 0) {
             flushPendingRecords()
         }
-        disconnectMqtt()
-        prefs.edit()
-            .putBoolean(KEY_JS_ALIVE, false)
-            .putBoolean(KEY_ACTIVE, false)
-            .apply()
-        stopSelf()
-        Log.d(TAG, "Task removed (app killed) — flushed records, service stopping")
+        // JS is dead after app swipe — native takes over GPS recording
+        prefs.edit().putBoolean(KEY_JS_ALIVE, false).apply()
+        Log.d(TAG, "Task removed (app killed) — flushed records, native GPS continues")
     }
 
     // ─── Native MQTT Connection ──────────────────────────────────────
@@ -472,6 +499,16 @@ class LocationTrackingService : Service() {
         connectMqtt()
     }
 
+    /** Get battery level as percentage (0-100), or -1 on failure. */
+    private fun getBatteryPercent(): Int {
+        return try {
+            val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        } catch (e: Exception) {
+            -1
+        }
+    }
+
     /**
      * Replay stored GPS records via MQTT after reconnecting.
      * Called when native MQTT reconnects in background after an offline period.
@@ -489,11 +526,15 @@ class LocationTrackingService : Service() {
         if (records.length() == 0) return
 
         val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
+        val battery = getBatteryPercent()
         var published = 0
+        var modified = false
 
         for (i in 0 until records.length()) {
             try {
                 val r = records.getJSONObject(i)
+                // Skip records already synced — only replay unsent ones
+                if (r.optBoolean("synced", false)) continue
                 val payload = JSONObject().apply {
                     put("latitude", r.optDouble("latitude"))
                     put("longitude", r.optDouble("longitude"))
@@ -504,14 +545,22 @@ class LocationTrackingService : Service() {
                     put("ticket_id", r.optInt("ticket_id"))
                     put("ticket_code", ticketCode)
                     put("client_id", r.optString("id"))
+                    put("battery_level", if (battery >= 0) battery else JSONObject.NULL)
                 }
                 val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
                 message.qos = 1
                 client.publish(topic, message)
+                // Mark as synced so JS import doesn't re-publish
+                r.put("synced", true)
+                modified = true
                 published++
             } catch (e: Exception) {
                 Log.w(TAG, "MQTT replay error at index $i: ${e.message}")
             }
+        }
+        // Persist synced flags back to SharedPrefs
+        if (modified) {
+            prefs.edit().putString(KEY_RECORDS, records.toString()).apply()
         }
         Log.d(TAG, "MQTT replayed $published/${records.length()} offline records")
     }
@@ -523,6 +572,7 @@ class LocationTrackingService : Service() {
         if (!client.isConnected) return // Will retry on next GPS fix via ensureMqttConnected
 
         val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
+        val battery = getBatteryPercent()
 
         try {
             val payload = JSONObject().apply {
@@ -535,6 +585,7 @@ class LocationTrackingService : Service() {
                 put("ticket_id", record.optInt("ticket_id"))
                 put("ticket_code", ticketCode)
                 put("client_id", record.optString("id"))
+                put("battery_level", if (battery >= 0) battery else JSONObject.NULL)
             }
 
             val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
@@ -559,15 +610,22 @@ class LocationTrackingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
 
-            val trackingChannel = NotificationChannel(
-                CHANNEL_ID,
-                "Vehicle Tracking",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "GPS tracking for deliveries"
-                setSound(null, null)
+            // Only create channels if they don't exist — preserves user's notification preferences
+            if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+                val trackingChannel = NotificationChannel(
+                    CHANNEL_ID,
+                    "Vehicle Tracking",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "GPS tracking for deliveries"
+                    setSound(null, null)
+                    enableVibration(false)
+                    enableLights(false)
+                }
+                manager.createNotificationChannel(trackingChannel)
             }
-            manager.createNotificationChannel(trackingChannel)
+
+            if (manager.getNotificationChannel(SILENT_CHANNEL_ID) != null) return
 
             val silentChannel = NotificationChannel(
                 SILENT_CHANNEL_ID,
@@ -585,10 +643,52 @@ class LocationTrackingService : Service() {
         }
     }
 
+    private var notificationDismissReceiver: android.content.BroadcastReceiver? = null
+
+    private fun registerNotificationDismissReceiver() {
+        if (notificationDismissReceiver != null) return
+        notificationDismissReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                if (intent?.action == ACTION_NOTIFICATION_DISMISSED) {
+                    Log.d(TAG, "Notification dismissed by user — re-posting immediately")
+                    repostNotification()
+                }
+            }
+        }
+        val filter = android.content.IntentFilter(ACTION_NOTIFICATION_DISMISSED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(notificationDismissReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(notificationDismissReceiver, filter)
+        }
+    }
+
+    private fun unregisterNotificationDismissReceiver() {
+        notificationDismissReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+            notificationDismissReceiver = null
+        }
+    }
+
+    /** Re-post the foreground notification after user dismisses it. */
+    private fun repostNotification() {
+        val notification = buildNotification()
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, notification)
+    }
+
     private fun buildNotification(): Notification {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
         val pendingIntent = PendingIntent.getActivity(
             this, 0, launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // deleteIntent: fires when user swipes away the notification (Android 13+)
+        // Our BroadcastReceiver catches this and re-posts the notification immediately.
+        val deleteIntent = PendingIntent.getBroadcast(
+            this, 0,
+            Intent(ACTION_NOTIFICATION_DISMISSED).setPackage(packageName),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -604,14 +704,22 @@ class LocationTrackingService : Service() {
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
                 .build()
         } else {
-            NotificationCompat.Builder(this, CHANNEL_ID)
+            val builder = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Vehicle Tracking Active")
                 .setContentText("GPS location is being recorded.")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
+                .setAutoCancel(false)
+                .setDeleteIntent(deleteIntent)
                 .setContentIntent(pendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .build()
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+
+            val notification = builder.build()
+            notification.flags = notification.flags or
+                Notification.FLAG_NO_CLEAR or
+                Notification.FLAG_ONGOING_EVENT
+            notification
         }
     }
 
@@ -627,9 +735,10 @@ class LocationTrackingService : Service() {
                 interval = 30000L
                 fastestInterval = 15000L
             } else if (isSilentMode) {
+                // Lower frequency in silent mode to save battery
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 1000L
-                fastestInterval = 1000L
+                interval = 10000L
+                fastestInterval = 5000L
             } else {
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
                 interval = 1000L
@@ -763,9 +872,11 @@ class LocationTrackingService : Service() {
         } else {
             5.0
         }
-        if (lastSavedLat != 0.0 && lastSavedLng != 0.0) {
+        val prevLat = lastSavedLat
+        val prevLng = lastSavedLng
+        if (prevLat != null && prevLng != null) {
             val distResults = FloatArray(1)
-            Location.distanceBetween(lastSavedLat, lastSavedLng, location.latitude, location.longitude, distResults)
+            Location.distanceBetween(prevLat, prevLng, location.latitude, location.longitude, distResults)
             if (distResults[0] < minDistance.toFloat()) {
                 return
             }
@@ -778,7 +889,7 @@ class LocationTrackingService : Service() {
             put("latitude", location.latitude)
             put("longitude", location.longitude)
             put("speed", speedMs)
-            put("heading", (location.bearing ?: 0f).toDouble())
+            put("heading", if (location.hasBearing()) location.bearing.toDouble() else 0.0)
             put("altitude", location.altitude)
             put("accuracy", location.accuracy.toDouble())
             put("recorded_at", isoFormat.format(Date(location.time)))
@@ -828,36 +939,4 @@ class LocationTrackingService : Service() {
         }, UPLOAD_INTERVAL_MS)
     }
 
-    private fun postToApi(url: String, token: String, body: JSONObject): Boolean {
-        var conn: HttpURLConnection? = null
-        try {
-            conn = URL(url).openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $token")
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-            conn.doOutput = true
-
-            OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()) }
-
-            val code = conn.responseCode
-            if (code in 200..299) {
-                val response = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
-                Log.d(TAG, "API upload success ($code) — ${body.getJSONArray("records").length()} records")
-                return true
-            } else {
-                val error = try {
-                    BufferedReader(InputStreamReader(conn.errorStream)).use { it.readText() }
-                } catch (_: Exception) { "no error body" }
-                Log.w(TAG, "API upload failed ($code): $error")
-                return false
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "API upload error: ${e.message}")
-            return false
-        } finally {
-            conn?.disconnect()
-        }
-    }
 }

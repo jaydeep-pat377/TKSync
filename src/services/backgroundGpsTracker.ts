@@ -1,4 +1,4 @@
-import {Platform, PermissionsAndroid, AppState, NativeModules} from 'react-native';
+import {Platform, PermissionsAndroid, AppState, NativeModules, Alert, Linking} from 'react-native';
 import type {AppStateStatus} from 'react-native';
 import Config from 'react-native-config';
 import Geolocation from 'react-native-geolocation-service';
@@ -12,6 +12,7 @@ import {DeviceEventEmitter} from 'react-native';
 import {startTrackingService, stopTrackingService} from './trackingForegroundService';
 import {showToast} from '../utils/toast';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
+import DeviceInfo from 'react-native-device-info';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -35,6 +36,16 @@ export type BehaviorData = {
 
 type GpsListener = (position: GpsPosition) => void;
 
+/** Get battery level as percentage (0-100), returns null on failure. */
+async function getBatteryPercent(): Promise<number | null> {
+  try {
+    const level = await DeviceInfo.getBatteryLevel();
+    return level >= 0 ? Math.round(level * 100) : null;
+  } catch {
+    return null;
+  }
+}
+
 let running = false;
 let starting = false;
 let clearing = false; // Guard against clearAllData/startAlways race
@@ -47,6 +58,7 @@ const MIN_DISTANCE_TO_SAVE = 5; // metres — only save when moved this far
 let wasStationary = false; // true after first stationary fix is saved — suppresses drift
 let consecutiveMovingCount = 0;
 const MOVING_CONFIRM_THRESHOLD = 3; // Require 3 consecutive moving fixes to clear stationary
+let stationaryPollTimer: ReturnType<typeof setInterval> | null = null;
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
 let appStateSubscription: {remove: () => void} | null = null;
@@ -69,9 +81,23 @@ let magnetometerSub: Subscription | null = null;
 const IDLE_LOGOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
 const IDLE_WARNING_MS = (2 * 60 - 10) * 60 * 1000; // 1h 50m (10 min before logout)
 export const IDLE_AUTO_LOGOUT_EVENT = 'idle_auto_logout';
+const IDLE_STORAGE_KEY = 'last_movement_time';
 let lastMovementTime: number = Date.now();
 let idleCheckInterval: ReturnType<typeof setInterval> | null = null;
 let idleWarningShown = false;
+
+/** Persist lastMovementTime to storage so it survives app kill. */
+function persistLastMovementTime() {
+  storage.set(IDLE_STORAGE_KEY, lastMovementTime);
+}
+
+/** Restore lastMovementTime from storage (app reopen after kill). */
+function restoreLastMovementTime() {
+  const saved = storage.getNumber(IDLE_STORAGE_KEY);
+  if (saved && saved > 0) {
+    lastMovementTime = saved;
+  }
+}
 
 /** Haversine distance in metres between two lat/lng points. */
 function haversineDistance(
@@ -129,7 +155,7 @@ function stopCompass() {
  * 3. Stopped + compass not ready (sensor error / startup) → last known GPS heading
  */
 function resolveHeading(gpsHeading: number | null, speed: number): number {
-  const isMoving = speed >= 1.67; // same threshold as stationary detection
+  const isMoving = speed >= 1.0; // same threshold as stationary detection
   if (isMoving && gpsHeading != null && Number.isFinite(gpsHeading)) {
     // Save as last known GPS heading for fallback
     lastGpsHeading = gpsHeading;
@@ -146,7 +172,7 @@ function resolveHeading(gpsHeading: number | null, speed: number): number {
 // When the app is backgrounded, JS watchPosition stops. Native service
 // collects GPS and emits events to JS via the RN bridge so MQTT can publish.
 
-function handleNativeGpsRecord(data: {
+async function handleNativeGpsRecord(data: {
   id: string;
   ticket_id: number;
   latitude: number;
@@ -157,6 +183,7 @@ function handleNativeGpsRecord(data: {
   recorded_at: string;
   is_idle: boolean;
 }) {
+  const battery = await getBatteryPercent();
   const payload = {
     latitude: data.latitude,
     longitude: data.longitude,
@@ -167,11 +194,12 @@ function handleNativeGpsRecord(data: {
     ticket_id: data.ticket_id || gpsSyncManager.getTicketId(),
     ticket_code: gpsSyncManager.getTicketCode(),
     client_id: data.id,
+    battery_level: battery,
   };
 
   if (mqttService.isConnected()) {
     const published = mqttService.publish(payload);
-    console.log(`[MQTT/Native] ${published ? 'Published' : 'FAILED'} — lat=${data.latitude.toFixed(6)}, speed=${data.speed.toFixed(1)}`);
+    console.log(`[MQTT/Native] ${published ? 'Published' : 'FAILED'} — lat=${data.latitude.toFixed(6)}, speed=${data.speed.toFixed(1)}, battery=${battery}%`);
   } else {
     console.log('[MQTT/Native] Not connected — reconnecting...');
     mqttService.connect().then(connected => {
@@ -214,6 +242,18 @@ function setupAppStateListener() {
         // 1. Tell native to stop saving FIRST — prevents race condition
         if (Platform.OS === 'android' && LocationTrackingModule) {
           LocationTrackingModule.setJsAlive(true).catch(() => {});
+          // Ensure native service is still alive — Samsung/Android may kill it
+          // while app is in background. Restart if needed (idempotent — if already
+          // running, onStartCommand just updates the notification).
+          LocationTrackingModule.isTrackingActive().then((active: boolean) => {
+            if (!active) {
+              console.log('[GPS] Native service died in background — restarting');
+              startTrackingService(gpsSyncManager.getTicketId()).catch(() => {});
+            }
+          }).catch(() => {
+            // Module not available — try restarting anyway
+            startTrackingService(gpsSyncManager.getTicketId()).catch(() => {});
+          });
         }
         // 2. Pause idle check — prevent false logout before native records are imported
         stopIdleCheck();
@@ -239,8 +279,12 @@ function setupAppStateListener() {
       // Native emits GPS events to JS via the RN bridge for MQTT publishing.
       console.log('[GPS] App backgrounded — native GPS + JS MQTT bridge');
       consecutiveMovingCount = 0;
+      // Stop idle interval — JS timers don't fire reliably in background.
+      // Will be resumed with immediate check on foreground via resumeIdleCheck().
+      stopIdleCheck();
       // Stop JS GPS — native service will collect GPS instead
       stopWatch();
+      stopStationaryPoll();
       // Tell native to take over GPS immediately (no 30s heartbeat gap)
       if (Platform.OS === 'android' && LocationTrackingModule) {
         LocationTrackingModule.setJsAlive(false).catch(() => {});
@@ -257,6 +301,14 @@ function removeAppStateListener() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
+
+/** Request battery optimization exemption so Samsung/OEMs don't kill the foreground service. */
+function requestBatteryOptimizationExemption() {
+  if (Platform.OS !== 'android' || !LocationTrackingModule) return;
+  LocationTrackingModule.requestBatteryOptimizationExemption().catch(() => {
+    console.log('[GPS] Battery optimization exemption not available');
+  });
+}
 
 /** Pass API credentials to native service for background uploads. */
 function syncApiCredentialsToNative() {
@@ -277,8 +329,30 @@ function notifyListeners(pos: GpsPosition) {
 async function requestPermissions(): Promise<boolean> {
   if (Platform.OS === 'ios') {
     const status = await Geolocation.requestAuthorization('always');
-    return status === 'granted' || status === 'restricted';
+    if (status === 'granted' || status === 'restricted') return true;
+    if (status === 'whenInUse') {
+      showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
+      return true;
+    }
+    return false;
   }
+  // Check if already granted first — avoid re-requesting on app reopen
+  const alreadyGranted = await PermissionsAndroid.check(
+    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+  );
+  if (alreadyGranted) {
+    // Fine location already granted — check background too
+    if (Number(Platform.Version) >= 29) {
+      const bgGranted = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+      );
+      if (!bgGranted) {
+        showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
+      }
+    }
+    return true;
+  }
+  // Not yet granted — request permissions
   const fineGranted = await PermissionsAndroid.request(
     PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
     {title: 'Location Permission', message: 'Vehicle tracking needs access to your location.', buttonPositive: 'OK'},
@@ -291,7 +365,30 @@ async function requestPermissions(): Promise<boolean> {
       {title: 'Background Location', message: 'Allow background location so tracking continues when the screen is off.', buttonPositive: 'OK'},
     );
     if (bgGranted !== PermissionsAndroid.RESULTS.GRANTED) {
-      showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
+      // Driver didn't select "Allow all the time" — prompt to open Settings
+      await new Promise<void>(resolve => {
+        Alert.alert(
+          'Background Location Required',
+          'GPS tracking needs "Allow all the time" to work when the screen is off or the app is in the background.\n\nPlease select "Allow all the time" in Location Settings.',
+          [
+            {
+              text: 'Not Now',
+              style: 'cancel',
+              onPress: () => {
+                showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
+                resolve();
+              },
+            },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                Linking.openSettings();
+                resolve();
+              },
+            },
+          ],
+        );
+      });
     }
   }
   return true;
@@ -339,32 +436,43 @@ async function importNativeRecords(): Promise<number> {
     if (!records || records.length === 0) return 0;
 
     let imported = 0;
+    let importError = false;
     for (const r of records) {
-      if (r.synced) continue;
-      // Preserve the original native ID — if native already uploaded this record,
-      // gpsSyncManager will send the same client_id, avoiding duplicate routes.
-      const nativeId = r.id || `native_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const added = gpsStorage.importRecord(nativeId, {
-        ticket_id: r.ticket_id || null,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        speed: r.speed || 0,
-        heading: r.heading ?? 0,
-        altitude: r.altitude || null,
-        accuracy: r.accuracy || null,
-        recorded_at: r.recorded_at,
-        is_speeding: r.is_speeding || false,
-        is_idle: r.is_idle || false,
-      });
-      if (added) imported++;
+      try {
+        if (r.synced) continue;
+        // Preserve the original native ID — if native already uploaded this record,
+        // gpsSyncManager will send the same client_id, avoiding duplicate routes.
+        const nativeId = r.id || `native_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        const added = gpsStorage.importRecord(nativeId, {
+          ticket_id: r.ticket_id || null,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          speed: r.speed || 0,
+          heading: r.heading ?? 0,
+          altitude: r.altitude || null,
+          accuracy: r.accuracy || null,
+          recorded_at: r.recorded_at,
+          is_speeding: r.is_speeding || false,
+          is_idle: r.is_idle || false,
+        });
+        if (added) imported++;
+      } catch (recordErr: any) {
+        importError = true;
+        console.warn('[GPS] Failed to import native record:', recordErr.message);
+      }
     }
 
-    // Clear native records after import
-    try {
-      await LocationTrackingModule.clearStoredRecords();
-    } catch (clearErr: any) {
-      console.warn('[GPS] clearStoredRecords failed, retrying:', clearErr.message);
-      try { await LocationTrackingModule.clearStoredRecords(); } catch {}
+    // Only clear native records if ALL were processed successfully.
+    // If some failed, keep them so they can be retried next time.
+    if (!importError) {
+      try {
+        await LocationTrackingModule.clearStoredRecords();
+      } catch (clearErr: any) {
+        console.warn('[GPS] clearStoredRecords failed, retrying:', clearErr.message);
+        try { await LocationTrackingModule.clearStoredRecords(); } catch {}
+      }
+    } else {
+      console.warn(`[GPS] Partial import (${imported}/${records.length}) — keeping native records for retry`);
     }
     return imported;
   } catch (e: any) {
@@ -386,6 +494,7 @@ async function importNativeRecordsAndUpdateIdle(): Promise<void> {
     console.log(`[GPS] Imported ${count} native records from background`);
     // New positions imported — truck was moving in background, reset idle timer
     lastMovementTime = Date.now();
+    persistLastMovementTime();
     idleWarningShown = false;
 
     // Publish missed background records via MQTT (catch-up)
@@ -396,48 +505,57 @@ async function importNativeRecordsAndUpdateIdle(): Promise<void> {
 }
 
 /** Publish unsynced background records via MQTT when app returns to foreground. */
+let isPublishingBackground = false;
 async function publishBackgroundRecords(): Promise<void> {
-  if (!mqttService.isConnected()) {
-    const connected = await mqttService.connect();
-    if (!connected) {
-      console.log('[MQTT] Cannot publish background records — not connected');
-      return;
+  if (isPublishingBackground) return; // Prevent concurrent runs
+  isPublishingBackground = true;
+  try {
+    if (!mqttService.isConnected()) {
+      const connected = await mqttService.connect();
+      if (!connected) {
+        console.log('[MQTT] Cannot publish background records — not connected');
+        return;
+      }
     }
-  }
 
-  const unsynced = gpsStorage.getUnsynced();
-  if (unsynced.length === 0) return;
+    const unsynced = gpsStorage.getUnsynced();
+    if (unsynced.length === 0) return;
 
-  console.log(`[MQTT] Publishing ${unsynced.length} background GPS records...`);
-  let published = 0;
-  const successIds: string[] = [];
-  for (const r of unsynced) {
-    const success = mqttService.publish({
-      latitude: r.latitude,
-      longitude: r.longitude,
-      speed: r.speed,
-      heading: r.heading,
-      accuracy: r.accuracy,
-      recorded_at: r.recorded_at,
-      ticket_id: r.ticket_id,
-      ticket_code: gpsSyncManager.getTicketCode(),
-      client_id: r.id,
-    });
-    if (success) {
-      published++;
-      successIds.push(r.id);
+    const battery = await getBatteryPercent();
+    console.log(`[MQTT] Publishing ${unsynced.length} background GPS records...`);
+    let published = 0;
+    const successIds: string[] = [];
+    for (const r of unsynced) {
+      const success = mqttService.publish({
+        latitude: r.latitude,
+        longitude: r.longitude,
+        speed: r.speed,
+        heading: r.heading,
+        accuracy: r.accuracy,
+        recorded_at: r.recorded_at,
+        ticket_id: r.ticket_id,
+        ticket_code: gpsSyncManager.getTicketCode(),
+        client_id: r.id,
+        battery_level: battery,
+      });
+      if (success) {
+        published++;
+        successIds.push(r.id);
+      }
     }
+    // Only mark successfully published records as synced
+    if (successIds.length > 0) {
+      gpsStorage.markSynced(successIds);
+    }
+    console.log(`[MQTT] Background catch-up: ${published}/${unsynced.length} records published`);
+  } finally {
+    isPublishingBackground = false;
   }
-  // Only mark successfully published records as synced
-  if (successIds.length > 0) {
-    gpsStorage.markSynced(successIds);
-  }
-  console.log(`[MQTT] Background catch-up: ${published}/${unsynced.length} records published`);
 }
 
 // ─── Position Handling ───────────────────────────────────────────
 
-function handlePosition(position: any) {
+async function handlePosition(position: any) {
   const {latitude, longitude, speed, heading, altitude, accuracy} = position.coords;
   const speedAvailable = typeof speed === 'number' && !isNaN(speed) && speed >= 0;
   const currentSpeed = speedAvailable ? speed : 0;
@@ -454,8 +572,6 @@ function handlePosition(position: any) {
     accuracy: accuracy || 0,
     timestamp: position.timestamp,
   };
-  lastPosition = pos;
-  notifyListeners(pos);
 
   console.log(`[GPS] Position: lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, accuracy=${accuracy?.toFixed(0)}m`);
 
@@ -476,13 +592,22 @@ function handlePosition(position: any) {
     return;
   }
 
+  // Update lastPosition only after filtering out mocked/inaccurate positions
+  lastPosition = pos;
+
+  // Notify listeners only after filtering out mocked/inaccurate positions
+  notifyListeners(pos);
+
   // Stationary detection: skip GPS drift when truck is not moving
-  const isStationary = currentSpeed < 1.67; // < 1.67 m/s ≈ 6 km/h — filters out walking
+  const isStationary = currentSpeed < 1.0; // < 1.0 m/s ≈ 3.6 km/h — only truly stopped
 
   if (isStationary) {
     consecutiveMovingCount = 0;
     if (wasStationary) {
-      console.log(`[GPS] DRIFT BLOCKED: speed=${currentSpeed.toFixed(1)}, wasStationary=true, lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
+      // Already stationary — switch to low-frequency poll to save battery
+      if (!stationaryPollTimer && AppState.currentState === 'active') {
+        startStationaryPoll();
+      }
       return;
     }
     // First stationary fix — save it so we know WHERE the truck stopped
@@ -491,9 +616,15 @@ function handlePosition(position: any) {
   } else {
     consecutiveMovingCount++;
     if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD) {
-      // Confirmed real movement — clear stationary flag
+      // Confirmed real movement — clear stationary flag and resume full GPS
       wasStationary = false;
-      console.log(`[GPS] MOVEMENT CONFIRMED: ${consecutiveMovingCount} consecutive moving fixes, speed=${currentSpeed.toFixed(1)}`);
+      if (stationaryPollTimer) {
+        stopStationaryPoll();
+        startWatch();
+        console.log(`[GPS] MOVEMENT CONFIRMED: resumed full GPS, speed=${currentSpeed.toFixed(1)}`);
+      } else {
+        console.log(`[GPS] MOVEMENT CONFIRMED: ${consecutiveMovingCount} consecutive moving fixes, speed=${currentSpeed.toFixed(1)}`);
+      }
     } else if (wasStationary) {
       console.log(`[GPS] SPIKE BLOCKED: speed=${currentSpeed.toFixed(1)}, movingCount=${consecutiveMovingCount}/${MOVING_CONFIRM_THRESHOLD}, lat=${latitude.toFixed(6)}`);
       return;
@@ -515,12 +646,13 @@ function handlePosition(position: any) {
 
   // Reset idle auto-logout timer — a new GPS record means activity
   lastMovementTime = Date.now();
+  persistLastMovementTime();
   idleWarningShown = false;
 
   const recordedAt = new Date(position.timestamp).toISOString();
   const ticketId = gpsSyncManager.getTicketId();
 
-  gpsStorage.addRecord({
+  const recordId = gpsStorage.addRecord({
     ticket_id: ticketId,
     latitude,
     longitude,
@@ -534,12 +666,8 @@ function handlePosition(position: any) {
   });
 
   // Publish via MQTT in real-time (non-blocking)
-  // Get the record ID from the last added record for synced marking
-  const records = gpsStorage.getUnsynced();
-  const lastRecord = records.length > 0 ? records[records.length - 1] : null;
-
   if (mqttService.isConnected()) {
-    const clientId = lastRecord?.id || `gps_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const battery = await getBatteryPercent();
     const payload = {
       latitude,
       longitude,
@@ -549,14 +677,15 @@ function handlePosition(position: any) {
       recorded_at: recordedAt,
       ticket_id: ticketId,
       ticket_code: gpsSyncManager.getTicketCode(),
-      client_id: clientId,
+      client_id: recordId,
+      battery_level: battery,
     };
     const published = mqttService.publish(payload);
-    if (published && lastRecord) {
-      // Mark as synced immediately to prevent duplicate on foreground catch-up
-      gpsStorage.markSynced([lastRecord.id]);
+    if (published) {
+      // Mark synced so publishBackgroundRecords() doesn't re-send it
+      gpsStorage.markSynced([recordId]);
     }
-    console.log(`[MQTT] GPS ${published ? 'published' : 'FAILED'} — lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}`);
+    console.log(`[MQTT] GPS ${published ? 'published' : 'FAILED'} — lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}, speed=${currentSpeed.toFixed(1)}, battery=${battery}%`);
   } else {
     console.log(`[MQTT] Not connected — GPS fix saved locally only`);
     // Auto-retry MQTT connection on each GPS fix if not connected
@@ -606,7 +735,14 @@ async function showIdleWarningNotification() {
 /** Start idle check from scratch — resets timer to now. Used on GPS tracker start. */
 function startIdleCheck() {
   stopIdleCheck();
-  lastMovementTime = Date.now();
+  // Restore persisted time if available (app was killed while idle)
+  restoreLastMovementTime();
+  const elapsed = Date.now() - lastMovementTime;
+  if (elapsed < 0 || elapsed > IDLE_LOGOUT_MS * 2) {
+    // Invalid or very stale — reset to now
+    lastMovementTime = Date.now();
+  }
+  persistLastMovementTime();
   idleWarningShown = false;
   resumeIdleCheck();
 }
@@ -643,7 +779,9 @@ function stopIdleCheck() {
     clearInterval(idleCheckInterval);
     idleCheckInterval = null;
   }
-  idleWarningShown = false;
+  // Don't reset idleWarningShown here — it's reset in startIdleCheck()
+  // and when movement occurs. Resetting here caused duplicate warnings
+  // on background→foreground transitions.
 }
 
 // ─── Watch Control ───────────────────────────────────────────────
@@ -658,6 +796,7 @@ function stopWatch() {
 
 function startWatch() {
   if (watchId !== null) return;
+  stopStationaryPoll(); // Stop low-frequency poll if running
 
   // FusedLocationProvider works with GPS satellites even without internet —
   // A-GPS just speeds up the initial satellite fix. Using forceLocationManager
@@ -677,7 +816,30 @@ function startWatch() {
       maximumAge: 6000,
     },
   );
-  console.log('[GPS] watchPosition started (3s interval, FusedLocationProvider)');
+  console.log('[GPS] watchPosition started (1s interval, FusedLocationProvider)');
+}
+
+/** Switch to low-frequency polling when truck is stationary.
+ *  Checks every 10s just to detect when movement resumes. */
+function startStationaryPoll() {
+  if (stationaryPollTimer) return;
+  stopWatch(); // Stop high-frequency GPS
+
+  stationaryPollTimer = setInterval(() => {
+    Geolocation.getCurrentPosition(
+      (position) => handlePosition(position),
+      () => {}, // Ignore errors during stationary poll
+      {enableHighAccuracy: true, timeout: 10000, maximumAge: 5000},
+    );
+  }, 10000);
+  console.log('[GPS] Stationary — switched to 10s poll (waiting for movement)');
+}
+
+function stopStationaryPoll() {
+  if (stationaryPollTimer) {
+    clearInterval(stationaryPollTimer);
+    stationaryPollTimer = null;
+  }
 }
 
 // ─── Public API ──────────────────────────────────────────────────
@@ -723,6 +885,8 @@ export const backgroundGpsTracker = {
       await startTrackingService(gpsSyncManager.getTicketId());
       if (Platform.OS === 'android' && LocationTrackingModule) {
         LocationTrackingModule.setJsAlive(true).catch(() => {});
+        // Request battery optimization exemption so Samsung/OEMs don't kill the service
+        requestBatteryOptimizationExemption();
       }
 
       // Start compass for hybrid heading (GPS + magnetometer)
@@ -809,6 +973,14 @@ export const backgroundGpsTracker = {
         showToast('info', 'Tracking Stopped', 'Ticket is no longer in process.');
       });
 
+      // Start native background service (Android) so GPS continues when app is backgrounded
+      syncApiCredentialsToNative();
+      await startTrackingService(gpsSyncManager.getTicketId());
+      if (Platform.OS === 'android' && LocationTrackingModule) {
+        LocationTrackingModule.setJsAlive(true).catch(() => {});
+        requestBatteryOptimizationExemption();
+      }
+
       // Start compass for hybrid heading
       startCompass();
 
@@ -819,6 +991,7 @@ export const backgroundGpsTracker = {
       startNativeGpsListener();
 
       running = true;
+      startIdleCheck();
 
       // Publish offline GPS records when connectivity is restored
       connectivityRestoredUnsub?.();
@@ -870,6 +1043,7 @@ export const backgroundGpsTracker = {
     permissionDenied = false;
     pendingTicketId = null;
     stopWatch();
+    stopStationaryPoll();
     stopCompass();
     stopIdleCheck();
     stopNativeGpsListener();
@@ -896,61 +1070,64 @@ export const backgroundGpsTracker = {
   async clearAllData(): Promise<void> {
     if (clearing) return; // Prevent double execution
     clearing = true;
-    stopWatch();
-    stopCompass();
-    stopIdleCheck();
-    stopNativeGpsListener();
-    removeAppStateListener();
-    connectivityRestoredUnsub?.();
-    connectivityRestoredUnsub = null;
-
-    // Stop native service FIRST so it stops writing new records
-    await stopTrackingService();
-
-    // Now import native records (no new ones being written)
-    await importNativeRecords();
-    if (Platform.OS === 'android' && LocationTrackingModule) {
-      LocationTrackingModule.clearStoredRecords().catch(() => {});
-    }
-
-    // Publish all remaining GPS records to MQTT BEFORE disconnecting
-    let publishedAll = false;
     try {
-      await publishBackgroundRecords();
-      const remaining = gpsStorage.getUnsynced();
-      publishedAll = remaining.length === 0;
-    } catch (err: any) {
-      console.warn(`[GPS] MQTT flush on logout failed: ${err.message}`);
+      stopWatch();
+      stopStationaryPoll();
+      stopCompass();
+      stopIdleCheck();
+      stopNativeGpsListener();
+      removeAppStateListener();
+      connectivityRestoredUnsub?.();
+      connectivityRestoredUnsub = null;
+
+      // Stop native service FIRST so it stops writing new records
+      await stopTrackingService();
+
+      // Now import native records (no new ones being written)
+      await importNativeRecords();
+
+      // Publish all remaining GPS records to MQTT BEFORE disconnecting
+      let publishedAll = false;
+      try {
+        await publishBackgroundRecords();
+        const remaining = gpsStorage.getUnsynced();
+        publishedAll = remaining.length === 0;
+      } catch (err: any) {
+        console.warn(`[GPS] MQTT flush on logout failed: ${err.message}`);
+      }
+
+      // NOW disconnect MQTT
+      mqttService.disconnect();
+
+      if (publishedAll) {
+        // All records published — safe to clear
+        gpsStorage.clear();
+      } else {
+        // Offline — keep unsynced records for next app launch.
+        // autoResume() will publish them when internet is available.
+        console.log('[GPS] Offline logout — keeping unsynced records for next launch');
+        gpsStorage.clearSynced();
+      }
+
+      gpsSyncManager.stop();
+      running = false;
+      starting = false;
+      permissionDenied = false;
+      pendingTicketId = null;
+      lastPosition = null;
+      lastSavedPosition = null;
+      wasStationary = false;
+      consecutiveMovingCount = 0;
+      compassHeading = null;
+      lastGpsHeading = 0;
+      currentBehavior = {};
+      listeners.clear();
+      // Clear persisted idle timer on logout
+      storage.remove(IDLE_STORAGE_KEY);
+      console.log('[GPS] Logout complete — native service stopped');
+    } finally {
+      clearing = false;
     }
-
-    // NOW disconnect MQTT
-    mqttService.disconnect();
-
-    if (publishedAll) {
-      // All records published — safe to clear
-      gpsStorage.clear();
-    } else {
-      // Offline — keep unsynced records for next app launch.
-      // autoResume() will publish them when internet is available.
-      console.log('[GPS] Offline logout — keeping unsynced records for next launch');
-      gpsStorage.clearSynced();
-    }
-
-    gpsSyncManager.stop();
-    running = false;
-    starting = false;
-    permissionDenied = false;
-    pendingTicketId = null;
-    lastPosition = null;
-    lastSavedPosition = null;
-    wasStationary = false;
-    consecutiveMovingCount = 0;
-    compassHeading = null;
-    lastGpsHeading = 0;
-    currentBehavior = {};
-    listeners.clear();
-    clearing = false;
-    console.log('[GPS] Logout complete — native service stopped');
   },
 
   /** Whether tracking is active. */
@@ -1017,8 +1194,14 @@ export const backgroundGpsTracker = {
         const connected = await mqttService.connect();
         if (connected) {
           await publishBackgroundRecords();
-          console.log('[GPS] autoResume — leftover records published');
-          gpsStorage.clear();
+          // Only clear records that were successfully synced — keep failed ones for retry
+          gpsStorage.clearSynced();
+          const remaining = gpsStorage.getUnsynced();
+          if (remaining.length > 0) {
+            console.log(`[GPS] autoResume — ${remaining.length} records still unsynced, keeping for later`);
+          } else {
+            console.log('[GPS] autoResume — all leftover records published');
+          }
         } else {
           // MQTT not available — keep records in gpsStorage for later.
           // startAlways() will connect MQTT and publishBackgroundRecords() on login.

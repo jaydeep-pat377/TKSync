@@ -246,4 +246,27 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
     fun isUploading(promise: Promise) {
         promise.resolve(LocationTrackingService.isCurrentlyUploading)
     }
+
+    @ReactMethod
+    fun requestBatteryOptimizationExemption(promise: Promise) {
+        try {
+            val context = reactContext
+            val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
+                val intent = android.content.Intent(
+                    android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    android.net.Uri.parse("package:${context.packageName}")
+                )
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Log.d(TAG, "Battery optimization exemption requested")
+            } else {
+                Log.d(TAG, "Battery optimization already exempt")
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.w(TAG, "Battery optimization request failed: ${e.message}")
+            promise.resolve(false)
+        }
+    }
 }

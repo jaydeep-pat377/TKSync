@@ -38,6 +38,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MessagingDelegate, UNUser
       launchOptions: launchOptions
     )
 
+    // Keep screen on while the app is open
+    UIApplication.shared.isIdleTimerDisabled = true
+
     return true
   }
 

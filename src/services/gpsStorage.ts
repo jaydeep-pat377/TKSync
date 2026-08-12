@@ -84,8 +84,8 @@ function setTripSummaries(summaries: TripSummary[]): void {
 }
 
 export const gpsStorage = {
-  /** Append a GPS fix. Keeps only the last 500 unsynced + trims synced. */
-  addRecord(record: Omit<GpsRecord, 'id' | 'synced'>): void {
+  /** Append a GPS fix. Keeps only the last 500 unsynced + trims synced. Returns the record ID. */
+  addRecord(record: Omit<GpsRecord, 'id' | 'synced'>): string {
     let records = getRecords();
     const id = `gps_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     records.push({
@@ -97,15 +97,20 @@ export const gpsStorage = {
       console.log(`[GPS] #${records.length} | lat: ${record.latitude.toFixed(6)}, lng: ${record.longitude.toFixed(6)} | speed: ${record.speed?.toFixed(1) ?? '-'} m/s | accuracy: ${record.accuracy ?? '-'}m | ticket: ${record.ticket_id}`);
     }
     // Remove synced records to prevent unbounded growth
-    // Keep all unsynced + most recent 100 synced (for dedup reference)
+    // Keep all unsynced (capped at 5000) + most recent 100 synced (for dedup reference)
     if (records.length > 600) {
-      const unsynced = records.filter(r => !r.synced);
+      let unsynced = records.filter(r => !r.synced);
       const synced = records.filter(r => r.synced);
+      // Hard cap on unsynced — keep most recent if too many accumulate
+      if (unsynced.length > 5000) {
+        unsynced = unsynced.slice(-5000);
+      }
       // Keep latest 100 synced records for dedup
       const recentSynced = synced.slice(-100);
       records = [...recentSynced, ...unsynced];
     }
     setRecords(records);
+    return id;
   },
 
   /** Import a record with a specific ID (used for native background records).
@@ -116,8 +121,11 @@ export const gpsStorage = {
     if (records.some(r => r.id === id)) return false;
     records.push({...record, id, synced: false});
     if (records.length > 600) {
-      const unsynced = records.filter(r => !r.synced);
+      let unsynced = records.filter(r => !r.synced);
       const synced = records.filter(r => r.synced);
+      if (unsynced.length > 5000) {
+        unsynced = unsynced.slice(-5000);
+      }
       const recentSynced = synced.slice(-100);
       records = [...recentSynced, ...unsynced];
     }

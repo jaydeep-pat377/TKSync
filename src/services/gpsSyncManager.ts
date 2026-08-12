@@ -96,8 +96,8 @@ async function syncGpsRecords(): Promise<void> {
   // Marking them here would silently discard offline records that haven't been published yet.
   isSyncing = true;
   try {
-    heartbeatApi.ping().catch(() => {});
-    refreshTicket();
+    await heartbeatApi.ping().catch(() => {});
+    await refreshTicket();
   } finally {
     isSyncing = false;
   }

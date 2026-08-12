@@ -45,8 +45,12 @@ function scheduleTokenRefresh(expiresIn: number) {
     console.log('[MQTT] Refreshing token...');
     const newToken = await fetchAndStoreToken();
     if (newToken) {
-      // Reconnect with new token
+      // Preserve callbacks across reconnect — disconnect() clears them
+      const savedOnReconnect = onReconnectCallback;
+      const savedHasConnected = hasConnectedBefore;
       disconnect();
+      onReconnectCallback = savedOnReconnect;
+      hasConnectedBefore = savedHasConnected;
       connect();
     }
   }, refreshMs);
@@ -70,6 +74,13 @@ export async function connect(): Promise<boolean> {
   }
 
   return new Promise(resolve => {
+    let resolved = false;
+    const settle = (value: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+
     const opts: IClientOptions = {
       username: mqttToken!.username,
       password: mqttToken!.token,
@@ -97,13 +108,13 @@ export async function connect(): Promise<boolean> {
           onReconnectCallback();
         }
         hasConnectedBefore = true;
-        resolve(true);
+        settle(true);
       });
 
       client.on('error', (err) => {
         console.warn('[MQTT] Error:', err.message);
         reconnecting = false;
-        resolve(false);
+        settle(false);
       });
 
       client.on('close', () => {
@@ -115,18 +126,20 @@ export async function connect(): Promise<boolean> {
         console.log('[MQTT] Reconnecting...');
       });
 
-      // Timeout fallback
+      // Timeout fallback — only kill client if it never connected
       setTimeout(() => {
-        if (!client?.connected) {
-          console.warn('[MQTT] Connection timeout');
+        if (!resolved && !client?.connected) {
+          console.warn('[MQTT] Connection timeout — cleaning up stale client');
+          try { client?.end(true); } catch {}
+          client = null;
           reconnecting = false;
-          resolve(false);
+          settle(false);
         }
       }, 12000);
     } catch (err) {
       console.warn('[MQTT] Connect error:', err);
       reconnecting = false;
-      resolve(false);
+      settle(false);
     }
   });
 }
@@ -190,6 +203,7 @@ export function publish(payload: {
   ticket_id: number | null;
   ticket_code: string | null;
   client_id: string;
+  battery_level: number | null;
 }): boolean {
   const topic = getTopic();
   if (!client?.connected || !topic) {
