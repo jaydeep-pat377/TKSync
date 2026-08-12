@@ -11,6 +11,7 @@ import {
   Linking,
   Alert,
   AppState,
+  NativeModules,
   useWindowDimensions,
   Easing,
   TouchableOpacity,
@@ -18,6 +19,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Entypo from 'react-native-vector-icons/Entypo';
 import Geolocation from 'react-native-geolocation-service';
 import messaging from '@react-native-firebase/messaging';
 import {useTheme} from '../contexts/ThemeContext';
@@ -30,8 +32,10 @@ export function isPermissionOnboardingDone(): boolean {
   return storage.getBoolean(ONBOARDING_KEY) === true;
 }
 
+const {LocationTrackingModule} = NativeModules;
+
 type Props = {navigation: NativeStackNavigationProp<any>};
-type Step = 'location' | 'notification';
+type Step = 'location' | 'notification' | 'battery';
 
 const STEPS: {key: Step; icon: string; title: string; desc: string; hint: string; features: {icon: string; text: string}[]}[] = [
   {
@@ -58,6 +62,18 @@ const STEPS: {key: Step; icon: string; title: string; desc: string; hint: string
       {icon: 'message', text: 'Dispatcher messages'},
     ],
   },
+  {
+    key: 'battery',
+    icon: 'battery-charging-full',
+    title: 'Battery Optimization',
+    desc: 'Allow TKSync to run in the background so GPS tracking continues without interruption.',
+    hint: 'Tap Allow to prevent Android from stopping GPS',
+    features: [
+      {icon: 'gps-fixed', text: 'GPS stays active in background'},
+      {icon: 'power-settings-new', text: 'Prevents auto-kill by Android'},
+      {icon: 'verified', text: 'Reliable delivery tracking'},
+    ],
+  },
 ];
 
 export default function PermissionScreen({navigation}: Props) {
@@ -68,26 +84,37 @@ export default function PermissionScreen({navigation}: Props) {
   const isTablet = Math.min(width, height) > 600;
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [transitioning, setTransitioning] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const iconPulse = useRef(new Animated.Value(1)).current;
-  const stepFade = useRef(new Animated.Value(1)).current;
 
   const step = STEPS[currentStep];
   const L = isLandscape;
   const T = isTablet;
 
-  // On mount: auto-skip location step if already granted
+  // On mount: auto-skip already-granted steps
   useEffect(() => {
     (async () => {
       try {
         if (Platform.OS !== 'android') return;
+
+        // Check location
         const fine = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
         const bg = Number(Platform.Version) >= 29
           ? await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION)
           : fine;
-        if (fine && bg) setCurrentStep(1);
+        if (!fine || !bg) return; // Stay on step 0
+
+        // Check notification
+        let notifOk = true;
+        if (Number(Platform.Version) >= 33) {
+          notifOk = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+        }
+        if (!notifOk) { setCurrentStep(1); return; }
+
+        // Check battery optimization
+        // If all permissions granted, skip to battery step (step 2)
+        setCurrentStep(2);
       } catch {}
     })();
   }, []);
@@ -126,17 +153,24 @@ export default function PermissionScreen({navigation}: Props) {
 
   const goToNextStep = () => {
     if (currentStep < STEPS.length - 1) {
-      setTransitioning(true);
-      Animated.timing(stepFade, {toValue: 0, duration: 200, useNativeDriver: true}).start(() => {
-        setCurrentStep(p => p + 1);
-        setShowSettings(false);
-        stepFade.setValue(1);
-        setTransitioning(false);
-      });
+      setCurrentStep(p => p + 1);
+      setShowSettings(false);
     } else {
       storage.set(ONBOARDING_KEY, true);
       navigation.replace('Login');
     }
+  };
+
+  const showBgLocationAlert = () => {
+    Alert.alert(
+      'Background Location Required',
+      'To track deliveries when the screen is off, you need to allow location access "All the time".\n\nTap Permissions → Location → Allow all the time',
+      [{
+        text: 'Open Settings',
+        onPress: () => { setShowSettings(true); Linking.openSettings(); },
+      }],
+      {cancelable: false},
+    );
   };
 
   const requestLocation = async () => {
@@ -145,27 +179,28 @@ export default function PermissionScreen({navigation}: Props) {
       if (status === 'granted' || status === 'restricted' || status === 'whenInUse') { goToNextStep(); return; }
       setShowSettings(true); return;
     }
+
+    // Request fine location if not already granted
     const alreadyFine = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
     if (!alreadyFine) {
       const fine = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {title: 'Location Permission', message: 'TKSync needs your location for delivery tracking.', buttonPositive: 'Allow'});
-      if (fine !== PermissionsAndroid.RESULTS.GRANTED) { setShowSettings(true); return; }
-    }
-    if (Number(Platform.Version) >= 29) {
-      const bgAlready = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
-      if (!bgAlready) {
-        Alert.alert(
-          'Background Location Required',
-          'To track deliveries when the screen is off, please enable "Allow all the time" in Location settings.\n\nTap Permissions → Location → Allow all the time',
-          [{
-            text: 'Open Settings',
-            onPress: () => { setShowSettings(true); Linking.openSettings(); },
-          }],
-          {cancelable: false},
-        );
+      if (fine !== PermissionsAndroid.RESULTS.GRANTED) {
+        // Denied completely — still show alert about needing "All the time"
+        showBgLocationAlert();
         return;
       }
     }
+
+    // Check background location — show alert if not "Allow all the time"
+    if (Number(Platform.Version) >= 29) {
+      const bgAlready = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
+      if (!bgAlready) {
+        showBgLocationAlert();
+        return;
+      }
+    }
+
     goToNextStep();
   };
 
@@ -183,9 +218,22 @@ export default function PermissionScreen({navigation}: Props) {
     goToNextStep();
   };
 
+  const requestBattery = async () => {
+    if (Platform.OS !== 'android' || !LocationTrackingModule) {
+      goToNextStep();
+      return;
+    }
+    try {
+      await LocationTrackingModule.requestBatteryOptimizationExemption();
+    } catch {}
+    // Always proceed — user saw the dialog, whether they allowed or not
+    goToNextStep();
+  };
+
   const handleAllow = () => {
-    if (transitioning) return;
-    step.key === 'location' ? requestLocation() : requestNotification();
+    if (step.key === 'location') requestLocation();
+    else if (step.key === 'notification') requestNotification();
+    else if (step.key === 'battery') requestBattery();
   };
 
   const iSz = L ? ms(36) : T ? ms(48) : ms(42);
@@ -197,7 +245,7 @@ export default function PermissionScreen({navigation}: Props) {
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
       <View style={[s.root, {paddingTop: insets.top + (L ? 8 : wp(10)), paddingBottom: insets.bottom + (L ? 8 : wp(10)), paddingLeft: insets.left + wp(L ? 12 : 16), paddingRight: insets.right + wp(L ? 12 : 16)}]}>
-        <Animated.View style={[s.inner, {opacity: stepFade}]}>
+        <View style={s.inner}>
 
           {/* LEFT panel (green card with icon) */}
           <View style={[s.leftPanel, L && s.leftPanelLand]}>
@@ -210,7 +258,10 @@ export default function PermissionScreen({navigation}: Props) {
 
             <View style={s.iconWrap}>
               <Animated.View style={[s.iconCircle, {transform: [{scale: iconPulse}]}]}>
-                <MaterialIcons name={step.icon} size={iSz} color="#fff" />
+                {step.key === 'location'
+                  ? <Entypo name="location-pin" size={iSz} color="#fff" />
+                  : <MaterialIcons name={step.icon} size={iSz} color="#fff" />
+                }
               </Animated.View>
             </View>
 
@@ -234,7 +285,7 @@ export default function PermissionScreen({navigation}: Props) {
                   <View style={[s.featIcon, L && s.featIconLand]}>
                     <MaterialIcons name={f.icon} size={ms(L ? 14 : 16)} color="#6BB130" />
                   </View>
-                  <Text style={[s.featText, L && s.featTextLand]}>{f.Text}</Text>
+                  <Text style={[s.featText, L && s.featTextLand]}>{f.text}</Text>
                 </View>
               ))}
 
@@ -260,15 +311,15 @@ export default function PermissionScreen({navigation}: Props) {
             ) : (
               <TouchableOpacity style={s.allowBtn} activeOpacity={0.85} onPress={handleAllow}>
                 <View style={s.allowIcon}>
-                  <MaterialIcons name={step.key === 'location' ? 'location-on' : 'notifications'} size={ms(18)} color="#fff" />
+                  <MaterialIcons name={step.key === 'location' ? 'location-on' : step.key === 'notification' ? 'notifications' : 'battery-charging-full'} size={ms(18)} color="#fff" />
                 </View>
-                <Text style={s.allowText}>Allow {step.key === 'location' ? 'Location' : 'Notifications'}</Text>
+                <Text style={s.allowText}>Allow {step.key === 'location' ? 'Location' : step.key === 'notification' ? 'Notifications' : 'Battery Access'}</Text>
                 <MaterialIcons name="arrow-forward-ios" size={ms(14)} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>
             )}
           </View>
 
-        </Animated.View>
+        </View>
       </View>
     </View>
   );
