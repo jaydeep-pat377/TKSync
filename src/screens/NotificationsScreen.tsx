@@ -83,6 +83,7 @@ export default function NotificationsScreen({navigation}: Props) {
       spinRef.current?.stop();
       spinAnim.setValue(0);
     }
+    return () => { spinRef.current?.stop(); };
   }, [refreshing, spinAnim]);
 
   const spin = spinAnim.interpolate({

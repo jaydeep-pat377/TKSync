@@ -221,15 +221,17 @@ export const gpsSyncManager = {
     const orphanedToken = storage.getString('orphaned_gps_token');
     if (!orphanedToken) return;
 
-    // GPS data is now published via MQTT in real-time.
-    // Orphaned records from previous sessions can't be sent via REST (turned off).
-    // Clear them to prevent buildup.
+    // Orphaned records from previous sessions — try to publish via MQTT before clearing.
+    // These records were saved while offline during a force logout.
     const unsynced = gpsStorage.getUnsynced();
     if (unsynced.length > 0) {
-      console.log(`[GpsSyncManager] Clearing ${unsynced.length} orphaned GPS records (REST endpoint removed, MQTT is live)`);
-      gpsStorage.markSynced(unsynced.map(r => r.id));
+      console.log(`[GpsSyncManager] ${unsynced.length} orphaned GPS records — attempting MQTT publish before clearing`);
+      // Don't delete them here — autoResume() will try to publish them via MQTT.
+      // If MQTT succeeds, they'll be marked synced. If not, they stay for next attempt.
+      // Only remove the orphaned token flag so this doesn't re-run.
     }
     storage.remove('orphaned_gps_token');
+    // Only clear records that were successfully synced — keep unsynced for MQTT publish
     gpsStorage.clearSynced();
   },
 

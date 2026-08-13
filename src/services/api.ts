@@ -91,12 +91,12 @@ async function request<T = any>(
   } catch {
     console.log(`[API Request] ${method} ${url}`, '(body not JSON)');
   }
-  console.log(`[API Token] ${accessToken ? `Bearer ${accessToken}` : 'NO TOKEN'}`);
+  console.log(`[API Token] ${accessToken ? `Bearer ...${accessToken.slice(-8)}` : 'NO TOKEN'}`);
 
   let res: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     res = await fetch(url, {
       ...options,
       headers,
@@ -104,6 +104,7 @@ async function request<T = any>(
     });
     clearTimeout(timer);
   } catch (err) {
+    clearTimeout(timer);
     const {title, message} = classifyError(err);
     console.warn(`[API] ${method} ${endpoint} — ${title}: ${message}`);
     if (!isSilent) showToast('error', title, message);
@@ -149,10 +150,14 @@ async function request<T = any>(
       if (refreshed) {
         try {
           headers.Authorization = `Bearer ${storage.getString('access_token')}`;
+          const retryController = new AbortController();
+          const retryTimer = setTimeout(() => retryController.abort(), REQUEST_TIMEOUT_MS);
           const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
             ...options,
             headers,
+            signal: retryController.signal,
           });
+          clearTimeout(retryTimer);
           const retryJson: ApiResponse<T> = await retryRes.json();
           if (!retryRes.ok || !retryJson.success) {
             const retryApiErr = new ApiError(retryJson.message || `HTTP ${retryRes.status}`, retryJson.error_code, retryJson.errors);
@@ -188,10 +193,27 @@ async function request<T = any>(
   return json;
 }
 
+// Coalesce concurrent refresh calls — prevents race where two 401s both
+// try to refresh the token and the second invalidates the first.
+let refreshPromise: Promise<boolean> | null = null;
+
 async function refreshAccessToken(): Promise<boolean> {
+  // If a refresh is already in-flight, piggyback on it
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = doRefreshAccessToken();
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function doRefreshAccessToken(): Promise<boolean> {
   const refreshToken = storage.getString('refresh_token');
   if (!refreshToken) {
-    // No refresh token — session is dead, trigger logout
     storage.remove('access_token');
     onSessionExpired?.();
     return false;
@@ -209,7 +231,6 @@ async function refreshAccessToken(): Promise<boolean> {
 
     if (json.success) {
       storage.set('access_token', json.data.access_token);
-      // Update native service token for background API uploads
       try {
         const {NativeModules: NM, Platform: P} = require('react-native');
         if (P.OS === 'android' && NM.LocationTrackingModule) {
@@ -220,7 +241,6 @@ async function refreshAccessToken(): Promise<boolean> {
     }
   } catch {}
 
-  // Refresh failed — clear tokens and notify
   console.log('[API] Refresh token failed — session expired, redirecting to login');
   storage.remove('access_token');
   storage.remove('refresh_token');

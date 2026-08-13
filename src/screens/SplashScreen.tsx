@@ -111,7 +111,7 @@ export default function SplashScreen({navigation}: Props) {
     wheelAnimation.start();
 
     // Main sequence
-    Animated.parallel([
+    const mainAnimation = Animated.parallel([
       // Background glow
       Animated.timing(bgGlow, {
         toValue: 1,
@@ -213,7 +213,8 @@ export default function SplashScreen({navigation}: Props) {
           useNativeDriver: true,
         }),
       ]),
-    ]).start();
+    ]);
+    mainAnimation.start();
 
     // Fade out and navigate after splash animation
     const timer = setTimeout(() => {
@@ -228,6 +229,7 @@ export default function SplashScreen({navigation}: Props) {
 
     return () => {
       clearTimeout(timer);
+      mainAnimation.stop();
       wheelAnimation.stop();
     };
   }, [

@@ -45,13 +45,22 @@ function scheduleTokenRefresh(expiresIn: number) {
     console.log('[MQTT] Refreshing token...');
     const newToken = await fetchAndStoreToken();
     if (newToken) {
-      // Preserve callbacks across reconnect — disconnect() clears them
-      const savedOnReconnect = onReconnectCallback;
-      const savedHasConnected = hasConnectedBefore;
-      disconnect();
-      onReconnectCallback = savedOnReconnect;
-      hasConnectedBefore = savedHasConnected;
-      connect();
+      // Connect-then-disconnect: build the new client FIRST so there's no gap
+      // where GPS records can't be published (old client stays live until new one is ready)
+      const oldClient = client;
+      client = null; // Allow connect() to proceed
+      reconnecting = false; // Reset so connect() isn't blocked
+
+      const connected = await connect();
+      // Now tear down the old client — new one is already active
+      if (oldClient) {
+        try { oldClient.end(true); } catch {}
+      }
+      if (!connected) {
+        console.warn('[MQTT] Token rotation: new connection failed, records will queue locally');
+      } else {
+        console.log('[MQTT] Token rotation complete — seamless handoff');
+      }
     }
   }, refreshMs);
 }
@@ -61,6 +70,16 @@ export async function connect(): Promise<boolean> {
   if (reconnecting) return false;
 
   reconnecting = true;
+
+  // Tear down any existing non-connected client to prevent orphans.
+  // The mqtt.js library fires 'close' before each reconnect, which resets
+  // `reconnecting` to false. A second connect() call at that moment would
+  // create a new client and orphan the old one (still reconnecting internally).
+  if (client) {
+    try { client.end(true); } catch {}
+    client = null;
+  }
+
   mqttToken = getStoredToken();
 
   if (!mqttToken) {
@@ -94,15 +113,15 @@ export async function connect(): Promise<boolean> {
     console.log(`[MQTT] Connecting to ${mqttToken!.url}...`);
 
     try {
-      client = mqtt.connect(mqttToken!.url, opts);
+      const newClient = mqtt.connect(mqttToken!.url, opts);
 
-      client.on('connect', () => {
+      newClient.on('connect', () => {
+        // Guard: only process if this is still the active client
+        if (client !== newClient) return;
         console.log('[MQTT] Connected, topic:', mqttToken!.topic);
         reconnecting = false;
         scheduleTokenRefresh(mqttToken!.expiresIn);
-        // Sync MQTT credentials to native service for background publishing
         syncCredentialsToNative();
-        // On reconnect (not first connect), flush offline records
         if (hasConnectedBefore && onReconnectCallback) {
           console.log('[MQTT] Reconnected — flushing offline records');
           onReconnectCallback();
@@ -111,27 +130,33 @@ export async function connect(): Promise<boolean> {
         settle(true);
       });
 
-      client.on('error', (err) => {
+      newClient.on('error', (err) => {
+        if (client !== newClient) return;
         console.warn('[MQTT] Error:', err.message);
         reconnecting = false;
         settle(false);
       });
 
-      client.on('close', () => {
+      newClient.on('close', () => {
+        if (client !== newClient) return;
         console.log('[MQTT] Disconnected');
-        reconnecting = false;
+        // Don't reset reconnecting here — the library's built-in reconnect
+        // fires 'close' before each attempt, which would falsely clear the guard
+        // and allow duplicate clients. Let 'connect' or 'error' clear it.
       });
 
-      client.on('reconnect', () => {
+      newClient.on('reconnect', () => {
         console.log('[MQTT] Reconnecting...');
       });
 
+      client = newClient;
+
       // Timeout fallback — only kill client if it never connected
       setTimeout(() => {
-        if (!resolved && !client?.connected) {
+        if (!resolved && client === newClient && !newClient.connected) {
           console.warn('[MQTT] Connection timeout — cleaning up stale client');
-          try { client?.end(true); } catch {}
-          client = null;
+          try { newClient.end(true); } catch {}
+          if (client === newClient) client = null;
           reconnecting = false;
           settle(false);
         }
@@ -193,7 +218,7 @@ export function getTopic(): string | null {
   return mqttToken?.topic || getStoredToken()?.topic || null;
 }
 
-export function publish(payload: {
+type GpsPayload = {
   latitude: number;
   longitude: number;
   speed: number | null;
@@ -204,14 +229,26 @@ export function publish(payload: {
   ticket_code: string | null;
   client_id: string;
   battery_level: number | null;
-}): boolean {
+};
+
+/**
+ * Publish a GPS payload via MQTT.
+ * Returns true if the message was accepted by the client (not yet ACKed by broker).
+ * Use onDelivered callback to know when the broker has confirmed receipt (QoS 1 ACK).
+ */
+export function publish(
+  payload: GpsPayload,
+  onDelivered?: (err: Error | null) => void,
+): boolean {
   const topic = getTopic();
   if (!client?.connected || !topic) {
     return false;
   }
 
   try {
-    client.publish(topic, JSON.stringify(payload), {qos: 1});
+    client.publish(topic, JSON.stringify(payload), {qos: 1}, (err) => {
+      if (onDelivered) onDelivered(err ?? null);
+    });
     return true;
   } catch (err) {
     console.warn('[MQTT] Publish error:', err);

@@ -248,12 +248,14 @@ function Skeleton({ width: w, height: h, radius = 8, style }: any) {
   const { c } = useTheme();
   const shimmer = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmer, { toValue: 1, duration: 800, useNativeDriver: true }),
         Animated.timing(shimmer, { toValue: 0, duration: 800, useNativeDriver: true }),
       ]),
-    ).start();
+    );
+    loop.start();
+    return () => loop.stop();
   }, [shimmer]);
   return (
     <Animated.View
@@ -570,19 +572,32 @@ export default function DashboardScreen({ navigation }: Props) {
   // Refresh all data when connection is restored (offline → online)
   const wasOnline = useRef(isOnline);
   useEffect(() => {
+    let syncUnsub: (() => void) | null = null;
+    let delayTimer: ReturnType<typeof setTimeout> | null = null;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
     if (isOnline && !wasOnline.current) {
       console.log('[Dashboard] Connection restored — refreshing after sync');
-      // Listen for sync_complete before refreshing so server has the latest data
-      const unsub = syncManager.addListener((event) => {
+      syncUnsub = syncManager.addListener((event) => {
         if (event.type === 'sync_complete') {
-          unsub();
-          setTimeout(() => silentRefreshAll(), 500);
+          syncUnsub?.();
+          syncUnsub = null;
+          delayTimer = setTimeout(() => silentRefreshAll(), 500);
         }
       });
-      // Fallback: if sync doesn't start within 5s (no pending items), refresh anyway
-      setTimeout(() => { unsub(); silentRefreshAll(); }, 5000);
+      fallbackTimer = setTimeout(() => {
+        syncUnsub?.();
+        syncUnsub = null;
+        silentRefreshAll();
+      }, 5000);
     }
     wasOnline.current = isOnline;
+
+    return () => {
+      syncUnsub?.();
+      if (delayTimer) clearTimeout(delayTimer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
   }, [isOnline, silentRefreshAll]);
 
   // Listen for delivery_record_incomplete push (foreground event or background tap)

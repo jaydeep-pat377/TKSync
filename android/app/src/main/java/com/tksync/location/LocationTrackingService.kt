@@ -48,7 +48,7 @@ class LocationTrackingService : Service() {
         private const val KEY_TICKET_ID = "ticket_id"
         private const val KEY_ACTIVE = "tracking_active"
         private const val KEY_SILENT = "silent_mode"
-        private const val MAX_RECORDS = 10000 // ~27 hours at 10s intervals; keeps SharedPrefs fast
+        private const val MAX_RECORDS = 20000 // ~5.5 hours at 1s intervals; ~4MB JSON — fits in SharedPrefs
         private const val KEY_IDLE = "idle_mode"
         private const val KEY_JS_ALIVE = "js_alive" // When true, JS is recording — native skips saving
         private const val KEY_JS_HEARTBEAT = "js_heartbeat" // Last time JS recorded a GPS fix (epoch ms)
@@ -224,6 +224,7 @@ class LocationTrackingService : Service() {
     private lateinit var fusedClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private lateinit var prefs: SharedPreferences
+    private val prefsLock = Any() // Synchronizes SharedPrefs record read/write across threads
     private var ticketId: Int = 0
     private var isSilent: Boolean = false
     private var isIdleMode: Boolean = false
@@ -235,6 +236,7 @@ class LocationTrackingService : Service() {
     private val MOVING_CONFIRM_THRESHOLD = 3 // Require 3 consecutive moving fixes to clear stationary
     private var lastSavedLat: Double? = null
     private var lastSavedLng: Double? = null
+    private var lastSavedTime: Long = 0L // GPS timestamp (ms) of last saved location — for teleport detection
     private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
     private var pendingCount = 0
     private val WRITE_BATCH_SIZE = 1 // Flush to SharedPrefs immediately — ensures no records lost on foreground transition
@@ -273,7 +275,7 @@ class LocationTrackingService : Service() {
             if (!wasActive) {
                 Log.d(TAG, "Service restarted by system but tracking was inactive — stopping")
                 stopSelf()
-                return START_STICKY
+                return START_NOT_STICKY
             }
             Log.d(TAG, "Service restarted by system — resuming GPS from SharedPrefs")
         }
@@ -358,25 +360,27 @@ class LocationTrackingService : Service() {
 
     private fun flushPendingRecords() {
         if (pendingCount == 0) return
-        val records = getStoredRecords(this)
-        for (i in 0 until pendingRecords.length()) {
-            records.put(pendingRecords.getJSONObject(i))
-        }
-
-        val toWrite = if (records.length() > MAX_RECORDS) {
-            val trimmed = JSONArray()
-            for (i in (records.length() - MAX_RECORDS) until records.length()) {
-                trimmed.put(records.getJSONObject(i))
+        synchronized(prefsLock) {
+            val records = getStoredRecords(this)
+            for (i in 0 until pendingRecords.length()) {
+                records.put(pendingRecords.getJSONObject(i))
             }
-            trimmed
-        } else {
-            records
-        }
 
-        prefs.edit().putString(KEY_RECORDS, toWrite.toString()).apply()
-        Log.d(TAG, "Flushed $pendingCount records to SharedPrefs (total: ${toWrite.length()})")
-        pendingRecords = JSONArray()
-        pendingCount = 0
+            val toWrite = if (records.length() > MAX_RECORDS) {
+                val trimmed = JSONArray()
+                for (i in (records.length() - MAX_RECORDS) until records.length()) {
+                    trimmed.put(records.getJSONObject(i))
+                }
+                trimmed
+            } else {
+                records
+            }
+
+            prefs.edit().putString(KEY_RECORDS, toWrite.toString()).apply()
+            Log.d(TAG, "Flushed $pendingCount records to SharedPrefs (total: ${toWrite.length()})")
+            pendingRecords = JSONArray()
+            pendingCount = 0
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -405,6 +409,70 @@ class LocationTrackingService : Service() {
         }
     }
 
+    /** Refresh MQTT token via REST API when the current token has expired.
+     *  Called from background thread when MQTT auth fails after app kill. */
+    private fun refreshMqttTokenViaApi() {
+        val baseUrl = prefs.getString(KEY_API_BASE_URL, "") ?: ""
+        val apiToken = prefs.getString(KEY_API_TOKEN, "") ?: ""
+        if (baseUrl.isEmpty() || apiToken.isEmpty()) {
+            Log.d(TAG, "MQTT token refresh: no API credentials — skipping")
+            return
+        }
+
+        Thread {
+            var conn: java.net.HttpURLConnection? = null
+            try {
+                val url = java.net.URL("$baseUrl/tracking/mqtt-token")
+                conn = url.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("Authorization", "Bearer $apiToken")
+                conn.connectTimeout = 10000
+                conn.readTimeout = 10000
+                conn.doInput = true
+
+                val responseCode = conn.responseCode
+                if (responseCode == 200) {
+                    val body = conn.inputStream.bufferedReader().readText()
+                    val json = JSONObject(body)
+                    if (json.optBoolean("success", false)) {
+                        val data = json.getJSONObject("data")
+                        val newUrl = data.getString("url")
+                        val newUsername = data.getString("username")
+                        val newToken = data.getString("token")
+                        val newTopic = data.getString("topic")
+
+                        prefs.edit()
+                            .putString(KEY_MQTT_URL, newUrl)
+                            .putString(KEY_MQTT_USERNAME, newUsername)
+                            .putString(KEY_MQTT_PASSWORD, newToken)
+                            .putString(KEY_MQTT_TOPIC, newTopic)
+                            .apply()
+
+                        Log.d(TAG, "MQTT token refreshed via API — reconnecting")
+                        Handler(Looper.getMainLooper()).post {
+                            disconnectMqtt()
+                            connectMqtt()
+                        }
+                    } else {
+                        Log.w(TAG, "MQTT token refresh: API returned success=false")
+                    }
+                } else if (responseCode == 401) {
+                    Log.w(TAG, "MQTT token refresh: API token expired (401) — cannot refresh, waiting for app reopen")
+                } else {
+                    Log.w(TAG, "MQTT token refresh: HTTP $responseCode")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "MQTT token refresh failed: ${e.message}")
+            } finally {
+                conn?.disconnect()
+            }
+        }.start()
+    }
+
+    private var mqttAuthFailureCount = 0
+    private val MAX_MQTT_AUTH_FAILURES = 2 // Refresh token after 2 consecutive auth failures
+
     private fun connectMqtt() {
         if (mqttClient?.isConnected == true) return
 
@@ -432,6 +500,7 @@ class LocationTrackingService : Service() {
             client.setCallback(object : MqttCallbackExtended {
                 override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                     Log.d(TAG, "MQTT ${if (reconnect) "reconnected" else "connected"} — $serverURI")
+                    mqttAuthFailureCount = 0 // Reset on successful connect
                     // Replay offline records that were saved while MQTT was disconnected
                     if (reconnect) {
                         replayOfflineRecords()
@@ -439,6 +508,20 @@ class LocationTrackingService : Service() {
                 }
                 override fun connectionLost(cause: Throwable?) {
                     Log.w(TAG, "MQTT connection lost: ${cause?.message}")
+                    // Detect auth failure (broker rejects expired token) — trigger token refresh
+                    val msg = cause?.message?.lowercase() ?: ""
+                    val isAuthError = msg.contains("not authorized") ||
+                        msg.contains("bad user name or password") ||
+                        msg.contains("connack") && msg.contains("5") ||
+                        cause is MqttSecurityException
+                    if (isAuthError) {
+                        mqttAuthFailureCount++
+                        Log.w(TAG, "MQTT auth failure #$mqttAuthFailureCount — token may be expired")
+                        if (mqttAuthFailureCount >= MAX_MQTT_AUTH_FAILURES) {
+                            mqttAuthFailureCount = 0
+                            refreshMqttTokenViaApi()
+                        }
+                    }
                 }
                 override fun messageArrived(topic: String?, message: MqttMessage?) {}
                 override fun deliveryComplete(token: IMqttDeliveryToken?) {}
@@ -456,9 +539,20 @@ class LocationTrackingService : Service() {
             client.connect(opts, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.d(TAG, "MQTT connected — topic: $topic")
+                    mqttAuthFailureCount = 0
                 }
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.w(TAG, "MQTT connect failed: ${exception?.message}")
+                    // Check if this is an auth failure on initial connect
+                    if (exception is MqttSecurityException ||
+                        exception?.message?.lowercase()?.contains("not authorized") == true) {
+                        mqttAuthFailureCount++
+                        Log.w(TAG, "MQTT initial auth failure #$mqttAuthFailureCount")
+                        if (mqttAuthFailureCount >= MAX_MQTT_AUTH_FAILURES) {
+                            mqttAuthFailureCount = 0
+                            refreshMqttTokenViaApi()
+                        }
+                    }
                 }
             })
 
@@ -472,6 +566,9 @@ class LocationTrackingService : Service() {
 
     private fun disconnectMqtt() {
         try {
+            // Disable auto-reconnect before disconnecting to prevent the library
+            // from racing to reconnect between disconnect() and close()
+            mqttClient?.setManualAcks(false)
             if (mqttClient?.isConnected == true) {
                 mqttClient?.disconnect()
             }
@@ -514,6 +611,13 @@ class LocationTrackingService : Service() {
      * Called when native MQTT reconnects in background after an offline period.
      * Records are published with their original client_id so the server deduplicates.
      */
+    private val REPLAY_BATCH_SIZE = 20 // Publish in batches to avoid flooding broker
+
+    /**
+     * Replay stored GPS records via MQTT after reconnecting.
+     * Runs on a background thread to avoid blocking the Paho callback thread.
+     * Publishes in batches of 20 with brief pauses to prevent broker flooding.
+     */
     private fun replayOfflineRecords() {
         val client = mqttClient ?: return
         val topic = mqttTopic ?: return
@@ -522,47 +626,65 @@ class LocationTrackingService : Service() {
         val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
         if (jsAlive) return // JS is handling — don't replay from native
 
-        val records = getStoredRecords(this)
-        if (records.length() == 0) return
-
-        val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
-        val battery = getBatteryPercent()
-        var published = 0
-        var modified = false
-
-        for (i in 0 until records.length()) {
+        // Run on background thread to avoid blocking Paho callback thread
+        Thread {
             try {
-                val r = records.getJSONObject(i)
-                // Skip records already synced — only replay unsent ones
-                if (r.optBoolean("synced", false)) continue
-                val payload = JSONObject().apply {
-                    put("latitude", r.optDouble("latitude"))
-                    put("longitude", r.optDouble("longitude"))
-                    put("speed", r.optDouble("speed"))
-                    put("heading", r.optDouble("heading"))
-                    put("accuracy", r.optDouble("accuracy"))
-                    put("recorded_at", r.optString("recorded_at"))
-                    put("ticket_id", r.optInt("ticket_id"))
-                    put("ticket_code", ticketCode)
-                    put("client_id", r.optString("id"))
-                    put("battery_level", if (battery >= 0) battery else JSONObject.NULL)
+                // Synchronized read to avoid race with flushPendingRecords on main thread
+                val records: JSONArray
+                synchronized(prefsLock) {
+                    records = getStoredRecords(this)
                 }
-                val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
-                message.qos = 1
-                client.publish(topic, message)
-                // Mark as synced so JS import doesn't re-publish
-                r.put("synced", true)
-                modified = true
-                published++
+                if (records.length() == 0) return@Thread
+
+                val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
+                var published = 0
+                var modified = false
+
+                for (i in 0 until records.length()) {
+                    if (client != mqttClient || !client.isConnected) break // Client changed or disconnected
+                    try {
+                        val r = records.getJSONObject(i)
+                        if (r.optBoolean("synced", false)) continue
+                        val payload = JSONObject().apply {
+                            put("latitude", r.optDouble("latitude"))
+                            put("longitude", r.optDouble("longitude"))
+                            put("speed", r.optDouble("speed"))
+                            put("heading", r.optDouble("heading"))
+                            put("accuracy", r.optDouble("accuracy"))
+                            put("recorded_at", r.optString("recorded_at"))
+                            put("ticket_id", r.optInt("ticket_id"))
+                            put("ticket_code", ticketCode)
+                            put("client_id", r.optString("id"))
+                            // Use battery stored at record time — accurate for offline replays
+                            put("battery_level", r.opt("battery_level") ?: JSONObject.NULL)
+                        }
+                        val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
+                        message.qos = 1
+                        client.publish(topic, message)
+                        r.put("synced", true)
+                        modified = true
+                        published++
+
+                        // Pause between batches to avoid flooding broker
+                        if (published % REPLAY_BATCH_SIZE == 0) {
+                            Thread.sleep(200)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "MQTT replay error at index $i: ${e.message}")
+                        break // Stop on error (e.g. "Too many publishes in progress")
+                    }
+                }
+                // Synchronized write to avoid race with flushPendingRecords
+                if (modified) {
+                    synchronized(prefsLock) {
+                        prefs.edit().putString(KEY_RECORDS, records.toString()).apply()
+                    }
+                }
+                Log.d(TAG, "MQTT replayed $published/${records.length()} offline records")
             } catch (e: Exception) {
-                Log.w(TAG, "MQTT replay error at index $i: ${e.message}")
+                Log.w(TAG, "MQTT replay thread error: ${e.message}")
             }
-        }
-        // Persist synced flags back to SharedPrefs
-        if (modified) {
-            prefs.edit().putString(KEY_RECORDS, records.toString()).apply()
-        }
-        Log.d(TAG, "MQTT replayed $published/${records.length()} offline records")
+        }.start()
     }
 
     private fun publishToMqtt(record: JSONObject) {
@@ -572,7 +694,6 @@ class LocationTrackingService : Service() {
         if (!client.isConnected) return // Will retry on next GPS fix via ensureMqttConnected
 
         val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
-        val battery = getBatteryPercent()
 
         try {
             val payload = JSONObject().apply {
@@ -585,7 +706,8 @@ class LocationTrackingService : Service() {
                 put("ticket_id", record.optInt("ticket_id"))
                 put("ticket_code", ticketCode)
                 put("client_id", record.optString("id"))
-                put("battery_level", if (battery >= 0) battery else JSONObject.NULL)
+                // Use battery stored at record time — accurate even for offline replays
+                put("battery_level", record.opt("battery_level") ?: JSONObject.NULL)
             }
 
             val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
@@ -672,9 +794,15 @@ class LocationTrackingService : Service() {
 
     /** Re-post the foreground notification after user dismisses it. */
     private fun repostNotification() {
-        val notification = buildNotification()
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, notification)
+        try {
+            val notification = buildNotification()
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.notify(NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Cannot repost notification — permission revoked: ${e.message}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Notification repost failed: ${e.message}")
+        }
     }
 
     private fun buildNotification(): Notification {
@@ -784,6 +912,28 @@ class LocationTrackingService : Service() {
             return
         }
 
+        // Skip invalid coordinates — (0,0) "Null Island", NaN, or out-of-range
+        if (location.latitude.isNaN() || location.longitude.isNaN() ||
+            Math.abs(location.latitude) > 90 || Math.abs(location.longitude) > 180 ||
+            (location.latitude == 0.0 && location.longitude == 0.0)) {
+            Log.d(TAG, "Skipping invalid coordinates: lat=${location.latitude}, lng=${location.longitude}")
+            return
+        }
+
+        // Skip GPS teleportation — reject if implied speed > 80 m/s (288 km/h)
+        if (lastSavedLat != null && lastSavedLng != null && lastSavedTime > 0L) {
+            val timeDeltaS = (location.time - lastSavedTime) / 1000.0
+            if (timeDeltaS > 0 && timeDeltaS < 60) {
+                val jumpResults = FloatArray(1)
+                Location.distanceBetween(lastSavedLat!!, lastSavedLng!!, location.latitude, location.longitude, jumpResults)
+                val impliedSpeed = jumpResults[0] / timeDeltaS
+                if (impliedSpeed > 80) {
+                    Log.d(TAG, "Skipping teleport: ${String.format("%.0f", jumpResults[0].toDouble())}m in ${String.format("%.1f", timeDeltaS)}s = ${String.format("%.0f", impliedSpeed * 3.6)} km/h")
+                    return
+                }
+            }
+        }
+
         val speedAvailable = location.hasSpeed() && location.speed >= 0f
         val speedMs = if (speedAvailable) location.speed.toDouble() else 0.0
         val speedKmh = speedMs * 3.6
@@ -883,7 +1033,9 @@ class LocationTrackingService : Service() {
         }
         lastSavedLat = location.latitude
         lastSavedLng = location.longitude
+        lastSavedTime = location.time
 
+        val battery = getBatteryPercent()
         val record = JSONObject().apply {
             put("ticket_id", ticketId)
             put("latitude", location.latitude)
@@ -897,6 +1049,7 @@ class LocationTrackingService : Service() {
             put("id", "native_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}")
             put("is_speeding", isSpeeding)
             put("is_idle", isIdle)
+            put("battery_level", if (battery >= 0) battery else JSONObject.NULL)
         }
 
         pendingRecords.put(record)

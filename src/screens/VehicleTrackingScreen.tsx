@@ -77,6 +77,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const [longitude, setLongitude] = useState(0);
   const [accuracy, setAccuracy] = useState(0);
   const [gpsActive, setGpsActive] = useState(false);
+  const [gpsFreshness, setGpsFreshness] = useState<'live' | 'recent' | 'stale' | 'offline'>('offline');
 
   // Trip state
   const [tripDistance, setTripDistance] = useState(0);
@@ -209,6 +210,12 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
 
   // Subscribe to background GPS position updates (for UI display)
   useEffect(() => {
+    // Poll GPS freshness every 5s so the badge transitions from LIVE → STALE → OFFLINE
+    // even when no new GPS fixes arrive (e.g. GPS signal lost, tunnel)
+    const freshnessTimer = setInterval(() => {
+      setGpsFreshness(backgroundGpsTracker.getGpsFreshness());
+    }, 5000);
+
     const unsub = backgroundGpsTracker.addListener((pos) => {
       setLatitude(pos.latitude);
       setLongitude(pos.longitude);
@@ -216,6 +223,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       setHeading(pos.heading);
       setAltitude(pos.altitude);
       setAccuracy(pos.accuracy);
+      setGpsFreshness(backgroundGpsTracker.getGpsFreshness());
 
       const kmh = Math.round(pos.speed * 3.6);
       const limit = speedLimitRef.current;
@@ -230,6 +238,8 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
 
       setMaxSpeed(prev => Math.max(prev, pos.speed));
       speedSamples.current.push(pos.speed);
+      // Cap at 500 samples to prevent unbounded growth on long shifts
+      if (speedSamples.current.length > 500) speedSamples.current.shift();
       setAvgSpeed(speedSamples.current.reduce((a, b) => a + b, 0) / speedSamples.current.length);
 
       if (lastPos.current) {
@@ -286,6 +296,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
     if (backgroundGpsTracker.isRunning()) {
       setIsTracking(true);
       setGpsActive(true);
+      setGpsFreshness(backgroundGpsTracker.getGpsFreshness());
       const pos = backgroundGpsTracker.getLastPosition();
       if (pos) {
         setLatitude(pos.latitude);
@@ -297,7 +308,10 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
       }
     }
 
-    return unsub;
+    return () => {
+      unsub();
+      clearInterval(freshnessTimer);
+    };
   }, [haversine]);
 
   // Cleanup screen-specific timers on unmount (GPS keeps running globally)
@@ -315,6 +329,11 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const avgSpeedKmh = toKmh(avgSpeed);
   const distanceKm = (tripDistance / 1000).toFixed(2);
   const compassDir = toCompass(heading);
+
+  // GPS freshness badge — shows signal quality to driver
+  const freshnessLabel = gpsFreshness === 'live' ? 'LIVE' : gpsFreshness === 'recent' ? 'RECENT' : gpsFreshness === 'stale' ? 'STALE' : 'OFF';
+  const freshnessColor = gpsFreshness === 'live' ? '#22C55E' : gpsFreshness === 'recent' ? '#F59E0B' : gpsFreshness === 'stale' ? '#EF4444' : c.textMuted;
+  const freshnessPulse = gpsFreshness === 'live';
 
   // ── Shared UI blocks ──
   const heroBlock = (
@@ -472,7 +491,7 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
             {isSpeeding && (
               <View style={{flexDirection: 'row', alignItems: 'center', gap: wp(6), backgroundColor: '#FEF2F2', padding: wp(8), borderRadius: wp(8)}}>
                 <Icon name="warning" size={ms(14)} color="#EF4444" />
-                <Text style={{fontSize: ms(10), fontWeight: '700', color: '#EF4444', flex: 1, fontFamily: MONO}}>SPEEDING: {toKmh(speed)} km/h (limit: {SPEED_LIMIT_KMH} km/h)</Text>
+                <Text style={{fontSize: ms(10), fontWeight: '700', color: '#EF4444', flex: 1, fontFamily: MONO}}>SPEEDING: {toKmh(speed)} km/h (limit: {speedLimitKmh} km/h)</Text>
               </View>
             )}
             {currentZone && (
@@ -580,10 +599,10 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
           {/* Right column: GPS badge + cards — extends from very top */}
           <View style={st.landscapeRight}>
             <View style={[st.landscapeGpsBadgeRow, {paddingTop: insets.top + wp(6), paddingRight: Math.max(wp(14), insets.right)}]}>
-              <Animated.View style={[st.gpsBadge, gpsActive ? st.gpsBadgeActive : st.gpsBadgeInactive, {transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
+              <Animated.View style={[st.gpsBadge, {backgroundColor: freshnessColor}, {transform: [{scale: freshnessPulse ? pulseAnim : 1}]}]}>
                 <Icon name="gps-fixed" size={ms(10)} color="#fff" />
               </Animated.View>
-              <Text style={[st.gpsLabel, gpsActive ? st.gpsLabelActive : st.gpsLabelInactive]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+              <Text style={[st.gpsLabel, {color: freshnessColor}]}>{freshnessLabel}</Text>
             </View>
             {directionTab}
             {cardsContent}
@@ -600,10 +619,10 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
               <Text style={st.headerTitle}>Vehicle Tracking</Text>
               <Text style={st.headerSub}>{driver?.truck_code || '-'} · {driver?.driver_code || '-'}</Text>
             </View>
-            <Animated.View style={[st.gpsBadge, gpsActive ? st.gpsBadgeActive : st.gpsBadgeInactive, {transform: [{scale: gpsActive ? pulseAnim : 1}]}]}>
+            <Animated.View style={[st.gpsBadge, {backgroundColor: freshnessColor}, {transform: [{scale: freshnessPulse ? pulseAnim : 1}]}]}>
               <Icon name="gps-fixed" size={ms(10)} color="#fff" />
             </Animated.View>
-            <Text style={[st.gpsLabel, gpsActive ? st.gpsLabelActive : st.gpsLabelInactive]}>{gpsActive ? 'LIVE' : 'OFF'}</Text>
+            <Text style={[st.gpsLabel, {color: freshnessColor}]}>{freshnessLabel}</Text>
           </View>
           {/* Hero section — row layout: circle left, stats right */}
           <View style={[st.portraitHeroRow, {paddingHorizontal: Math.max(wp(14), insets.left)}]}>

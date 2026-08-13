@@ -43,9 +43,9 @@ GPS data is collected every **1 second** and published to MQTT in real-time. The
 | JS Bridge | Also emits to JS as fallback (server deduplicates by `client_id`) |
 
 **When does idle mode activate?**
-- 3 consecutive GPS fixes with speed < 1.67 m/s (6 km/h)
+- 3 consecutive GPS fixes with speed < 1.0 m/s (3.6 km/h)
 - GPS interval changes from 1 second → 30 seconds to save battery
-- Resumes 1-second interval when movement detected (speed ≥ 1.67 m/s or moved > 50m)
+- Resumes 1-second interval when movement detected (speed ≥ 1.0 m/s or moved > 50m)
 
 ---
 
@@ -121,8 +121,10 @@ These filters run in both foreground (JS) and background (native):
 | Filter | Condition | Result |
 |---|---|---|
 | Accuracy | > 100m | **Skipped** — GPS fix too inaccurate |
+| Invalid coords | (0,0), NaN, out-of-range | **Skipped** — prevents Null Island / corrupt fixes |
+| Teleportation | Implied speed > 80 m/s (288 km/h) | **Skipped** — prevents GPS jumps / multipath errors |
 | Distance | < 5m from last save | **Skipped** — hasn't moved enough |
-| Stationary drift | Speed < 1.67 m/s after first stop | **Blocked** — prevents fake movement while parked |
+| Stationary drift | Speed < 1.0 m/s after first stop | **Blocked** — prevents fake movement while parked |
 | Speed spike | < 3 consecutive moving fixes after stationary | **Blocked** — prevents single GPS spike |
 | Mock GPS | Emulator/mocked position (dev only) | **Skipped** |
 
@@ -201,10 +203,10 @@ Every GPS upload (foreground and background) sends:
 
 | Rule | Detail |
 |---|---|
-| Speed threshold | < 1.67 m/s (6 km/h) = stationary |
+| Speed threshold | < 1.0 m/s (3.6 km/h) = stationary |
 | First stop | Saves ONE position (where truck stopped) |
 | All subsequent drift | **BLOCKED** until confirmed movement |
-| Confirmed movement | 3 consecutive fixes with speed ≥ 1.67 m/s |
+| Confirmed movement | 3 consecutive fixes with speed ≥ 1.0 m/s |
 | Applies in | Both foreground (JS) and background (native) |
 
 ---

@@ -293,6 +293,9 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       // non-fatal
     }
 
+    // Unregister FCM push token (best-effort, server may have revoked auth)
+    try { await unregisterDevice(); } catch {}
+
     // Kronos: clock out before clearing session
     if (KRONOS_MOCK_MODE) {
       kronosMock.clockOut();
@@ -374,15 +377,26 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   }, [state.isDriverLoggedIn, driverLogout]);
 
   useEffect(() => {
-    setOnSessionExpired(() => {
+    setOnSessionExpired(async () => {
       // Skip if force_logout is pending — forceLogoutCleanup handles it on resume.
       if (storage.getString('force_logout') === 'true') return;
       // Skip if already handled — prevents multiple toasts from concurrent 401s
       if (!storage.getString('access_token')) return;
 
+      // Stop GPS tracker and MQTT before clearing tokens
+      try {
+        const {backgroundGpsTracker} = require('../services/backgroundGpsTracker');
+        await backgroundGpsTracker.clearAllData();
+      } catch {}
+
+      // Unregister FCM push token
+      try { await unregisterDevice(); } catch {}
+
       // Kronos: clock out on session expiry
       if (KRONOS_MOCK_MODE) {
         kronosMock.clockOut();
+      } else {
+        try { await kronosApi.clockOut(); } catch {}
       }
 
       setSentryUser(null);
@@ -395,7 +409,11 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       storage.remove('pending_notification_nav');
       storage.remove('orphaned_gps_token');
       offlineStorage.clearAll();
-      gpsStorage.clear();
+      const hasUnsyncedSession = gpsStorage.getUnsynced().length > 0;
+      if (!hasUnsyncedSession) {
+        gpsStorage.clear();
+        storage.remove('mqtt_token');
+      }
       setState({
         isLoading: false,
         isCompanyLoggedIn: false,

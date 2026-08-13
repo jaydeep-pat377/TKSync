@@ -87,6 +87,9 @@ async function syncOne(item: PendingSave): Promise<'synced' | 'retry' | 'permane
   }
 }
 
+const MAX_HEALTH_RETRIES = 6; // Stop retrying health check after ~1 minute (6 × 10s)
+let healthRetryCount = 0;
+
 async function processQueue(): Promise<void> {
   if (isSyncing) {
     console.log('[SyncManager] Sync already in progress, skipping');
@@ -103,10 +106,17 @@ async function processQueue(): Promise<void> {
 
   const {healthy} = await checkApiHealth();
   if (!healthy) {
-    console.log('[SyncManager] API unhealthy, retrying in 10s');
+    healthRetryCount++;
+    if (healthRetryCount >= MAX_HEALTH_RETRIES) {
+      console.log(`[SyncManager] API unhealthy after ${healthRetryCount} attempts — stopping until next connectivity event`);
+      healthRetryCount = 0;
+      return;
+    }
+    console.log(`[SyncManager] API unhealthy (attempt ${healthRetryCount}/${MAX_HEALTH_RETRIES}), retrying in 10s`);
     setTimeout(() => processQueue(), 10000);
     return;
   }
+  healthRetryCount = 0;
 
   isSyncing = true;
   let synced = 0;

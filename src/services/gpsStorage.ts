@@ -16,6 +16,7 @@ export type GpsRecord = {
   accuracy: number | null;
   recorded_at: string;
   synced: boolean;
+  battery_level?: number | null;
   // Behavior fields (per-point)
   is_speeding?: boolean;
   is_idle?: boolean;
@@ -39,26 +40,76 @@ export type TripSummary = {
   synced: boolean;
 };
 
-function getRecords(): GpsRecord[] {
+// ─── In-memory cache ─────────────────────────────────────────────
+// Avoids full JSON parse/stringify on every GPS fix (~1/s).
+// Cache is loaded lazily from MMKV on first access and flushed
+// periodically or on important mutations (clear, import batch).
+let cachedRecords: GpsRecord[] | null = null;
+let cacheDirty = false;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+const FLUSH_INTERVAL_MS = 5000; // Persist to MMKV every 5 seconds
+
+function ensureCache(): GpsRecord[] {
+  if (cachedRecords !== null) return cachedRecords;
   const raw = gpsStore.getString(RECORDS_KEY);
-  if (!raw) return [];
+  if (!raw) {
+    cachedRecords = [];
+    return cachedRecords;
+  }
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
       console.error('[gpsStorage] Corrupted data: not an array, resetting');
       gpsStore.set(RECORDS_KEY, '[]');
-      return [];
+      cachedRecords = [];
+      return cachedRecords;
     }
-    return parsed;
+    cachedRecords = parsed;
+    return cachedRecords;
   } catch (err) {
     console.error('[gpsStorage] Corrupted JSON data, resetting:', err);
     gpsStore.set(RECORDS_KEY, '[]');
-    return [];
+    cachedRecords = [];
+    return cachedRecords;
   }
 }
 
-function setRecords(records: GpsRecord[]): void {
-  gpsStore.set(RECORDS_KEY, JSON.stringify(records));
+function markDirty() {
+  cacheDirty = true;
+  if (!flushTimer) {
+    flushTimer = setTimeout(flushToStorage, FLUSH_INTERVAL_MS);
+  }
+}
+
+function flushToStorage() {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (!cacheDirty || cachedRecords === null) return;
+  gpsStore.set(RECORDS_KEY, JSON.stringify(cachedRecords));
+  cacheDirty = false;
+}
+
+/** Force immediate flush — call before app kill, logout, or import. */
+function flushNow() {
+  flushToStorage();
+}
+
+// 20,000 unsynced records ≈ 5.5 hours of continuous driving at 1 save/sec.
+// Each record is ~200 bytes → 20,000 × 200 = ~4MB — fits easily in MMKV.
+const MAX_UNSYNCED_RECORDS = 20000;
+const TRIM_THRESHOLD = 1000; // Start trimming when total exceeds this
+
+function trimRecords(records: GpsRecord[]): GpsRecord[] {
+  if (records.length <= TRIM_THRESHOLD) return records;
+  let unsynced = records.filter(r => !r.synced);
+  const synced = records.filter(r => r.synced);
+  if (unsynced.length > MAX_UNSYNCED_RECORDS) {
+    unsynced = unsynced.slice(-MAX_UNSYNCED_RECORDS);
+  }
+  const recentSynced = synced.slice(-100);
+  return [...recentSynced, ...unsynced];
 }
 
 function getTripSummaries(): TripSummary[] {
@@ -83,82 +134,92 @@ function setTripSummaries(summaries: TripSummary[]): void {
   gpsStore.set(TRIP_SUMMARIES_KEY, JSON.stringify(summaries));
 }
 
+// Dedup set for fast importRecord lookups — avoids O(n) .some() scan on each import
+let idSet: Set<string> | null = null;
+
+function ensureIdSet(): Set<string> {
+  if (idSet !== null) return idSet;
+  idSet = new Set(ensureCache().map(r => r.id));
+  return idSet;
+}
+
+function invalidateIdSet() {
+  idSet = null;
+}
+
 export const gpsStorage = {
-  /** Append a GPS fix. Keeps only the last 500 unsynced + trims synced. Returns the record ID. */
+  /** Append a GPS fix. Returns the record ID.
+   *  Writes to MMKV immediately to prevent data loss on sudden app kill. */
   addRecord(record: Omit<GpsRecord, 'id' | 'synced'>): string {
-    let records = getRecords();
+    const records = ensureCache();
     const id = `gps_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     records.push({
       ...record,
       id,
       synced: false,
     });
+    ensureIdSet().add(id);
     if (__DEV__) {
       console.log(`[GPS] #${records.length} | lat: ${record.latitude.toFixed(6)}, lng: ${record.longitude.toFixed(6)} | speed: ${record.speed?.toFixed(1) ?? '-'} m/s | accuracy: ${record.accuracy ?? '-'}m | ticket: ${record.ticket_id}`);
     }
-    // Remove synced records to prevent unbounded growth
-    // Keep all unsynced (capped at 5000) + most recent 100 synced (for dedup reference)
-    if (records.length > 600) {
-      let unsynced = records.filter(r => !r.synced);
-      const synced = records.filter(r => r.synced);
-      // Hard cap on unsynced — keep most recent if too many accumulate
-      if (unsynced.length > 5000) {
-        unsynced = unsynced.slice(-5000);
-      }
-      // Keep latest 100 synced records for dedup
-      const recentSynced = synced.slice(-100);
-      records = [...recentSynced, ...unsynced];
+    if (records.length > TRIM_THRESHOLD) {
+      cachedRecords = trimRecords(records);
+      invalidateIdSet();
     }
-    setRecords(records);
+    // Flush immediately — GPS records must survive sudden app kill.
+    // addRecord is called ~1/s when moving, MMKV writes are fast (~1ms).
+    flushNow();
     return id;
   },
 
   /** Import a record with a specific ID (used for native background records).
-   *  Skips if a record with the same ID already exists. */
+   *  Skips if a record with the same ID already exists.
+   *  Writes to MMKV immediately to prevent data loss. */
   importRecord(id: string, record: Omit<GpsRecord, 'id' | 'synced'>): boolean {
-    let records = getRecords();
-    // Deduplicate by ID — prevents double-upload when native already uploaded
-    if (records.some(r => r.id === id)) return false;
+    const ids = ensureIdSet();
+    if (ids.has(id)) return false;
+    const records = ensureCache();
     records.push({...record, id, synced: false});
-    if (records.length > 600) {
-      let unsynced = records.filter(r => !r.synced);
-      const synced = records.filter(r => r.synced);
-      if (unsynced.length > 5000) {
-        unsynced = unsynced.slice(-5000);
-      }
-      const recentSynced = synced.slice(-100);
-      records = [...recentSynced, ...unsynced];
+    ids.add(id);
+    if (records.length > TRIM_THRESHOLD) {
+      cachedRecords = trimRecords(records);
+      invalidateIdSet();
     }
-    setRecords(records);
+    // Flush immediately — imported records must survive before native clears them
+    flushNow();
     return true;
   },
 
-  /** Get all records not yet synced to the API. */
+  /** Get all records not yet synced. */
   getUnsynced(): GpsRecord[] {
-    return getRecords().filter(r => !r.synced);
+    return ensureCache().filter(r => !r.synced);
   },
 
-  /** Mark records as synced after successful API call. */
+  /** Mark records as synced after confirmed delivery. */
   markSynced(ids: string[]): void {
-    const records = getRecords();
-    const idSet = new Set(ids);
+    const records = ensureCache();
+    const toMark = new Set(ids);
     for (const r of records) {
-      if (idSet.has(r.id)) {
+      if (toMark.has(r.id)) {
         r.synced = true;
       }
     }
-    setRecords(records);
+    markDirty();
   },
 
   getAll(): GpsRecord[] {
-    return getRecords();
+    return ensureCache();
   },
 
   getCount(): number {
-    return getRecords().length;
+    return ensureCache().length;
   },
 
   clear(): void {
+    cachedRecords = [];
+    cacheDirty = false;
+    invalidateIdSet();
+    if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
     gpsStore.set(RECORDS_KEY, '[]');
     gpsStore.set(TRIP_SUMMARIES_KEY, '[]');
     gpsStore.remove('last_ticket_id');
@@ -166,10 +227,16 @@ export const gpsStorage = {
 
   /** Remove only synced records — keep unsynced for next login. */
   clearSynced(): void {
-    const records = getRecords().filter(r => !r.synced);
-    setRecords(records);
+    cachedRecords = ensureCache().filter(r => !r.synced);
+    invalidateIdSet();
+    flushNow();
     const summaries = getTripSummaries().filter(s => !s.synced);
     setTripSummaries(summaries);
+  },
+
+  /** Force-flush the in-memory cache to MMKV (call before app kill / logout). */
+  flush(): void {
+    flushNow();
   },
 
   /** Save a trip summary when tracking stops. */
