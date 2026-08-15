@@ -905,9 +905,9 @@ class LocationTrackingService : Service() {
             ticketId = latestTicketId
         }
 
-        // Skip very inaccurate fixes (>100m) — in background, GPS can degrade severely
+        // Skip very inaccurate fixes (>=50m) — in background, GPS can degrade severely
         val accuracy = location.accuracy.toDouble()
-        if (location.hasAccuracy() && accuracy > 100.0) {
+        if (location.hasAccuracy() && accuracy >= 50.0) {
             Log.d(TAG, "Skipping inaccurate fix: ${String.format("%.0f", accuracy)}m")
             return
         }

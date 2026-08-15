@@ -124,7 +124,11 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     if (authLoading) return;
 
     if (!isDriverLoggedIn) {
-      backgroundGpsTracker.clearAllData().catch(() => {});
+      // Skip if already stopped — driverLogout() calls clearAllData() before
+      // setting isDriverLoggedIn=false, so avoid redundant second call
+      if (backgroundGpsTracker.isRunning()) {
+        backgroundGpsTracker.clearAllData().catch(() => {});
+      }
       return;
     }
 

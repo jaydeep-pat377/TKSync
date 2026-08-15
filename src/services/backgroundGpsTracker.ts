@@ -116,11 +116,15 @@ function forcePeristLastMovementTime() {
   storage.set(IDLE_STORAGE_KEY, lastMovementTime);
 }
 
-/** Restore lastMovementTime from storage (app reopen after kill). */
+/** Restore lastMovementTime from storage (app reopen after kill).
+ *  If no persisted value exists (e.g. after clearAllData), reset to now
+ *  so a new login doesn't inherit a stale in-memory value. */
 function restoreLastMovementTime() {
   const saved = storage.getNumber(IDLE_STORAGE_KEY);
   if (saved && saved > 0) {
     lastMovementTime = saved;
+  } else {
+    lastMovementTime = Date.now();
   }
 }
 
@@ -687,8 +691,8 @@ async function handlePosition(position: any) {
     LocationTrackingModule.updateJsHeartbeat().catch(() => {});
   }
 
-  // Skip very inaccurate fixes
-  if (accuracy != null && accuracy > 100) {
+  // Skip very inaccurate fixes (50m+ causes visible zigzag on the route map)
+  if (accuracy != null && accuracy >= 50) {
     console.log(`[GPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
     return;
   }
@@ -857,13 +861,16 @@ async function showIdleWarningNotification() {
 /** Start idle check from scratch — resets timer to now. Used on GPS tracker start. */
 function startIdleCheck() {
   stopIdleCheck();
-  // Restore persisted time if available (app was killed while idle)
+  // Restore persisted time if available (app was killed while idle).
+  // If no persisted value (fresh login after clearAllData), defaults to Date.now().
   restoreLastMovementTime();
   const elapsed = Date.now() - lastMovementTime;
-  if (elapsed < 0 || elapsed > IDLE_LOGOUT_MS * 2) {
-    // Invalid or very stale — reset to now
+  if (elapsed < 0) {
+    // Clock went backward (device time changed) — reset to now
     lastMovementTime = Date.now();
   }
+  // If elapsed >= IDLE_LOGOUT_MS, checkIdleNow() will fire auto-logout immediately
+  // on resumeIdleCheck(). This is correct — driver was idle the whole time.
   forcePeristLastMovementTime();
   idleWarningShown = false;
   resumeIdleCheck();
@@ -1265,8 +1272,11 @@ export const backgroundGpsTracker = {
       lastGpsHeading = 0;
       currentBehavior = {};
       listeners.clear();
-      // Clear persisted idle timer on logout
+      // Clear persisted idle timer on logout AND reset in-memory variable
+      // so a new user login doesn't inherit the stale 2h+ value
       storage.remove(IDLE_STORAGE_KEY);
+      lastMovementTime = Date.now();
+      idleWarningShown = false;
       console.log('[GPS] Logout complete — native service stopped');
     } finally {
       clearing = false;

@@ -1,4 +1,4 @@
-import {Platform, NativeModules} from 'react-native';
+import {Platform, NativeModules, DeviceEventEmitter} from 'react-native';
 import {gpsStorage} from './gpsStorage';
 import {gpsApi, trackingApi, heartbeatApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
@@ -6,6 +6,7 @@ import {storage} from './storage';
 import {createMMKV} from 'react-native-mmkv';
 import Config from 'react-native-config';
 import {mqttService} from './mqttService';
+import {IDLE_AUTO_LOGOUT_EVENT} from './backgroundGpsTracker';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -81,6 +82,9 @@ async function refreshTicket(): Promise<void> {
 
 const BATCH_SIZE = 100;
 
+const IDLE_LOGOUT_MS = 2 * 60 * 60 * 1000; // 2 hours — must match backgroundGpsTracker
+const IDLE_STORAGE_KEY = 'last_movement_time';
+
 async function syncGpsRecords(): Promise<void> {
   if (isSyncing || !getIsOnline()) return;
 
@@ -89,6 +93,19 @@ async function syncGpsRecords(): Promise<void> {
   if (!driverData) {
     console.log('[GpsSyncManager] Driver not logged in — skipping sync');
     return;
+  }
+
+  // Background idle check: JS idle timer in backgroundGpsTracker stops when app
+  // is backgrounded (JS timers are unreliable in BG). This sync interval (30s)
+  // continues running, so check idle timeout here as a backup.
+  const lastMovement = storage.getNumber(IDLE_STORAGE_KEY);
+  if (lastMovement && lastMovement > 0) {
+    const idleMs = Date.now() - lastMovement;
+    if (idleMs >= IDLE_LOGOUT_MS) {
+      console.log(`[GpsSyncManager] Idle auto-logout — no movement for ${Math.round(idleMs / 60000)} minutes`);
+      DeviceEventEmitter.emit(IDLE_AUTO_LOGOUT_EVENT);
+      return;
+    }
   }
 
   // GPS data is published via MQTT in real-time (backgroundGpsTracker.ts).
