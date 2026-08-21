@@ -12,7 +12,7 @@ import {
   type DriverLoginResponse,
   type MqttTokenResponse,
 } from '../services/api';
-import {setSentryUser} from '../services/sentry';
+import {setSentryUser, captureError} from '../services/sentry';
 import {showToast} from '../utils/toast';
 import {registerDevice, unregisterDevice, setupTokenRefreshListener, setupForegroundHandler, FORCE_LOGOUT_EVENT} from '../services/notifications';
 import {IDLE_AUTO_LOGOUT_EVENT} from '../services/backgroundGpsTracker';
@@ -152,8 +152,9 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
           storage.set('mqtt_token', JSON.stringify(res.data));
           console.log('[MQTT] Token received, topic:', res.data.topic);
         }
-      }).catch(err => {
+      }).catch((err: any) => {
         console.warn('[MQTT] Token fetch failed:', err);
+        captureError(err instanceof Error ? err : new Error(String(err)), {source: 'mqtt_token_login'});
       });
 
       // Kronos: auto clock-in on driver check-in (non-blocking)
@@ -163,8 +164,9 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       } else {
         kronosApi.clockIn().then(() => {
           showToast('success', 'Clocked In', 'Kronos clock started successfully.');
-        }).catch((err) => {
+        }).catch((err: any) => {
           console.warn('[Kronos] Clock-in failed:', err);
+          captureError(err instanceof Error ? err : new Error(String(err)), {source: 'kronos_clock_in'});
           showToast('error', 'Kronos', 'Failed to start Kronos clock. Please clock in manually.');
         });
       }
@@ -181,8 +183,9 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
         await kronosApi.clockOut();
       }
       showToast('success', 'Clocked Out', 'Kronos clock stopped successfully.');
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[Kronos] Clock-out failed:', err);
+      captureError(err instanceof Error ? err : new Error(String(err)), {source: 'kronos_clock_out'});
       showToast('error', 'Kronos', 'Failed to stop Kronos clock. Please clock out manually.');
     }
 

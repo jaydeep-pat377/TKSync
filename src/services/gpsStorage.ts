@@ -1,4 +1,5 @@
 import {createMMKV} from 'react-native-mmkv';
+import {captureError} from './sentry';
 
 const gpsStore = createMMKV({id: 'tksync-gps'});
 
@@ -66,8 +67,9 @@ function ensureCache(): GpsRecord[] {
     }
     cachedRecords = parsed;
     return cachedRecords;
-  } catch (err) {
+  } catch (err: any) {
     console.error('[gpsStorage] Corrupted JSON data, resetting:', err);
+    captureError(err instanceof Error ? err : new Error(String(err)), {source: 'gps_storage_corruption'});
     gpsStore.set(RECORDS_KEY, '[]');
     cachedRecords = [];
     return cachedRecords;
@@ -123,8 +125,9 @@ function getTripSummaries(): TripSummary[] {
       return [];
     }
     return parsed;
-  } catch (err) {
+  } catch (err: any) {
     console.error('[gpsStorage] Corrupted trip summaries JSON, resetting:', err);
+    captureError(err instanceof Error ? err : new Error(String(err)), {source: 'trip_summary_corruption'});
     gpsStore.set(TRIP_SUMMARIES_KEY, '[]');
     return [];
   }

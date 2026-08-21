@@ -16,11 +16,11 @@ export function initSentry() {
     environment: ENVIRONMENT,
     debug: false,
     enabled: true,
-    release: `com.tksync@${Config.APP_VERSION || '1.0.0'}`,
+    // release auto-detected from native build info by @sentry/react-native
     tracesSampleRate: IS_DEBUG ? 1.0 : 0.2,
     sampleRate: 1.0,
     maxBreadcrumbs: IS_DEBUG ? 100 : 50,
-    sendDefaultPii: false,
+    sendDefaultPii: true,
 
     beforeSend(event) {
       if (event.request?.headers) {
@@ -33,6 +33,10 @@ export function initSentry() {
     beforeBreadcrumb(breadcrumb) {
       if (!IS_DEBUG && breadcrumb.category === 'console') {
         return null;
+      }
+      // Android native SDK expects timestamp as ISO string, not a number
+      if (typeof breadcrumb.timestamp === 'number') {
+        breadcrumb.timestamp = new Date(breadcrumb.timestamp * 1000).toISOString() as any;
       }
       // Android requires all breadcrumb data values to be strings
       if (breadcrumb.data) {

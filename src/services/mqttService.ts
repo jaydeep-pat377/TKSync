@@ -3,6 +3,7 @@ import type {MqttClient, IClientOptions} from 'mqtt';
 import {Platform, NativeModules} from 'react-native';
 import {storage} from './storage';
 import {trackingApi, type MqttTokenResponse} from './api';
+import {captureError} from './sentry';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -31,8 +32,9 @@ async function fetchAndStoreToken(): Promise<MqttTokenResponse | null> {
       mqttToken = res.data;
       return res.data;
     }
-  } catch (err) {
+  } catch (err: any) {
     console.warn('[MQTT] Token fetch failed:', err);
+    captureError(err instanceof Error ? err : new Error(String(err)), {source: 'mqtt_token_fetch'});
   }
   return null;
 }
@@ -58,6 +60,7 @@ function scheduleTokenRefresh(expiresIn: number) {
       }
       if (!connected) {
         console.warn('[MQTT] Token rotation: new connection failed, records will queue locally');
+        captureError(new Error('MQTT token rotation: new connection failed'), {source: 'mqtt_token_rotation'});
       } else {
         console.log('[MQTT] Token rotation complete — seamless handoff');
       }
@@ -133,6 +136,7 @@ export async function connect(): Promise<boolean> {
       newClient.on('error', (err) => {
         if (client !== newClient) return;
         console.warn('[MQTT] Error:', err.message);
+        captureError(err instanceof Error ? err : new Error(String(err)), {source: 'mqtt_connection'});
         reconnecting = false;
         settle(false);
       });
@@ -155,14 +159,16 @@ export async function connect(): Promise<boolean> {
       setTimeout(() => {
         if (!resolved && client === newClient && !newClient.connected) {
           console.warn('[MQTT] Connection timeout — cleaning up stale client');
+          captureError(new Error('MQTT connection timeout (12s)'), {source: 'mqtt_timeout'});
           try { newClient.end(true); } catch {}
           if (client === newClient) client = null;
           reconnecting = false;
           settle(false);
         }
       }, 12000);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[MQTT] Connect error:', err);
+      captureError(err instanceof Error ? err : new Error(String(err)), {source: 'mqtt_connect'});
       reconnecting = false;
       settle(false);
     }
@@ -250,8 +256,9 @@ export function publish(
       if (onDelivered) onDelivered(err ?? null);
     });
     return true;
-  } catch (err) {
+  } catch (err: any) {
     console.warn('[MQTT] Publish error:', err);
+    captureError(err instanceof Error ? err : new Error(String(err)), {source: 'mqtt_publish'});
     return false;
   }
 }

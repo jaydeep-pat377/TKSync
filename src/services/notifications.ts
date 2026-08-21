@@ -5,6 +5,7 @@ import {notificationsApi} from './api';
 import {storage} from './storage';
 import type {DriverNotification} from './api';
 import {requestLocationPermissions} from './backgroundGpsTracker';
+import {captureError} from './sentry';
 
 /** Emitted when a foreground silent push says a delivery record is incomplete. */
 export const DELIVERY_RECORD_INCOMPLETE_EVENT = 'delivery_record_incomplete';
@@ -78,8 +79,9 @@ async function showLocalNotification(data: Record<string, string> = {}) {
       data,
     });
     console.log('Notifee notification displayed:', notificationId);
-  } catch (e) {
+  } catch (e: any) {
     console.error('Notifee display error:', e);
+    captureError(e instanceof Error ? e : new Error(String(e)), {source: 'notifee_display'});
   }
 }
 
@@ -108,8 +110,9 @@ async function showDeliveryIncompleteNotification(data: Record<string, string>) 
       },
       data,
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error('Delivery incomplete notification error:', e);
+    captureError(e instanceof Error ? e : new Error(String(e)), {source: 'notifee_delivery_incomplete'});
   }
 }
 
@@ -141,8 +144,9 @@ export async function requestPermission(): Promise<boolean> {
       promptNotificationSettings();
     }
     return granted;
-  } catch (e) {
+  } catch (e: any) {
     console.warn('Notification permission error:', e);
+    captureError(e instanceof Error ? e : new Error(String(e)), {source: 'notification_permission'});
     return false;
   }
 }
@@ -176,14 +180,16 @@ export async function registerDevice(): Promise<void> {
     await notificationsApi.registerDevice(token, Platform.OS);
     storage.set('fcm_token', token);
     console.log('Device registered for push notifications');
-  } catch (e) {
+  } catch (e: any) {
     console.warn('Failed to register device:', e);
+    captureError(e instanceof Error ? e : new Error(String(e)), {source: 'fcm_register'});
   }
   // Request location permission after notification registration
   try {
     await requestLocationPermissions();
-  } catch (e) {
+  } catch (e: any) {
     console.warn('Failed to request location permission:', e);
+    captureError(e instanceof Error ? e : new Error(String(e)), {source: 'location_permission'});
   }
 }
 
@@ -195,8 +201,9 @@ export async function unregisterDevice(): Promise<void> {
       storage.remove('fcm_token');
       console.log('Device unregistered from push notifications');
     }
-  } catch (e) {
+  } catch (e: any) {
     console.warn('Failed to unregister device:', e);
+    captureError(e instanceof Error ? e : new Error(String(e)), {source: 'fcm_unregister'});
   }
 }
 
@@ -206,8 +213,9 @@ export function setupTokenRefreshListener(): () => void {
     try {
       await notificationsApi.registerDevice(newToken, Platform.OS);
       storage.set('fcm_token', newToken);
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Failed to re-register refreshed token:', e);
+      captureError(e instanceof Error ? e : new Error(String(e)), {source: 'fcm_token_refresh'});
     }
   });
 }
@@ -229,8 +237,9 @@ export function setupBackgroundHandler() {
       try {
         const {backgroundGpsTracker} = require('./backgroundGpsTracker');
         await backgroundGpsTracker.clearAllData();
-      } catch (e) {
+      } catch (e: any) {
         console.warn('Failed to stop GPS on force logout:', e);
+        captureError(e instanceof Error ? e : new Error(String(e)), {source: 'force_logout_gps_stop'});
       }
       // Now clear tokens so no more API calls happen
       storage.remove('access_token');

@@ -171,8 +171,9 @@ async function request<T = any>(
         }
       }
       // refresh failed — onSessionExpired already called by refreshAccessToken
-    } else if (res.status === 401) {
+    } else if (res.status === 401 && json.error_code !== 'INVALID_DRIVER_CREDENTIALS') {
       // Non-TOKEN_EXPIRED 401 (session revoked from web, driver logged out, etc.)
+      // Skip login failures — those are just wrong credentials, not session issues
       console.log(`[API] Session invalid (401, error_code=${json.error_code}) — logging out`);
       onSessionExpired?.();
     }

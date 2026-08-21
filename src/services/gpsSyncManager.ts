@@ -7,6 +7,7 @@ import {createMMKV} from 'react-native-mmkv';
 import Config from 'react-native-config';
 import {mqttService} from './mqttService';
 import {IDLE_AUTO_LOGOUT_EVENT} from './backgroundGpsTracker';
+import {captureError} from './sentry';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -223,6 +224,7 @@ export const gpsSyncManager = {
         console.log(`[GpsSyncManager] Trip summary synced — ticket: ${s.ticket_id}`);
       } catch (err: any) {
         console.warn(`[GpsSyncManager] Trip summary sync failed: ${err.message}`);
+        captureError(err instanceof Error ? err : new Error(String(err)), {source: 'trip_summary_sync', ticket_id: String(s.ticket_id)});
       }
     }
   },

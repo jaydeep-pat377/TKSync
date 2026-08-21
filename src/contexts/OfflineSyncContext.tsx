@@ -17,6 +17,7 @@ import {offlineStorage} from '../services/offlineStorage';
 import {ticketsApi, trackingApi} from '../services/api';
 import {validateDeliveryTab} from '../utils/validateDeliveryTab';
 import {useAuth} from './AuthContext';
+import {captureError} from '../services/sentry';
 
 type OfflineSyncContextType = {
   isOnline: boolean;
@@ -57,19 +58,22 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     (async () => {
       try {
         await gpsSyncManager.flushOrphaned();
-      } catch (err) {
+      } catch (err: any) {
         console.error('[OfflineSync] flushOrphaned failed:', err);
+        captureError(err instanceof Error ? err : new Error(String(err)), {source: 'flush_orphaned'});
       }
       // Import + publish native GPS records from previous session, then flush remaining
       try {
         await backgroundGpsTracker.autoResume();
-      } catch (err) {
+      } catch (err: any) {
         console.error('[OfflineSync] autoResume failed:', err);
+        captureError(err instanceof Error ? err : new Error(String(err)), {source: 'auto_resume'});
       }
       try {
         await gpsSyncManager.flushUnsynced();
-      } catch (err) {
+      } catch (err: any) {
         console.error('[OfflineSync] flushUnsynced failed:', err);
+        captureError(err instanceof Error ? err : new Error(String(err)), {source: 'flush_unsynced'});
       }
     })();
 
@@ -146,8 +150,9 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
         await backgroundGpsTracker.startAlways(null);
       }
     };
-    startGps().catch(err => {
+    startGps().catch((err: any) => {
       console.error('[OfflineSync] GPS start failed:', err);
+      captureError(err instanceof Error ? err : new Error(String(err)), {source: 'gps_auto_start'});
     });
   }, [isDriverLoggedIn, authLoading]);
 

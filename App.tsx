@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, StyleSheet, Text, TextInput} from 'react-native';
+import {View, StyleSheet, Text, TextInput, TouchableOpacity} from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {ThemeProvider} from './src/contexts/ThemeContext';
@@ -74,8 +74,25 @@ function App() {
   );
 }
 
-export default Sentry.wrap(App);
+function ErrorFallback({resetError}: {error: Error; resetError: () => void}) {
+  return (
+    <View style={s.fallback}>
+      <Text style={s.fallbackTitle}>Something went wrong</Text>
+      <Text style={s.fallbackMsg}>The app encountered an unexpected error. Please try again.</Text>
+      <TouchableOpacity style={s.fallbackBtn} onPress={resetError}>
+        <Text style={s.fallbackBtnText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+export default Sentry.wrap(App, {fallback: (props) => <ErrorFallback {...props} />});
 
 const s = StyleSheet.create({
   root: {flex: 1, backgroundColor: '#367000'},
+  fallback: {flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a', padding: 32},
+  fallbackTitle: {fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 12},
+  fallbackMsg: {fontSize: 14, color: '#aaa', textAlign: 'center', marginBottom: 24},
+  fallbackBtn: {backgroundColor: '#367000', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8},
+  fallbackBtnText: {color: '#fff', fontSize: 16, fontWeight: '600'},
 });

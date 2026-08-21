@@ -1110,7 +1110,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 styles.dropdown,
                 {
                   backgroundColor: c.white,
-                  top: insets.top + wp(58),
+                  top: insets.top + (isLandscape ? 30 : wp(28)),
                   right: Math.max(wp(16), insets.right + wp(4)),
                   borderColor: c.border,
                   opacity: menuOpacity,
@@ -3388,13 +3388,13 @@ const createStyles = (c: any, isDark: boolean) => StyleSheet.create({
 
   // Dropdown
   dropdownOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  dropdown: { position: 'absolute', minWidth: wp(200), maxWidth: wp(260), borderRadius: wp(14), borderWidth: StyleSheet.hairlineWidth, elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, overflow: 'hidden' },
+  dropdown: { position: 'absolute', minWidth: wp(200), maxWidth: wp(260), maxHeight: '80%', borderRadius: wp(14), borderWidth: StyleSheet.hairlineWidth, elevation: 8, shadowColor: Colors.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, overflow: 'hidden' },
   ddHeader: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(12), borderBottomWidth: StyleSheet.hairlineWidth },
   ddAvatar: { width: wp(32), height: wp(32), borderRadius: wp(10), justifyContent: 'center', alignItems: 'center' },
   ddName: { fontSize: ms(13), fontWeight: '700', fontFamily: MONO },
   ddSub: { fontSize: ms(11), fontWeight: '500', marginTop: 1, fontFamily: MONO },
-  ddItem: { flexDirection: 'row', alignItems: 'center', gap: wp(10), paddingHorizontal: wp(16), paddingVertical: wp(8), minHeight: wp(35) },
-  ddIcon: { width: wp(30), height: wp(30), borderRadius: wp(9), justifyContent: 'center', alignItems: 'center' },
+  ddItem: { flexDirection: 'row', alignItems: 'center', gap: wp(8), paddingHorizontal: wp(12), paddingVertical: wp(6), minHeight: wp(30) },
+  ddIcon: { width: wp(26), height: wp(26), borderRadius: wp(7), justifyContent: 'center', alignItems: 'center' },
   ddLabel: { flex: 1, fontSize: ms(13), fontWeight: '600', fontFamily: MONO },
   ddFooter: { alignItems: 'center', paddingVertical: wp(8), borderTopWidth: StyleSheet.hairlineWidth },
   ddVersion: { fontSize: ms(10), fontWeight: '500', fontFamily: MONO, color: c.textMuted },

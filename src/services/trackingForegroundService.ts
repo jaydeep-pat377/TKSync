@@ -1,5 +1,6 @@
 import {Platform, NativeModules} from 'react-native';
 import notifee, {AndroidImportance, AndroidCategory, AndroidForegroundServiceType} from '@notifee/react-native';
+import {captureError} from './sentry';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -26,6 +27,7 @@ export async function startTrackingService(ticketId?: number | null): Promise<vo
       return;
     } catch (e: any) {
       console.warn('[TrackingService] Native service failed, falling back to notifee:', e.message);
+      captureError(e instanceof Error ? e : new Error(String(e)), {source: 'native_tracking_start'});
     }
   }
 
@@ -60,6 +62,7 @@ export async function stopTrackingService(): Promise<void> {
       console.log('[TrackingService] Native sticky service stopped');
     } catch (e: any) {
       console.warn('[TrackingService] Native stop failed:', e.message);
+      captureError(e instanceof Error ? e : new Error(String(e)), {source: 'native_tracking_stop'});
     }
   }
 
