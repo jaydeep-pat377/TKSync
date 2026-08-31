@@ -33,9 +33,6 @@ const SILENT_ENDPOINTS = [
   ENDPOINTS.TRACKING_ME,
   ENDPOINTS.TRACKING_HEARTBEAT,
   ENDPOINTS.TRACKING_MQTT_TOKEN,
-  ENDPOINTS.KRONOS_CLOCK_IN,
-  ENDPOINTS.KRONOS_CLOCK_OUT,
-  ENDPOINTS.KRONOS_STATUS,
 ];
 
 function classifyError(err: unknown): {title: string; message: string} {
@@ -911,54 +908,6 @@ export const authApi = {
     request<CompanyLogoutResponse>(ENDPOINTS.AUTH_COMPANY_LOGOUT, {
       method: 'POST',
     }),
-};
-
-// --- Kronos Time & Attendance API ---
-
-export type KronosClockResponse = {
-  punched_at: string;
-  kronos_employee_id: string;
-  status: 'clocked_in' | 'clocked_out';
-};
-
-export type KronosShift = {
-  clock_in: string;
-  clock_out: string | null;
-  duration_minutes: number | null;
-};
-
-export type KronosStatusResponse = {
-  is_clocked_in: boolean;
-  last_punch_at: string | null;
-  kronos_employee_id: string | null;
-  shifts?: KronosShift[];
-  weekly_hours?: number;
-};
-
-export const kronosApi = {
-  clockIn: () =>
-    request<KronosClockResponse>(ENDPOINTS.KRONOS_CLOCK_IN, {
-      method: 'POST',
-    }),
-
-  clockOut: () =>
-    request<KronosClockResponse>(ENDPOINTS.KRONOS_CLOCK_OUT, {
-      method: 'POST',
-    }),
-
-  startBreak: (reason: string) =>
-    request<{start: string; reason: string}>(ENDPOINTS.KRONOS_BREAK_START, {
-      method: 'POST',
-      body: JSON.stringify({reason}),
-    }),
-
-  endBreak: () =>
-    request<{start: string; end: string; reason: string; duration_minutes: number}>(ENDPOINTS.KRONOS_BREAK_END, {
-      method: 'POST',
-    }),
-
-  getStatus: () =>
-    request<KronosStatusResponse>(ENDPOINTS.KRONOS_STATUS),
 };
 
 const HEALTH_TIMEOUT_MS = 5000;

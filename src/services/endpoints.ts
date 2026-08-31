@@ -43,11 +43,4 @@ export const ENDPOINTS = {
 
   // Field Definitions
   FIELD_DEFINITIONS: '/field-definitions',
-
-  // Kronos Time & Attendance
-  KRONOS_CLOCK_IN: '/kronos/clock-in',
-  KRONOS_CLOCK_OUT: '/kronos/clock-out',
-  KRONOS_STATUS: '/kronos/status',
-  KRONOS_BREAK_START: '/kronos/break/start',
-  KRONOS_BREAK_END: '/kronos/break/end',
 } as const;

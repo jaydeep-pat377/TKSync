@@ -52,7 +52,31 @@
       "Bash(./gradlew app:assembleDebug -x lint)",
       "Bash(cd:*)",
       "Bash(unzip -l roboto-mono.zip)",
-      "Bash(npx react-native-asset:*)"
+      "Bash(npx react-native-asset:*)",
+      "Bash(find /Users/admin/Desktop/TKSync -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx \\\\\\))",
+      "Bash(find /Users/admin/Desktop/TKSync/android -type f \\\\\\(-name *.kt -o -name *.java -o -name *.xml -o -name *.gradle \\\\\\))",
+      "Bash(find /Users/admin/Desktop/TKSync/ios -type f \\\\\\(-name *.swift -o -name *.m -o -name *.mm -o -name *.plist \\\\\\))",
+      "Bash(grep -r \"GPS\\\\|location\\\\|MQTT\\\\|mqtt\\\\|geolocation\\\\|BackgroundGeolocation\" /Users/admin/Desktop/TKSync/src --include=*.ts --include=*.tsx -l)",
+      "Bash(grep -r \"watchPosition\\\\|getCurrentPosition\\\\|LocationService\\\\|tracking\" /Users/admin/Desktop/TKSync/src --include=*.ts --include=*.tsx -l)",
+      "Bash(grep -r \"clearAllData\\\\|logout\\\\|permission\" /Users/admin/Desktop/TKSync/src --include=*.ts --include=*.tsx -l)",
+      "Bash(find /Users/admin/Desktop/TKSync/android -type f -name *.kt)",
+      "Bash(./gradlew app:assembleDebug)",
+      "Bash(adb -s 192.168.1.12:44009 shell \"su -c ''''cmd notification cancel com.tksync 9001''''\")",
+      "Bash(python3:*)",
+      "Bash(find /Users/admin/Desktop/TKSync/src -name *.tsx -o -name *.ts)",
+      "Bash(./gradlew app:installDebug -PreactNativeDevServerPort=8081)",
+      "Bash(ANDROID_SERIAL=192.168.1.19:37343 npx react-native run-android --deviceId 192.168.1.19:37343)",
+      "Bash(find /Users/admin/Desktop/TKSync/src/assets -name *.svg -o -name *.png)",
+      "Bash(tr '>' '\\\\n')",
+      "Bash(find /Users/admin/Desktop/TKSync/android -name launch_screen* -o -name splash* -o -name LaunchScreen*)",
+      "Bash(./gradlew app:assembleRelease)",
+      "Bash(grep -o \"\"text\"\":\"\"[^\"\"]*\"\" /private/tmp/claude-501/-Users-admin-Desktop-TKSync/9799d3fb-1440-4feb-8e59-a0b0e8608e79/tasks/ae606b19bd6eb1bac.output)",
+      "Bash(./gradlew compileDebugKotlin)",
+      "Bash(find /Users/admin/Desktop/TKSync -name *sentry* -type f)",
+      "Bash(find /Users/admin/Desktop/TKSync -name .xcode.env* -o -name scheme -o -name *.xcscheme)",
+      "Bash(grep -rn \"setSentryUser\\\\|addBreadcrumb\" /Users/admin/Desktop/TKSync/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"FLAVOR\\\\|ENVIRONMENT\\\\|BUILD_TYPE\" /Users/admin/Desktop/TKSync --include=*.gradle --include=*.kt)",
+      "Bash(grep -r .env /Users/admin/Desktop/TKSync --include=Podfile --include=*.gradle)"
     ]
   }
 }
