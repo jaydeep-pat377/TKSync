@@ -69,7 +69,7 @@ let lastSavedPosition: {latitude: number; longitude: number} | null = null;
 const MIN_DISTANCE_TO_SAVE = 5; // metres — only save when moved this far
 let wasStationary = false; // true after first stationary fix is saved — suppresses drift
 let consecutiveMovingCount = 0;
-const MOVING_CONFIRM_THRESHOLD = 3; // Require 3 consecutive moving fixes to clear stationary
+const MOVING_CONFIRM_THRESHOLD = 2; // Require 2 consecutive moving fixes to clear stationary (captures U-turns faster)
 let stationaryPollTimer: ReturnType<typeof setInterval> | null = null;
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
@@ -184,7 +184,7 @@ function stopCompass() {
  * 3. Stopped + compass not ready (sensor error / startup) → last known GPS heading
  */
 function resolveHeading(gpsHeading: number | null, speed: number): number {
-  const isMoving = speed >= 1.0; // same threshold as stationary detection
+  const isMoving = speed >= 0.5; // same threshold as stationary detection
   if (isMoving && gpsHeading != null && Number.isFinite(gpsHeading)) {
     // Save as last known GPS heading for fallback
     lastGpsHeading = gpsHeading;
@@ -330,7 +330,19 @@ function setupAppStateListener() {
             console.log('[GPS] App foregrounded — resuming JS GPS');
             startWatch();
           }
-          // 4. Import native records, update idle timer, then restart idle interval
+          // 4. Sync fresh API credentials to native service (token may have refreshed)
+          syncApiCredentialsToNative();
+
+          // 5. Reconnect MQTT if disconnected (token may have expired in background)
+          //    mqttService.connect() fetches a fresh token and syncs MQTT credentials to native
+          if (!mqttService.isConnected()) {
+            console.log('[GPS] App foregrounded — reconnecting MQTT');
+            mqttService.connect().then(connected => {
+              if (connected) publishBackgroundRecords();
+            }).catch(() => {});
+          }
+
+          // 6. Import native records, update idle timer, then restart idle interval
           importNativeRecordsAndUpdateIdle()
             .catch(() => {
               // Import failed — do NOT reset lastMovementTime.
@@ -340,6 +352,13 @@ function setupAppStateListener() {
         } else {
           // iOS: watcher kept running in background — just resume idle check
           console.log('[GPS] App foregrounded (iOS) — resuming idle check');
+          // Reconnect MQTT if disconnected (token may have expired in background)
+          if (!mqttService.isConnected()) {
+            console.log('[GPS] App foregrounded (iOS) — reconnecting MQTT');
+            mqttService.connect().then(connected => {
+              if (connected) publishBackgroundRecords();
+            }).catch(() => {});
+          }
           resumeIdleCheck();
         }
       }
@@ -390,13 +409,14 @@ function requestBatteryOptimizationExemption() {
   });
 }
 
-/** Pass API credentials to native service for background uploads. */
+/** Pass API credentials to native service for background uploads and token refresh. */
 function syncApiCredentialsToNative() {
   if (Platform.OS !== 'android' || !LocationTrackingModule) return;
   const baseUrl = Config.API_BASE_URL || '';
   const token = storage.getString('access_token') || '';
+  const refreshToken = storage.getString('refresh_token') || '';
   if (baseUrl && token) {
-    LocationTrackingModule.setApiCredentials(baseUrl, token).catch(() => {});
+    LocationTrackingModule.setApiCredentials(baseUrl, token, refreshToken).catch(() => {});
   }
 }
 
@@ -691,8 +711,8 @@ async function handlePosition(position: any) {
     LocationTrackingModule.updateJsHeartbeat().catch(() => {});
   }
 
-  // Skip very inaccurate fixes (50m+ causes visible zigzag on the route map)
-  if (accuracy != null && accuracy >= 50) {
+  // Skip inaccurate fixes (25m+ causes route to cut through buildings/parks)
+  if (accuracy != null && accuracy >= 25) {
     console.log(`[GPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
     return;
   }
@@ -726,7 +746,7 @@ async function handlePosition(position: any) {
   notifyListeners(pos);
 
   // Stationary detection: skip GPS drift when truck is not moving
-  const isStationary = currentSpeed < 1.0; // < 1.0 m/s ≈ 3.6 km/h — only truly stopped
+  const isStationary = currentSpeed < 0.5; // < 0.5 m/s ≈ 1.8 km/h — truly stopped, not crawling in traffic
 
   if (isStationary) {
     consecutiveMovingCount = 0;
@@ -758,13 +778,18 @@ async function handlePosition(position: any) {
     }
   }
 
-  // Only save when truck has moved > 5m from last saved position
+  // Only save when truck has moved enough from last saved position.
+  // Adaptive: if accuracy is poor (>15m), require more distance to avoid
+  // saving GPS drift as real movement.
   if (lastSavedPosition) {
     const dist = haversineDistance(
       lastSavedPosition.latitude, lastSavedPosition.longitude,
       latitude, longitude,
     );
-    if (dist < MIN_DISTANCE_TO_SAVE) {
+    const minDist = (accuracy != null && accuracy > 15)
+      ? Math.max(10, accuracy * 0.75)
+      : MIN_DISTANCE_TO_SAVE;
+    if (dist < minDist) {
       return; // Truck hasn't moved enough — skip saving
     }
   }
@@ -942,7 +967,7 @@ function startWatch() {
       fastestInterval: 1000,
       showLocationDialog: true,
       forceRequestLocation: true,
-      maximumAge: 6000,
+      maximumAge: 2000,
       // iOS: show blue location indicator bar when tracking in background
       ...(Platform.OS === 'ios' ? {showsBackgroundLocationIndicator: true} : {}),
     },
@@ -1350,10 +1375,8 @@ export const backgroundGpsTracker = {
       console.log(`[GPS] autoResume — imported ${imported} native records from previous session`);
     }
 
-    // Clear native SharedPrefs — records are now in MMKV gpsStorage
-    if (Platform.OS === 'android' && LocationTrackingModule) {
-      LocationTrackingModule.clearStoredRecords().catch(() => {});
-    }
+    // Note: importNativeRecords() already clears native SharedPrefs on success.
+    // Do NOT clear again here — if import had errors, records are kept for retry.
 
     // Try to publish leftover records to MQTT
     const unsynced = gpsStorage.getUnsynced();

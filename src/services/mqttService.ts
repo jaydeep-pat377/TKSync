@@ -83,11 +83,10 @@ export async function connect(): Promise<boolean> {
     client = null;
   }
 
-  mqttToken = getStoredToken();
-
-  if (!mqttToken) {
-    mqttToken = await fetchAndStoreToken();
-  }
+  // Always fetch a fresh token on connect — the stored one may have expired
+  // while the app was in background/killed. Fall back to stored token only
+  // if the API call fails (e.g. offline).
+  mqttToken = await fetchAndStoreToken() || getStoredToken();
 
   if (!mqttToken) {
     console.warn('[MQTT] No token available, cannot connect');

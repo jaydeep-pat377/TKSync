@@ -55,10 +55,11 @@ class LocationTrackingService : Service() {
         private const val JS_HEARTBEAT_STALE_MS = 30_000L // If no heartbeat for 30s, JS is frozen/dead
         private const val KEY_API_BASE_URL = "api_base_url"
         private const val KEY_API_TOKEN = "api_token"
+        private const val KEY_REFRESH_TOKEN = "refresh_token"
         private const val UPLOAD_BATCH_SIZE = 50
         private const val UPLOAD_INTERVAL_MS = 30_000L // Upload every 30 seconds
-        private const val IDLE_SPEED_THRESHOLD = 1.0 // m/s ≈ 3.6 km/h — only truly stopped
-        private const val IDLE_CONSECUTIVE_THRESHOLD = 3
+        private const val IDLE_SPEED_THRESHOLD = 0.5 // m/s ≈ 1.8 km/h — truly stopped, not crawling in traffic
+        private const val IDLE_CONSECUTIVE_THRESHOLD = 2
         private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
         private const val ACTION_NOTIFICATION_DISMISSED = "com.tksync.TRACKING_NOTIFICATION_DISMISSED"
 
@@ -71,10 +72,12 @@ class LocationTrackingService : Service() {
 
         fun setJsAlive(context: Context, alive: Boolean) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            // commit() (synchronous) ensures native saveLocation() sees the updated flag
+            // immediately — apply() could race if native reads before async write completes.
             prefs.edit()
                 .putBoolean(KEY_JS_ALIVE, alive)
                 .putLong(KEY_JS_HEARTBEAT, if (alive) System.currentTimeMillis() else 0L)
-                .apply()
+                .commit()
             Log.d(TAG, "JS alive set to: $alive")
         }
 
@@ -167,12 +170,15 @@ class LocationTrackingService : Service() {
             Log.d(TAG, "Stored records cleared")
         }
 
-        fun setApiCredentials(context: Context, baseUrl: String, token: String) {
+        fun setApiCredentials(context: Context, baseUrl: String, token: String, refreshToken: String?) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit()
+            val editor = prefs.edit()
                 .putString(KEY_API_BASE_URL, baseUrl)
                 .putString(KEY_API_TOKEN, token)
-                .apply()
+            if (refreshToken != null) {
+                editor.putString(KEY_REFRESH_TOKEN, refreshToken)
+            }
+            editor.apply()
             Log.d(TAG, "API credentials updated — baseUrl: $baseUrl")
         }
 
@@ -376,7 +382,7 @@ class LocationTrackingService : Service() {
                 records
             }
 
-            prefs.edit().putString(KEY_RECORDS, toWrite.toString()).apply()
+            prefs.edit().putString(KEY_RECORDS, toWrite.toString()).commit()
             Log.d(TAG, "Flushed $pendingCount records to SharedPrefs (total: ${toWrite.length()})")
             pendingRecords = JSONArray()
             pendingCount = 0
@@ -393,8 +399,9 @@ class LocationTrackingService : Service() {
         if (pendingCount > 0) {
             flushPendingRecords()
         }
-        // JS is dead after app swipe — native takes over GPS recording
-        prefs.edit().putBoolean(KEY_JS_ALIVE, false).apply()
+        // JS is dead after app swipe — native takes over GPS recording.
+        // commit() ensures the flag is written before the process dies.
+        prefs.edit().putBoolean(KEY_JS_ALIVE, false).commit()
         Log.d(TAG, "Task removed (app killed) — flushed records, native GPS continues")
     }
 
@@ -458,7 +465,11 @@ class LocationTrackingService : Service() {
                         Log.w(TAG, "MQTT token refresh: API returned success=false")
                     }
                 } else if (responseCode == 401) {
-                    Log.w(TAG, "MQTT token refresh: API token expired (401) — cannot refresh, waiting for app reopen")
+                    Log.w(TAG, "MQTT token refresh: API token expired (401) — refreshing access token")
+                    if (refreshApiAccessToken()) {
+                        // Retry MQTT token refresh with new access token
+                        Handler(Looper.getMainLooper()).postDelayed({ refreshMqttTokenViaApi() }, 1000)
+                    }
                 } else {
                     Log.w(TAG, "MQTT token refresh: HTTP $responseCode")
                 }
@@ -468,6 +479,59 @@ class LocationTrackingService : Service() {
                 conn?.disconnect()
             }
         }.start()
+    }
+
+    /**
+     * Refresh the API access_token using the stored refresh_token.
+     * Called when refreshMqttTokenViaApi() gets a 401 (access_token expired).
+     * Returns true if the token was refreshed successfully.
+     */
+    private fun refreshApiAccessToken(): Boolean {
+        val baseUrl = prefs.getString(KEY_API_BASE_URL, "") ?: ""
+        val refreshToken = prefs.getString(KEY_REFRESH_TOKEN, "") ?: ""
+        if (baseUrl.isEmpty() || refreshToken.isEmpty()) {
+            Log.w(TAG, "API token refresh: no refresh_token — cannot refresh")
+            return false
+        }
+
+        var conn: java.net.HttpURLConnection? = null
+        return try {
+            val url = java.net.URL("$baseUrl/auth/refresh-token")
+            conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            conn.doInput = true
+            conn.doOutput = true
+
+            val body = JSONObject().apply {
+                put("refresh_token", refreshToken)
+            }
+            conn.outputStream.bufferedWriter().use { it.write(body.toString()) }
+
+            if (conn.responseCode == 200) {
+                val responseBody = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(responseBody)
+                if (json.optBoolean("success", false)) {
+                    val newAccessToken = json.getJSONObject("data").getString("access_token")
+                    prefs.edit().putString(KEY_API_TOKEN, newAccessToken).apply()
+                    Log.d(TAG, "API access_token refreshed via refresh_token")
+                    true
+                } else {
+                    Log.w(TAG, "API token refresh: success=false")
+                    false
+                }
+            } else {
+                Log.w(TAG, "API token refresh: HTTP ${conn.responseCode} — refresh_token may be expired")
+                false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "API token refresh failed: ${e.message}")
+            false
+        } finally {
+            conn?.disconnect()
+        }
     }
 
     private var mqttAuthFailureCount = 0
@@ -905,9 +969,9 @@ class LocationTrackingService : Service() {
             ticketId = latestTicketId
         }
 
-        // Skip very inaccurate fixes (>=50m) — in background, GPS can degrade severely
+        // Skip inaccurate fixes (>=25m) — prevents route cutting through buildings/parks
         val accuracy = location.accuracy.toDouble()
-        if (location.hasAccuracy() && accuracy >= 50.0) {
+        if (location.hasAccuracy() && accuracy >= 25.0) {
             Log.d(TAG, "Skipping inaccurate fix: ${String.format("%.0f", accuracy)}m")
             return
         }

@@ -139,9 +139,9 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
     }
 
     @ReactMethod
-    fun setApiCredentials(baseUrl: String, token: String, promise: Promise) {
+    fun setApiCredentials(baseUrl: String, token: String, refreshToken: String?, promise: Promise) {
         try {
-            LocationTrackingService.setApiCredentials(reactContext, baseUrl, token)
+            LocationTrackingService.setApiCredentials(reactContext, baseUrl, token, refreshToken)
             Log.d(TAG, "setApiCredentials called")
             promise.resolve(true)
         } catch (e: Exception) {
