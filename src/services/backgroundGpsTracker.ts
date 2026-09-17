@@ -334,9 +334,11 @@ function setupAppStateListener() {
           syncApiCredentialsToNative();
 
           // 5. Reconnect MQTT if disconnected (token may have expired in background)
-          //    mqttService.connect() fetches a fresh token and syncs MQTT credentials to native
+          //    Reset state first — JS may have been frozen mid-reconnect, leaving
+          //    the reconnecting guard stuck true.
           if (!mqttService.isConnected()) {
             console.log('[GPS] App foregrounded — reconnecting MQTT');
+            mqttService.resetConnectionState();
             mqttService.connect().then(connected => {
               if (connected) publishBackgroundRecords();
             }).catch(() => {});
@@ -355,6 +357,7 @@ function setupAppStateListener() {
           // Reconnect MQTT if disconnected (token may have expired in background)
           if (!mqttService.isConnected()) {
             console.log('[GPS] App foregrounded (iOS) — reconnecting MQTT');
+            mqttService.resetConnectionState();
             mqttService.connect().then(connected => {
               if (connected) publishBackgroundRecords();
             }).catch(() => {});

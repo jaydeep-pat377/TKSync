@@ -219,6 +219,16 @@ export function isConnected(): boolean {
   return client?.connected ?? false;
 }
 
+/** Force-reset connection state so connect() isn't blocked by a stale reconnecting guard.
+ *  Call before connect() on foreground resume — JS may have been frozen mid-reconnect. */
+export function resetConnectionState() {
+  reconnecting = false;
+  if (client && !client.connected) {
+    try { client.end(true); } catch {}
+    client = null;
+  }
+}
+
 export function getTopic(): string | null {
   return mqttToken?.topic || getStoredToken()?.topic || null;
 }
@@ -270,6 +280,7 @@ export const mqttService = {
   connect,
   disconnect,
   isConnected,
+  resetConnectionState,
   publish,
   getTopic,
   fetchAndStoreToken,
