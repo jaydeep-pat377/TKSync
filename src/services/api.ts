@@ -874,8 +874,11 @@ export const trackingApi = {
 };
 
 export const heartbeatApi = {
-  ping: () =>
-    request(ENDPOINTS.TRACKING_HEARTBEAT, { method: 'POST' }),
+  ping: (position?: {latitude: number; longitude: number; speed: number | null; heading: number | null; accuracy: number | null; recorded_at: string; battery_level: number | null}) =>
+    request(ENDPOINTS.TRACKING_HEARTBEAT, {
+      method: 'POST',
+      ...(position ? {body: JSON.stringify(position)} : {}),
+    }),
 };
 
 export const gpsApi = {

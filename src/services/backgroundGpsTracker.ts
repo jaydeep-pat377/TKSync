@@ -65,11 +65,14 @@ let pendingTicketId: number | null = null; // Ticket to use when retrying after 
 let watchId: number | null = null;
 let lastPosition: GpsPosition | null = null;
 let lastGpsFixTime: number = 0; // Date.now() of last accepted GPS fix — for freshness indicator
+let firstGoodFixTime: number = 0; // Date.now() of first fix with accuracy < 25m — enables strict filter
 let lastSavedPosition: {latitude: number; longitude: number} | null = null;
 const MIN_DISTANCE_TO_SAVE = 5; // metres — only save when moved this far
 let wasStationary = false; // true after first stationary fix is saved — suppresses drift
+let stationaryPosition: {latitude: number; longitude: number} | null = null; // WHERE the truck stopped
 let consecutiveMovingCount = 0;
 const MOVING_CONFIRM_THRESHOLD = 2; // Require 2 consecutive moving fixes to clear stationary (captures U-turns faster)
+const DISTANCE_CONFIRM_THRESHOLD = 15; // metres — if moved this far from stop, confirm immediately (GPS drift is <10m)
 let stationaryPollTimer: ReturnType<typeof setInterval> | null = null;
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
@@ -352,8 +355,20 @@ function setupAppStateListener() {
             })
             .finally(() => resumeIdleCheck());
         } else {
-          // iOS: watcher kept running in background — just resume idle check
+          // iOS: watcher kept running in background — resume idle check
           console.log('[GPS] App foregrounded (iOS) — resuming idle check');
+          // Stationary poll was stopped on background (line ~394). If the truck
+          // was stationary, neither watchPosition nor stationaryPoll is active.
+          // Restart the appropriate one so GPS tracking doesn't silently stop.
+          if (watchId === null && !stationaryPollTimer) {
+            if (wasStationary) {
+              console.log('[GPS] App foregrounded (iOS) — restarting stationary poll');
+              startStationaryPoll();
+            } else {
+              console.log('[GPS] App foregrounded (iOS) — restarting GPS watcher');
+              startWatch();
+            }
+          }
           // Reconnect MQTT if disconnected (token may have expired in background)
           if (!mqttService.isConnected()) {
             console.log('[GPS] App foregrounded (iOS) — reconnecting MQTT');
@@ -714,10 +729,23 @@ async function handlePosition(position: any) {
     LocationTrackingModule.updateJsHeartbeat().catch(() => {});
   }
 
-  // Skip inaccurate fixes (25m+ causes route to cut through buildings/parks)
-  if (accuracy != null && accuracy >= 25) {
-    console.log(`[GPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m`);
+  // Graduated accuracy filter: accept up to 50m initially (GPS cold start,
+  // urban canyons, bridge transitions), tighten to 25m once we have a good fix.
+  // Real-world GPS often starts at 30-40m accuracy before locking to 5-15m.
+  const STRICT_ACCURACY = 25;
+  const INITIAL_ACCURACY = 50;
+  const WARMUP_MS = 30_000; // 30 seconds warmup
+  const hasWarmedUp = firstGoodFixTime > 0 && (Date.now() - firstGoodFixTime > WARMUP_MS);
+  const accuracyLimit = hasWarmedUp ? STRICT_ACCURACY : INITIAL_ACCURACY;
+
+  if (accuracy != null && accuracy >= accuracyLimit) {
+    console.log(`[GPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m (limit: ${accuracyLimit}m)`);
     return;
+  }
+
+  // Track when GPS achieves good accuracy — triggers strict filtering
+  if (accuracy != null && accuracy < STRICT_ACCURACY && firstGoodFixTime === 0) {
+    firstGoodFixTime = Date.now();
   }
 
   // Skip invalid coordinates — (0,0) "Null Island", NaN, or out-of-range
@@ -751,6 +779,8 @@ async function handlePosition(position: any) {
   // Stationary detection: skip GPS drift when truck is not moving
   const isStationary = currentSpeed < 0.5; // < 0.5 m/s ≈ 1.8 km/h — truly stopped, not crawling in traffic
 
+  let isFirstStop = false; // Track if this is the first stationary fix — must bypass distance filter
+
   if (isStationary) {
     consecutiveMovingCount = 0;
     if (wasStationary) {
@@ -762,21 +792,40 @@ async function handlePosition(position: any) {
     }
     // First stationary fix — save it so we know WHERE the truck stopped
     wasStationary = true;
+    stationaryPosition = {latitude, longitude};
+    isFirstStop = true; // Must save this record — skip distance filter below
     console.log(`[GPS] FIRST STOP: saving stopped-at position, lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
   } else {
     consecutiveMovingCount++;
-    if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD) {
+
+    // Distance-based confirmation: if truck moved far enough from stop position,
+    // it's definitely real movement (GPS drift is typically <10m)
+    let distFromStop = 0;
+    if (wasStationary && stationaryPosition) {
+      distFromStop = haversineDistance(
+        stationaryPosition.latitude, stationaryPosition.longitude,
+        latitude, longitude,
+      );
+    }
+
+    if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD || distFromStop >= DISTANCE_CONFIRM_THRESHOLD) {
       // Confirmed real movement — clear stationary flag and resume full GPS
       wasStationary = false;
+      stationaryPosition = null;
       if (stationaryPollTimer) {
         stopStationaryPoll();
         startWatch();
-        console.log(`[GPS] MOVEMENT CONFIRMED: resumed full GPS, speed=${currentSpeed.toFixed(1)}`);
+        console.log(`[GPS] MOVEMENT CONFIRMED: resumed full GPS, speed=${currentSpeed.toFixed(1)}, distFromStop=${distFromStop.toFixed(0)}m`);
       } else {
-        console.log(`[GPS] MOVEMENT CONFIRMED: ${consecutiveMovingCount} consecutive moving fixes, speed=${currentSpeed.toFixed(1)}`);
+        console.log(`[GPS] MOVEMENT CONFIRMED: ${consecutiveMovingCount} consecutive moving fixes, speed=${currentSpeed.toFixed(1)}, distFromStop=${distFromStop.toFixed(0)}m`);
       }
     } else if (wasStationary) {
-      console.log(`[GPS] SPIKE BLOCKED: speed=${currentSpeed.toFixed(1)}, movingCount=${consecutiveMovingCount}/${MOVING_CONFIRM_THRESHOLD}, lat=${latitude.toFixed(6)}`);
+      // Not yet confirmed — discard this fix to prevent GPS drift from:
+      // 1. Being saved/published as real movement
+      // 2. Resetting the idle auto-logout timer
+      // 3. Updating lastSavedPosition to a drifted location
+      // Real movement will be captured once MOVING_CONFIRM_THRESHOLD is met.
+      console.log(`[GPS] PENDING MOVE: speed=${currentSpeed.toFixed(1)}, movingCount=${consecutiveMovingCount}/${MOVING_CONFIRM_THRESHOLD}, distFromStop=${distFromStop.toFixed(0)}m, lat=${latitude.toFixed(6)}`);
       return;
     }
   }
@@ -784,7 +833,9 @@ async function handlePosition(position: any) {
   // Only save when truck has moved enough from last saved position.
   // Adaptive: if accuracy is poor (>15m), require more distance to avoid
   // saving GPS drift as real movement.
-  if (lastSavedPosition) {
+  // Exception: first stop record always saved — the stop position matters
+  // even if it's < 5m from the last driving position.
+  if (lastSavedPosition && !isFirstStop) {
     const dist = haversineDistance(
       lastSavedPosition.latitude, lastSavedPosition.longitude,
       latitude, longitude,
@@ -979,7 +1030,7 @@ function startWatch() {
 }
 
 /** Switch to low-frequency polling when truck is stationary.
- *  Checks every 10s just to detect when movement resumes. */
+ *  Checks every 5s to detect when movement resumes. */
 function startStationaryPoll() {
   if (stationaryPollTimer) return;
   stopWatch(); // Stop high-frequency GPS
@@ -988,10 +1039,10 @@ function startStationaryPoll() {
     Geolocation.getCurrentPosition(
       (position) => handlePosition(position),
       () => {}, // Ignore errors during stationary poll
-      {enableHighAccuracy: true, timeout: 10000, maximumAge: 5000},
+      {enableHighAccuracy: true, timeout: 5000, maximumAge: 3000},
     );
-  }, 10000);
-  console.log('[GPS] Stationary — switched to 10s poll (waiting for movement)');
+  }, 5000);
+  console.log('[GPS] Stationary — switched to 5s poll (waiting for movement)');
 }
 
 function stopStationaryPoll() {
@@ -1071,6 +1122,9 @@ export const backgroundGpsTracker = {
       connectivityRestoredUnsub?.();
       connectivityRestoredUnsub = onConnectivityRestored(() => {
         console.log('[GPS] Connectivity restored — reconnecting MQTT and publishing offline records');
+        // Reset connection state first — mqtt.js may be mid-reconnect with expired token,
+        // leaving the reconnecting guard stuck. A fresh connect() with new token is needed.
+        mqttService.resetConnectionState();
         mqttService.connect().then(connected => {
           if (connected) {
             publishBackgroundRecords();
@@ -1165,6 +1219,7 @@ export const backgroundGpsTracker = {
       connectivityRestoredUnsub?.();
       connectivityRestoredUnsub = onConnectivityRestored(() => {
         console.log('[GPS] Connectivity restored — reconnecting MQTT and publishing offline records');
+        mqttService.resetConnectionState();
         mqttService.connect().then(connected => {
           if (connected) {
             publishBackgroundRecords();
@@ -1226,8 +1281,10 @@ export const backgroundGpsTracker = {
     gpsSyncManager.stop();
     lastPosition = null;
     lastGpsFixTime = 0;
+    firstGoodFixTime = 0;
     lastSavedPosition = null;
     wasStationary = false;
+    stationaryPosition = null;
     consecutiveMovingCount = 0;
     compassHeading = null;
     lastGpsHeading = 0;
@@ -1293,8 +1350,10 @@ export const backgroundGpsTracker = {
       pendingTicketId = null;
       lastPosition = null;
       lastGpsFixTime = 0;
+      firstGoodFixTime = 0;
       lastSavedPosition = null;
       wasStationary = false;
+      stationaryPosition = null;
       consecutiveMovingCount = 0;
       compassHeading = null;
       lastGpsHeading = 0;

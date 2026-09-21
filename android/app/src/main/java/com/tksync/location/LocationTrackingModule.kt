@@ -30,6 +30,9 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
                         putDouble("accuracy", record.optDouble("accuracy", 0.0))
                         putString("recorded_at", record.optString("recorded_at", ""))
                         putBoolean("is_idle", record.optBoolean("is_idle", false))
+                        // Forward battery_level so JS MQTT payload includes it
+                        val battery = record.optInt("battery_level", -1)
+                        if (battery >= 0) putInt("battery_level", battery)
                     }
                     reactContext
                         .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
@@ -182,6 +185,8 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
                 map.putBoolean("synced", obj.optBoolean("synced", false))
                 map.putBoolean("is_speeding", obj.optBoolean("is_speeding", false))
                 map.putBoolean("is_idle", obj.optBoolean("is_idle", false))
+                val battery = obj.optInt("battery_level", -1)
+                if (battery >= 0) map.putInt("battery_level", battery)
                 result.pushMap(map)
             }
             promise.resolve(result)

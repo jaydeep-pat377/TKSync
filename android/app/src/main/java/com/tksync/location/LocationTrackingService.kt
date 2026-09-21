@@ -61,6 +61,7 @@ class LocationTrackingService : Service() {
         private const val IDLE_SPEED_THRESHOLD = 0.5 // m/s ≈ 1.8 km/h — truly stopped, not crawling in traffic
         private const val IDLE_CONSECUTIVE_THRESHOLD = 2
         private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
+        private const val DRIFT_DISTANCE_CONFIRM = 15.0 // metres — if moved this far from stop, it's real movement (not GPS drift)
         private const val ACTION_NOTIFICATION_DISMISSED = "com.tksync.TRACKING_NOTIFICATION_DISMISSED"
 
         // MQTT credential keys
@@ -238,11 +239,14 @@ class LocationTrackingService : Service() {
     private var idleLat: Double = 0.0
     private var idleLng: Double = 0.0
     private var wasStationary: Boolean = false // true after first stationary fix is saved — suppresses drift
+    private var stationaryLat: Double = 0.0 // WHERE the truck stopped (for distance-based confirmation)
+    private var stationaryLng: Double = 0.0
     private var consecutiveMovingCount: Int = 0
-    private val MOVING_CONFIRM_THRESHOLD = 3 // Require 3 consecutive moving fixes to clear stationary
+    private val MOVING_CONFIRM_THRESHOLD = 2 // Require 2 consecutive moving fixes to clear stationary
     private var lastSavedLat: Double? = null
     private var lastSavedLng: Double? = null
     private var lastSavedTime: Long = 0L // GPS timestamp (ms) of last saved location — for teleport detection
+    private var firstGoodFixTime: Long = 0L // When GPS first achieved <25m accuracy — enables strict filter
     private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
     private var pendingCount = 0
     private val WRITE_BATCH_SIZE = 1 // Flush to SharedPrefs immediately — ensures no records lost on foreground transition
@@ -923,9 +927,12 @@ class LocationTrackingService : Service() {
         val isIdle = prefs.getBoolean(KEY_IDLE, false)
         val request = LocationRequest.create().apply {
             if (isIdle) {
+                // Low-frequency when parked — native runs in background 24/7,
+                // so this must be battery-friendly. 10s detects movement resume
+                // within 10-20s while using 3x less battery than 5s.
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 30000L
-                fastestInterval = 15000L
+                interval = 10000L
+                fastestInterval = 5000L
             } else if (isSilentMode) {
                 // Lower frequency in silent mode to save battery
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
@@ -969,11 +976,24 @@ class LocationTrackingService : Service() {
             ticketId = latestTicketId
         }
 
-        // Skip inaccurate fixes (>=25m) — prevents route cutting through buildings/parks
+        // Graduated accuracy filter: accept up to 50m initially (GPS cold start,
+        // urban canyons, bridge transitions), tighten to 25m once we have a good fix.
         val accuracy = location.accuracy.toDouble()
-        if (location.hasAccuracy() && accuracy >= 25.0) {
-            Log.d(TAG, "Skipping inaccurate fix: ${String.format("%.0f", accuracy)}m")
+        val STRICT_ACCURACY = 25.0
+        val INITIAL_ACCURACY = 50.0
+        val WARMUP_MS = 30_000L
+        val hasWarmedUp = firstGoodFixTime > 0L && (System.currentTimeMillis() - firstGoodFixTime > WARMUP_MS)
+        val accuracyLimit = if (hasWarmedUp) STRICT_ACCURACY else INITIAL_ACCURACY
+
+        if (location.hasAccuracy() && accuracy >= accuracyLimit) {
+            Log.d(TAG, "Skipping inaccurate fix: ${String.format("%.0f", accuracy)}m (limit: ${String.format("%.0f", accuracyLimit)}m)")
             return
+        }
+
+        // Track when GPS achieves good accuracy — triggers strict filtering
+        if (location.hasAccuracy() && accuracy < STRICT_ACCURACY && firstGoodFixTime == 0L) {
+            firstGoodFixTime = System.currentTimeMillis()
+            Log.d(TAG, "GPS warmed up — switching to strict accuracy filter (${String.format("%.0f", accuracy)}m)")
         }
 
         // Skip invalid coordinates — (0,0) "Null Island", NaN, or out-of-range
@@ -1007,15 +1027,45 @@ class LocationTrackingService : Service() {
 
         // ── Stationary drift suppression ──────────────────────────────
         var suppressDrift = false
+        var isFirstStop = false
 
         if (isConfirmedMoving) {
             consecutiveMovingCount++
-            if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD) {
+
+            // Distance-based confirmation: if truck moved far enough from stop position,
+            // it's definitely real movement (GPS drift is typically <10m)
+            var distFromStop = 0.0
+            if (wasStationary && stationaryLat != 0.0) {
+                val stopResults = FloatArray(1)
+                Location.distanceBetween(stationaryLat, stationaryLng, location.latitude, location.longitude, stopResults)
+                distFromStop = stopResults[0].toDouble()
+            }
+
+            if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD || distFromStop >= DRIFT_DISTANCE_CONFIRM) {
                 wasStationary = false
-                Log.d(TAG, "MOVEMENT CONFIRMED: $consecutiveMovingCount consecutive, speed=${String.format("%.1f", speedMs)}")
+                stationaryLat = 0.0
+                stationaryLng = 0.0
+                Log.d(TAG, "MOVEMENT CONFIRMED: $consecutiveMovingCount consecutive, speed=${String.format("%.1f", speedMs)}, distFromStop=${String.format("%.0f", distFromStop)}m")
             } else if (wasStationary) {
-                suppressDrift = true
-                Log.d(TAG, "SPIKE BLOCKED: speed=${String.format("%.1f", speedMs)}, movingCount=$consecutiveMovingCount/$MOVING_CONFIRM_THRESHOLD")
+                // Not yet confirmed — discard this fix to prevent GPS drift from:
+                // 1. Being saved/published as real movement
+                // 2. Creating zigzag routes on the dashboard
+                // Real movement will be captured once MOVING_CONFIRM_THRESHOLD is met.
+                Log.d(TAG, "PENDING MOVE: speed=${String.format("%.1f", speedMs)}, movingCount=$consecutiveMovingCount/$MOVING_CONFIRM_THRESHOLD, distFromStop=${String.format("%.0f", distFromStop)}m")
+                // Exit idle mode NOW so GPS switches to 1s polling immediately —
+                // don't wait for confirmed movement (the next fix at 1s will confirm).
+                // Without this, native stays in 10s idle polling and misses GPS data.
+                if (isIdleMode) {
+                    Log.d(TAG, "PENDING MOVE: exiting idle mode early — resuming 1s polling")
+                    isIdleMode = false
+                    idleLat = 0.0
+                    idleLng = 0.0
+                    consecutiveIdleCount = 0
+                    prefs.edit().putBoolean(KEY_IDLE, false).apply()
+                    fusedClient.removeLocationUpdates(locationCallback)
+                    startLocationUpdates()
+                }
+                return
             }
         } else {
             consecutiveMovingCount = 0
@@ -1025,6 +1075,9 @@ class LocationTrackingService : Service() {
                     "lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
             } else {
                 wasStationary = true
+                stationaryLat = location.latitude
+                stationaryLng = location.longitude
+                isFirstStop = true // Must save — bypass distance filter below
                 Log.d(TAG, "FIRST STOP: saving stopped-at, lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
             }
         }
@@ -1080,19 +1133,23 @@ class LocationTrackingService : Service() {
 
         if (suppressDrift) return
 
-        // Skip if truck hasn't moved enough from last saved position
-        val minDistance = if (location.hasAccuracy() && accuracy > 15.0) {
-            maxOf(10.0, accuracy * 0.75)
-        } else {
-            5.0
-        }
-        val prevLat = lastSavedLat
-        val prevLng = lastSavedLng
-        if (prevLat != null && prevLng != null) {
-            val distResults = FloatArray(1)
-            Location.distanceBetween(prevLat, prevLng, location.latitude, location.longitude, distResults)
-            if (distResults[0] < minDistance.toFloat()) {
-                return
+        // Skip if truck hasn't moved enough from last saved position.
+        // Exception: first stop record always saved — the stop position matters
+        // even if it's < 5m from the last driving position.
+        if (!isFirstStop) {
+            val minDistance = if (location.hasAccuracy() && accuracy > 15.0) {
+                maxOf(10.0, accuracy * 0.75)
+            } else {
+                5.0
+            }
+            val prevLat = lastSavedLat
+            val prevLng = lastSavedLng
+            if (prevLat != null && prevLng != null) {
+                val distResults = FloatArray(1)
+                Location.distanceBetween(prevLat, prevLng, location.latitude, location.longitude, distResults)
+                if (distResults[0] < minDistance.toFloat()) {
+                    return
+                }
             }
         }
         lastSavedLat = location.latitude

@@ -114,7 +114,20 @@ async function syncGpsRecords(): Promise<void> {
   // Marking them here would silently discard offline records that haven't been published yet.
   isSyncing = true;
   try {
-    await heartbeatApi.ping().catch(() => {});
+    // Include latest GPS position in heartbeat so the dashboard
+    // "Current Truck Location" and "GPS Online/Offline" stay updated.
+    const allRecords = gpsStorage.getAll();
+    const lastRecord = allRecords.length > 0 ? allRecords[allRecords.length - 1] : null;
+    const heartbeatPosition = lastRecord ? {
+      latitude: lastRecord.latitude,
+      longitude: lastRecord.longitude,
+      speed: lastRecord.speed,
+      heading: lastRecord.heading,
+      accuracy: lastRecord.accuracy,
+      recorded_at: lastRecord.recorded_at,
+      battery_level: lastRecord.battery_level ?? null,
+    } : undefined;
+    await heartbeatApi.ping(heartbeatPosition).catch(() => {});
     await refreshTicket();
   } finally {
     isSyncing = false;
