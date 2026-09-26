@@ -9,6 +9,10 @@ const TRIP_SUMMARIES_KEY = 'trip_summaries';
 export type GpsRecord = {
   id: string;
   ticket_id: number | null;
+  // Captured at record time, NOT read live at publish time. The backlog can
+  // flush after the driver has moved to a new ticket, and pairing a historical
+  // ticket_id with a live ticket_code lands points on the wrong load.
+  ticket_code?: string | null;
   latitude: number;
   longitude: number;
   speed: number | null;

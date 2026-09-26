@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import Icon from './Icon';
 import ResponsiveModal from './ResponsiveModal';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '../contexts/ThemeContext';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';

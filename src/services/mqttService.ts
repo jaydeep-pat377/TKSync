@@ -4,6 +4,7 @@ import {Platform, NativeModules} from 'react-native';
 import {storage} from './storage';
 import {trackingApi, type MqttTokenResponse} from './api';
 import {captureError} from './sentry';
+import {getForceOffline} from '../hooks/useNetworkStatus';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -244,7 +245,24 @@ type GpsPayload = {
   ticket_code: string | null;
   client_id: string;
   battery_level: number | null;
+  /** Set automatically by publish() — see BACKFILL_AFTER_MS. */
+  backfill?: boolean;
 };
+
+/**
+ * A point older than this when it reaches the broker was not captured live: it
+ * sat in the offline queue. The server writes it into route history as normal
+ * but skips the "current position" update, so the live marker does not walk
+ * backwards through the backlog while it drains.
+ *
+ * One age check here covers every call site — live foreground, the native
+ * bridge and the catch-up flush all go through publish().
+ */
+const BACKFILL_AFTER_MS = 60_000;
+
+/** Last value published, so the [CHECK] line fires on change rather than per point. */
+let lastBackfillState: boolean | null = null;
+let forceOfflineAnnounced = false;
 
 /**
  * Publish a GPS payload via MQTT.
@@ -255,19 +273,105 @@ export function publish(
   payload: GpsPayload,
   onDelivered?: (err: Error | null) => void,
 ): boolean {
+  // The DEV "Force Offline" toggle used to gate only REST, so GPS kept flowing
+  // over MQTT and offline tests silently passed. Honour it here too.
+  if (getForceOffline()) {
+    if (!forceOfflineAnnounced) {
+      forceOfflineAnnounced = true;
+      console.log('[CHECK] Force Offline is ON — MQTT publish blocked, records queue locally');
+    }
+    return false;
+  }
+  if (forceOfflineAnnounced) {
+    forceOfflineAnnounced = false;
+    console.log('[CHECK] Force Offline is OFF — MQTT publish resumed');
+  }
+
   const topic = getTopic();
   if (!client?.connected || !topic) {
     return false;
   }
 
+  const recordedAt = Date.parse(payload.recorded_at);
+  const isBackfill =
+    Number.isFinite(recordedAt) && Date.now() - recordedAt > BACKFILL_AFTER_MS;
+  const body: GpsPayload = {...payload, backfill: isBackfill};
+
+  // One line per transition, not per point — at 1 Hz a per-point log is noise.
+  // [CHECK] lines exist to make an on-device E2E run verifiable from logcat.
+  if (isBackfill !== lastBackfillState) {
+    lastBackfillState = isBackfill;
+    const ageS = Math.round((Date.now() - recordedAt) / 1000);
+    console.log(
+      `[CHECK] backfill=${isBackfill} (record is ${ageS}s old, threshold ${
+        BACKFILL_AFTER_MS / 1000
+      }s)`,
+    );
+  }
+
   try {
-    client.publish(topic, JSON.stringify(payload), {qos: 1}, (err) => {
+    client.publish(topic, JSON.stringify(body), {qos: 1}, (err) => {
       if (onDelivered) onDelivered(err ?? null);
     });
     return true;
   } catch (err: any) {
     console.warn('[MQTT] Publish error:', err);
     captureError(err instanceof Error ? err : new Error(String(err)), {source: 'mqtt_publish'});
+    return false;
+  }
+}
+
+export type PresencePayload =
+  | {status: 'offline'; since: string}
+  | {
+      status: 'online';
+      backfill_count: number;
+      backfill_from: string;
+      backfill_to: string;
+    };
+
+/**
+ * Tell the dashboard the truck went quiet, and how much is about to arrive.
+ *
+ * Without this the dashboard infers an outage from silence ("last signal 41 min
+ * ago") — it cannot know when the truck is back or how many backlog points are
+ * coming, so it cannot mark the gap boundaries or prepare for the flush.
+ *
+ * Best-effort by design: never block or delay GPS publishing for it. The offline
+ * message in particular often will not make it out, because by the time NetInfo
+ * reports the drop the socket may already be gone. That is fine — the dashboard
+ * still has silence to fall back on, and the online message carries the window.
+ *
+ * Topic comes from the MQTT token, which grants pub on .../presence alongside
+ * .../gps.
+ */
+export function publishPresence(payload: PresencePayload): boolean {
+  if (getForceOffline()) return false;
+  const topic = getTopic();
+  if (!client?.connected || !topic) return false;
+
+  const presenceTopic = topic.replace(/\/gps$/, '/presence');
+  if (presenceTopic === topic) {
+    // The ACL grants pub on .../presence alongside .../gps. If the GPS topic is
+    // not shaped as expected the derived topic is wrong and the broker will
+    // reject it, so surface this rather than publishing into the void.
+    console.warn('[CHECK] FAIL presence — unexpected topic shape:', topic);
+    captureError(new Error(`Unexpected MQTT topic shape: ${topic}`), {
+      source: 'mqtt_presence_topic',
+    });
+    return false;
+  }
+
+  try {
+    client.publish(presenceTopic, JSON.stringify(payload), {qos: 1});
+    console.log(`[CHECK] presence ${payload.status} -> ${presenceTopic} ${JSON.stringify(payload)}`);
+    return true;
+  } catch (err: any) {
+    console.warn('[MQTT] Presence publish error:', err?.message);
+    captureError(err instanceof Error ? err : new Error(String(err)), {
+      source: 'mqtt_presence',
+      status: payload.status,
+    });
     return false;
   }
 }
@@ -282,6 +386,7 @@ export const mqttService = {
   isConnected,
   resetConnectionState,
   publish,
+  publishPresence,
   getTopic,
   fetchAndStoreToken,
   setOnReconnect,

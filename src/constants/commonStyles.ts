@@ -1,5 +1,4 @@
 import {StyleSheet} from 'react-native';
-import {Colors} from './colors';
 import {wp} from '../utils/responsive';
 
 export const common = StyleSheet.create({

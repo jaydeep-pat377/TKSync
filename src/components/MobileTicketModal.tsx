@@ -16,7 +16,6 @@ import Icon from './Icon';
 import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../contexts/ThemeContext';
 import {getFontScale, useFontScaleRefresh} from '../contexts/FontSizeContext';
-import {wp} from '../utils/responsive';
 import {ticketsApi, type MobileTicketPrint} from '../services/api';
 
 type Props = {
@@ -116,7 +115,6 @@ export default function MobileTicketModal({visible, onClose, ticketId, onSign, o
   const p = isDark ? P_DARK : P_LIGHT;
   const {width, height: winHeight} = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const isLandscape = width > winHeight;
   const shortDim = Math.min(width, winHeight);
 
   // ── Same scaling as Dashboard landscape ──

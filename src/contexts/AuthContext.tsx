@@ -5,11 +5,7 @@ import {storage} from '../services/storage';
 import {
   authApi,
   trackingApi,
-  ApiError,
   setOnSessionExpired,
-  type CompanyLoginResponse,
-  type DriverLoginResponse,
-  type MqttTokenResponse,
 } from '../services/api';
 import {setSentryUser, captureError} from '../services/sentry';
 import {showToast} from '../utils/toast';
@@ -263,7 +259,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     try {
       const {backgroundGpsTracker} = require('../services/backgroundGpsTracker');
       await backgroundGpsTracker.clearAllData();
-    } catch (e) {
+    } catch {
       // non-fatal
     }
 

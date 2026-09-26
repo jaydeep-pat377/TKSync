@@ -29,7 +29,7 @@ class LocationTrackingService : Service() {
          *  before importing native records to avoid duplicate uploads. */
         @Volatile
         var isCurrentlyUploading = false
-            private set
+            internal set
 
         /** Callback invoked when native saves a GPS record — bridges to JS for MQTT publishing. */
         @Volatile
@@ -70,6 +70,73 @@ class LocationTrackingService : Service() {
         private const val KEY_MQTT_PASSWORD = "mqtt_password"
         private const val KEY_MQTT_TOPIC = "mqtt_topic"
         private const val KEY_MQTT_TICKET_CODE = "mqtt_ticket_code"
+        private const val KEY_MQTT_TOKEN_ISSUED_AT = "mqtt_token_issued_at"
+
+        // ── Diagnostics ──────────────────────────────────────────────
+        // Kill-mode failures happen while JS is dead, so nothing reports them.
+        // Worse, when the OEM kills the process and START_STICKY restarts the
+        // service with no Activity, React Native never boots — Sentry.init()
+        // lives in JS, so a native Sentry call here would be a silent no-op.
+        // Persist events instead; JS drains them to Sentry on the next app open.
+        private const val KEY_DIAG_EVENTS = "diag_events"
+        private const val KEY_DIAG_LAST_FIX_AT = "diag_last_fix_at"
+        private const val KEY_DIAG_LAST_SAVE_AT = "diag_last_save_at"
+        private const val KEY_DIAG_LAST_PUBLISH_AT = "diag_last_publish_at"
+        private const val KEY_DIAG_SYSTEM_RESTARTS = "diag_system_restarts"
+        private const val MAX_DIAG_EVENTS = 100 // Bounded — oldest dropped first
+
+        /** Append a diagnostic event. Safe to call from any thread. */
+        fun recordDiag(prefs: SharedPreferences, type: String, detail: Map<String, Any?> = emptyMap()) {
+            synchronized(diagLock) {
+                try {
+                    val raw = prefs.getString(KEY_DIAG_EVENTS, "[]") ?: "[]"
+                    val events = try { JSONArray(raw) } catch (e: Exception) { JSONArray() }
+                    val event = JSONObject().apply {
+                        put("t", System.currentTimeMillis())
+                        put("type", type)
+                        for ((k, v) in detail) put(k, v ?: JSONObject.NULL)
+                    }
+                    events.put(event)
+                    val trimmed = if (events.length() > MAX_DIAG_EVENTS) {
+                        JSONArray().also { out ->
+                            for (i in (events.length() - MAX_DIAG_EVENTS) until events.length()) {
+                                out.put(events.getJSONObject(i))
+                            }
+                        }
+                    } else events
+                    // commit() — the process may be killed moments after this call
+                    prefs.edit().putString(KEY_DIAG_EVENTS, trimmed.toString()).commit()
+                    Log.d(TAG, "DIAG $type ${detail.entries.joinToString(" ") { "${it.key}=${it.value}" }}")
+                } catch (e: Exception) {
+                    Log.w(TAG, "recordDiag failed: ${e.message}")
+                }
+            }
+        }
+
+        private val diagLock = Any()
+
+        fun getDiagnostics(context: Context): JSONObject {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val raw = prefs.getString(KEY_DIAG_EVENTS, "[]") ?: "[]"
+            return JSONObject().apply {
+                put("events", try { JSONArray(raw) } catch (e: Exception) { JSONArray() })
+                put("last_fix_at", prefs.getLong(KEY_DIAG_LAST_FIX_AT, 0L))
+                put("last_save_at", prefs.getLong(KEY_DIAG_LAST_SAVE_AT, 0L))
+                put("last_publish_at", prefs.getLong(KEY_DIAG_LAST_PUBLISH_AT, 0L))
+                put("system_restarts", prefs.getInt(KEY_DIAG_SYSTEM_RESTARTS, 0))
+                put("tracking_active", prefs.getBoolean(KEY_ACTIVE, false))
+                put("js_alive", prefs.getBoolean(KEY_JS_ALIVE, false))
+                put("idle_mode", prefs.getBoolean(KEY_IDLE, false))
+                put("now", System.currentTimeMillis())
+            }
+        }
+
+        fun clearDiagnostics(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_DIAG_EVENTS, "[]").apply()
+        }
+        // MQTT token TTL is 1 hour — refresh 5 minutes early, same lead JS uses.
+        private const val MQTT_TOKEN_REFRESH_AFTER_MS = 55 * 60 * 1000L
 
         fun setJsAlive(context: Context, alive: Boolean) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -137,6 +204,9 @@ class LocationTrackingService : Service() {
                 val intent = Intent(context, LocationTrackingService::class.java)
                 intent.putExtra("ticket_id", ticketId)
                 intent.putExtra("silent", silent)
+                // Carry idle through: onStartCommand reads the extra with a false
+                // default, so omitting it here silently turned idle mode off.
+                intent.putExtra("idle", prefs.getBoolean(KEY_IDLE, false))
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
                 } else {
@@ -197,11 +267,18 @@ class LocationTrackingService : Service() {
                 .putString(KEY_MQTT_PASSWORD, password)
                 .putString(KEY_MQTT_TOPIC, topic)
                 .putString(KEY_MQTT_TICKET_CODE, ticketCode)
+                .putLong(KEY_MQTT_TOKEN_ISSUED_AT, System.currentTimeMillis())
                 .apply()
             Log.d(TAG, "MQTT credentials updated — topic: $topic")
-            // Connect native MQTT immediately so it's ready before screen lock
+            // Reconnect with the new credentials, do not just connectMqtt(): that
+            // returns immediately while a client is connected, so every rotated token
+            // was ignored and native kept publishing with the old one until the broker
+            // rejected it twice.
             instance?.let { svc ->
-                Handler(Looper.getMainLooper()).post { svc.connectMqtt() }
+                Handler(Looper.getMainLooper()).post {
+                    svc.disconnectMqtt()
+                    svc.connectMqtt()
+                }
             }
         }
 
@@ -213,6 +290,7 @@ class LocationTrackingService : Service() {
                 .remove(KEY_MQTT_PASSWORD)
                 .remove(KEY_MQTT_TOPIC)
                 .remove(KEY_MQTT_TICKET_CODE)
+                .remove(KEY_MQTT_TOKEN_ISSUED_AT)
                 .apply()
             Log.d(TAG, "MQTT credentials cleared")
         }
@@ -221,6 +299,16 @@ class LocationTrackingService : Service() {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             return prefs.getBoolean(KEY_ACTIVE, false)
         }
+
+        /** Whether the service is genuinely running RIGHT NOW, as opposed to
+         *  isActive() which only reports the persisted intent flag.
+         *
+         *  These diverge in the case that matters: if the process dies, the flag
+         *  stays true while the service is gone, and START_STICKY does not always
+         *  bring a foreground service back. `instance` is null in a fresh process,
+         *  so this is an accurate liveness check — the service only ever runs in
+         *  the app's main process. */
+        fun isServiceRunning(): Boolean = instance != null
 
         fun getTicketId(context: Context): Int {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -247,13 +335,49 @@ class LocationTrackingService : Service() {
     private var lastSavedLng: Double? = null
     private var lastSavedTime: Long = 0L // GPS timestamp (ms) of last saved location — for teleport detection
     private var firstGoodFixTime: Long = 0L // When GPS first achieved <25m accuracy — enables strict filter
+    private var consecutiveAccuracyRejects = 0 // Resets the strict gate when GPS degrades for a sustained stretch
+    private val ACCURACY_REWARMUP_REJECTS = 10 // ~10s of rejections — re-open the gate to 50m
     private var pendingRecords = JSONArray() // Buffer writes to reduce SharedPrefs I/O
     private var pendingCount = 0
     private val WRITE_BATCH_SIZE = 1 // Flush to SharedPrefs immediately — ensures no records lost on foreground transition
     private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
+
+    /**
+     * A point older than this when it reaches the broker was not captured live:
+     * it sat in the offline queue. The server writes it into route history as
+     * normal but skips the "current position" update, so the live marker does
+     * not walk backwards through the backlog while it drains.
+     *
+     * Same 60s rule as mqttService.publish() on the JS side — the two paths must
+     * agree, otherwise the dashboard sees the same record flagged differently
+     * depending on which one happened to send it.
+     */
+    private val BACKFILL_AFTER_MS = 60_000L
+    private val backfillFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+
+    /** Epoch millis for a record's recorded_at, or 0 when it cannot be parsed.
+     *  Unparseable records sort to the front of a replay — they are the oldest
+     *  thing we can prove, and holding them back would reorder the rest. */
+    private fun parseRecordedAt(recordedAt: String): Long {
+        if (recordedAt.isEmpty()) return 0L
+        // SimpleDateFormat is not thread-safe and replay runs off the main thread.
+        return synchronized(backfillFormat) {
+            try { backfillFormat.parse(recordedAt)?.time } catch (e: Exception) { null }
+        } ?: 0L
+    }
+
+    private fun isBackfill(recordedAt: String): Boolean {
+        val t = parseRecordedAt(recordedAt)
+        if (t == 0L) return false
+        return System.currentTimeMillis() - t > BACKFILL_AFTER_MS
+    }
     private val uploadHandler = Handler(Looper.getMainLooper())
+    private val permissionRetryHandler = Handler(Looper.getMainLooper())
+    private val PERMISSION_RETRY_MS = 60_000L // Retry requestLocationUpdates after a SecurityException
 
     // ─── Native MQTT ─────────────────────────────────────────────────
     private var mqttClient: MqttAsyncClient? = null
@@ -288,6 +412,15 @@ class LocationTrackingService : Service() {
                 return START_NOT_STICKY
             }
             Log.d(TAG, "Service restarted by system — resuming GPS from SharedPrefs")
+            // The process was killed and START_STICKY brought the service back with
+            // no Activity, so React Native never booted. This is the single most
+            // useful signal for "kill mode worked yesterday and not today".
+            val restarts = prefs.getInt(KEY_DIAG_SYSTEM_RESTARTS, 0) + 1
+            prefs.edit().putInt(KEY_DIAG_SYSTEM_RESTARTS, restarts).commit()
+            recordDiag(prefs, "service_restarted_by_system", mapOf(
+                "restart_count" to restarts,
+                "gap_since_last_save_ms" to (System.currentTimeMillis() - prefs.getLong(KEY_DIAG_LAST_SAVE_AT, 0L)),
+            ))
         }
 
         ticketId = intent?.getIntExtra("ticket_id", 0)
@@ -360,11 +493,18 @@ class LocationTrackingService : Service() {
         unregisterNotificationDismissReceiver()
         fusedClient.removeLocationUpdates(locationCallback)
         uploadHandler.removeCallbacksAndMessages(null)
+        permissionRetryHandler.removeCallbacksAndMessages(null)
         // Flush any buffered records before dying
         if (pendingCount > 0) {
             flushPendingRecords()
         }
         disconnectMqtt()
+        // tracking_active still true here means we were NOT stopped through
+        // LocationTrackingService.stop() — something external tore us down.
+        recordDiag(prefs, "service_destroyed", mapOf(
+            "tracking_active" to prefs.getBoolean(KEY_ACTIVE, false),
+            "unexpected" to prefs.getBoolean(KEY_ACTIVE, false),
+        ))
         Log.d(TAG, "Service destroyed")
     }
 
@@ -406,6 +546,7 @@ class LocationTrackingService : Service() {
         // JS is dead after app swipe — native takes over GPS recording.
         // commit() ensures the flag is written before the process dies.
         prefs.edit().putBoolean(KEY_JS_ALIVE, false).commit()
+        recordDiag(prefs, "task_removed", mapOf("pending_flushed" to pendingCount))
         Log.d(TAG, "Task removed (app killed) — flushed records, native GPS continues")
     }
 
@@ -458,6 +599,7 @@ class LocationTrackingService : Service() {
                             .putString(KEY_MQTT_USERNAME, newUsername)
                             .putString(KEY_MQTT_PASSWORD, newToken)
                             .putString(KEY_MQTT_TOPIC, newTopic)
+                            .putLong(KEY_MQTT_TOKEN_ISSUED_AT, System.currentTimeMillis())
                             .apply()
 
                         Log.d(TAG, "MQTT token refreshed via API — reconnecting")
@@ -569,10 +711,14 @@ class LocationTrackingService : Service() {
                 override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                     Log.d(TAG, "MQTT ${if (reconnect) "reconnected" else "connected"} — $serverURI")
                     mqttAuthFailureCount = 0 // Reset on successful connect
-                    // Replay offline records that were saved while MQTT was disconnected
-                    if (reconnect) {
-                        replayOfflineRecords()
-                    }
+                    // Replay offline records saved while MQTT was disconnected.
+                    // NOT gated on `reconnect`: ensureMqttConnected() tears the client
+                    // down and builds a fresh one every 30s while JS is dead, so that
+                    // recovery path always reports reconnect=false. Gating on it meant
+                    // records collected after an app kill were saved locally and never
+                    // published until the driver reopened the app. replayOfflineRecords()
+                    // skips already-synced records and the server dedupes on client_id.
+                    replayOfflineRecords()
                 }
                 override fun connectionLost(cause: Throwable?) {
                     Log.w(TAG, "MQTT connection lost: ${cause?.message}")
@@ -585,6 +731,10 @@ class LocationTrackingService : Service() {
                     if (isAuthError) {
                         mqttAuthFailureCount++
                         Log.w(TAG, "MQTT auth failure #$mqttAuthFailureCount — token may be expired")
+                        recordDiag(prefs, "mqtt_auth_failure", mapOf(
+                            "count" to mqttAuthFailureCount,
+                            "token_age_ms" to (System.currentTimeMillis() - prefs.getLong(KEY_MQTT_TOKEN_ISSUED_AT, 0L)),
+                        ))
                         if (mqttAuthFailureCount >= MAX_MQTT_AUTH_FAILURES) {
                             mqttAuthFailureCount = 0
                             refreshMqttTokenViaApi()
@@ -603,6 +753,10 @@ class LocationTrackingService : Service() {
                 keepAliveInterval = 60
                 isAutomaticReconnect = true
             }
+
+            // Assign BEFORE connect(): connectComplete() fires on the Paho thread and
+            // calls replayOfflineRecords(), which bails when mqttClient is still null.
+            mqttClient = client
 
             client.connect(opts, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
@@ -624,7 +778,6 @@ class LocationTrackingService : Service() {
                 }
             })
 
-            mqttClient = client
             lastMqttConnectAttempt = System.currentTimeMillis()
         } catch (e: Exception) {
             Log.e(TAG, "MQTT connect error: ${e.message}")
@@ -634,9 +787,9 @@ class LocationTrackingService : Service() {
 
     private fun disconnectMqtt() {
         try {
-            // Disable auto-reconnect before disconnecting to prevent the library
-            // from racing to reconnect between disconnect() and close()
-            mqttClient?.setManualAcks(false)
+            // close(true) below forces the client shut even mid-reconnect. The old
+            // setManualAcks(false) call here claimed to stop auto-reconnect; it does
+            // not — it controls manual message acknowledgement and did nothing.
             if (mqttClient?.isConnected == true) {
                 mqttClient?.disconnect()
             }
@@ -674,15 +827,26 @@ class LocationTrackingService : Service() {
         }
     }
 
-    /**
-     * Replay stored GPS records via MQTT after reconnecting.
-     * Called when native MQTT reconnects in background after an offline period.
-     * Records are published with their original client_id so the server deduplicates.
-     */
     private val REPLAY_BATCH_SIZE = 20 // Publish in batches to avoid flooding broker
+    private val MAX_REPLAY_PASSES = 5  // Live fixes arriving mid-replay get swept by a later pass
+
+    /** True while the backlog is draining. publishToMqtt holds live fixes until it clears. */
+    @Volatile private var replaying = false
+    /** Wall-clock cap on that hold, so a stalled broker cannot freeze the live map. */
+    @Volatile private var replayHoldUntil = 0L
+    private val MAX_LIVE_HOLD_MS = 60_000L
+    private val DELIVERY_TIMEOUT_MS = 10_000L // Per QoS 1 batch — see confirmDelivered()
 
     /**
-     * Replay stored GPS records via MQTT after reconnecting.
+     * Replay stored GPS records via MQTT after reconnecting, oldest first.
+     * Called when native MQTT reconnects in background after an offline period.
+     * Records are published with their original client_id so the server deduplicates.
+     *
+     * Order matters for the live view only: gps-consumer keeps ONE position per
+     * truck in Redis and drops anything older than what it already holds. Sent out
+     * of order, every backlog point is rejected on arrival and the dispatch map
+     * draws the jump instead of the route. Timescale stores them either way.
+     *
      * Runs on a background thread to avoid blocking the Paho callback thread.
      * Publishes in batches of 20 with brief pauses to prevent broker flooding.
      */
@@ -694,63 +858,137 @@ class LocationTrackingService : Service() {
         val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
         if (jsAlive) return // JS is handling — don't replay from native
 
+        if (replaying) return // Already draining — a second thread would interleave the order
+        replaying = true
+        // JS polls this before importing native records, so a foreground resume
+        // mid-replay waits instead of starting a second, interleaved flush.
+        isCurrentlyUploading = true
+        // Holding live fixes is only correct while the backlog is actually moving.
+        // Without a deadline a stalled broker would freeze the live map indefinitely.
+        replayHoldUntil = System.currentTimeMillis() + MAX_LIVE_HOLD_MS
+
         // Run on background thread to avoid blocking Paho callback thread
         Thread {
+            var totalPublished = 0
+            var totalBackfilled = 0
+            var stillPending = 0
             try {
-                // Synchronized read to avoid race with flushPendingRecords on main thread
-                val records: JSONArray
-                synchronized(prefsLock) {
-                    records = getStoredRecords(this)
-                }
-                if (records.length() == 0) return@Thread
-
-                val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
-                var published = 0
-                var modified = false
-
-                for (i in 0 until records.length()) {
-                    if (client != mqttClient || !client.isConnected) break // Client changed or disconnected
-                    try {
-                        val r = records.getJSONObject(i)
-                        if (r.optBoolean("synced", false)) continue
-                        val payload = JSONObject().apply {
-                            put("latitude", r.optDouble("latitude"))
-                            put("longitude", r.optDouble("longitude"))
-                            put("speed", r.optDouble("speed"))
-                            put("heading", r.optDouble("heading"))
-                            put("accuracy", r.optDouble("accuracy"))
-                            put("recorded_at", r.optString("recorded_at"))
-                            put("ticket_id", r.optInt("ticket_id"))
-                            put("ticket_code", ticketCode)
-                            put("client_id", r.optString("id"))
-                            // Use battery stored at record time — accurate for offline replays
-                            put("battery_level", r.opt("battery_level") ?: JSONObject.NULL)
-                        }
-                        val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
-                        message.qos = 1
-                        client.publish(topic, message)
-                        r.put("synced", true)
-                        modified = true
-                        published++
-
-                        // Pause between batches to avoid flooding broker
-                        if (published % REPLAY_BATCH_SIZE == 0) {
-                            Thread.sleep(200)
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "MQTT replay error at index $i: ${e.message}")
-                        break // Stop on error (e.g. "Too many publishes in progress")
+                // publishToMqtt holds live fixes while `replaying` is set, so each pass
+                // sweeps up whatever the truck recorded during the previous one. Bounded
+                // so a truck recording faster than we publish cannot spin here forever.
+                for (pass in 0 until MAX_REPLAY_PASSES) {
+                    // Synchronized read to avoid race with flushPendingRecords on main thread
+                    val pending = synchronized(prefsLock) {
+                        val stored = getStoredRecords(this)
+                        (0 until stored.length())
+                            .mapNotNull { stored.optJSONObject(it) }
+                            .filter { !it.optBoolean("synced", false) }
+                            .sortedBy { parseRecordedAt(it.optString("recorded_at")) }
                     }
-                }
-                // Synchronized write to avoid race with flushPendingRecords
-                if (modified) {
-                    synchronized(prefsLock) {
-                        prefs.edit().putString(KEY_RECORDS, records.toString()).apply()
+                    stillPending = pending.size
+                    if (pending.isEmpty()) break
+
+                    val fallbackTicketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
+                    var published = 0
+                    var sent = 0
+                    val syncedIds = HashSet<String>()
+
+                    // Paho's publish() only means "queued". Marking a record synced on
+                    // that alone loses it for good if the process dies before the ACK:
+                    // MemoryPersistence drops the message, and JS skips synced records
+                    // when it imports. Confirm QoS 1 delivery before writing the flag.
+                    val inFlight = ArrayList<Pair<String, IMqttDeliveryToken>>()
+                    fun confirmDelivered() {
+                        for ((id, token) in inFlight) {
+                            try { token.waitForCompletion(DELIVERY_TIMEOUT_MS) } catch (_: Exception) {}
+                            if (token.isComplete && token.exception == null) {
+                                syncedIds.add(id)
+                                published++
+                            }
+                        }
+                        inFlight.clear()
                     }
+
+                    for (r in pending) {
+                        if (client != mqttClient || !client.isConnected) break // Client changed or disconnected
+                        try {
+                            val payload = JSONObject().apply {
+                                put("latitude", r.optDouble("latitude"))
+                                put("longitude", r.optDouble("longitude"))
+                                put("speed", r.optDouble("speed"))
+                                put("heading", r.optDouble("heading"))
+                                put("accuracy", r.optDouble("accuracy"))
+                                put("recorded_at", r.optString("recorded_at"))
+                                put("ticket_id", r.optInt("ticket_id"))
+                                put("ticket_code", r.optString("ticket_code").ifEmpty { fallbackTicketCode })
+                                put("client_id", r.optString("id"))
+                                // Use battery stored at record time — accurate for offline replays
+                                put("battery_level", r.opt("battery_level") ?: JSONObject.NULL)
+                                put("backfill", isBackfill(r.optString("recorded_at")).also {
+                                    if (it) totalBackfilled++
+                                })
+                            }
+                            val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
+                            message.qos = 1
+                            inFlight.add(r.optString("id") to client.publish(topic, message))
+                            sent++
+
+                            // Confirm and pause between batches to avoid flooding broker
+                            if (sent % REPLAY_BATCH_SIZE == 0) {
+                                confirmDelivered()
+                                Thread.sleep(200)
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "MQTT replay error after $sent sent: ${e.message}")
+                            break // Stop on error (e.g. "Too many publishes in progress")
+                        }
+                    }
+                    confirmDelivered()
+
+                    // Re-read inside the lock before writing. Publishing takes seconds, and
+                    // saveLocation()/flushPendingRecords() appends new records the whole time —
+                    // writing back the list we read at the top of this pass would erase them.
+                    if (syncedIds.isNotEmpty()) {
+                        synchronized(prefsLock) {
+                            val current = getStoredRecords(this)
+                            for (i in 0 until current.length()) {
+                                val r = current.optJSONObject(i) ?: continue
+                                if (syncedIds.contains(r.optString("id"))) {
+                                    r.put("synced", true)
+                                }
+                            }
+                            prefs.edit().putString(KEY_RECORDS, current.toString()).apply()
+                        }
+                    }
+
+                    totalPublished += published
+                    stillPending = pending.size - published
+                    if (published == 0) break // Nothing moved — another pass will not help
                 }
-                Log.d(TAG, "MQTT replayed $published/${records.length()} offline records")
+
+                if (totalPublished == 0 && stillPending == 0) return@Thread
+
+                Log.d(TAG, "MQTT replayed $totalPublished offline records oldest-first ($stillPending left)")
+                // [CHECK] lines make an on-device E2E run verifiable from logcat.
+                if (stillPending == 0) {
+                    Log.i(TAG, "[CHECK] PASS native replay — all $totalPublished records published in time order, $totalBackfilled flagged backfill")
+                } else {
+                    Log.w(TAG, "[CHECK] FAIL native replay — $stillPending of ${totalPublished + stillPending} not published")
+                    recordDiag(prefs, "replay_incomplete", mapOf(
+                        "total" to (totalPublished + stillPending),
+                        "published" to totalPublished,
+                        "missing" to stillPending
+                    ))
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "MQTT replay thread error: ${e.message}")
+            } finally {
+                // ponytail: a fix landing between the last pass and this line waits for
+                // the next reconnect replay. It stays unsynced in prefs, so nothing is
+                // lost; add a post-drain sweep if that window ever shows up in practice.
+                replaying = false
+                replayHoldUntil = 0L
+                isCurrentlyUploading = false
             }
         }.start()
     }
@@ -760,6 +998,15 @@ class LocationTrackingService : Service() {
         val topic = mqttTopic ?: return
 
         if (!client.isConnected) return // Will retry on next GPS fix via ensureMqttConnected
+
+        // Hold live fixes while the offline backlog drains. The live pipeline keeps
+        // only the newest position per truck, so one live point jumping the queue
+        // makes every older replayed point stale on arrival. The record is already
+        // stored unsynced, so the replay's next pass publishes it in time order.
+        if (replaying && System.currentTimeMillis() < replayHoldUntil) {
+            Log.d(TAG, "[CHECK] live fix held — backlog replaying, publishes in time order")
+            return
+        }
 
         val ticketCode = prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: ""
 
@@ -776,6 +1023,7 @@ class LocationTrackingService : Service() {
                 put("client_id", record.optString("id"))
                 // Use battery stored at record time — accurate even for offline replays
                 put("battery_level", record.opt("battery_level") ?: JSONObject.NULL)
+                put("backfill", isBackfill(record.optString("recorded_at")))
             }
 
             val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
@@ -783,10 +1031,12 @@ class LocationTrackingService : Service() {
 
             client.publish(topic, message, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    prefs.edit().putLong(KEY_DIAG_LAST_PUBLISH_AT, System.currentTimeMillis()).apply()
                     Log.d(TAG, "MQTT published — lat: ${String.format("%.6f", record.optDouble("latitude"))}, speed: ${String.format("%.1f", record.optDouble("speed"))}")
                 }
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.w(TAG, "MQTT publish failed: ${exception?.message}")
+                    recordDiag(prefs, "mqtt_publish_failed", mapOf("error" to (exception?.message ?: "unknown")))
                 }
             })
         } catch (e: Exception) {
@@ -949,12 +1199,21 @@ class LocationTrackingService : Service() {
             fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
             Log.d(TAG, "Location updates started")
         } catch (e: SecurityException) {
-            Log.e(TAG, "Location permission not granted", e)
-            stopSelf()
+            // Do NOT stopSelf() — nothing restarts the service until the driver next
+            // opens the app, so a momentarily revoked permission killed tracking for
+            // the rest of the shift. Keep the service (and tracking_active) alive and
+            // retry, so it recovers on its own the moment permission comes back.
+            Log.e(TAG, "Location permission not granted — retrying in ${PERMISSION_RETRY_MS / 1000}s", e)
+            recordDiag(prefs, "permission_lost", mapOf("retry_in_ms" to PERMISSION_RETRY_MS))
+            permissionRetryHandler.removeCallbacksAndMessages(null)
+            permissionRetryHandler.postDelayed({ startLocationUpdates() }, PERMISSION_RETRY_MS)
         }
     }
 
     private fun saveLocation(location: Location) {
+        // Stamp liveness BEFORE any filter — distinguishes "FusedLocation stopped
+        // delivering" from "fixes arrived but every one was filtered out".
+        prefs.edit().putLong(KEY_DIAG_LAST_FIX_AT, System.currentTimeMillis()).apply()
 
         // Skip saving if JS is alive (foreground) — JS handles recording + JS MQTT, avoids duplicates
         val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
@@ -986,9 +1245,22 @@ class LocationTrackingService : Service() {
         val accuracyLimit = if (hasWarmedUp) STRICT_ACCURACY else INITIAL_ACCURACY
 
         if (location.hasAccuracy() && accuracy >= accuracyLimit) {
+            consecutiveAccuracyRejects++
             Log.d(TAG, "Skipping inaccurate fix: ${String.format("%.0f", accuracy)}m (limit: ${String.format("%.0f", accuracyLimit)}m)")
+            // The strict gate is a one-way ratchet without this: the service lives for
+            // days, so one good fix at the start of a shift permanently armed the 25m
+            // filter and a later stretch of 30-40m accuracy (parking structure, tunnel,
+            // dense downtown) dropped every fix with no recovery path. After a sustained
+            // run of rejections, re-open the gate to 50m so the truck reappears.
+            if (hasWarmedUp && consecutiveAccuracyRejects >= ACCURACY_REWARMUP_REJECTS) {
+                firstGoodFixTime = 0L
+                consecutiveAccuracyRejects = 0
+                Log.d(TAG, "GPS degraded for $ACCURACY_REWARMUP_REJECTS fixes — re-warming accuracy gate to ${String.format("%.0f", INITIAL_ACCURACY)}m")
+                recordDiag(prefs, "accuracy_gate_rewarmed", mapOf("accuracy_m" to accuracy))
+            }
             return
         }
+        consecutiveAccuracyRejects = 0
 
         // Track when GPS achieves good accuracy — triggers strict filtering
         if (location.hasAccuracy() && accuracy < STRICT_ACCURACY && firstGoodFixTime == 0L) {
@@ -1171,10 +1443,15 @@ class LocationTrackingService : Service() {
             put("is_speeding", isSpeeding)
             put("is_idle", isIdle)
             put("battery_level", if (battery >= 0) battery else JSONObject.NULL)
+            // Captured now, not read live at replay time — a backlog flushing after
+            // the driver moved to a new ticket would otherwise pair this record's
+            // ticket_id with whatever code is current. Mirrors GpsRecord.ticket_code.
+            put("ticket_code", prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: "")
         }
 
         pendingRecords.put(record)
         pendingCount++
+        prefs.edit().putLong(KEY_DIAG_LAST_SAVE_AT, System.currentTimeMillis()).apply()
 
         // Publish via native MQTT (works reliably in background)
         ensureMqttConnected()
@@ -1205,12 +1482,97 @@ class LocationTrackingService : Service() {
             override fun run() {
                 val jsAlive = prefs.getBoolean(KEY_JS_ALIVE, false)
                 if (!jsAlive) {
+                    // The MQTT token has a 1h TTL and JS refreshes it 5 minutes early —
+                    // but that is a JS timer, and it cannot fire while the app is
+                    // backgrounded or killed. Native owns the refresh whenever JS is
+                    // not alive, instead of waiting for the broker to reject us twice.
+                    refreshMqttTokenIfStale()
                     // Ensure MQTT stays connected in background
                     ensureMqttConnected()
+                    runWatchdog()
                 }
                 uploadHandler.postDelayed(this, UPLOAD_INTERVAL_MS)
             }
         }, UPLOAD_INTERVAL_MS)
+    }
+
+    // ─── Watchdog ────────────────────────────────────────────────────
+    // The dangerous kill-mode failures are silent: no crash, no exception, just
+    // an absence of records. Nothing can report what never happened, so poll for
+    // the absence itself and latch one event per episode (not per 30s tick).
+    private var warnedGpsStalled = false
+    private var warnedMqttDown = false
+    private var warnedBacklog = false
+    private val GPS_STALL_MS = 120_000L      // 4x the 10s idle interval + slack
+    private val MQTT_DOWN_MS = 300_000L      // 5 min of failing to publish
+    private val BACKLOG_ALERT = 500          // records stranded on disk
+
+    private fun runWatchdog() {
+        if (!prefs.getBoolean(KEY_ACTIVE, false)) return
+        val now = System.currentTimeMillis()
+
+        // 1. FusedLocation stopped delivering callbacks entirely.
+        val lastFix = prefs.getLong(KEY_DIAG_LAST_FIX_AT, 0L)
+        if (lastFix > 0L && now - lastFix > GPS_STALL_MS) {
+            if (!warnedGpsStalled) {
+                warnedGpsStalled = true
+                recordDiag(prefs, "gps_stalled", mapOf(
+                    "silent_for_ms" to (now - lastFix),
+                    "idle_mode" to isIdleMode,
+                ))
+            }
+        } else if (lastFix > 0L) {
+            warnedGpsStalled = false
+        }
+
+        // 2. Fixes are arriving and being saved, but nothing is reaching the broker.
+        val lastSave = prefs.getLong(KEY_DIAG_LAST_SAVE_AT, 0L)
+        val lastPublish = prefs.getLong(KEY_DIAG_LAST_PUBLISH_AT, 0L)
+        val mqttUp = mqttClient?.isConnected == true
+        if (!mqttUp && lastSave > 0L && now - lastPublish > MQTT_DOWN_MS) {
+            if (!warnedMqttDown) {
+                warnedMqttDown = true
+                recordDiag(prefs, "mqtt_down", mapOf(
+                    "no_publish_for_ms" to (now - lastPublish),
+                    "token_age_ms" to (now - prefs.getLong(KEY_MQTT_TOKEN_ISSUED_AT, 0L)),
+                    "has_credentials" to !(prefs.getString(KEY_MQTT_URL, "") ?: "").isEmpty(),
+                ))
+            }
+        } else if (mqttUp) {
+            warnedMqttDown = false
+        }
+
+        // 3. Records piling up unsent — the shape of the original bug report.
+        val stranded = synchronized(prefsLock) {
+            val records = getStoredRecords(this)
+            var n = 0
+            for (i in 0 until records.length()) {
+                if (!(records.optJSONObject(i)?.optBoolean("synced", false) ?: true)) n++
+            }
+            n
+        }
+        if (stranded >= BACKLOG_ALERT) {
+            if (!warnedBacklog) {
+                warnedBacklog = true
+                recordDiag(prefs, "backlog_growing", mapOf("unsynced" to stranded, "mqtt_connected" to mqttUp))
+            }
+        } else if (stranded == 0) {
+            warnedBacklog = false
+        }
+    }
+
+    /** Proactively refresh the MQTT token before its 1h TTL expires.
+     *  The clock starts when JS hands credentials down (setMqttCredentials) and is
+     *  re-stamped on every successful native refresh, so a long background stretch
+     *  never publishes with an expired token. */
+    private fun refreshMqttTokenIfStale() {
+        val issuedAt = prefs.getLong(KEY_MQTT_TOKEN_ISSUED_AT, 0L)
+        if (issuedAt <= 0L) return // No credentials yet — nothing to refresh
+        if (System.currentTimeMillis() - issuedAt < MQTT_TOKEN_REFRESH_AFTER_MS) return
+        // Stamp first so a slow or failing refresh cannot retry every 30 seconds.
+        prefs.edit().putLong(KEY_MQTT_TOKEN_ISSUED_AT, System.currentTimeMillis()).apply()
+        Log.d(TAG, "MQTT token nearing expiry — refreshing proactively")
+        refreshMqttTokenViaApi()
     }
 
 }

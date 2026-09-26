@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Platform,
   Linking,
-  useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
@@ -37,8 +36,6 @@ export default function DeliveredToMapScreen({navigation, route}: Props) {
   };
   const {delivery, address} = params;
   const insets = useSafeAreaInsets();
-  const {width, height} = useWindowDimensions();
-  const isTablet = Math.min(width, height) > 600;
   const [isSatellite, setIsSatellite] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(15);
   const cameraRef = useRef<MapboxGL.Camera>(null);

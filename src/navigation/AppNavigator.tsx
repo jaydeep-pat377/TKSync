@@ -32,7 +32,7 @@ export default function AppNavigator() {
     },
   }), [c.primaryDark]);
 
-  const navigationRef = useRef<any>();
+  const navigationRef = useRef<any>(undefined);
 
   // Share navigation ref with notification service for tap-to-navigate
   useEffect(() => {

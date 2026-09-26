@@ -15,7 +15,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useTheme} from '../contexts/ThemeContext';
-import {ms, wp} from '../utils/responsive';
+import {ms} from '../utils/responsive';
 import {notificationsApi} from '../services/api';
 import type {DriverNotification} from '../services/api';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';

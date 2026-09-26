@@ -252,6 +252,40 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
         promise.resolve(LocationTrackingService.isCurrentlyUploading)
     }
 
+    /** Drain the native diagnostic log. JS forwards these to Sentry — they are
+     *  recorded while JS is dead, so this is the only way they ever surface. */
+    /** True only if the service object is alive in this process. isTrackingActive()
+     *  reports the persisted flag, which stays true after an unexpected death. */
+    @ReactMethod
+    fun isServiceRunning(promise: Promise) {
+        try {
+            promise.resolve(LocationTrackingService.isServiceRunning())
+        } catch (e: Exception) {
+            promise.reject("CHECK_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun getDiagnostics(promise: Promise) {
+        try {
+            promise.resolve(LocationTrackingService.getDiagnostics(reactContext).toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "getDiagnostics failed", e)
+            promise.reject("DIAG_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun clearDiagnostics(promise: Promise) {
+        try {
+            LocationTrackingService.clearDiagnostics(reactContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "clearDiagnostics failed", e)
+            promise.reject("DIAG_ERROR", e.message, e)
+        }
+    }
+
     @ReactMethod
     fun requestBatteryOptimizationExemption(promise: Promise) {
         try {

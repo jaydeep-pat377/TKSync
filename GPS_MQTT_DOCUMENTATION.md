@@ -1,174 +1,223 @@
 # GPS + MQTT — Complete Documentation
 
+Last verified against the code on 2026-09-25. Every number below was read out of
+the source, not remembered — if you change a constant, change it here too.
+
 ## Overview
 
-GPS data is collected every **1 second** and published to MQTT in real-time. The system uses two mechanisms depending on app state:
+GPS is collected roughly every second and published to MQTT as it is captured.
+Which half of the app does the work depends on app state:
 
 - **Foreground**: JS `watchPosition` → JS MQTT (WebSocket)
-- **Background**: Native `FusedLocationProviderClient` → Native Paho MQTT (TCP/WebSocket)
-- **Killed**: Service stops. Records saved locally, published on next app open.
+- **Background**: Native `FusedLocationProviderClient` → Native Paho MQTT
+- **Killed**: the native service **keeps running** and keeps publishing
+
+That last line used to say "Service stops. Records saved locally, published on
+next app open." That was never what the code did — `stopWithTask="false"` and
+`onTaskRemoved()` deliberately keep the service alive through a swipe — and the
+belief cost a lot of debugging time. See **App killed** below for what is real,
+including the part that genuinely is unreliable.
 
 ---
 
 ## App States — What Works and What Doesn't
 
-### 1. FOREGROUND (App open and visible)
+### 1. FOREGROUND (app open and visible)
 
 | Item | Detail |
 |---|---|
 | **GPS works?** | YES |
 | **MQTT upload works?** | YES |
-| GPS Source | JS `Geolocation.watchPosition()` |
-| GPS Interval | **1 second** |
-| Distance Filter | 3m to trigger callback, 5m to save/publish |
-| MQTT Transport | JS `mqtt` npm package (WebSocket) |
+| GPS source | JS `Geolocation.watchPosition()` |
+| GPS interval | 1 second |
+| Distance filter | 3 m to trigger the callback, then the save filter below |
+| MQTT transport | `mqtt` npm package (WebSocket) |
 | MQTT QoS | 1 (at least once) |
-| Upload Delay | **0 seconds — real-time** |
-| Native Service | Running but idle (`jsAlive=true`, native skips saving) |
+| Upload delay | Real-time |
+| Native service | Running but idle (`jsAlive=true`, native skips saving) |
 
----
-
-### 2. BACKGROUND (App minimized / screen off)
+### 2. BACKGROUND (app minimized / screen off)
 
 | Item | Detail |
 |---|---|
 | **GPS works?** | YES |
 | **MQTT upload works?** | YES |
-| GPS Source | Native `FusedLocationProviderClient` (foreground service) |
-| GPS Interval | **1 second** (normal) / **30 seconds** (idle mode) |
-| Distance Filter | 5m minimum (scales with poor accuracy) |
-| MQTT Transport | Native Eclipse Paho MQTT (Java TCP/WebSocket) |
-| MQTT QoS | 1 (at least once) |
-| Upload Delay | **0 seconds — real-time** |
-| JS Bridge | Also emits to JS as fallback (server deduplicates by `client_id`) |
+| GPS source | Native `FusedLocationProviderClient` (foreground service) |
+| GPS interval | 1 second normally, 10 seconds in idle mode |
+| MQTT transport | Eclipse Paho (Java, TCP/TLS/WebSocket) |
+| MQTT QoS | 1 |
+| Upload delay | Real-time |
+| JS bridge | Also emits to JS as a fallback; the server dedupes on `client_id` |
 
-**When does idle mode activate?**
-- 3 consecutive GPS fixes with speed < 1.0 m/s (3.6 km/h)
-- GPS interval changes from 1 second → 30 seconds to save battery
-- Resumes 1-second interval when movement detected (speed ≥ 1.0 m/s or moved > 50m)
+**Idle mode** activates after `IDLE_CONSECUTIVE_THRESHOLD = 2` consecutive fixes
+below `IDLE_SPEED_THRESHOLD = 0.5 m/s` (1.8 km/h). It resumes full rate on
+movement or once the truck is `IDLE_DISTANCE_THRESHOLD = 50 m` from where it
+stopped.
 
----
-
-### 3. APP KILLED (Swiped away from recent apps)
+### 3. APP KILLED (swiped away from recents)
 
 | Item | Detail |
 |---|---|
-| **GPS works?** | NO |
-| **MQTT upload works?** | NO |
-| What happens | Service flushes pending records to local storage, disconnects MQTT, stops |
-| Data loss | **None** — all pending records saved to SharedPreferences before stopping |
-| Recovery | On next app open, saved records are imported and published via MQTT |
+| **GPS works?** | YES — usually. See the caveat. |
+| **MQTT upload works?** | YES |
+| What happens | `onTaskRemoved()` keeps the service alive; it does NOT call `stopSelf()` and does NOT clear `KEY_ACTIVE` |
+| Manifest | `android:stopWithTask="false"`, `foregroundServiceType="location"` |
+| `onStartCommand` | Returns `START_STICKY` |
+| Data loss | None in the normal case — records go to SharedPreferences and publish as they are captured |
 
----
+**The caveat, measured on a real device.** Two runs of the same `am crash` gave
+opposite outcomes:
+
+- 17:26:17 — `Scheduling restart ... for start-requested`, recording again in
+  100 ms, then `MQTT replayed 3/3 offline records`.
+- 17:18:43 — no restart line at all. GPS silently dead while
+  `tracking_active` stayed `true`.
+
+`START_STICKY` does not reliably restore a foreground service after the process
+itself is killed (OEM task killers, memory pressure). The app cannot currently
+recover on its own: `isActive()` returns the persisted flag rather than
+liveness, so a "restart if the service died" check always passes. That is what
+`detectBackgroundServiceDeath()` in `src/services/gpsDiagnostics.ts` reports to
+Sentry. An AlarmManager/WorkManager watchdog is the real fix and is not built.
 
 ### 4. APP KILLED → REOPENED
 
 | Item | Detail |
 |---|---|
-| **GPS works?** | YES (after tracking starts) |
+| **GPS works?** | YES |
 | **MQTT upload works?** | YES |
-| What happens | `importNativeRecords()` loads saved records → `publishBackgroundRecords()` publishes them |
-| Upload Delay | **Immediate catch-up** of all saved records, then real-time |
+| What happens | `importNativeRecords()` loads anything the native side saved but could not publish, then `publishBackgroundRecords()` flushes it |
+| Upload delay | Immediate catch-up, then real-time |
 
 ---
 
-## Transitions
+## Offline and catch-up
 
-### Foreground → Background
+While there is no network the phone keeps recording into local storage and
+publishes nothing. On reconnect the backlog flushes.
 
-| Step | Time | What happens |
-|---|---|---|
-| 1 | 0 ms | JS `watchPosition` stops |
-| 2 | 0 ms | `setJsAlive(false)` — native takes over GPS |
-| 3 | 0-1 sec | Native gets first GPS fix |
-| 4 | 0-1 sec | Native Paho MQTT publishes |
-| **GPS gap** | **0-1 second** | |
-| **MQTT gap** | **0-1 second** | |
+**Replay is not gated on `reconnect`.** `MqttCallbackExtended.connectComplete`
+receives `reconnect=false` every time `ensureMqttConnected()` builds a fresh
+client, which it does every 30 s while JS is dead. Replay used to sit behind
+`if (reconnect)`, so a killed app collected GPS for the whole shift and never
+sent a single point. Do not put that condition back.
 
-### Background → Foreground
+**The backlog goes out oldest first, ahead of any live point.** `gps-consumer`
+keeps ONE position per truck in Redis and drops anything older than what it
+already holds. If a fresh live point is published first, every older backlog
+point is rejected for the live map and the dispatch map draws only the jump.
+So both sides sort the backlog by `recorded_at` before publishing, and hold new
+live fixes back until it has drained — the held record is already in local
+storage, so it is a delay, not a drop. Timescale stores the points either way;
+this only affects the live view.
 
-| Step | Time | What happens |
-|---|---|---|
-| 1 | 0 ms | `setJsAlive(true)` — native stops saving |
-| 2 | 0 ms | JS `watchPosition` resumes |
-| 3 | 0-1 sec | JS gets first GPS fix |
-| 4 | 0-1 sec | JS MQTT publishes |
-| 5 | Async | Imports native records from background, publishes any unsynced |
-| **GPS gap** | **0-1 second** | |
-| **MQTT gap** | **0-1 second** | |
+| Side | Where |
+|---|---|
+| JS | `publishBackgroundRecords()` sorts; `deferLivePublish()` holds |
+| Native | `replayOfflineRecords()` sorts; `publishToMqtt()` returns while `replaying` |
+
+Native replays in up to `MAX_REPLAY_PASSES` passes, so fixes recorded while the
+backlog drains are swept up by the next pass instead of waiting for the next
+reconnect. JS does the same via the `publishQueued` re-run.
+
+**Backfilled points are flagged.** Any record whose `recorded_at` is more than
+60 s old when it reaches the broker is published with `backfill: true`. The
+server writes it into route history as normal but skips the "current position"
+update, so the live marker does not walk backwards through the backlog while it
+drains. The rule lives in exactly two places and they must agree:
+
+| Side | Where |
+|---|---|
+| JS | `mqttService.publish()` — `BACKFILL_AFTER_MS` |
+| Native | `LocationTrackingService.isBackfill()` — `BACKFILL_AFTER_MS` |
+
+**Presence.** On losing connectivity the app publishes
+`{status: "offline", since}` and on reconnect, just before the flush,
+`{status: "online", backfill_count, backfill_from, backfill_to}` — so the
+dashboard knows the gap's boundaries and how much is about to arrive instead of
+inferring an outage from silence. Topic is the GPS topic with `/gps` replaced by
+`/presence`. Best-effort: it never blocks or delays GPS publishing, and the
+offline message often does not make it out because the socket is already gone.
 
 ---
 
-## Complete Timing Table
+## GPS Filters (applied before MQTT upload)
 
-| State | GPS Active? | GPS Interval | MQTT Upload? | Upload Delay | Notes |
-|---|---|---|---|---|---|
-| Foreground — moving | YES | 1 sec | YES | Real-time | JS watchPosition → JS MQTT |
-| Foreground — stationary | YES | 1 sec | NO | — | Drift blocked, one stop position saved |
-| Background — moving | YES | 1 sec | YES | Real-time | Native GPS → Native MQTT |
-| Background — idle | YES | 30 sec | YES | Real-time | Battery saver after 3 idle fixes |
-| Background — stationary | YES | 30 sec | NO | — | Drift blocked |
-| Foreground ↔ Background | — | — | — | 0-1 sec gap | Transition handoff |
-| App killed | NO | — | NO | — | Records saved locally |
-| App killed → reopened | YES | 1 sec | YES | Immediate catch-up | Saved records published first |
-
----
-
-## GPS Filters (Applied Before MQTT Upload)
-
-These filters run in both foreground (JS) and background (native):
+These run in both foreground (JS) and background (native) and are kept in sync
+by hand.
 
 | Filter | Condition | Result |
 |---|---|---|
-| Accuracy | > 100m | **Skipped** — GPS fix too inaccurate |
-| Invalid coords | (0,0), NaN, out-of-range | **Skipped** — prevents Null Island / corrupt fixes |
-| Teleportation | Implied speed > 80 m/s (288 km/h) | **Skipped** — prevents GPS jumps / multipath errors |
-| Distance | < 5m from last save | **Skipped** — hasn't moved enough |
-| Stationary drift | Speed < 1.0 m/s after first stop | **Blocked** — prevents fake movement while parked |
-| Speed spike | < 3 consecutive moving fixes after stationary | **Blocked** — prevents single GPS spike |
-| Mock GPS | Emulator/mocked position (dev only) | **Skipped** |
+| Mock GPS | Emulator/mocked position (`__DEV__` only, JS side) | Skipped |
+| Accuracy | Worse than the current gate — see below | Skipped |
+| Invalid coords | (0,0), NaN, out of range | Skipped |
+| Teleportation | Implied speed > 80 m/s (288 km/h) over a gap under 60 s | Skipped |
+| Stationary drift | Speed < 0.5 m/s after the first stop | Blocked |
+| Movement confirm | Fewer than 2 consecutive moving fixes | Blocked |
+| Distance | Less than the minimum below from the last saved point | Skipped |
 
-**Result**: MQTT only receives GPS data when the truck is **actually moving** and the fix is **accurate**.
+**The accuracy gate is a ratchet, not a fixed 100 m.**
+
+| Phase | Limit |
+|---|---|
+| First 30 s after the first good fix (`WARMUP_MS`) | 50 m (`INITIAL_ACCURACY`) |
+| After warm-up | 25 m (`STRICT_ACCURACY`) |
+
+Once it tightens to 25 m it used to stay there for the life of the service, so a
+truck in a tunnel, a parking structure or downtown had every fix dropped with no
+way back. After `ACCURACY_REWARMUP_REJECTS = 10` consecutive rejections the gate
+re-opens to 50 m (`firstGoodFixTime` is reset) and logs
+`accuracy_gate_rewarmed`.
+
+**Minimum distance to save** is 5 m normally. When accuracy is worse than 15 m it
+scales to `max(10 m, accuracy × 0.75)` so a poor fix cannot fake movement. The
+first stop record is exempt — where the truck stopped matters even if it is
+under 5 m from the last driving point.
 
 ---
 
 ## MQTT Connection Details
 
-### JS MQTT (Foreground)
+### JS MQTT (foreground)
 
 | Setting | Value |
 |---|---|
 | Library | `mqtt` npm package |
-| Transport | WebSocket (`ws://` or `wss://`) |
-| Auto-reconnect | Every **5 seconds** |
-| Connect timeout | **10 seconds** |
-| Keepalive | **60 seconds** |
-| Token refresh | **5 minutes before expiry** |
+| Transport | WebSocket (`ws://` / `wss://`) |
+| Auto-reconnect | Every 5 s |
+| Connect timeout | 10 s |
+| Keepalive | 60 s |
+| Token refresh | 5 minutes before expiry |
 
-### Native Paho MQTT (Background)
+### Native Paho MQTT (background)
 
 | Setting | Value |
 |---|---|
-| Library | Eclipse Paho `org.eclipse.paho.client.mqttv3:1.2.5` |
-| Transport | TCP, TLS, or WebSocket (auto-detected from URL) |
-| Auto-reconnect | Built-in (`isAutomaticReconnect = true`) |
-| Manual reconnect | Every **30 seconds** cooldown |
-| Connect timeout | **10 seconds** |
-| Keepalive | **60 seconds** |
+| Library | `org.eclipse.paho.client.mqttv3:1.2.5` |
+| Transport | TCP, TLS or WebSocket (from the URL) |
+| Auto-reconnect | `isAutomaticReconnect = true` |
+| Manual reconnect | 30 s cooldown (`MQTT_RECONNECT_COOLDOWN_MS`) |
+| Connect timeout | 10 s |
+| Keepalive | 60 s |
+| Replay batch | 20 records, then a pause (`REPLAY_BATCH_SIZE`) |
+| Token refresh | Proactive at 55 min (`MQTT_TOKEN_REFRESH_AFTER_MS`) |
 
-### Credential Sync
+The MQTT token lives one hour. The native side refreshes it at 55 minutes
+without needing JS, which is what lets a killed app stay connected across a long
+shift. Verified live at 19:02:36–19:02:42: proactive refresh → 401 → access
+token refresh → MQTT token refresh → reconnect, entirely native, app killed.
 
-1. JS fetches MQTT token from API
-2. JS connects to MQTT broker
+### Credential sync
+
+1. JS fetches the MQTT token from the API
+2. JS connects to the broker
 3. JS syncs credentials to native via `setMqttCredentials()`
-4. Native connects to same broker
-5. Token refresh → JS reconnects → syncs new credentials to native → native reconnects
+4. Native connects to the same broker
+5. On refresh: JS reconnects → syncs the new credentials → native reconnects
 
 ---
 
 ## MQTT Payload
-
-Every GPS upload (foreground and background) sends:
 
 ```json
 {
@@ -180,11 +229,37 @@ Every GPS upload (foreground and background) sends:
   "recorded_at": "2026-08-07T12:30:00.000Z",
   "ticket_id": 12345,
   "ticket_code": "TC-001",
-  "client_id": "native_1723034400000_a1b2c3d4"
+  "client_id": "native_1723034400000_a1b2c3d4",
+  "battery_level": 47,
+  "backfill": false
 }
 ```
 
-`client_id` is unique per record — server uses it for deduplication.
+`client_id` is unique per record and is what the server dedupes on.
+`battery_level` is the level **at capture time**, not at publish time, so it
+stays accurate through a replay. `backfill` is described above.
+
+> `ticket_id` must be a number. `/tracking/me` returns `current_load.id` as a
+> string, which broke both the native bridge and the numeric MMKV cache and left
+> GPS points attached to no ticket. `toTicketId()` in `gpsSyncManager.ts` is the
+> single coercion point — use it.
+
+---
+
+## Diagnostics
+
+The native service keeps a ring buffer of up to `MAX_DIAG_EVENTS = 100` events
+in SharedPreferences (`recordDiag()`), which JS drains to Sentry on resume and
+on AppState `active`. None of this is visible in logcat once the app is killed,
+which is the whole point.
+
+A watchdog latches one alert per episode:
+
+| Alert | Trigger |
+|---|---|
+| `gps_stalled` | No fix for 120 s (`GPS_STALL_MS`) |
+| `mqtt_down` | Saving but not publishing for 5 min (`MQTT_DOWN_MS`) |
+| `backlog_growing` | 500 records stranded on disk (`BACKLOG_ALERT`) |
 
 ---
 
@@ -193,21 +268,9 @@ Every GPS upload (foreground and background) sends:
 | Event | Time |
 |---|---|
 | No movement (truck parked) | Timer starts |
-| Warning notification | **1 hour 50 minutes** |
-| Auto-logout | **2 hours** |
-| Timer reset | Any GPS record saved (truck moved > 5m) |
-
----
-
-## Stationary Drift Prevention
-
-| Rule | Detail |
-|---|---|
-| Speed threshold | < 1.0 m/s (3.6 km/h) = stationary |
-| First stop | Saves ONE position (where truck stopped) |
-| All subsequent drift | **BLOCKED** until confirmed movement |
-| Confirmed movement | 3 consecutive fixes with speed ≥ 1.0 m/s |
-| Applies in | Both foreground (JS) and background (native) |
+| Warning notification | 1 h 50 min |
+| Auto-logout | 2 h |
+| Timer reset | Any GPS record saved |
 
 ---
 
@@ -215,13 +278,15 @@ Every GPS upload (foreground and background) sends:
 
 | Component | File |
 |---|---|
-| JS GPS Tracker | `src/services/backgroundGpsTracker.ts` |
-| JS MQTT Service | `src/services/mqttService.ts` |
-| JS GPS Sync Manager | `src/services/gpsSyncManager.ts` |
-| Native GPS + MQTT Service | `android/.../LocationTrackingService.kt` |
-| Native Module Bridge | `android/.../LocationTrackingModule.kt` |
-| Foreground Service | `src/services/trackingForegroundService.ts` |
-| GPS Local Storage | `src/services/gpsStorage.ts` |
+| JS GPS tracker | `src/services/backgroundGpsTracker.ts` |
+| JS MQTT service | `src/services/mqttService.ts` |
+| JS GPS sync manager | `src/services/gpsSyncManager.ts` |
+| GPS diagnostics → Sentry | `src/services/gpsDiagnostics.ts` |
+| Native GPS + MQTT service | `android/.../location/LocationTrackingService.kt` |
+| Native module bridge | `android/.../location/LocationTrackingModule.kt` |
+| Foreground service control | `src/services/trackingForegroundService.ts` |
+| GPS local storage | `src/services/gpsStorage.ts` |
+| Location permission level | `src/services/locationPermission.ts` |
 
 ---
 
@@ -229,11 +294,11 @@ Every GPS upload (foreground and background) sends:
 
 | Question | Answer |
 |---|---|
-| Does GPS work in foreground? | **YES** — every 1 second |
-| Does GPS work in background? | **YES** — every 1 second (30 sec when idle) |
-| Does GPS work when killed? | **NO** — saved locally, published on reopen |
-| Does MQTT upload in foreground? | **YES** — real-time, 0 delay |
-| Does MQTT upload in background? | **YES** — real-time, 0 delay |
-| Does MQTT upload when killed? | **NO** — catch-up on reopen |
-| Max transition gap? | **0-1 second** |
-| Data loss possible? | **NO** — always saved locally as backup |
+| Does GPS work in the foreground? | Yes — about every second |
+| Does GPS work in the background? | Yes — every second, 10 s when idle |
+| Does GPS work when killed? | Yes, and it publishes — but the service does not always survive a process kill |
+| Does MQTT upload in the foreground? | Yes, real-time |
+| Does MQTT upload in the background? | Yes, real-time |
+| Does MQTT upload when killed? | Yes — replay is no longer gated on `reconnect` |
+| Max transition gap? | 0–1 second |
+| Data loss possible? | Yes, in one case: the process is killed and `START_STICKY` does not bring the service back. Sentry reports it; nothing restarts it. |

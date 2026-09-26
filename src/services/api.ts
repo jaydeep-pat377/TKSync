@@ -81,14 +81,23 @@ async function request<T = any>(
     throw new ApiError(offlineMsg, 'OFFLINE');
   }
 
-  try {
-    console.log(`[API Request] ${method} ${url}`, options.body
-      ? JSON.parse(options.body as string)
-      : '(no body)');
-  } catch {
-    console.log(`[API Request] ${method} ${url}`, '(body not JSON)');
+  // Bodies and tokens only in debug. logCapture mirrors every console line into
+  // an on-device ring buffer, and on some OEMs (observed: Motorola's
+  // MotoDesktopLog) that buffer is copied into a system process outside the app
+  // sandbox — which put driver access_token, refresh_token and fcm_token in a
+  // log we do not control. Keep the request line for field triage, drop the payload.
+  if (__DEV__) {
+    try {
+      console.log(`[API Request] ${method} ${url}`, options.body
+        ? JSON.parse(options.body as string)
+        : '(no body)');
+    } catch {
+      console.log(`[API Request] ${method} ${url}`, '(body not JSON)');
+    }
+    console.log(`[API Token] ${accessToken ? `Bearer ...${accessToken.slice(-8)}` : 'NO TOKEN'}`);
+  } else {
+    console.log(`[API Request] ${method} ${url}`);
   }
-  console.log(`[API Token] ${accessToken ? `Bearer ...${accessToken.slice(-8)}` : 'NO TOKEN'}`);
 
   let res: Response;
   const controller = new AbortController();
@@ -128,14 +137,19 @@ async function request<T = any>(
     throw new ApiError(msg, 'PARSE_ERROR');
   }
 
-  console.log(`[API Response] ${method} ${url}`, {
-    status: res.status,
-    success: json.success,
-    data: json.data,
-    ...(json.error_code ? {error_code: json.error_code} : {}),
-    ...(json.message ? {message: json.message} : {}),
-    ...(json.errors ? {errors: json.errors} : {}),
-  });
+  if (__DEV__) {
+    console.log(`[API Response] ${method} ${url}`, {
+      status: res.status,
+      success: json.success,
+      data: json.data,
+      ...(json.error_code ? {error_code: json.error_code} : {}),
+      ...(json.message ? {message: json.message} : {}),
+      ...(json.errors ? {errors: json.errors} : {}),
+    });
+  } else {
+    // Status and outcome only — response bodies carry tokens and ticket payloads.
+    console.log(`[API Response] ${method} ${url} — ${res.status} ${json.success ? 'ok' : 'failed'}`);
+  }
 
   addBreadcrumb(`${method} ${endpoint}`, 'api', {status: res.status, success: json.success});
 
@@ -380,6 +394,8 @@ export type ProgressStep = {
 };
 
 export type TicketDetail = {
+  /** Zone/ticket speed limit, when the API supplies one. */
+  speed_limit_kmh?: number | null;
   ticket: {
     id: number;
     ticket_id: number;
@@ -421,6 +437,7 @@ export type TicketDetail = {
   };
   mix: {
     mix_code: string | null;
+    load_size: string | null;
     usage: string | null;
     slump: string | null;
     quantity: string | null;
@@ -866,7 +883,9 @@ export type MqttTokenResponse = {
 
 export const trackingApi = {
   getMe: () =>
-    request<{truck: any; current_load: {id: number; ticket_id: number; ticket_code: string} | null; eta: any}>(ENDPOINTS.TRACKING_ME),
+    // id/ticket_id come back as strings from the API despite looking numeric —
+    // typing them honestly forces callers through toTicketId(). See gpsSyncManager.
+    request<{truck: any; current_load: {id: number | string; ticket_id: number | string; ticket_code: string} | null; eta: any}>(ENDPOINTS.TRACKING_ME),
   getGpsHistory: (date: string) =>
     request<{truck_code: string; date: string; count: number; points: {latitude: number; longitude: number; speed: number | null; heading: number | null; altitude: number | null; accuracy: number | null; recorded_at: string}[]}>(ENDPOINTS.TRACKING_GPS_HISTORY(date)),
   getMqttToken: () =>

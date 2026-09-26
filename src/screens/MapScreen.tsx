@@ -70,7 +70,7 @@ export default function MapScreen({navigation, route}: Props) {
     address?: string;
     plantName?: string;
   };
-  const {mapItems, delivery, plant, truck, address, plantName} = params;
+  const {mapItems, delivery, plant, truck, address} = params;
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
   const isLandscape = width > height;
@@ -220,7 +220,6 @@ export default function MapScreen({navigation, route}: Props) {
           const displayValue = item.type === 'Job Site'
             ? [item.address, item.mapPage ? `MapPage: ${item.mapPage}` : ''].filter(Boolean).join('\n')
             : item.type === 'My Truck' ? (item.value || '') : (item.value || item.status);
-          const isSelected = selectedMarker === idx;
           return (
             <MapboxGL.PointAnnotation
               key={`marker-${item.type}-${idx}`}

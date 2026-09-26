@@ -4,7 +4,6 @@ import {gpsApi, trackingApi, heartbeatApi} from './api';
 import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
 import {storage} from './storage';
 import {createMMKV} from 'react-native-mmkv';
-import Config from 'react-native-config';
 import {mqttService} from './mqttService';
 import {IDLE_AUTO_LOGOUT_EVENT} from './backgroundGpsTracker';
 import {captureError} from './sentry';
@@ -13,7 +12,6 @@ const {LocationTrackingModule} = NativeModules;
 
 const BASE_SYNC_INTERVAL_MS = 30_000; // 30 seconds
 let currentSyncInterval = BASE_SYNC_INTERVAL_MS;
-let consecutiveFailures = 0;
 const gpsCache = createMMKV({id: 'tksync-gps'});
 const CACHED_TICKET_KEY = 'last_ticket_id';
 
@@ -23,6 +21,28 @@ let isSyncing = false;
 let currentTicketId: number | null = null;
 let currentTicketCode: string | null = null;
 let onTicketInactive: (() => void) | null = null;
+let inactiveTicketCount = 0;
+const INACTIVE_TICKET_CONFIRMATIONS = 2; // ~60s of agreement before auto-stopping
+
+/**
+ * Coerce a ticket id from the API into a real number.
+ *
+ * /tracking/me types current_load.id as a number but returns a string
+ * ("901037"), and TypeScript believed the annotation so nothing caught it.
+ * The uncoerced value does two kinds of damage:
+ *   - LocationTrackingModule.updateTicketId(string) throws in the native
+ *     bridge, so the service never learns the new ticket id.
+ *   - setCachedTicketId() stores a string in MMKV, and getCachedTicketId()
+ *     reads it back with getNumber() — which returns undefined for a
+ *     string-typed key. The offline cache therefore NEVER hits, so every
+ *     offline start falls through to startWithoutTicket() and records are
+ *     saved with ticket_id: null.
+ */
+export function toTicketId(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 function getCachedTicketId(): number | null {
   const val = gpsCache.getNumber(CACHED_TICKET_KEY);
@@ -48,7 +68,7 @@ async function resolveTicketId(): Promise<number | null> {
   }
   try {
     const res = await trackingApi.getMe();
-    const id = res.data?.current_load?.id ?? null;
+    const id = toTicketId(res.data?.current_load?.id);
     currentTicketCode = res.data?.current_load?.ticket_code ?? null;
     // Sync ticket code to native MQTT so background publishes include it
     mqttService.setTicketCode(currentTicketCode);
@@ -63,15 +83,27 @@ async function resolveTicketId(): Promise<number | null> {
   }
 }
 
-/** Check if ticket is still active — called every 5 minutes (not every 30s). */
+/** Check if ticket is still active — called from syncGpsRecords(), so every 30s. */
 async function refreshTicket(): Promise<void> {
   const newTicketId = await resolveTicketId();
   if (newTicketId === null && currentTicketId !== null) {
+    // Require consecutive confirmations before tearing tracking down. This runs
+    // every 30s and fires on the first tick after connectivity returns, so a
+    // single 200-with-no-current_load — a backend hiccup, or a race against the
+    // dispatcher assigning the next load — used to end the driver's shift with
+    // nothing to restart it.
+    inactiveTicketCount++;
+    if (inactiveTicketCount < INACTIVE_TICKET_CONFIRMATIONS) {
+      console.log(`[GpsSyncManager] Ticket ${currentTicketId} reported inactive (${inactiveTicketCount}/${INACTIVE_TICKET_CONFIRMATIONS}) — waiting for confirmation`);
+      return;
+    }
     console.log(`[GpsSyncManager] Ticket ${currentTicketId} is no longer active — auto-stopping`);
+    inactiveTicketCount = 0;
     setCachedTicketId(null);
     onTicketInactive?.();
     return;
   }
+  inactiveTicketCount = 0;
   if (newTicketId !== null && newTicketId !== currentTicketId) {
     console.log(`[GpsSyncManager] Ticket changed: ${currentTicketId} → ${newTicketId}`);
     currentTicketId = newTicketId;
@@ -80,8 +112,6 @@ async function refreshTicket(): Promise<void> {
     }
   }
 }
-
-const BATCH_SIZE = 100;
 
 const IDLE_LOGOUT_MS = 2 * 60 * 60 * 1000; // 2 hours — must match backgroundGpsTracker
 const IDLE_STORAGE_KEY = 'last_movement_time';
@@ -134,12 +164,6 @@ async function syncGpsRecords(): Promise<void> {
   }
 }
 
-function resetSyncInterval(): void {
-  if (!syncInterval) return; // Stopped — don't recreate
-  clearInterval(syncInterval);
-  syncInterval = setInterval(syncGpsRecords, currentSyncInterval);
-}
-
 export const gpsSyncManager = {
   /**
    * Start periodic GPS sync (call when tracking begins).
@@ -149,17 +173,17 @@ export const gpsSyncManager = {
   async start(fallbackTicketId?: number | null): Promise<boolean> {
     if (syncInterval) return true;
     currentTicketId = await resolveTicketId();
-    if (currentTicketId === null && fallbackTicketId) {
-      console.log(`[GpsSyncManager] API returned no current_load — using fallback ticket_id: ${fallbackTicketId}`);
-      currentTicketId = fallbackTicketId;
-      setCachedTicketId(fallbackTicketId);
+    const fallback = toTicketId(fallbackTicketId);
+    if (currentTicketId === null && fallback !== null) {
+      console.log(`[GpsSyncManager] API returned no current_load — using fallback ticket_id: ${fallback}`);
+      currentTicketId = fallback;
+      setCachedTicketId(fallback);
     }
     if (currentTicketId === null) {
       console.warn('[GpsSyncManager] No in-process ticket — blocking tracking');
       return false;
     }
     console.log(`[GpsSyncManager] Started — ticket_id: ${currentTicketId}`);
-    consecutiveFailures = 0;
     currentSyncInterval = BASE_SYNC_INTERVAL_MS;
     syncInterval = setInterval(syncGpsRecords, currentSyncInterval);
     unsubConnectivity = onConnectivityRestored(() => syncGpsRecords());
@@ -172,7 +196,6 @@ export const gpsSyncManager = {
     if (syncInterval) return;
     currentTicketId = null;
     console.log('[GpsSyncManager] Started without ticket — GPS records will have no ticket_id');
-    consecutiveFailures = 0;
     currentSyncInterval = BASE_SYNC_INTERVAL_MS;
     syncInterval = setInterval(syncGpsRecords, currentSyncInterval);
     unsubConnectivity = onConnectivityRestored(() => syncGpsRecords());
@@ -189,6 +212,7 @@ export const gpsSyncManager = {
     syncGpsRecords();
     currentTicketId = null;
     onTicketInactive = null;
+    inactiveTicketCount = 0;
     console.log('[GpsSyncManager] Stopped');
   },
 

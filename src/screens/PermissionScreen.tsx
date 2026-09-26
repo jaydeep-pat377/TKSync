@@ -25,6 +25,7 @@ import messaging from '@react-native-firebase/messaging';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms, wp} from '../utils/responsive';
 import {storage} from '../services/storage';
+import {getLocationPermissionLevel} from '../services/locationPermission';
 
 const ONBOARDING_KEY = 'permissions_onboarding_done';
 
@@ -175,8 +176,16 @@ export default function PermissionScreen({navigation}: Props) {
 
   const requestLocation = async () => {
     if (Platform.OS === 'ios') {
+      // 'whenInUse' is NOT a value this returns — AuthorizationResult is only
+      // disabled | granted | denied | restricted, and LocationUtils.swift maps
+      // both .authorizedAlways and .authorizedWhenInUse to 'granted'. Read the
+      // real CLAuthorizationStatus to tell the two apart.
       const status = await Geolocation.requestAuthorization('always');
-      if (status === 'granted' || status === 'restricted' || status === 'whenInUse') { goToNextStep(); return; }
+      if (status === 'granted' || status === 'restricted') {
+        const level = await getLocationPermissionLevel();
+        if (level === 'foregroundOnly') { showBgLocationAlert(); return; }
+        goToNextStep(); return;
+      }
       setShowSettings(true); return;
     }
 

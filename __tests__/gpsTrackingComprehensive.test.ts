@@ -1,3 +1,7 @@
+// Module scope: these simulation files declare top-level helpers with the same
+// names as each other. Without this they share the global scope and collide.
+export {};
+
 /**
  * Comprehensive GPS Tracking Test Suite
  *
@@ -456,15 +460,6 @@ function stationaryFixes(count: number, driftMeters: number, accuracy = 12): Sim
     longitude: BASE_LNG + ((i % 2 === 0 ? 1 : -1) * driftMeters * 0.000009),
     speed: 0,
     accuracy: accuracy + (i % 4) * 2,
-  }));
-}
-
-function stationaryWithSpikes(count: number, drift: number, every: number, spikeSpeed = 2.0): SimFix[] {
-  return Array.from({ length: count }, (_, i) => ({
-    latitude: BASE_LAT + (i * 3 * 0.000009),
-    longitude: BASE_LNG + ((i % 2 === 0 ? 1 : -1) * drift * 0.000009),
-    speed: (i > 0 && i % every === 0) ? spikeSpeed : 0,
-    accuracy: (i > 0 && i % every === 0) ? 25 : 12,
   }));
 }
 

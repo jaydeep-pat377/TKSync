@@ -1,3 +1,7 @@
+// Module scope: these simulation files declare top-level helpers with the same
+// names as each other. Without this they share the global scope and collide.
+export {};
+
 /**
  * GPS Stationary Tests — Foreground & Background States
  *
@@ -580,7 +584,6 @@ describe('GPS Stationary — Real-World Scenarios', () => {
     ]);
 
     const stoppedRecords = result.saved.filter(r => r.speed === 0);
-    const slowRecords = result.saved.filter(r => r.speed > 0 && r.speed < IDLE_SPEED_THRESHOLD);
     const movingRecords = result.saved.filter(r => r.speed >= IDLE_SPEED_THRESHOLD);
 
     // 10 driving + 1 slowing + 1 stop + 1 stopped-at (stationary) + departure fixes + 5 driving

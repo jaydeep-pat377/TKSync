@@ -15,6 +15,7 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           add(com.tksync.location.LocationTrackingPackage())
+          add(com.tksync.pip.PipPackage())
         },
     )
   }

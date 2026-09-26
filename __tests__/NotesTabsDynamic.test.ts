@@ -1,3 +1,7 @@
+// Module scope: these simulation files declare top-level helpers with the same
+// names as each other. Without this they share the global scope and collide.
+export {};
+
 /**
  * Notes Tabs Dynamic Field Definitions Tests
  *
@@ -109,8 +113,8 @@ describe('Field Definitions Structure', () => {
   });
 
   test('each field has required properties', () => {
-    for (const [tab, fields] of Object.entries(MOCK_FIELD_DEFINITIONS)) {
-      for (const [key, def] of Object.entries(fields)) {
+    for (const [, fields] of Object.entries(MOCK_FIELD_DEFINITIONS)) {
+      for (const [, def] of Object.entries(fields)) {
         expect(def).toHaveProperty('field_type');
         expect(def).toHaveProperty('value_type');
         expect(def).toHaveProperty('title');

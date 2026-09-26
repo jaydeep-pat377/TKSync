@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release posture: HTTPS only, system CAs only.
+
+  The API is https://tksync.dev-build.in/api, so nothing here needs cleartext.
+  Trusting user-installed CAs is what makes a phone trivially interceptable with
+  a proxy — a driver's bearer token and every GPS point would be readable by
+  anyone who got a cert onto the device.
+
+  Local development against http://192.168.1.20:3000 is handled by the debug
+  source set, which overrides this file and the manifest flag. See
+  android/app/src/debug/.
+-->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
 </network-security-config>

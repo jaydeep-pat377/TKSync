@@ -120,7 +120,6 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
   const etaTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Broadcasting
-  const [isBroadcasting, setIsBroadcasting] = useState(false);
 
 
   // Tracking
@@ -154,6 +153,11 @@ export default function VehicleTrackingScreen({navigation, route}: Props) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }, []);
 
+  // Defined but never called: this screen's manual start/stop controls were
+  // removed, and tracking is driven from the Dashboard instead. Kept because it
+  // is the only writer for the trip stats this screen renders — deleting it
+  // cascades into a dozen pieces of now-unwritable state.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const startTracking = useCallback(async () => {
     const started = await backgroundGpsTracker.start(passedTicketId);
     if (!started) return;

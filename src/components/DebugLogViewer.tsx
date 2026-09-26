@@ -1,6 +1,14 @@
 /**
  * Floating in-app log viewer — shows console.log/warn/error in a draggable overlay.
- * Works in release builds. Tap the floating button to open/close.
+ * Tap the floating button to open/close.
+ *
+ * DEBUG BUILDS ONLY. App.tsx mounts this behind `__DEV__` and only installs
+ * logCapture there too. It used to ship in release: any driver could open it,
+ * and because logCapture intercepts the console, OEM loggers mirrored the
+ * buffer out of the app sandbox — on a Motorola device that meant 9,402 lines
+ * of app console, 75 of them containing a bearer token, readable by a system
+ * process. Do not remove the __DEV__ guard without replacing it with a
+ * deliberate one (support-mode toggle, hidden gesture, build flag).
  */
 import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {

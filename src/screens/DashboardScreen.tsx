@@ -110,28 +110,7 @@ function buildTimeline(detail: TicketDetail) {
   }));
 }
 
-function buildJobInfo(detail: TicketDetail) {
-  const { job } = detail;
-  return [
-    { labelKey: 'jobInfo.customer', value: job.customer_name || '-', icon: 'people' },
-    { labelKey: 'jobInfo.project', value: job.project_name || '-', icon: 'apartment' },
-    { labelKey: 'jobInfo.job', value: job.job || '-', icon: 'work' },
-    { labelKey: 'orderInfo.timeDue', value: job.time_due_local ? formatLocalTime(job.time_due_local) : (job.time_due ? formatTime(job.time_due) : '-'), icon: 'schedule' },
-    { labelKey: 'orderInfo.deliveredTo', value: job.delivered_to || '-', icon: 'place', isLink: true, isMap: true },
-    { labelKey: 'orderInfo.lotBlock', value: job.lot_block || '', icon: 'grid-view' },
-    { labelKey: 'orderInfo.instructions', value: job.instructions || '', icon: 'info-outline', isHighlight: !!job.instructions },
-  ];
-}
-
 // Removed — map navigation now handled via in-app MapScreen
-
-const STATUS_MAP: Record<number, string> = {
-  0: 'Printed',
-  1: 'Loading',
-  2: 'To Job',
-  3: 'On Job',
-  4: 'Completed',
-};
 
 const PAYMENT_MAP: Record<string, string> = {
   '1': 'CASH',
@@ -175,60 +154,10 @@ function getTicketStatus(ticket: Ticket, detail?: TicketDetail | null) {
   return { label: apiLabel || 'PENDING', type: 'warning' as const };
 }
 
-function buildMixInfo(detail: TicketDetail, mixDescription?: string | null) {
-  const { mix } = detail;
-  const currentTruck = detail.mix.trucks?.find(t => t.is_current);
-  const items: { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean; valueColor?: string; isTruckBehind?: boolean }[] = [
-    { labelKey: 'mixInfo.mixId', value: mix.mix_code || '-', icon: 'science' },
-    { labelKey: 'mixInfo.description', value: mixDescription || '-', icon: 'description', isLink: true },
-    { labelKey: 'mixInfo.usage', value: mix.usage || '-', icon: 'category' },
-    { labelKey: 'mixInfo.slump', value: mix.slump || '-', isHighlight: true },
-    { labelKey: 'orderInfo.quantity', value: mix.quantity || '-', icon: 'straighten' },
-  ];
-  const truckParts: string[] = [];
-  if (mix.truck_ahead) truckParts.push(`${mix.truck_ahead.truck_code} ${mix.truck_ahead.status}`);
-  if (mix.truck_behind) truckParts.push(`${mix.truck_behind.truck_code} ${mix.truck_behind.status}`);
-  if (truckParts.length > 0) {
-    items.push({ labelKey: 'orderInfo.trucks', value: truckParts.join(' | '), icon: 'local-shipping', valueColor: 'accent', isLink: true, isTruckBehind: true });
-  }
-  return items;
-}
-
-function buildMixInfoFromTicket(ticket: Ticket) {
-  const mix = ticket.mix;
-  return [
-    { labelKey: 'mixInfo.mixId', value: mix?.mix_code || '-', icon: 'science' },
-    { labelKey: 'mixInfo.description', value: mix?.description || '-', icon: 'description', isLink: true },
-    { labelKey: 'mixInfo.usage', value: '-', icon: 'category' },
-    { labelKey: 'mixInfo.slump', value: mix?.slump || '-', isHighlight: true },
-    { labelKey: 'orderInfo.quantity', value: mix?.quantity || '-', icon: 'straighten' },
-  ] as { labelKey: string; value: string; icon?: string; isLink?: boolean; isHighlight?: boolean }[];
-}
-
 const BOTTOM_ACTIONS = [
   { icon: 'label', labelKey: 'actions.tag' },
   { icon: 'local-shipping', labelKey: 'actions.truck' },
   { icon: 'qr-code-scanner', labelKey: 'actions.qr' },
-];
-
-const DISPOSAL_OPTIONS = [
-  {key: 'RESHIPPED_IN_YARD', label: 'Reshipped in Yard'},
-  {key: 'DUMPED_IN_YARD', label: 'Dumped in Yard'},
-  {key: 'DUMPED_AT_THIRD_PARTY_YARD', label: 'Dumped at Third Party Yard'},
-  {key: 'MADE_BLOCKS', label: 'Made Blocks'},
-  {key: 'USED_FOR_PLANT_SHOP', label: 'Used for Plant/Shop'},
-  {key: 'RE_ROUTED_TO_DIFFERENT_SITE', label: 'Re-routed to Different Site'},
-  {key: 'GRANULIZE', label: 'Granulize'},
-];
-
-const REASON_OPTIONS = [
-  {key: 'REJECTED_AIR_OUT_OF_SPEC', label: 'Rejected — Air Out of Spec'},
-  {key: 'REJECTED_SLUMP_OUT_OF_SPEC', label: 'Rejected — Slump Out of Spec'},
-  {key: 'REJECTED_TEMPERATURE', label: 'Rejected — Temperature'},
-  {key: 'REJECTED_BALLING', label: 'Rejected — Balling'},
-  {key: 'REJECTED_TIME_LIMIT_EXCEEDED', label: 'Rejected — Time Limit Exceeded'},
-  {key: 'POUR_COMPLETE_NOT_NEEDED', label: 'Pour Complete — Not Needed'},
-  {key: 'OTHER_DRIVER_ADD_NOTES', label: 'Other — Driver Add Notes'},
 ];
 
 const MENU_ITEMS_BASE = [
@@ -267,35 +196,6 @@ function Skeleton({ width: w, height: h, radius = 8, style }: any) {
   );
 }
 
-// Animated card with spring entrance
-function FadeCard({ children, delay = 0, style }: any) {
-  const anim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.spring(anim, {
-      toValue: 1,
-      friction: 8,
-      tension: 50,
-      delay,
-      useNativeDriver: true,
-    }).start();
-  }, [anim, delay]);
-  return (
-    <Animated.View
-      style={[
-        style,
-        {
-          opacity: anim,
-          transform: [
-            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
-            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
-          ],
-        },
-      ]}>
-      {children}
-    </Animated.View>
-  );
-}
-
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
@@ -323,8 +223,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [plantsList, setPlantsList] = useState<Plant[]>([]);
   const [plantsLoading, setPlantsLoading] = useState(false);
   const [plantsError, setPlantsError] = useState(false);
-  const [plantsPage, setPlantsPage] = useState(1);
-  const [plantsHasNext, setPlantsHasNext] = useState(false);
+  const [_plantsPage, setPlantsPage] = useState(1);
+  const [_plantsHasNext, setPlantsHasNext] = useState(false);
   const [plantsLoadingMore, setPlantsLoadingMore] = useState(false);
   const plantsPageRef = useRef(1);
   const plantsHasNextRef = useRef(false);
@@ -388,7 +288,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [editVisible, setEditVisible] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
   const missingScrollIndicator = useScrollIndicator();
-  const [pendingDetails, setPendingDetails] = useState(false);
+  const [_pendingDetails, setPendingDetails] = useState(false);
   const [productsVisible, setProductsVisible] = useState(false);
   const productsScrollY = useRef(new Animated.Value(0)).current;
   const [productsContentH, setProductsContentH] = useState(0);
@@ -399,18 +299,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [directionsAlert, setDirectionsAlert] = useState(false);
   const [languageVisible, setLanguageVisible] = useState(false);
   const [activeBottom, setActiveBottom] = useState(-1);
-  const [leftColScrollable, setLeftColScrollable] = useState(false);
-  const [leftColScrollPct, setLeftColScrollPct] = useState(0);
-  const leftColLayoutH = useRef(0);
-  const leftColContentH = useRef(0);
-  const [rightColScrollable, setRightColScrollable] = useState(false);
-  const [rightColScrollPct, setRightColScrollPct] = useState(0);
-  const rightColLayoutH = useRef(0);
-  const rightColContentH = useRef(0);
   const [fontSizeVisible, setFontSizeVisible] = useState(false);
-  const [customerExpanded, setCustomerExpanded] = useState(true);
-  const [deliveryExpanded, setDeliveryExpanded] = useState(true);
-  const [instructionsExpanded, setInstructionsExpanded] = useState(false);
+  const [instructionsExpanded, _setInstructionsExpanded] = useState(false);
   const [instructionsModalVisible, setInstructionsModalVisible] = useState(false);
   const [slumpPickerField, setSlumpPickerField] = useState<'slump_from_plant' | 'slump_to_job' | 'water_slump' | null>(null);
   const [waterModalField, setWaterModalField] = useState<'customer_water' | 'maintenance_water' | null>(null);
@@ -440,7 +330,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const { fontScale, increase: fontIncrease, decrease: fontDecrease, reset: fontReset } = useFontSize();
   const [lastSyncTime, setLastSyncTime] = useState<Date>(() => new Date());
   const [syncAgo, setSyncAgo] = useState('just now');
-  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [_dateFrom, setDateFrom] = useState<string | null>(null);
   const { t } = useTranslation();
   const { isDark, toggle, c } = useTheme();
   const styles = createStyles(c, isDark);
@@ -542,7 +432,7 @@ export default function DashboardScreen({ navigation }: Props) {
       ticketsRef.current = data.data;
       setDateFrom(data.filters?.date_from || null);
       setLastSyncTime(new Date());
-    } catch (_) { }
+    } catch { }
     // Refresh detail + delivery record for current ticket
     const ticket = ticketsRef.current[activeTicketRef.current];
     if (ticket) {
@@ -699,18 +589,10 @@ export default function DashboardScreen({ navigation }: Props) {
   // Derived data from active ticket
   const currentTicket = tickets[activeTicket] || null;
   const timeline = useMemo(() => detail ? buildTimeline(detail) : [], [detail]);
-  const jobInfo = useMemo(() => detail ? buildJobInfo(detail) : [], [detail]);
-  const temperature = deliveryRecord?.plant?.temp_at_plant ?? deliveryRecord?.plant?.measured?.temp_at_plant;
-  const mixInfo = useMemo(() => detail
-    ? buildMixInfo(detail, currentTicket?.mix?.description || null)
-    : currentTicket ? buildMixInfoFromTicket(currentTicket) : [], [detail, currentTicket]);
-  const doneCount = detail ? detail.progress.completed : 0;
-  const progressPct = detail ? (detail.progress.completed / detail.progress.total) * 100 : 0;
 
   const menuItems = MENU_ITEMS_BASE;
 
   // Paired row count for the Job + Mix table layout
-  const pairedRows = Math.max(jobInfo.length, mixInfo.length);
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -1759,7 +1641,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         ...(detail?.mix?.loads?.current != null ? [{ label: `LOAD #${detail.mix.loads.current}`, value: detail?.mix?.load_size || '-' }] : []),
                         { label: 'DELIVERED TO', value: detail?.job?.delivered_to || '-', isLink: true },
                         { label: 'LOT BLOCK', value: detail?.job?.lot_block || '—' },
-                      ].map((row, i, arr) => (
+                      ].map((row, i) => (
                         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: ct ? fs(3) : fs(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderLight }}>
                           <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, width: '20%' , fontFamily: MONO}}>{row.label}</Text>
                           {row.isLink ? (
@@ -3331,7 +3213,7 @@ export default function DashboardScreen({ navigation }: Props) {
   );
 }
 
-const createStyles = (c: any, isDark: boolean) => StyleSheet.create({
+const createStyles = (c: any, _isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
 
   // Header

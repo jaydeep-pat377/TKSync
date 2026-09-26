@@ -1,3 +1,7 @@
+// Module scope: these simulation files declare top-level helpers with the same
+// names as each other. Without this they share the global scope and collide.
+export {};
+
 /**
  * GPS Stationary Drift Detection Tests
  *
@@ -43,7 +47,7 @@ type SavedRecord = SimFix & { index: number };
  */
 function simulateJsTracking(
   fixes: SimFix[],
-  opts?: { resetStationaryOnResume?: boolean },
+  _opts?: { resetStationaryOnResume?: boolean },
 ): SavedRecord[] {
   let wasStationary = false;
   let consecutiveMovingCount = 0;
@@ -218,14 +222,6 @@ function simulateWithTransition(
 
 const BASE_LAT = 22.298602;
 const BASE_LNG = 70.798857;
-
-/** Small random offset simulating GPS drift (10-30m) */
-function drift(meters: number): { lat: number; lng: number } {
-  // ~0.000009 degrees ≈ 1 metre at this latitude
-  const latOff = (Math.random() - 0.5) * 2 * meters * 0.000009;
-  const lngOff = (Math.random() - 0.5) * 2 * meters * 0.000009;
-  return { lat: BASE_LAT + latOff, lng: BASE_LNG + lngOff };
-}
 
 /** Fixed drift pattern (deterministic for tests) */
 function fixedDrift(index: number, meters: number): { lat: number; lng: number } {

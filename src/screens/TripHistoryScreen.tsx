@@ -6,22 +6,20 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  useWindowDimensions,
   PanResponder,
-  type GestureResponderEvent,
-  type LayoutChangeEvent,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
 import Config from 'react-native-config';
 import Icon from '../components/Icon';
-import Svg, {Rect, Circle, Ellipse, Path, Line, Defs, LinearGradient, Stop} from 'react-native-svg';
+import Svg, {Rect, Circle, Ellipse, Path, Defs, LinearGradient, Stop} from 'react-native-svg';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RouteProp} from '@react-navigation/native';
 import {useTheme} from '../contexts/ThemeContext';
 import {ms, wp} from '../utils/responsive';
 import {ticketsApi, trackingApi} from '../services/api';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
+import type {DimensionValue} from 'react-native';
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 MapboxGL.setAccessToken(Config.MAPBOX_ACCESS_TOKEN || '');
@@ -117,7 +115,7 @@ function TimelineSlider({fraction, onSeek}: {fraction: number; onSeek: (f: numbe
     }),
   ).current;
 
-  const pct = `${clamp(fraction) * 100}%`;
+  const pct: DimensionValue = `${clamp(fraction) * 100}%`;
   return (
     <View ref={trackRef} style={sliderStyles.container} {...panResponder.panHandlers}>
       <View style={sliderStyles.track}>
@@ -174,8 +172,6 @@ export default function TripHistoryScreen({navigation, route}: Props) {
   const {c} = useTheme();
   const styles = createStyles(c);
   const insets = useSafeAreaInsets();
-  const {width, height} = useWindowDimensions();
-  const isTablet = Math.min(width, height) > 600;
 
   const params = (route.params || {}) as {ticketId?: number; ticketCode?: string};
   const ticketId = params.ticketId;

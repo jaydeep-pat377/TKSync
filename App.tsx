@@ -9,13 +9,20 @@ import {NotificationProvider} from './src/contexts/NotificationContext';
 import {FontSizeProvider, useFontSize} from './src/contexts/FontSizeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import NetworkBanner from './src/components/NetworkBanner';
+import BackgroundPermissionBanner from './src/components/BackgroundPermissionBanner';
 import ToastContainer from './src/components/ToastContainer';
 import {initSentry} from './src/services/sentry';
 import {setupBackgroundNotifeeHandler} from './src/services/notifications';
 import {logCapture} from './src/utils/logCapture';
 import {DebugLogViewer} from './src/components/DebugLogViewer';
+import PipMapView from './src/components/PipMapView';
 
-logCapture.install(); // Intercept console.log/warn/error before anything else
+// Debug builds only: logCapture keeps every console line in an on-device ring
+// buffer that DebugLogViewer exposes to the driver, and OEM loggers can copy it
+// out of the app sandbox. Not something to ship to trucks.
+if (__DEV__) {
+  logCapture.install(); // Intercept console.log/warn/error before anything else
+}
 initSentry();
 setupBackgroundNotifeeHandler();
 
@@ -53,7 +60,9 @@ function AppContent() {
           <OfflineSyncProvider>
             <AppNavigator />
             <NetworkBanner />
+            <BackgroundPermissionBanner />
             <ToastContainer />
+            <PipMapView />
           </OfflineSyncProvider>
         </NotificationProvider>
       </AuthProvider>
@@ -64,17 +73,25 @@ function AppContent() {
 function App() {
   return (
     <View style={s.root}>
-      <SafeAreaProvider>
-        <FontSizeProvider>
-          <AppContent />
-          <DebugLogViewer />
-        </FontSizeProvider>
-      </SafeAreaProvider>
+      {/*
+        Sentry.wrap() does NOT take a `fallback` — ReactNativeWrapperOptions is
+        only profilerProps and touchEventBoundaryProps, so the one we used to
+        pass there was silently dropped and this screen never rendered. A JS
+        crash left the driver on a blank view with no way back.
+      */}
+      <Sentry.ErrorBoundary fallback={props => <ErrorFallback {...props} />}>
+        <SafeAreaProvider>
+          <FontSizeProvider>
+            <AppContent />
+            {__DEV__ && <DebugLogViewer />}
+          </FontSizeProvider>
+        </SafeAreaProvider>
+      </Sentry.ErrorBoundary>
     </View>
   );
 }
 
-function ErrorFallback({resetError}: {error: Error; resetError: () => void}) {
+function ErrorFallback({resetError}: {resetError: () => void}) {
   return (
     <View style={s.fallback}>
       <Text style={s.fallbackTitle}>Something went wrong</Text>
@@ -86,7 +103,7 @@ function ErrorFallback({resetError}: {error: Error; resetError: () => void}) {
   );
 }
 
-export default Sentry.wrap(App, {fallback: (props) => <ErrorFallback {...props} />});
+export default Sentry.wrap(App);
 
 const s = StyleSheet.create({
   root: {flex: 1, backgroundColor: '#367000'},

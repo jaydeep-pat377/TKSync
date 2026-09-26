@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleProp, ViewStyle} from 'react-native';
+import {StyleProp, TextStyle, ViewStyle} from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import BellIcon from '../assets/svgs/bell.svg';
 import EyeIcon from '../assets/svgs/eye.svg';
@@ -29,15 +29,17 @@ type IconProps = {
   name: string;
   size: number;
   color: string;
-  style?: StyleProp<ViewStyle>;
+  // MaterialIcons renders text, so callers legitimately pass text styles
+  // (textAlign, textAlignVertical) alongside layout ones.
+  style?: StyleProp<ViewStyle | TextStyle>;
 };
 
 const Icon: React.FC<IconProps> = ({name, size, color, style}) => {
   const SvgIcon = SVG_MAP[name];
   if (SvgIcon) {
-    return <SvgIcon width={size} height={size} color={color} style={style} />;
+    return <SvgIcon width={size} height={size} color={color} style={style as StyleProp<ViewStyle>} />;
   }
-  return <MaterialIcons name={name as any} size={size} color={color} style={style} />;
+  return <MaterialIcons name={name as any} size={size} color={color} style={style as StyleProp<TextStyle>} />;
 };
 
 export default Icon;

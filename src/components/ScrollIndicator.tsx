@@ -1,5 +1,5 @@
 import {useRef, useState, useCallback} from 'react';
-import {Animated, NativeSyntheticEvent, NativeScrollEvent} from 'react-native';
+import {Animated} from 'react-native';
 
 /** Hook that tracks scroll position and returns props + thumb render data. */
 export function useScrollIndicator() {

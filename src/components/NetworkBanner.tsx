@@ -1,13 +1,10 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Animated, StyleSheet, Text, View, Platform,
-} from 'react-native';
+import {Animated, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
-
-const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 const RESTORED_DISPLAY_MS = 4000;
 
@@ -19,7 +16,7 @@ export default function NetworkBanner() {
   const [rendered, setRendered] = useState(false);
   const wasOffline = useRef(false);
   const slideAnim = useRef(new Animated.Value(-100)).current;
-  const restoredTimer = useRef<ReturnType<typeof setTimeout>>();
+  const restoredTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const visible = !isOnline || showRestored;
 

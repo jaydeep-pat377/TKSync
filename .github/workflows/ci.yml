@@ -1,0 +1,73 @@
+name: CI
+
+# Nothing ran automatically before this. That is how a string-vs-number ticket
+# id survived long enough to orphan GPS points in production — tsc would have
+# caught it on the commit that introduced it.
+
+on:
+  push:
+    branches: [main, jaydeep_dev, Fix-GPS-issue]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test -- --ci
+
+  android:
+    name: Android debug build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      # react-native-config bakes .env into BuildConfig at compile time, so the
+      # build fails outright without one. These are placeholders — CI only needs
+      # the app to compile, never to connect anywhere.
+      - name: Write placeholder .env
+        run: |
+          cat > .env <<'ENV'
+          API_BASE_URL=https://example.invalid/api
+          MAPBOX_ACCESS_TOKEN=
+          SENTRY_DSN=
+          SENTRY_ENVIRONMENT=ci
+          ENV
+
+      - name: Assemble debug
+        run: ./gradlew assembleDebug --no-daemon
+        working-directory: android

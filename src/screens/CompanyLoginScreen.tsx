@@ -25,7 +25,6 @@ import {storage} from '../services/storage';
 import {wp, ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
 
-const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -340,7 +339,7 @@ export default function CompanyLoginScreen({navigation}: Props) {
   );
 }
 
-const createStyles = (c: any, isTablet: boolean, landscapePhone: boolean, landscapeTablet: boolean) => StyleSheet.create({
+const createStyles = (c: any, _isTablet: boolean, _landscapePhone: boolean, _landscapeTablet: boolean) => StyleSheet.create({
   // ── Layout ──────────────────────────────────────────────────────────────────
   container: {flex: 1, overflow: 'hidden', backgroundColor: c.primaryDark},
   bgTop: {position: 'absolute', top: 0, left: -5, right: -5, height: '65%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: c.primary},

@@ -1,13 +1,10 @@
 import React, {useEffect, useState, useRef} from 'react';
-import {Animated, StyleSheet, Text, TouchableOpacity, View, Platform,
-} from 'react-native';
+import {Animated, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from './Icon';
 import {ToastItem, onToastChange, dismissToast} from '../utils/toast';
 import {ms} from '../utils/responsive';
 import {useFontScaleRefresh} from '../contexts/FontSizeContext';
-
-const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 const TOAST_COLORS: Record<string, {bg: string; icon: string}> = {
   error: {bg: '#D32F2F', icon: 'error-outline'},

@@ -11,7 +11,11 @@ import {storage} from './storage';
 import {DeviceEventEmitter} from 'react-native';
 import {startTrackingService, stopTrackingService} from './trackingForegroundService';
 import {showToast} from '../utils/toast';
-import {getIsOnline, onConnectivityRestored} from '../hooks/useNetworkStatus';
+import {getIsOnline, onConnectivityRestored, onConnectivityLost} from '../hooks/useNetworkStatus';
+import {reportNativeGpsDiagnostics, detectBackgroundServiceDeath} from './gpsDiagnostics';
+import {getLocationPermissionLevel} from './locationPermission';
+import {captureError} from './sentry';
+import {setPipAutoEnter} from '../hooks/usePipMode';
 import DeviceInfo from 'react-native-device-info';
 
 const {LocationTrackingModule} = NativeModules;
@@ -66,6 +70,8 @@ let watchId: number | null = null;
 let lastPosition: GpsPosition | null = null;
 let lastGpsFixTime: number = 0; // Date.now() of last accepted GPS fix — for freshness indicator
 let firstGoodFixTime: number = 0; // Date.now() of first fix with accuracy < 25m — enables strict filter
+let consecutiveAccuracyRejects = 0; // Re-opens the strict gate when GPS degrades for a sustained stretch
+const ACCURACY_REWARMUP_REJECTS = 10; // ~10 rejected fixes — re-open the gate to 50m
 let lastSavedPosition: {latitude: number; longitude: number} | null = null;
 const MIN_DISTANCE_TO_SAVE = 5; // metres — only save when moved this far
 let wasStationary = false; // true after first stationary fix is saved — suppresses drift
@@ -234,6 +240,8 @@ async function handleNativeGpsRecord(data: {
   // importRecord deduplicates by ID, so this is safe even if native also stores the record.
   gpsStorage.importRecord(data.id, {
     ticket_id: ticketId,
+    // Stamp the code at capture time — see GpsRecord.ticket_code
+    ticket_code: (data as any).ticket_code ?? gpsSyncManager.getTicketCode(),
     latitude: data.latitude,
     longitude: data.longitude,
     speed: data.speed,
@@ -253,12 +261,14 @@ async function handleNativeGpsRecord(data: {
     accuracy: data.accuracy,
     recorded_at: data.recorded_at,
     ticket_id: ticketId,
-    ticket_code: gpsSyncManager.getTicketCode(),
+    ticket_code: (data as any).ticket_code ?? gpsSyncManager.getTicketCode(),
     client_id: data.id,
     battery_level: battery,
   };
 
-  if (mqttService.isConnected()) {
+  if (deferLivePublish()) {
+    console.log('[CHECK] live fix held (native bridge) — backlog flushing, publishes in time order');
+  } else if (mqttService.isConnected()) {
     const published = mqttService.publish(payload, (err) => {
       if (!err) {
         gpsStorage.markSynced([data.id]);
@@ -315,13 +325,19 @@ function setupAppStateListener() {
             // Ensure native service is still alive — Samsung/Android may kill it
             // while app is in background. Restart if needed (idempotent — if already
             // running, onStartCommand just updates the notification).
-            LocationTrackingModule.isTrackingActive().then((active: boolean) => {
-              if (!active) {
+            //
+            // This used to check isTrackingActive(), which reads the persisted
+            // tracking_active flag. That flag stays true when the process dies, so
+            // the check passed and the restart never fired — dead code in exactly
+            // the situation it was written for. detectBackgroundServiceDeath()
+            // compares the flag against real service liveness and reports to Sentry.
+            detectBackgroundServiceDeath().then((died: boolean) => {
+              if (died) {
                 console.log('[GPS] Native service died in background — restarting');
                 startTrackingService(gpsSyncManager.getTicketId()).catch(() => {});
               }
             }).catch(() => {
-              // Module not available — try restarting anyway
+              // Detection unavailable — try restarting anyway (idempotent)
               startTrackingService(gpsSyncManager.getTicketId()).catch(() => {});
             });
           }
@@ -347,7 +363,11 @@ function setupAppStateListener() {
             }).catch(() => {});
           }
 
-          // 6. Import native records, update idle timer, then restart idle interval
+          // 6. Ship anything the native service logged while JS was dead. First
+          //    opportunity to report a background failure — see gpsDiagnostics.ts.
+          reportNativeGpsDiagnostics().catch(() => {});
+
+          // 7. Import native records, update idle timer, then restart idle interval
           importNativeRecordsAndUpdateIdle()
             .catch(() => {
               // Import failed — do NOT reset lastMovementTime.
@@ -400,11 +420,13 @@ function setupAppStateListener() {
           LocationTrackingModule.setJsAlive(false).catch(() => {});
         }
       } else {
-        // iOS: No native service — keep JS watchPosition running in background.
-        // Requires "Location updates" background mode in Info.plist.
-        // Switch to stationary poll if not moving to save battery.
+        // iOS: No native service — only watchPosition survives backgrounding
+        // (UIBackgroundModes: location). The 5s stationary poll is a plain JS
+        // timer and iOS suspends it, so backgrounding while stopped used to
+        // leave BOTH collectors off until the driver reopened the app.
+        // startWatch() stops the poll itself and is a no-op if already watching.
         console.log('[GPS] App backgrounded (iOS) — JS GPS continues in background');
-        stopStationaryPoll();
+        startWatch();
       }
     }
   });
@@ -447,12 +469,15 @@ function notifyListeners(pos: GpsPosition) {
 async function requestPermissions(): Promise<boolean> {
   if (Platform.OS === 'ios') {
     const status = await Geolocation.requestAuthorization('always');
-    if (status === 'granted' || status === 'restricted') return true;
-    if (status === 'whenInUse') {
-      showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
-      return true;
+    if (status !== 'granted' && status !== 'restricted') return false;
+    // 'granted' covers BOTH Always and While-Using on iOS — the library folds
+    // them together, so this is the only way to know background GPS will work.
+    // BackgroundPermissionBanner keeps warning until it is fixed; a toast here
+    // would be seen once and then never again.
+    if ((await getLocationPermissionLevel()) === 'foregroundOnly') {
+      console.warn('[GPS] iOS permission is While-Using — no background fixes');
     }
-    return false;
+    return true;
   }
   // Check if already granted first — avoid re-requesting on app reopen
   const alreadyGranted = await PermissionsAndroid.check(
@@ -465,7 +490,10 @@ async function requestPermissions(): Promise<boolean> {
         PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
       );
       if (!bgGranted) {
-        showToast('info', 'Limited Tracking', 'GPS will only work while the app is open.');
+        // Warned persistently by BackgroundPermissionBanner — a toast at login
+        // is gone in seconds and the driver loses the whole shift's background
+        // GPS without ever seeing why.
+        console.warn('[GPS] Background location denied — no fixes while backgrounded');
       }
     }
     return true;
@@ -563,6 +591,7 @@ async function importNativeRecords(): Promise<number> {
         const nativeId = r.id || `native_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
         const added = gpsStorage.importRecord(nativeId, {
           ticket_id: r.ticket_id || null,
+          ticket_code: r.ticket_code ?? null,
           latitude: r.latitude,
           longitude: r.longitude,
           speed: r.speed || 0,
@@ -623,9 +652,65 @@ async function importNativeRecordsAndUpdateIdle(): Promise<void> {
   // idle timer will correctly fire if 2h has elapsed since last real movement.
 }
 
+/**
+ * Start of the current connectivity outage, or null while online.
+ *
+ * Set when NetInfo reports the drop and cleared by the "online" presence
+ * message, so exactly one online message goes out per outage no matter how many
+ * things trigger a backlog flush (connectivity restored, MQTT reconnect,
+ * foreground resume all call publishBackgroundRecords).
+ */
+let offlineSince: string | null = null;
+let connectivityLostUnsub: (() => void) | null = null;
+
+function trackConnectivityLoss(): void {
+  connectivityLostUnsub?.();
+  connectivityLostUnsub = onConnectivityLost(() => {
+    if (offlineSince) return; // Already in an outage
+    offlineSince = new Date().toISOString();
+    console.log(`[CHECK] offline window opened at ${offlineSince} — GPS keeps recording locally`);
+    // Best-effort: the socket is usually already gone by the time we get here.
+    mqttService.publishPresence({status: 'offline', since: offlineSince});
+  });
+}
+
 /** Publish unsynced background records via MQTT when app returns to foreground. */
 let isPublishingBackground = false;
 let publishQueued = false; // Re-run after current publish finishes if new records arrived
+
+/**
+ * Hold a live GPS fix back while the offline backlog is draining.
+ *
+ * The live pipeline (gps-consumer -> Redis -> ws-gateway) keeps only the newest
+ * position per truck. One live point jumping the queue makes the whole backlog
+ * look stale, so every replayed point is rejected for the live map and the
+ * dispatch map shows nothing but the jump.
+ *
+ * The record is already in gpsStorage, so it costs nothing to hold: the flush
+ * re-runs on publishQueued and picks it up in its proper place in time order.
+ */
+function deferLivePublish(): boolean {
+  if (!isPublishingBackground || Date.now() >= liveHoldUntil) return false;
+  publishQueued = true;
+  return true;
+}
+
+/**
+ * Deadline for the hold above, and the cap on one flush.
+ *
+ * Holding is only correct while a real backlog is draining. Two ways it could
+ * turn into a permanently stale live map without these:
+ *   - A slow broker makes every flush hit its 15 s delivery timeout, nothing is
+ *     confirmed, and each re-run holds the next batch of live fixes forever.
+ *   - A 5 h backlog is 20 000 records; publishing them all in one flush cannot
+ *     finish inside 15 s, so none get marked synced and the next flush sends the
+ *     same 20 000 again.
+ * So: hold only when the backlog is genuinely old, never past the deadline, and
+ * send at most MAX_FLUSH_BATCH per run — publishQueued carries on the rest.
+ */
+const MAX_LIVE_HOLD_MS = 60_000;
+const MAX_FLUSH_BATCH = 500;
+let liveHoldUntil = 0;
 async function publishBackgroundRecords(): Promise<void> {
   if (isPublishingBackground) {
     publishQueued = true; // Will re-run after current publish completes
@@ -642,9 +727,74 @@ async function publishBackgroundRecords(): Promise<void> {
       }
     }
 
-    const unsynced = gpsStorage.getUnsynced();
-    if (unsynced.length === 0) return;
+    // Oldest first. gps-consumer keeps ONE position per truck in Redis, so the
+    // live map only accepts a point newer than what it already holds. Out of
+    // order, every older backlog point is dropped on arrival and dispatchers see
+    // the straight jump; in order, each one is accepted and streams through.
+    // Timescale stores them either way — this is purely the live view.
+    const backlog = gpsStorage
+      .getUnsynced()
+      .slice()
+      .sort((a, b) => (Date.parse(a.recorded_at) || 0) - (Date.parse(b.recorded_at) || 0));
 
+    // Announce the end of the outage before the flush, so the dashboard knows how
+    // many points are coming and which window they cover instead of guessing.
+    //
+    // This runs BEFORE the empty-backlog return on purpose. An outage the truck
+    // spent parked produces no records, and skipping it would leave offlineSince
+    // latched forever — suppressing the "offline" message for every later outage.
+    if (offlineSince) {
+      mqttService.publishPresence({
+        status: 'online',
+        backfill_count: backlog.length,
+        backfill_from: backlog[0]?.recorded_at ?? offlineSince,
+        backfill_to: backlog[backlog.length - 1]?.recorded_at ?? new Date().toISOString(),
+      });
+      offlineSince = null;
+    }
+
+    if (backlog.length === 0) {
+      liveHoldUntil = 0; // Nothing left to order around — stop holding live fixes
+      return;
+    }
+
+    // Only a genuine catch-up needs live fixes held back. A steady-state re-run
+    // of one or two fresh records has no ordering problem to solve, and holding
+    // there would stall the live map for nothing.
+    const oldestAgeMs = Date.now() - (Date.parse(backlog[0].recorded_at) || Date.now());
+    if (oldestAgeMs > 60_000) {
+      liveHoldUntil = Date.now() + MAX_LIVE_HOLD_MS;
+    }
+
+    const unsynced = backlog.slice(0, MAX_FLUSH_BATCH);
+    if (backlog.length > unsynced.length) {
+      publishQueued = true; // Remaining records go out on the next run, still in order
+    }
+
+    // Records captured before a ticket was known (app started offline with no
+    // cached last_ticket_id -> startWithoutTicket) carry ticket_id: null forever.
+    // refreshTicket() learns the real id within 30s but never back-fills, so the
+    // points reach the server attached to no ticket and vanish from the map.
+    // Stamp the now-known id on them at publish time.
+    const liveTicketId = gpsSyncManager.getTicketId();
+    const orphaned = unsynced.filter(r => r.ticket_id === null).length;
+    if (orphaned > 0 && liveTicketId !== null) {
+      console.log(`[MQTT] Back-filling ticket_id ${liveTicketId} onto ${orphaned} orphaned records`);
+    }
+
+    const now = Date.now();
+    const backfillCount = unsynced.filter(r => {
+      const t = Date.parse(r.recorded_at);
+      return Number.isFinite(t) && now - t > 60_000;
+    }).length;
+    console.log(
+      `[CHECK] flush ${unsynced.length} of ${backlog.length} records — ` +
+        `${backfillCount} backfill, ${unsynced.length - backfillCount} live`,
+    );
+    console.log(
+      `[CHECK] order oldest→newest: ${unsynced[0].recorded_at} → ` +
+        `${unsynced[unsynced.length - 1].recorded_at}`,
+    );
     console.log(`[MQTT] Publishing ${unsynced.length} background GPS records...`);
     let queued = 0;
     let delivered = 0;
@@ -658,8 +808,10 @@ async function publishBackgroundRecords(): Promise<void> {
           heading: r.heading,
           accuracy: r.accuracy,
           recorded_at: r.recorded_at,
-          ticket_id: r.ticket_id,
-          ticket_code: gpsSyncManager.getTicketCode(),
+          ticket_id: r.ticket_id ?? liveTicketId,
+          // Captured code, NOT the live one — a backlog flushing after the driver
+          // moved to a new ticket would otherwise pair an old id with a new code.
+          ticket_code: r.ticket_code ?? null,
           client_id: r.id,
           // Use battery stored at record time — accurate for offline replays
           battery_level: r.battery_level ?? null,
@@ -686,6 +838,24 @@ async function publishBackgroundRecords(): Promise<void> {
       new Promise<void>(resolve => setTimeout(resolve, 15000)),
     ]);
     console.log(`[MQTT] Background catch-up: ${queued} queued, ${delivered}/${unsynced.length} confirmed`);
+    if (delivered === unsynced.length) {
+      console.log(`[CHECK] PASS catch-up — all ${delivered} records confirmed by broker`);
+      if (backlog.length === unsynced.length) {
+        liveHoldUntil = 0; // Backlog fully drained — live fixes publish immediately again
+      }
+    } else {
+      console.warn(
+        `[CHECK] FAIL catch-up — ${unsynced.length - delivered} of ${unsynced.length} not confirmed`,
+      );
+      // captureError, not captureMessage — captureMessage's second arg is a
+      // severity level, and we want the counts attached as searchable extras.
+      captureError(new Error('GPS catch-up incomplete'), {
+        total: unsynced.length,
+        delivered,
+        queued,
+        missing: unsynced.length - delivered,
+      });
+    }
   } finally {
     isPublishingBackground = false;
     // If new records arrived during this publish cycle, re-run
@@ -739,9 +909,19 @@ async function handlePosition(position: any) {
   const accuracyLimit = hasWarmedUp ? STRICT_ACCURACY : INITIAL_ACCURACY;
 
   if (accuracy != null && accuracy >= accuracyLimit) {
+    consecutiveAccuracyRejects++;
     console.log(`[GPS] Skipping inaccurate fix: ${accuracy.toFixed(0)}m (limit: ${accuracyLimit}m)`);
+    // Mirrors LocationTrackingService.kt — without this the gate is a one-way
+    // ratchet: one good fix arms 25m for the rest of the session and a later
+    // stretch of 30-40m accuracy drops every fix with no recovery path.
+    if (hasWarmedUp && consecutiveAccuracyRejects >= ACCURACY_REWARMUP_REJECTS) {
+      firstGoodFixTime = 0;
+      consecutiveAccuracyRejects = 0;
+      console.log(`[GPS] GPS degraded for ${ACCURACY_REWARMUP_REJECTS} fixes — re-warming accuracy gate to ${INITIAL_ACCURACY}m`);
+    }
     return;
   }
+  consecutiveAccuracyRejects = 0;
 
   // Track when GPS achieves good accuracy — triggers strict filtering
   if (accuracy != null && accuracy < STRICT_ACCURACY && firstGoodFixTime === 0) {
@@ -861,6 +1041,7 @@ async function handlePosition(position: any) {
 
   const recordId = gpsStorage.addRecord({
     ticket_id: ticketId,
+    ticket_code: gpsSyncManager.getTicketCode(),
     latitude,
     longitude,
     speed: currentSpeed,
@@ -874,7 +1055,9 @@ async function handlePosition(position: any) {
   });
 
   // Publish via MQTT in real-time (non-blocking)
-  if (mqttService.isConnected()) {
+  if (deferLivePublish()) {
+    console.log('[CHECK] live fix held — backlog flushing, publishes in time order');
+  } else if (mqttService.isConnected()) {
     const payload = {
       latitude,
       longitude,
@@ -910,7 +1093,15 @@ function handleError(error: any) {
   if (error.code === 1) {
     console.error('[GPS] Location permission denied — stopping tracking');
     showToast('error', 'GPS Permission Lost', 'Location permission was revoked. Tracking stopped.');
+    const ticketId = gpsSyncManager.getTicketId();
     backgroundGpsTracker.stop();
+    // stop() clears permissionDenied and removes the AppState listener, so nothing
+    // used to restart JS tracking for the rest of the session — a momentary
+    // permission blip left the app on native-silent GPS only until the next login.
+    // Re-arm the retry so the next foreground re-requests permission and resumes.
+    permissionDenied = true;
+    pendingTicketId = ticketId;
+    setupAppStateListener();
   }
 }
 
@@ -1021,7 +1212,8 @@ function startWatch() {
       fastestInterval: 1000,
       showLocationDialog: true,
       forceRequestLocation: true,
-      maximumAge: 2000,
+      // No maximumAge here: it belongs to getCurrentPosition, not watchPosition.
+      // The native watch ignored it, so it only ever looked like a cache bound.
       // iOS: show blue location indicator bar when tracking in background
       ...(Platform.OS === 'ios' ? {showsBackgroundLocationIndicator: true} : {}),
     },
@@ -1105,6 +1297,11 @@ export const backgroundGpsTracker = {
         requestBatteryOptimizationExemption();
       }
 
+      // Float a mini map when the driver leaves via Home. startAlways() is the
+      // path the app actually boots through (OfflineSyncContext), so arming it
+      // only in start() left PiP dead.
+      setPipAutoEnter(true);
+
       // Start compass for hybrid heading (GPS + magnetometer)
       startCompass();
 
@@ -1119,6 +1316,7 @@ export const backgroundGpsTracker = {
       startIdleCheck();
 
       // Publish offline GPS records when connectivity is restored
+      trackConnectivityLoss();
       connectivityRestoredUnsub?.();
       connectivityRestoredUnsub = onConnectivityRestored(() => {
         console.log('[GPS] Connectivity restored — reconnecting MQTT and publishing offline records');
@@ -1203,6 +1401,10 @@ export const backgroundGpsTracker = {
         requestBatteryOptimizationExemption();
       }
 
+      // Float a mini map when the driver leaves via Home — only meaningful while
+      // a ticket is actually being tracked, so it is armed here, not at boot.
+      setPipAutoEnter(true);
+
       // Start compass for hybrid heading
       startCompass();
 
@@ -1216,6 +1418,7 @@ export const backgroundGpsTracker = {
       startIdleCheck();
 
       // Publish offline GPS records when connectivity is restored
+      trackConnectivityLoss();
       connectivityRestoredUnsub?.();
       connectivityRestoredUnsub = onConnectivityRestored(() => {
         console.log('[GPS] Connectivity restored — reconnecting MQTT and publishing offline records');
@@ -1270,6 +1473,7 @@ export const backgroundGpsTracker = {
     starting = false;
     permissionDenied = false;
     pendingTicketId = null;
+    setPipAutoEnter(false); // Nothing worth floating once tracking ends
     stopWatch();
     stopStationaryPoll();
     stopCompass();
@@ -1278,6 +1482,8 @@ export const backgroundGpsTracker = {
     removeAppStateListener();
     connectivityRestoredUnsub?.();
     connectivityRestoredUnsub = null;
+    connectivityLostUnsub?.();
+    connectivityLostUnsub = null;
     gpsSyncManager.stop();
     lastPosition = null;
     lastGpsFixTime = 0;
@@ -1310,6 +1516,8 @@ export const backgroundGpsTracker = {
       removeAppStateListener();
       connectivityRestoredUnsub?.();
       connectivityRestoredUnsub = null;
+      connectivityLostUnsub?.();
+      connectivityLostUnsub = null;
 
       // Flush in-memory GPS cache to MMKV before stopping
       gpsStorage.flush();
@@ -1431,6 +1639,10 @@ export const backgroundGpsTracker = {
 
   /** Import any leftover native records on app startup, publish to MQTT, then clear. */
   async autoResume(): Promise<void> {
+    // Report whatever the native service logged while the app was gone. Runs on
+    // every cold start, so a failure that happened overnight still reaches Sentry.
+    reportNativeGpsDiagnostics().catch(() => {});
+
     // Import native records from previous session (e.g., collected before app was killed)
     const imported = await importNativeRecords();
     if (imported > 0) {

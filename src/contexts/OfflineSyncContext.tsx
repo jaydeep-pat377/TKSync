@@ -18,6 +18,7 @@ import {ticketsApi, trackingApi} from '../services/api';
 import {validateDeliveryTab} from '../utils/validateDeliveryTab';
 import {useAuth} from './AuthContext';
 import {captureError} from '../services/sentry';
+import {toTicketId} from '../services/gpsSyncManager';
 
 type OfflineSyncContextType = {
   isOnline: boolean;
@@ -142,7 +143,8 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
     const startGps = async () => {
       try {
         const res = await trackingApi.getMe();
-        const ticketId = res.data?.current_load?.id ?? null;
+        // Coerce — the API returns this as a string despite its typing. See toTicketId().
+        const ticketId = toTicketId(res.data?.current_load?.id);
         console.log(`[OfflineSync] Auto-starting GPS — ticketId: ${ticketId || 'none'}`);
         await backgroundGpsTracker.startAlways(ticketId);
       } catch {

@@ -20,6 +20,10 @@ jest.mock('react-native-mmkv', () => ({
 jest.mock('@sentry/react-native', () => ({
   init: jest.fn(),
   wrap: jest.fn((component) => component),
+  // App.tsx renders <Sentry.ErrorBoundary> around the whole tree; without it
+  // here the mock returns undefined and every render test fails on an invalid
+  // element type.
+  ErrorBoundary: ({ children }) => children,
   captureException: jest.fn(),
   captureMessage: jest.fn(),
   setUser: jest.fn(),

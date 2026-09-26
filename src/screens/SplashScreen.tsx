@@ -257,11 +257,6 @@ export default function SplashScreen({navigation}: Props) {
     navigation,
   ]);
 
-  const logoSpin = logoRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-15deg', '0deg'],
-  });
-
   const wheelSpin = wheelRotation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
