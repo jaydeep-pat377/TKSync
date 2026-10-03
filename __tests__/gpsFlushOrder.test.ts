@@ -139,3 +139,5 @@ describe('offline flush ordering', () => {
     expect(p.wire).toEqual(['', T(20), T(30)]);
   });
 });
+
+export {}; // Module scope: these files declare top-level names that collide otherwise.

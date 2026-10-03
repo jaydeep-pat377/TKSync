@@ -120,6 +120,18 @@ Native replays in up to `MAX_REPLAY_PASSES` passes, so fixes recorded while the
 backlog drains are swept up by the next pass instead of waiting for the next
 reconnect. JS does the same via the `publishQueued` re-run.
 
+**Suppression cannot latch, and it cannot go quiet.** Drift suppression holds a
+fix back until movement is confirmed. Two guards stop that becoming a silence:
+
+- A fix beyond `max(15 m, accuracy x 1.5)` from the stop clears suppression on
+  distance alone, whatever the reported speed is. Without this, a stop-start
+  crawl straddling `IDLE_SPEED_THRESHOLD` zeroed the moving counter on every dip
+  and never confirmed — measured at up to 158 s of silence over 90 m of driving.
+- While suppressed and something is still happening (over 5 m of drift or
+  0.2 m/s), the stop anchor is republished every `STATIONARY_HEARTBEAT_MS`
+  (15 s). The anchor, not the live fix: the live fix is inside the drift band
+  being suppressed. A truly parked truck stays silent on purpose.
+
 **Backfilled points are flagged.** Any record whose `recorded_at` is more than
 60 s old when it reaches the broker is published with `backfill: true`. The
 server writes it into route history as normal but skips the "current position"
@@ -300,5 +312,6 @@ A watchdog latches one alert per episode:
 | Does MQTT upload in the foreground? | Yes, real-time |
 | Does MQTT upload in the background? | Yes, real-time |
 | Does MQTT upload when killed? | Yes — replay is no longer gated on `reconnect` |
+| Does tracking resume after a reboot? | Not by itself on Android 14+. The OS refuses to let a `location` foreground service start from `BOOT_COMPLETED`, so `BootReceiver` posts a "GPS tracking paused" notification and one tap resumes it. Older Android restarts silently as before. |
 | Max transition gap? | 0–1 second |
 | Data loss possible? | Yes, in one case: the process is killed and `START_STICKY` does not bring the service back. Sentry reports it; nothing restarts it. |

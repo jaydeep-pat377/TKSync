@@ -14,6 +14,7 @@ import {gpsSyncManager} from '../services/gpsSyncManager';
 import {backgroundGpsTracker} from '../services/backgroundGpsTracker';
 
 import {offlineStorage} from '../services/offlineStorage';
+import {storage} from '../services/storage';
 import {ticketsApi, trackingApi} from '../services/api';
 import {validateDeliveryTab} from '../utils/validateDeliveryTab';
 import {useAuth} from './AuthContext';
@@ -63,9 +64,19 @@ export function OfflineSyncProvider({children}: {children: React.ReactNode}) {
         console.error('[OfflineSync] flushOrphaned failed:', err);
         captureError(err instanceof Error ? err : new Error(String(err)), {source: 'flush_orphaned'});
       }
-      // Import + publish native GPS records from previous session, then flush remaining
+      // Import + publish native GPS records from previous session, then flush remaining.
+      //
+      // Only while a driver is signed in. This runs on every app start, and it
+      // publishes GPS, so without the check a logged-out phone pushed leftover
+      // points under the previous driver's ticket. Read the driver from storage
+      // rather than isDriverLoggedIn: this effect fires before auth has finished
+      // restoring, when that flag is still false for everyone.
       try {
-        await backgroundGpsTracker.autoResume();
+        if (!storage.getString('driver')) {
+          console.log('[OfflineSync] autoResume skipped — no driver signed in');
+        } else {
+          await backgroundGpsTracker.autoResume();
+        }
       } catch (err: any) {
         console.error('[OfflineSync] autoResume failed:', err);
         captureError(err instanceof Error ? err : new Error(String(err)), {source: 'auto_resume'});

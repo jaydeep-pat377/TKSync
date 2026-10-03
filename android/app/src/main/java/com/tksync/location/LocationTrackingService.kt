@@ -56,12 +56,18 @@ class LocationTrackingService : Service() {
         private const val KEY_API_BASE_URL = "api_base_url"
         private const val KEY_API_TOKEN = "api_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
+        private const val KEY_DEVICE_ID = "device_id"
         private const val UPLOAD_BATCH_SIZE = 50
         private const val UPLOAD_INTERVAL_MS = 30_000L // Upload every 30 seconds
         private const val IDLE_SPEED_THRESHOLD = 0.5 // m/s ≈ 1.8 km/h — truly stopped, not crawling in traffic
         private const val IDLE_CONSECUTIVE_THRESHOLD = 2
         private const val IDLE_DISTANCE_THRESHOLD = 50.0 // metres — resume if moved this far from idle position
-        private const val DRIFT_DISTANCE_CONFIRM = 15.0 // metres — if moved this far from stop, it's real movement (not GPS drift)
+        private const val DRIFT_DISTANCE_CONFIRM = 15.0 // metres — floor for "moved far enough from stop to be real"
+        // m/s of position change the reported speed does not explain — above this
+        // the fix is multipath, not movement. Mirrors MAX_UNEXPLAINED_SPEED in
+        // backgroundGpsTracker.ts; the two filters must agree or the trail changes
+        // shape depending on whether the app happened to be in the foreground.
+        private const val MAX_UNEXPLAINED_SPEED = 10.0
         private const val ACTION_NOTIFICATION_DISMISSED = "com.tksync.TRACKING_NOTIFICATION_DISMISSED"
 
         // MQTT credential keys
@@ -127,7 +133,22 @@ class LocationTrackingService : Service() {
                 put("tracking_active", prefs.getBoolean(KEY_ACTIVE, false))
                 put("js_alive", prefs.getBoolean(KEY_JS_ALIVE, false))
                 put("idle_mode", prefs.getBoolean(KEY_IDLE, false))
+                // Doze and OEM battery managers throttle location silently. Reporting
+                // the exemption state makes "is power saving doing this?" answerable
+                // from a Sentry event instead of a guess.
+                put("battery_optimized", batteryOptimizedState(context))
                 put("now", System.currentTimeMillis())
+            }
+        }
+
+        /** true when the OS may throttle us, false when exempt, NULL when unknown. */
+        private fun batteryOptimizedState(context: Context): Any {
+            return try {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                // .not() rather than a line-leading "!", which Kotlin cannot parse here.
+                pm.isIgnoringBatteryOptimizations(context.packageName).not()
+            } catch (e: Exception) {
+                JSONObject.NULL
             }
         }
 
@@ -253,6 +274,14 @@ class LocationTrackingService : Service() {
             Log.d(TAG, "API credentials updated — baseUrl: $baseUrl")
         }
 
+        /** Stamped on every published point. JS resolves it and pushes it down, so the
+         *  foreground and background publishers never look like two different phones. */
+        fun setDeviceId(context: Context, deviceId: String) {
+            if (deviceId.isEmpty()) return
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_DEVICE_ID, deviceId).apply()
+        }
+
         fun updateApiToken(context: Context, token: String) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().putString(KEY_API_TOKEN, token).apply()
@@ -292,7 +321,26 @@ class LocationTrackingService : Service() {
                 .remove(KEY_MQTT_TICKET_CODE)
                 .remove(KEY_MQTT_TOKEN_ISSUED_AT)
                 .apply()
-            Log.d(TAG, "MQTT credentials cleared")
+            // Removing the stored credentials is not enough. A connected Paho client
+            // holds url, username, password and topic in memory and is built with
+            // isAutomaticReconnect = true, so it keeps publishing after logout and
+            // reconnects itself if the socket drops. Tear it down.
+            instance?.let { svc ->
+                Handler(Looper.getMainLooper()).post { svc.disconnectMqtt() }
+            }
+            Log.d(TAG, "MQTT credentials cleared and live client disconnected")
+        }
+
+        /** Forget the driver's API tokens. Without this a logged-out phone keeps
+         *  everything it needs to mint a fresh MQTT token through refreshMqttTokenViaApi(). */
+        fun clearApiCredentials(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .remove(KEY_API_BASE_URL)
+                .remove(KEY_API_TOKEN)
+                .remove(KEY_REFRESH_TOKEN)
+                .apply()
+            Log.d(TAG, "API credentials cleared")
         }
 
         fun isActive(context: Context): Boolean {
@@ -331,6 +379,20 @@ class LocationTrackingService : Service() {
     private var stationaryLng: Double = 0.0
     private var consecutiveMovingCount: Int = 0
     private val MOVING_CONFIRM_THRESHOLD = 2 // Require 2 consecutive moving fixes to clear stationary
+    private var consecutiveSlowCount: Int = 0
+    private val SLOW_FIXES_TO_RESET = 2 // Consecutive slow fixes before the moving counter is zeroed
+    private var lastHeartbeatAt: Long = 0L
+    /**
+     * Longest the map may go without a point while the truck is suppressed as
+     * stationary. Drift suppression could previously hold for minutes during a
+     * stop-start crawl, so the dispatcher saw a parked truck that was driving.
+     * Only fires when something is happening; a genuinely parked truck stays
+     * silent, which is what the dashboard already expects.
+     * Mirrors STATIONARY_HEARTBEAT_MS in backgroundGpsTracker.ts.
+     */
+    private val STATIONARY_HEARTBEAT_MS = 15_000L
+    private val HEARTBEAT_MIN_DRIFT = 5.0   // metres from the stop
+    private val HEARTBEAT_MIN_SPEED = 0.2   // m/s
     private var lastSavedLat: Double? = null
     private var lastSavedLng: Double? = null
     private var lastSavedTime: Long = 0L // GPS timestamp (ms) of last saved location — for teleport detection
@@ -368,6 +430,18 @@ class LocationTrackingService : Service() {
         return synchronized(backfillFormat) {
             try { backfillFormat.parse(recordedAt)?.time } catch (e: Exception) { null }
         } ?: 0L
+    }
+
+    /** Falls back to ANDROID_ID when JS has not pushed one down yet — the same value
+     *  getUniqueIdSync() returns on Android, so the two agree even before first sync. */
+    private fun deviceId(): String {
+        val stored = prefs.getString(KEY_DEVICE_ID, "") ?: ""
+        if (stored.isNotEmpty()) return stored
+        return try {
+            android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: ""
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     private fun isBackfill(recordedAt: String): Boolean {
@@ -440,12 +514,32 @@ class LocationTrackingService : Service() {
         createNotificationChannels()
         val notification = buildNotification()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            // Android 12+ refuses some background starts outright, and an uncaught
+            // throw here takes the whole process down. Record it and stand down —
+            // BootReceiver's notification is what gets the driver to restart us.
+            Log.e(TAG, "startForeground refused (${e.javaClass.simpleName}): ${e.message}")
+            recordDiag(prefs, "start_foreground_refused", mapOf(
+                "error" to e.javaClass.simpleName,
+                "sdk" to Build.VERSION.SDK_INT,
+            ))
+            stopSelf()
+            return START_NOT_STICKY
         }
+
+        // Tracking is running again — clear the "paused after reboot" prompt if the
+        // driver opened the app to get us here.
+        try {
+            getSystemService(NotificationManager::class.java)
+                ?.cancel(BootReceiver.RESUME_NOTIFICATION_ID)
+        } catch (_: Exception) {}
 
         // Samsung One UI may not display the foreground notification on first cold start
         // (seen=false in NotificationManager). Cancel and re-post after delay to force visibility.
@@ -927,6 +1021,7 @@ class LocationTrackingService : Service() {
                                 put("backfill", isBackfill(r.optString("recorded_at")).also {
                                     if (it) totalBackfilled++
                                 })
+                                put("device_id", deviceId())
                             }
                             val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
                             message.qos = 1
@@ -1024,6 +1119,7 @@ class LocationTrackingService : Service() {
                 // Use battery stored at record time — accurate even for offline replays
                 put("battery_level", record.opt("battery_level") ?: JSONObject.NULL)
                 put("backfill", isBackfill(record.optString("recorded_at")))
+                put("device_id", deviceId())
             }
 
             val message = MqttMessage(payload.toString().toByteArray(Charsets.UTF_8))
@@ -1210,6 +1306,48 @@ class LocationTrackingService : Service() {
         }
     }
 
+    /**
+     * Republish the parked position with a fresh timestamp.
+     *
+     * Publishes the stop anchor, not the fix that triggered it: that fix sits inside
+     * the drift band we are deliberately suppressing, and sending it would redraw the
+     * spurs off the route that the accuracy work removed. The anchor with a current
+     * timestamp tells the dashboard "still here, still alive" and costs the map nothing.
+     */
+    private fun saveStationaryHeartbeat(accuracy: Double) {
+        if (stationaryLat == 0.0 && stationaryLng == 0.0) return
+        lastHeartbeatAt = System.currentTimeMillis()
+
+        val battery = getBatteryPercent()
+        val record = JSONObject().apply {
+            put("ticket_id", ticketId)
+            put("latitude", stationaryLat)
+            put("longitude", stationaryLng)
+            put("speed", 0.0)
+            put("heading", 0.0)
+            put("altitude", 0.0)
+            put("accuracy", accuracy)
+            put("recorded_at", isoFormat.format(Date(System.currentTimeMillis())))
+            put("synced", false)
+            put("id", "native_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}")
+            put("is_speeding", false)
+            put("is_idle", true)
+            put("battery_level", if (battery >= 0) battery else JSONObject.NULL)
+            put("ticket_code", prefs.getString(KEY_MQTT_TICKET_CODE, "") ?: "")
+        }
+
+        pendingRecords.put(record)
+        pendingCount++
+        ensureMqttConnected()
+        publishToMqtt(record)
+        try { onGpsRecord?.invoke(record) } catch (e: Exception) {
+            Log.w(TAG, "onGpsRecord callback error: ${e.message}")
+        }
+        if (pendingCount >= WRITE_BATCH_SIZE) flushPendingRecords()
+
+        Log.i(TAG, "[CHECK] stationary heartbeat — parked position resent, next in ${STATIONARY_HEARTBEAT_MS / 1000}s")
+    }
+
     private fun saveLocation(location: Location) {
         // Stamp liveness BEFORE any filter — distinguishes "FusedLocation stopped
         // delivering" from "fixes arrived but every one was filtered out".
@@ -1297,11 +1435,37 @@ class LocationTrackingService : Service() {
         val isIdle = !speedAvailable || speedMs < IDLE_SPEED_THRESHOLD
         val isConfirmedMoving = speedAvailable && speedMs >= IDLE_SPEED_THRESHOLD
 
+        // Reject a jump the speedometer cannot account for.
+        //
+        // The teleport gate above only catches 288 km/h, which at 1 Hz still lets an
+        // 80 m jump through unchallenged. That is why the trail grows spurs at
+        // junctions: accuracy degrades near buildings, the gate re-warms to 50 m, and
+        // a 40-50 m multipath fix is accepted as real movement. GPS speed is Doppler
+        // derived and far more trustworthy than differencing two positions, so a jump
+        // the reported speed cannot explain means the position is wrong, not the speed.
+        if (speedAvailable && lastSavedLat != null && lastSavedLng != null && lastSavedTime > 0L) {
+            val dt = (location.time - lastSavedTime) / 1000.0
+            // Short gaps only — after a background stretch lastSaved is stale and a
+            // large but entirely legitimate gap averages out to nothing useful.
+            if (dt > 0 && dt < 10) {
+                val jump = FloatArray(1)
+                Location.distanceBetween(lastSavedLat!!, lastSavedLng!!, location.latitude, location.longitude, jump)
+                val implied = jump[0] / dt
+                if (implied > speedMs + MAX_UNEXPLAINED_SPEED) {
+                    Log.d(TAG, "Skipping unexplained jump: ${String.format("%.0f", jump[0].toDouble())}m in " +
+                        "${String.format("%.1f", dt)}s = ${String.format("%.1f", implied)} m/s, but speed reads " +
+                        "${String.format("%.1f", speedMs)} m/s (accuracy ${String.format("%.0f", accuracy)}m)")
+                    return
+                }
+            }
+        }
+
         // ── Stationary drift suppression ──────────────────────────────
         var suppressDrift = false
         var isFirstStop = false
 
         if (isConfirmedMoving) {
+            consecutiveSlowCount = 0
             consecutiveMovingCount++
 
             // Distance-based confirmation: if truck moved far enough from stop position,
@@ -1313,7 +1477,12 @@ class LocationTrackingService : Service() {
                 distFromStop = stopResults[0].toDouble()
             }
 
-            if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD || distFromStop >= DRIFT_DISTANCE_CONFIRM) {
+            // Scale the "definitely moved" distance with the accuracy of the fix
+            // claiming it. A flat 15 m sat below the 25-50 m the accuracy gate admits,
+            // so ordinary drift while parked cleared the stationary flag and drew a
+            // spur off the route.
+            val confirmDistance = maxOf(DRIFT_DISTANCE_CONFIRM, accuracy * 1.5)
+            if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD || distFromStop >= confirmDistance) {
                 wasStationary = false
                 stationaryLat = 0.0
                 stationaryLng = 0.0
@@ -1340,15 +1509,62 @@ class LocationTrackingService : Service() {
                 return
             }
         } else {
-            consecutiveMovingCount = 0
+            // One slow fix is not a stop. Zeroing the counter on every dip below
+            // 1.8 km/h is what left a stop-start crawl unable to ever reach
+            // MOVING_CONFIRM_THRESHOLD: the count ran 1, 0, 1, 0 for minutes.
+            consecutiveSlowCount++
+            if (consecutiveSlowCount >= SLOW_FIXES_TO_RESET) {
+                consecutiveMovingCount = 0
+            }
             if (wasStationary) {
-                suppressDrift = true
-                Log.d(TAG, "DRIFT BLOCKED: speed=${String.format("%.1f", speedMs)}, wasStationary=true, " +
-                    "lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
+                // Escape hatch. A truck 40 m from where it stopped has moved, whatever
+                // the speedometer says. This check used to live only in the moving
+                // branch, so a crawl below 1.8 km/h was discarded here without the
+                // distance ever being looked at, and the truck drove 130 m while the
+                // map showed it parked.
+                var crawlDist = 0.0
+                if (stationaryLat != 0.0 || stationaryLng != 0.0) {
+                    val crawlResults = FloatArray(1)
+                    Location.distanceBetween(stationaryLat, stationaryLng, location.latitude, location.longitude, crawlResults)
+                    crawlDist = crawlResults[0].toDouble()
+                }
+                val crawlConfirm = maxOf(DRIFT_DISTANCE_CONFIRM, accuracy * 1.5)
+
+                if (crawlDist >= crawlConfirm) {
+                    wasStationary = false
+                    stationaryLat = 0.0
+                    stationaryLng = 0.0
+                    consecutiveMovingCount = 0
+                    consecutiveSlowCount = 0
+                    Log.i(TAG, "[CHECK] crawl confirmed — ${String.format("%.0f", crawlDist)}m from stop at " +
+                        "${String.format("%.1f", speedMs)} m/s, resuming full rate")
+                    // Leave idle polling too, or the next fix is 10 s away.
+                    if (isIdleMode) {
+                        isIdleMode = false
+                        idleLat = 0.0
+                        idleLng = 0.0
+                        consecutiveIdleCount = 0
+                        prefs.edit().putBoolean(KEY_IDLE, false).apply()
+                        fusedClient.removeLocationUpdates(locationCallback)
+                        startLocationUpdates()
+                    }
+                    // Fall through and save this fix.
+                } else {
+                    suppressDrift = true
+                    Log.d(TAG, "DRIFT BLOCKED: speed=${String.format("%.1f", speedMs)}, wasStationary=true, " +
+                        "lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
+                    // Do not let the map go quiet while anything is happening.
+                    val now = System.currentTimeMillis()
+                    if ((crawlDist >= HEARTBEAT_MIN_DRIFT || speedMs >= HEARTBEAT_MIN_SPEED) &&
+                        now - lastHeartbeatAt >= STATIONARY_HEARTBEAT_MS) {
+                        saveStationaryHeartbeat(accuracy)
+                    }
+                }
             } else {
                 wasStationary = true
                 stationaryLat = location.latitude
                 stationaryLng = location.longitude
+                lastHeartbeatAt = System.currentTimeMillis()
                 isFirstStop = true // Must save — bypass distance filter below
                 Log.d(TAG, "FIRST STOP: saving stopped-at, lat=${String.format("%.6f", location.latitude)}, lng=${String.format("%.6f", location.longitude)}")
             }

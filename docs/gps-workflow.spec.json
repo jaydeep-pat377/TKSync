@@ -1,0 +1,340 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "TKSync GPS Pipeline \u2014 Phone to Dispatch Map",
+    "output": "docs/gps-workflow.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      2000,
+      860
+    ],
+    "views": [
+      {
+        "id": "filters",
+        "label": "Filter chain",
+        "focus": [
+          "fix",
+          "gate",
+          "jump",
+          "drift"
+        ],
+        "note": "Each stage decides whether a fix is real movement or multipath."
+      },
+      {
+        "id": "offline",
+        "label": "Offline and catch-up",
+        "focus": [
+          "store",
+          "backlog",
+          "publish"
+        ],
+        "note": "The backlog leaves oldest first and live fixes wait behind it."
+      },
+      {
+        "id": "server",
+        "label": "Server side",
+        "focus": [
+          "publish",
+          "brokerNode",
+          "consumer",
+          "timescale",
+          "dispatch"
+        ],
+        "note": "Redis keeps one position per truck, so arrival order decides the live trail."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "filter",
+      "label": "Phone \u2014 filter chain"
+    },
+    {
+      "id": "device",
+      "label": "Phone \u2014 store and publish"
+    },
+    {
+      "id": "outage",
+      "label": "Offline catch-up",
+      "variant": "exception"
+    },
+    {
+      "id": "broker",
+      "label": "Broker"
+    },
+    {
+      "id": "pipeline",
+      "label": "Server pipeline"
+    },
+    {
+      "id": "dispatchLane",
+      "label": "Dispatcher"
+    }
+  ],
+  "phases": [
+    {
+      "id": "screen",
+      "label": "Filter",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "persist",
+      "label": "Store and publish",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "serve",
+      "label": "Server",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "fix",
+    "gate",
+    "jump",
+    "drift",
+    "store",
+    "publish",
+    "brokerNode",
+    "consumer",
+    "dispatch"
+  ],
+  "nodes": [
+    {
+      "id": "fix",
+      "lane": "filter",
+      "col": 0,
+      "width": 68,
+      "type": "external",
+      "label": "GPS Fix",
+      "sublabel": "1 Hz fused"
+    },
+    {
+      "id": "gate",
+      "lane": "filter",
+      "col": 1,
+      "width": 68,
+      "type": "security",
+      "label": "Accuracy",
+      "sublabel": "50 m to 25 m"
+    },
+    {
+      "id": "jump",
+      "lane": "filter",
+      "col": 2,
+      "width": 68,
+      "type": "security",
+      "label": "Speed",
+      "sublabel": "vs Doppler",
+      "tag": "NEW"
+    },
+    {
+      "id": "drift",
+      "lane": "filter",
+      "col": 3,
+      "width": 68,
+      "type": "security",
+      "label": "Drift",
+      "sublabel": "acc x 1.5",
+      "tag": "CHANGED"
+    },
+    {
+      "id": "store",
+      "lane": "device",
+      "col": 3,
+      "width": 130,
+      "type": "database",
+      "label": "Local Store",
+      "sublabel": "MMKV + prefs"
+    },
+    {
+      "id": "publish",
+      "lane": "device",
+      "col": 5,
+      "width": 72,
+      "type": "messagebus",
+      "label": "Publish",
+      "sublabel": "MQTT QoS 1"
+    },
+    {
+      "id": "backlog",
+      "lane": "outage",
+      "col": 4,
+      "width": 140,
+      "type": "backend",
+      "label": "Backlog Flush",
+      "sublabel": "oldest first",
+      "tag": "NEW"
+    },
+    {
+      "id": "brokerNode",
+      "lane": "broker",
+      "col": 5,
+      "width": 72,
+      "type": "cloud",
+      "label": "Broker",
+      "sublabel": "topic/truck"
+    },
+    {
+      "id": "consumer",
+      "lane": "pipeline",
+      "col": 5,
+      "width": 72,
+      "type": "backend",
+      "label": "Consumer",
+      "sublabel": "gps-consumer"
+    },
+    {
+      "id": "timescale",
+      "lane": "pipeline",
+      "col": 3,
+      "width": 130,
+      "type": "database",
+      "label": "Timescale",
+      "sublabel": "stores every point"
+    },
+    {
+      "id": "dispatch",
+      "lane": "dispatchLane",
+      "col": 5,
+      "width": 72,
+      "type": "frontend",
+      "label": "Dispatch",
+      "sublabel": "live map"
+    }
+  ],
+  "edges": [
+    {
+      "from": "fix",
+      "to": "gate",
+      "variant": "emphasis",
+      "role": "main",
+      "route": "bottom-channel",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "from": "gate",
+      "to": "jump",
+      "variant": "emphasis",
+      "role": "main",
+      "route": "bottom-channel",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "from": "jump",
+      "to": "drift",
+      "variant": "emphasis",
+      "role": "main",
+      "route": "bottom-channel",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "from": "drift",
+      "to": "store",
+      "label": "real movement",
+      "variant": "emphasis",
+      "role": "main",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        478,
+        190
+      ]
+    },
+    {
+      "from": "store",
+      "to": "publish",
+      "label": "online",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "publish",
+      "to": "brokerNode",
+      "variant": "emphasis",
+      "role": "main",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "brokerNode",
+      "to": "consumer",
+      "variant": "emphasis",
+      "role": "main",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "consumer",
+      "to": "dispatch",
+      "label": "newest wins",
+      "variant": "emphasis",
+      "role": "main",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "consumer",
+      "to": "timescale",
+      "label": "writes all",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "from": "store",
+      "to": "backlog",
+      "label": "no network",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "from": "backlog",
+      "to": "publish",
+      "label": "oldest first",
+      "variant": "security",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Changed this week",
+      "items": [
+        "Speed Check is new: drops a jump the Doppler speed cannot explain, which drew the 40-50 m spurs at junctions",
+        "Drift confirm now scales with accuracy instead of a flat 15 m that sat below the gate's own error bar",
+        "Backlog Flush sorts by recorded_at and holds live fixes for up to 60 s while it drains"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Why send order matters",
+      "items": [
+        "Redis holds one position per truck and drops anything older than what it already has",
+        "A live fix sent ahead of the backlog makes every replayed point stale on arrival, so the map draws a straight line",
+        "Timescale stores the points either way: only the live view depends on order"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Two implementations, one behaviour",
+      "items": [
+        "JS runs the chain in the foreground, the native Android service runs it in the background",
+        "js_alive plus a 30 s heartbeat decides which one records, so they never both publish",
+        "Every constant is duplicated in backgroundGpsTracker.ts and LocationTrackingService.kt"
+      ]
+    }
+  ]
+}

@@ -146,8 +146,20 @@ async function syncGpsRecords(): Promise<void> {
   try {
     // Include latest GPS position in heartbeat so the dashboard
     // "Current Truck Location" and "GPS Online/Offline" stay updated.
+    // Newest by recorded_at, NOT the last appended. Native background records are
+    // imported on foreground resume and land at the end of the array even though
+    // they were captured earlier, so the tail of the array can be an older fix —
+    // and the heartbeat would then report the truck back where it used to be.
     const allRecords = gpsStorage.getAll();
-    const lastRecord = allRecords.length > 0 ? allRecords[allRecords.length - 1] : null;
+    let lastRecord = null as (typeof allRecords)[number] | null;
+    let newest = -Infinity;
+    for (const r of allRecords) {
+      const t = Date.parse(r.recorded_at);
+      if (Number.isFinite(t) && t > newest) {
+        newest = t;
+        lastRecord = r;
+      }
+    }
     const heartbeatPosition = lastRecord ? {
       latitude: lastRecord.latitude,
       longitude: lastRecord.longitude,

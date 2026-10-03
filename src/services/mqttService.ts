@@ -5,6 +5,7 @@ import {storage} from './storage';
 import {trackingApi, type MqttTokenResponse} from './api';
 import {captureError} from './sentry';
 import {getForceOffline} from '../hooks/useNetworkStatus';
+import {getDeviceId} from './deviceId';
 
 const {LocationTrackingModule} = NativeModules;
 
@@ -247,6 +248,8 @@ type GpsPayload = {
   battery_level: number | null;
   /** Set automatically by publish() — see BACKFILL_AFTER_MS. */
   backfill?: boolean;
+  /** Set automatically by publish() — see getDeviceId(). */
+  device_id?: string;
 };
 
 /**
@@ -295,7 +298,10 @@ export function publish(
   const recordedAt = Date.parse(payload.recorded_at);
   const isBackfill =
     Number.isFinite(recordedAt) && Date.now() - recordedAt > BACKFILL_AFTER_MS;
-  const body: GpsPayload = {...payload, backfill: isBackfill};
+  // device_id on every point: a driver can be signed in on two phones at once
+  // and the MQTT token is tied to the truck and driver, not the phone, so this
+  // is the only thing that tells the server which handset a point came from.
+  const body: GpsPayload = {...payload, backfill: isBackfill, device_id: getDeviceId()};
 
   // One line per transition, not per point — at 1 Hz a per-point log is noise.
   // [CHECK] lines exist to make an on-device E2E run verifiable from logcat.

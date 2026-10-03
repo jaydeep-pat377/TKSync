@@ -15,6 +15,7 @@ import {getIsOnline, onConnectivityRestored, onConnectivityLost} from '../hooks/
 import {reportNativeGpsDiagnostics, detectBackgroundServiceDeath} from './gpsDiagnostics';
 import {getLocationPermissionLevel} from './locationPermission';
 import {captureError} from './sentry';
+import {getDeviceId} from './deviceId';
 import {setPipAutoEnter} from '../hooks/usePipMode';
 import DeviceInfo from 'react-native-device-info';
 
@@ -78,7 +79,24 @@ let wasStationary = false; // true after first stationary fix is saved — suppr
 let stationaryPosition: {latitude: number; longitude: number} | null = null; // WHERE the truck stopped
 let consecutiveMovingCount = 0;
 const MOVING_CONFIRM_THRESHOLD = 2; // Require 2 consecutive moving fixes to clear stationary (captures U-turns faster)
-const DISTANCE_CONFIRM_THRESHOLD = 15; // metres — if moved this far from stop, confirm immediately (GPS drift is <10m)
+const DISTANCE_CONFIRM_THRESHOLD = 15; // metres — floor for "moved far enough from stop to be real"
+/** m/s of position change the reported speed does not explain — above this the fix is multipath. */
+const MAX_UNEXPLAINED_SPEED = 10;
+/**
+ * Longest the map may go without a point while the truck is suppressed as
+ * stationary. Drift suppression used to be able to hold for minutes during a
+ * stop-start crawl, and the dispatcher saw a parked truck that was actually
+ * driving. Only fires when something is happening — a genuinely parked truck
+ * stays silent, which is the behaviour the dashboard already relies on.
+ */
+const STATIONARY_HEARTBEAT_MS = 15_000;
+/** Metres from the stop, or m/s, that count as "something is happening". */
+const HEARTBEAT_MIN_DRIFT = 5;
+const HEARTBEAT_MIN_SPEED = 0.2;
+/** Consecutive slow fixes before the moving counter is zeroed — see handlePosition. */
+const SLOW_FIXES_TO_RESET = 2;
+let consecutiveSlowCount = 0;
+let lastHeartbeatAt = 0;
 let stationaryPollTimer: ReturnType<typeof setInterval> | null = null;
 let currentBehavior: BehaviorData = {};
 const listeners = new Set<GpsListener>();
@@ -458,6 +476,10 @@ function syncApiCredentialsToNative() {
   if (baseUrl && token) {
     LocationTrackingModule.setApiCredentials(baseUrl, token, refreshToken).catch(() => {});
   }
+  // Same id as the JS side stamps, so the two publishers are never mistaken for
+  // two phones. Pushed here rather than read natively: this is the value that
+  // was actually persisted, whatever getUniqueIdSync() returns later.
+  LocationTrackingModule.setDeviceId?.(getDeviceId()).catch(() => {});
 }
 
 function notifyListeners(pos: GpsPosition) {
@@ -868,6 +890,61 @@ async function publishBackgroundRecords(): Promise<void> {
 
 // ─── Position Handling ───────────────────────────────────────────
 
+/**
+ * Republish the parked position with a fresh timestamp.
+ *
+ * Publishes the stop anchor, not the fix that triggered it: the fix is inside
+ * the drift band we are deliberately suppressing, and sending it would draw the
+ * same spurs off the route that the accuracy work removed. The anchor with a
+ * current timestamp tells the dashboard "still here, still alive" and costs the
+ * map nothing.
+ */
+async function saveStationaryHeartbeat(accuracy: number | null): Promise<void> {
+  if (!stationaryPosition) return;
+  lastHeartbeatAt = Date.now();
+
+  const recordedAt = new Date().toISOString();
+  const ticketId = gpsSyncManager.getTicketId();
+  const battery = await getBatteryPercent();
+  const {latitude, longitude} = stationaryPosition;
+
+  const recordId = gpsStorage.addRecord({
+    ticket_id: ticketId,
+    ticket_code: gpsSyncManager.getTicketCode(),
+    latitude,
+    longitude,
+    speed: 0,
+    heading: lastGpsHeading,
+    altitude: null,
+    accuracy,
+    recorded_at: recordedAt,
+    battery_level: battery,
+    is_idle: true,
+    ...currentBehavior,
+  });
+
+  if (!deferLivePublish() && mqttService.isConnected()) {
+    mqttService.publish(
+      {
+        latitude,
+        longitude,
+        speed: 0,
+        heading: lastGpsHeading,
+        accuracy,
+        recorded_at: recordedAt,
+        ticket_id: ticketId,
+        ticket_code: gpsSyncManager.getTicketCode(),
+        client_id: recordId,
+        battery_level: battery,
+      },
+      err => {
+        if (!err) gpsStorage.markSynced([recordId]);
+      },
+    );
+  }
+  console.log(`[CHECK] stationary heartbeat — parked position resent, next in ${STATIONARY_HEARTBEAT_MS / 1000}s`);
+}
+
 async function handlePosition(position: any) {
   const {latitude, longitude, speed, heading, altitude, accuracy} = position.coords;
   const speedAvailable = typeof speed === 'number' && !isNaN(speed) && speed >= 0;
@@ -949,6 +1026,36 @@ async function handlePosition(position: any) {
     }
   }
 
+  // Reject a jump the speedometer cannot account for.
+  //
+  // The teleport gate above only catches 288 km/h, which at 1 Hz still lets an
+  // 80 m jump through unchallenged. That is the whole reason the trail grows
+  // spurs at junctions: accuracy degrades near buildings, the gate re-warms to
+  // 50 m, and a 40-50 m multipath fix is accepted as real movement.
+  //
+  // GPS speed is Doppler-derived and far more trustworthy than differencing two
+  // positions, so if the position moved much further than the reported speed
+  // allows, the position is wrong — not the speed.
+  if (lastPosition && speedAvailable) {
+    const dt = (position.timestamp - lastPosition.timestamp) / 1000;
+    // Only over short gaps. After a background stretch lastPosition is stale and
+    // a large, entirely legitimate gap would average out to nothing useful.
+    if (dt > 0 && dt < 10) {
+      const jump = haversineDistance(
+        lastPosition.latitude, lastPosition.longitude, latitude, longitude,
+      );
+      const implied = jump / dt;
+      if (implied > currentSpeed + MAX_UNEXPLAINED_SPEED) {
+        console.log(
+          `[GPS] Skipping unexplained jump: ${jump.toFixed(0)}m in ${dt.toFixed(1)}s ` +
+            `= ${implied.toFixed(1)} m/s, but speed reads ${currentSpeed.toFixed(1)} m/s ` +
+            `(accuracy ${accuracy?.toFixed(0)}m)`,
+        );
+        return;
+      }
+    }
+  }
+
   // Update lastPosition only after filtering out mocked/inaccurate/invalid positions
   lastPosition = pos;
   lastGpsFixTime = Date.now();
@@ -962,20 +1069,65 @@ async function handlePosition(position: any) {
   let isFirstStop = false; // Track if this is the first stationary fix — must bypass distance filter
 
   if (isStationary) {
-    consecutiveMovingCount = 0;
-    if (wasStationary) {
-      // Already stationary — switch to low-frequency poll to save battery
-      if (!stationaryPollTimer && AppState.currentState === 'active') {
-        startStationaryPoll();
-      }
-      return;
+    // One slow fix is not a stop. Zeroing the counter on every dip below
+    // 1.8 km/h is what made a stop-start crawl unable to ever reach
+    // MOVING_CONFIRM_THRESHOLD: the count went 1, 0, 1, 0 for minutes.
+    consecutiveSlowCount++;
+    if (consecutiveSlowCount >= SLOW_FIXES_TO_RESET) {
+      consecutiveMovingCount = 0;
     }
-    // First stationary fix — save it so we know WHERE the truck stopped
-    wasStationary = true;
-    stationaryPosition = {latitude, longitude};
-    isFirstStop = true; // Must save this record — skip distance filter below
-    console.log(`[GPS] FIRST STOP: saving stopped-at position, lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
+
+    if (wasStationary) {
+      // Escape hatch. A truck 40 m from where it stopped has moved, whatever the
+      // speedometer says. This check used to live only in the moving branch, so a
+      // crawl below 1.8 km/h was discarded here without the distance ever being
+      // looked at — the truck drove 130 m while the map showed it parked.
+      const crawlDist = stationaryPosition
+        ? haversineDistance(
+            stationaryPosition.latitude, stationaryPosition.longitude,
+            latitude, longitude,
+          )
+        : 0;
+      const crawlConfirm = Math.max(DISTANCE_CONFIRM_THRESHOLD, (accuracy ?? 0) * 1.5);
+
+      if (crawlDist >= crawlConfirm) {
+        wasStationary = false;
+        stationaryPosition = null;
+        consecutiveMovingCount = 0;
+        consecutiveSlowCount = 0;
+        if (stationaryPollTimer) {
+          stopStationaryPoll();
+          startWatch();
+        }
+        console.log(
+          `[CHECK] crawl confirmed — ${crawlDist.toFixed(0)}m from stop at ` +
+            `${currentSpeed.toFixed(1)} m/s, resuming full rate`,
+        );
+        // Fall through and save this fix.
+      } else {
+        // Still parked as far as we can tell — keep the low-frequency poll.
+        if (!stationaryPollTimer && AppState.currentState === 'active') {
+          startStationaryPoll();
+        }
+        // ...but do not let the map go quiet while anything is happening.
+        if (
+          (crawlDist >= HEARTBEAT_MIN_DRIFT || currentSpeed >= HEARTBEAT_MIN_SPEED) &&
+          Date.now() - lastHeartbeatAt >= STATIONARY_HEARTBEAT_MS
+        ) {
+          saveStationaryHeartbeat(accuracy ?? null);
+        }
+        return;
+      }
+    } else {
+      // First stationary fix — save it so we know WHERE the truck stopped
+      wasStationary = true;
+      stationaryPosition = {latitude, longitude};
+      isFirstStop = true; // Must save this record — skip distance filter below
+      lastHeartbeatAt = Date.now();
+      console.log(`[GPS] FIRST STOP: saving stopped-at position, lat=${latitude.toFixed(6)}, lng=${longitude.toFixed(6)}`);
+    }
   } else {
+    consecutiveSlowCount = 0;
     consecutiveMovingCount++;
 
     // Distance-based confirmation: if truck moved far enough from stop position,
@@ -988,7 +1140,14 @@ async function handlePosition(position: any) {
       );
     }
 
-    if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD || distFromStop >= DISTANCE_CONFIRM_THRESHOLD) {
+    // Scale the "definitely moved" distance with the accuracy of the fix claiming
+    // it. A flat 15 m was below the 25-50 m the accuracy gate admits, so ordinary
+    // drift while parked cleared the stationary flag and drew a spur off the route.
+    const confirmDistance = Math.max(
+      DISTANCE_CONFIRM_THRESHOLD,
+      (accuracy ?? 0) * 1.5,
+    );
+    if (consecutiveMovingCount >= MOVING_CONFIRM_THRESHOLD || distFromStop >= confirmDistance) {
       // Confirmed real movement — clear stationary flag and resume full GPS
       wasStationary = false;
       stationaryPosition = null;
@@ -1231,7 +1390,9 @@ function startStationaryPoll() {
     Geolocation.getCurrentPosition(
       (position) => handlePosition(position),
       () => {}, // Ignore errors during stationary poll
-      {enableHighAccuracy: true, timeout: 5000, maximumAge: 3000},
+      // maximumAge 0: a cached fix still reports the speed it had when it was
+      // taken, so accepting a 3 s old one delayed noticing the truck had set off.
+      {enableHighAccuracy: true, timeout: 5000, maximumAge: 0},
     );
   }, 5000);
   console.log('[GPS] Stationary — switched to 5s poll (waiting for movement)');
@@ -1492,6 +1653,8 @@ export const backgroundGpsTracker = {
     wasStationary = false;
     stationaryPosition = null;
     consecutiveMovingCount = 0;
+    consecutiveSlowCount = 0;
+    lastHeartbeatAt = 0;
     compassHeading = null;
     lastGpsHeading = 0;
     // Switch native service to silent mode — keeps collecting GPS in background
@@ -1538,8 +1701,17 @@ export const backgroundGpsTracker = {
         console.warn(`[GPS] MQTT flush on logout failed: ${err.message}`);
       }
 
-      // NOW disconnect MQTT
+      // NOW disconnect MQTT — this also clears the native MQTT credentials and
+      // tears down the native Paho client, which used to keep publishing after
+      // logout on credentials it still held in memory.
       mqttService.disconnect();
+
+      // Forget the driver's API tokens on the native side too. They were written
+      // by setApiCredentials() at login and nothing ever removed them, so a
+      // logged-out phone still held everything needed to mint a fresh MQTT token.
+      if (Platform.OS === 'android' && LocationTrackingModule?.clearApiCredentials) {
+        LocationTrackingModule.clearApiCredentials().catch(() => {});
+      }
 
       if (publishedAll) {
         // All records published — safe to clear
@@ -1563,6 +1735,8 @@ export const backgroundGpsTracker = {
       wasStationary = false;
       stationaryPosition = null;
       consecutiveMovingCount = 0;
+      consecutiveSlowCount = 0;
+      lastHeartbeatAt = 0;
       compassHeading = null;
       lastGpsHeading = 0;
       currentBehavior = {};

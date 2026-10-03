@@ -154,6 +154,17 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
     }
 
     @ReactMethod
+    fun setDeviceId(deviceId: String, promise: Promise) {
+        try {
+            LocationTrackingService.setDeviceId(reactContext, deviceId)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "setDeviceId failed", e)
+            promise.reject("DEVICE_ID_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
     fun updateApiToken(token: String, promise: Promise) {
         try {
             LocationTrackingService.updateApiToken(reactContext, token)
@@ -233,6 +244,17 @@ class LocationTrackingModule(private val reactContext: ReactApplicationContext) 
         } catch (e: Exception) {
             Log.e(TAG, "setMqttCredentials failed", e)
             promise.reject("MQTT_CRED_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun clearApiCredentials(promise: Promise) {
+        try {
+            LocationTrackingService.clearApiCredentials(reactContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "clearApiCredentials failed", e)
+            promise.reject("CLEAR_API_CREDS_ERROR", e.message, e)
         }
     }
 
