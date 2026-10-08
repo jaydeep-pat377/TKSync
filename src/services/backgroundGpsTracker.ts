@@ -1701,6 +1701,9 @@ export const backgroundGpsTracker = {
         console.warn(`[GPS] MQTT flush on logout failed: ${err.message}`);
       }
 
+      // Send "logged out" presence so the live map shows the truck offline immediately
+      mqttService.publishPresence({status: 'logged_out', since: new Date().toISOString()});
+
       // NOW disconnect MQTT — this also clears the native MQTT credentials and
       // tears down the native Paho client, which used to keep publishing after
       // logout on credentials it still held in memory.

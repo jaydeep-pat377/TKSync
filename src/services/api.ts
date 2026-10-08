@@ -1,9 +1,11 @@
+import {Platform} from 'react-native';
 import Config from 'react-native-config';
 import {storage} from './storage';
 import {ENDPOINTS} from './endpoints';
 import {showToast} from '../utils/toast';
 import {captureError, addBreadcrumb} from './sentry';
 import {getIsOnline} from '../hooks/useNetworkStatus';
+import {getDeviceId} from './deviceId';
 
 const BASE_URL = Config.API_BASE_URL || '';
 
@@ -61,6 +63,8 @@ async function request<T = any>(
 ): Promise<ApiResponse<T>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-Device-Id': getDeviceId(),
+    'X-Device-Platform': Platform.OS,
     ...((options.headers as Record<string, string>) || {}),
   };
 
@@ -605,6 +609,7 @@ export type DeliveryRecord = {
           section_title?: string;
           section_icon?: string;
           show_products_link?: boolean;
+          unit?: string;
         };
       };
     };

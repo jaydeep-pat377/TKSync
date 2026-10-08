@@ -92,8 +92,7 @@ const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 const TITLE_FONT = Platform.OS === 'ios' ? 'Helvetica' : 'sans-serif';
 
 // ── Helpers ──
-const UOM_MAP: Record<string, string> = {MQ: 'CY'};
-const normUOM = (u: string | null) => (!u ? '-' : UOM_MAP[u.toUpperCase()] || u);
+const normUOM = (u: string | null) => (!u ? '-' : u);
 const fmtDate = (t: string | null) => {
   if (!t) return '--';
   // Extract date directly from string — avoids timezone conversion

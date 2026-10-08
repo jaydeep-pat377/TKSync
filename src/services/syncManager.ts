@@ -17,6 +17,7 @@ export type SyncEvent =
 
 const syncListeners = new Set<SyncListener>();
 let isSyncing = false;
+let sessionEnded = false;
 
 function emit(event: SyncEvent) {
   syncListeners.forEach(cb => cb(event));
@@ -31,7 +32,9 @@ function isRetryableError(err: any): boolean {
   if (err?.message?.includes('Network request failed')) return true;
   // Server errors (5xx) are retryable
   if (err?.status >= 500) return true;
-  // 401 is retryable (token may refresh on next attempt)
+  // 401 with SESSION_ENDED is NOT retryable — session is gone
+  if (err?.status === 401 && err?.error_code === 'SESSION_ENDED') return false;
+  // Other 401s are retryable (token may refresh on next attempt)
   if (err?.status === 401) return true;
   // Other client errors (4xx) are NOT retryable (validation, not found)
   if (err?.status >= 400 && err?.status < 500) return false;
@@ -74,6 +77,10 @@ async function syncOne(item: PendingSave): Promise<'synced' | 'retry' | 'permane
       retryCount: item.retryCount,
     });
 
+    if (err?.status === 401 && err?.error_code === 'SESSION_ENDED') {
+      sessionEnded = true;
+    }
+
     if (!isRetryableError(err)) {
       // Permanent failure (validation, auth) — remove from queue
       console.warn(`[SyncManager] Permanent failure, removing from queue: ${message}`);
@@ -91,6 +98,7 @@ const MAX_HEALTH_RETRIES = 6; // Stop retrying health check after ~1 minute (6 �
 let healthRetryCount = 0;
 
 async function processQueue(): Promise<void> {
+  if (sessionEnded) return;
   if (isSyncing) {
     console.log('[SyncManager] Sync already in progress, skipping');
     return;
@@ -126,6 +134,10 @@ async function processQueue(): Promise<void> {
   emit({type: 'sync_start', count: pending.length});
 
   for (const item of pending) {
+    if (sessionEnded) {
+      console.log('[SyncManager] Session ended — stopping sync loop');
+      break;
+    }
     if (!getIsOnline()) {
       console.log('[SyncManager] Lost connection during sync, stopping');
       break;
@@ -167,7 +179,7 @@ async function processQueue(): Promise<void> {
   emit({type: 'queue_changed', count: remaining});
 
   // If items remain (retryable failures), schedule another attempt
-  if (remaining > 0 && getIsOnline()) {
+  if (remaining > 0 && getIsOnline() && !sessionEnded) {
     const nextDelay = RETRY_DELAYS[Math.min(failed - 1, RETRY_DELAYS.length - 1)] || 10000;
     console.log(`[SyncManager] ${remaining} items remaining, retrying in ${nextDelay}ms`);
     setTimeout(() => processQueue(), nextDelay);
@@ -179,6 +191,7 @@ let unsubConnectivity: (() => void) | null = null;
 export const syncManager = {
   /** Start listening for connectivity changes and auto-sync */
   init(): void {
+    sessionEnded = false;
     if (unsubConnectivity) return; // already initialized
     unsubConnectivity = onConnectivityRestored(() => {
       processQueue();

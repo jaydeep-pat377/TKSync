@@ -329,6 +329,7 @@ export function publish(
 
 export type PresencePayload =
   | {status: 'offline'; since: string}
+  | {status: 'logged_out'; since: string}
   | {
       status: 'online';
       backfill_count: number;

@@ -120,12 +120,9 @@ const PAYMENT_MAP: Record<string, string> = {
 };
 
 // Temporary frontend UOM normalization — should be fixed in API
-const UOM_MAP: Record<string, string> = {
-  MQ: 'CY',
-};
 function normalizeUOM(unit: string | null | undefined): string {
   if (!unit) return '';
-  return UOM_MAP[unit.toUpperCase()] || unit;
+  return unit;
 }
 
 function stripUnit(value: string | number | null | undefined): string {
@@ -1216,13 +1213,21 @@ export default function DashboardScreen({ navigation }: Props) {
   const getDisplayValue = (tab: string, fieldKey: string, rawVal: any): string => {
     if (rawVal == null || rawVal === '') return '';
     const def = fieldDefs?.[tab]?.[fieldKey];
-    const vt = def?.value_type;
-    if (vt === 'number' && (fieldKey.includes('slump') || fieldKey.includes('_mm'))) return `${rawVal} mm`;
-    if (vt === 'number' && fieldKey.includes('litres')) return `${rawVal} L`;
+    const unit = def?.config?.unit;
+    if (unit && def?.value_type === 'number') return `${rawVal} ${unit}`;
     // Convert boolean values to readable text
     if (rawVal === true || rawVal === 'true') return 'Yes';
     if (rawVal === false || rawVal === 'false') return 'No';
     return String(rawVal);
+  };
+
+  // Helper: get weather temperature string using the unit system from field_definitions
+  const getWeatherTemp = (weather: TicketDetail['weather']): string => {
+    if (!weather) return '--';
+    const tempUnit = fieldDefs?.plant?.load_temp?.config?.unit;
+    const useFahrenheit = tempUnit?.includes('F');
+    const temp = useFahrenheit ? weather.temperature_f : weather.temperature_c;
+    return `${Math.round(temp)}°${useFahrenheit ? 'F' : 'C'}`;
   };
 
 
@@ -1393,7 +1398,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   <Icon name={getWeatherIcon(detail?.weather?.icon)} size={14} color={c.textOnPrimary} />
                   <View>
                     <Text style={styles.stripPlant9} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                    <Text style={styles.stripWeather8} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                    <Text style={styles.stripWeather8} numberOfLines={1}>{detail?.weather ? `${getWeatherTemp(detail.weather)} ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                   </View>
                 </View>
                 {/* Vehicle & Employee stacked */}
@@ -1444,7 +1449,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         <Icon name={getWeatherIcon(detail?.weather?.icon)} size={ls(16)} color={c.textOnPrimary} />
                         <View>
                           <Text style={styles.lsPlant10} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || company?.company_name || '-'}</Text>
-                          <Text style={styles.lsWeather8} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
+                          <Text style={styles.lsWeather8} numberOfLines={1}>{detail?.weather ? `${getWeatherTemp(detail.weather)} ${detail.weather.description.toUpperCase()}` : currentTicket?.location_name || ''}</Text>
                         </View>
                       </View>
                       <View style={{ backgroundColor: c.overlay10, paddingVertical: ls(4), paddingHorizontal: ls(10), borderRadius: ls(12), gap: ls(2) }}>
@@ -1522,7 +1527,7 @@ export default function DashboardScreen({ navigation }: Props) {
                     <Icon name={getWeatherIcon(detail?.weather?.icon)} size={fs(14)} color={c.textOnPrimary} />
                     <View>
                       <Text style={{ fontSize: fst(10), fontWeight: '700', color: c.textOnPrimary , fontFamily: MONO}} numberOfLines={1}>{currentTicket?.location_code ? `${currentTicket.location_code} - ` : ''}{currentTicket?.plant_name || '-'}</Text>
-                      <Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}} numberOfLines={1}>{detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C ${detail.weather.description.toUpperCase()}` : '-'}</Text>
+                      <Text style={{ fontSize: fst(9), fontWeight: '600', color: c.textOnDark60 , fontFamily: MONO}} numberOfLines={1}>{detail?.weather ? `${getWeatherTemp(detail.weather)} ${detail.weather.description.toUpperCase()}` : '-'}</Text>
                     </View>
                   </View>
                   {currentTicket != null && (
@@ -1622,7 +1627,7 @@ export default function DashboardScreen({ navigation }: Props) {
                         <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) , fontFamily: MONO}}>|</Text>
                         <View style={{ flex: 1.6, paddingHorizontal: fs(3) }}>
                           <Text style={{ fontSize: fst(10), fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, marginBottom: fs(2) , fontFamily: MONO}}>QTY/UOM</Text>
-                          <Text style={{ fontSize: fst(11), fontWeight: '900', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                          <Text style={{ fontSize: fst(11), fontWeight: '900', color: c.textPrimary , fontFamily: MONO}} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit)}</Text>
                         </View>
                         <Text style={{ fontSize: fst(9), color: c.border, marginBottom: fs(1) , fontFamily: MONO}}>|</Text>
                         <View style={{ flex: 1.2, paddingLeft: fs(3) }}>
@@ -1882,7 +1887,7 @@ export default function DashboardScreen({ navigation }: Props) {
                       <Text style={styles.pipeDivider}>|</Text>
                       <View style={{ flex: 1.6, paddingHorizontal: wp(2) }}>
                         <Text style={styles.cardProductLabel}>QTY/UOM</Text>
-                        <Text style={styles.cardProductValue900} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit) || 'm3'}</Text>
+                        <Text style={styles.cardProductValue900} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stripUnit(detail?.mix?.quantity) || '-'} {normalizeUOM(detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit)}</Text>
                       </View>
                       <Text style={styles.pipeDivider}>|</Text>
                       <View style={{ flex: 1.2, paddingLeft: wp(2) }}>
@@ -2271,16 +2276,16 @@ export default function DashboardScreen({ navigation }: Props) {
           <View style={{ backgroundColor: c.white, borderRadius: 10, overflow: 'hidden', padding: wp(10) }}>
             <Text style={styles.modalSectionLabelCenter}>REQUIRED ENTRIES</Text>
             <Text style={[styles.modalTitle9, { marginBottom: wp(4) }]}>{waterModalField === 'customer_water' ? 'Customer Requested Water' : 'Maintenance Water'}</Text>
-            <Text style={[styles.modalFieldLabel8, { marginBottom: wp(2) }]}>Liters</Text>
+            <Text style={[styles.modalFieldLabel8, { marginBottom: wp(2) }]}>{fieldDefs?.plant?.water_added_full?.config?.unit || fieldDefs?.jobsite?.water_added_full?.config?.unit || 'Volume'}</Text>
             <TextInput
               style={{ borderWidth: 1.5, borderColor: c.accent, borderRadius: wp(7), paddingVertical: wp(4), paddingHorizontal: wp(7), fontSize: ms(10), fontWeight: '600', color: c.textPrimary, marginBottom: wp(4) }}
               value={waterLitresInput}
               onChangeText={t => setWaterLitresInput(t.replace(/[^0-9.]/g, ''))}
-              placeholder="Liters"
+              placeholder={fieldDefs?.plant?.water_added_full?.config?.unit || 'Volume'}
               placeholderTextColor={c.textMuted}
               keyboardType="numeric"
             />
-            <Text style={[styles.modalFieldLabel8, { marginTop: wp(3), marginBottom: wp(2) }]}>Slump (mm)</Text>
+            <Text style={[styles.modalFieldLabel8, { marginTop: wp(3), marginBottom: wp(2) }]}>{`Slump (${fieldDefs?.plant?.load_slump?.config?.unit || fieldDefs?.jobsite?.load_slump?.config?.unit || 'mm'})`}</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -2708,7 +2713,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={{ padding: wp(16), alignItems: 'center', gap: wp(10) }}>
           <Icon name={getWeatherIcon(detail?.weather?.icon)} size={ms(40)} color={c.primary} />
           <Text style={{ fontSize: ms(20), fontWeight: '900', color: c.textPrimary, fontFamily: MONO }}>
-            {detail?.weather ? `${Math.round(detail.weather.temperature_c)}°C` : '--'}
+            {detail?.weather ? `${getWeatherTemp(detail.weather)}` : '--'}
           </Text>
           <Text style={{ fontSize: ms(11), fontWeight: '600', color: c.textSecondary, textAlign: 'center', textTransform: 'uppercase', fontFamily: MONO }}>
             {detail?.weather?.description || '--'}
@@ -2864,7 +2869,7 @@ export default function DashboardScreen({ navigation }: Props) {
               description: currentTicket.mix.description || '-',
               is_mix: true,
               delivered_qty: detail?.mix?.quantity ? parseFloat(stripUnit(detail.mix.quantity) || '0') : null,
-              delivered_unit: 'm3',
+              delivered_unit: detail?.mix?.products?.find(p => p.is_mix)?.delivered_unit || null,
               slump_text: detail?.mix?.slump || currentTicket.mix.slump || null,
             } as any] : []);
             return rows.length > 0 ? rows.map((product: any, i: number) => (
