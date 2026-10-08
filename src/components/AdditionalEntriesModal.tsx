@@ -266,7 +266,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
     <>
       {/* Water Added */}
       {hasField('plant', 'water_added_full') && <><View style={s.row}>
-        <Text style={[s.rowLabel, {color: c.textPrimary, flex: 0, width: wp(50), fontFamily: MONO}]}>{ft('plant', 'water_added_full')}</Text>
+        <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('plant', 'water_added_full')}</Text>
         <View style={{flexDirection: 'row', borderWidth: 1.5, borderColor: c.primary, borderRadius: wp(5), overflow: 'hidden'}}>
           <TouchableOpacity onPress={() => setWaterLitres(Math.max(0, waterLitres - 1))} style={{width: wp(16), height: wp(15), alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySurface, borderRightWidth: 1, borderRightColor: c.primary}}>
             <Text style={{fontSize: ms(7), fontWeight: '700', color: c.primary, fontFamily: MONO}}>—</Text>
@@ -475,7 +475,7 @@ export default function AdditionalEntriesModal({visible, onClose, ticketCode, or
       {hasField('jobsite', 'other') && <><View style={s.row}>
         <Text style={[s.rowLabel, {color: c.textPrimary, fontFamily: MONO}]}>{ft('jobsite', 'other')}</Text>
         <TextInput
-          style={{flex: 1, borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(2), marginLeft: wp(10)}}
+          style={{flex: 1, borderBottomWidth: 1, borderBottomColor: c.border, fontSize: ms(7), fontWeight: '600', color: c.textPrimary, paddingVertical: wp(2)}}
           value={otherAdded}
           onChangeText={setOtherAdded}
           placeholderTextColor={c.textMuted}
@@ -862,7 +862,7 @@ const createS = () => StyleSheet.create({
   tabsRow: {flexDirection: 'row', justifyContent: 'center', gap: wp(3), paddingHorizontal: wp(8), paddingVertical: wp(4)},
   tabPill: {paddingVertical: wp(2), paddingHorizontal: wp(8), borderRadius: wp(10), borderWidth: 1.5},
   row: {flexDirection: 'row', alignItems: 'center', gap: wp(6), paddingVertical: wp(1)},
-  rowLabel: {fontSize: ms(7), fontWeight: '700', letterSpacing: 0.3, flex: 1},
+  rowLabel: {fontSize: ms(7), fontWeight: '700', letterSpacing: 0.3, width: wp(70)},
   sectionLabel: {fontSize: ms(7), fontWeight: '700', letterSpacing: 0.3, marginTop: wp(2)},
   stepBtn: {width: wp(22), height: wp(22), borderRadius: wp(5), borderWidth: 1.5, alignItems: 'center', justifyContent: 'center'},
   selectBox: {borderWidth: 1.5, borderRadius: wp(6), paddingVertical: wp(3), paddingHorizontal: wp(6)},

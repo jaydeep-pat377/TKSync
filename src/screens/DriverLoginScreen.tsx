@@ -321,7 +321,8 @@ export default function DriverLoginScreen({navigation}: Props) {
                     placeholderTextColor={c.textPlaceholder}
                     value={truckNumber}
                     onChangeText={setTruckNumber}
-                    keyboardType="number-pad"
+                    keyboardType="default"
+                    autoCapitalize="characters"
                     onFocus={handleInputFocus}
                     returnKeyType="next"
                     onSubmitEditing={() => pinInputRef.current?.focus()}
@@ -361,7 +362,8 @@ export default function DriverLoginScreen({navigation}: Props) {
                     ref={pinInputRef}
                     value={driverPin}
                     onChangeText={setDriverPin}
-                    keyboardType="number-pad"
+                    keyboardType="default"
+                    autoCapitalize="characters"
                     onFocus={handleInputFocus}
                     returnKeyType="go"
                     onSubmitEditing={handleLogin}
